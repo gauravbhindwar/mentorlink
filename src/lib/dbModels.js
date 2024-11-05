@@ -20,7 +20,7 @@ const mentorSchema = new Schema(
           }
           return true;
         },
-        message: (props) => "The specified mujid is already in use",   // can be used to show error popup message by sending props
+        message: () => "The specified mujid is already in use",   // can be used to show error popup message by sending props
       },
     },
     name: {
@@ -30,7 +30,7 @@ const mentorSchema = new Schema(
         validator: function (value) {
           return validator.isAlpha(value.replace(/\s/g, ''));
         },
-        message: (props) => "Name contains invalid characters",
+        message: () => "Name contains invalid characters",
       },
     },
     email: {
@@ -50,7 +50,7 @@ const mentorSchema = new Schema(
           }
           return true;
         },
-        message: (props) => "The specified email is already in use",   // can be used to show error popup message by sending props
+        message: () => "The specified email is already in use",   // can be used to show error popup message by sending props
       },
     },
     role: {
@@ -89,7 +89,7 @@ const menteeSchema = new Schema(
           }
           return true;
         },
-        message: (props) => "The specified mujid is already in use",
+        message: () => "The specified mujid is already in use",
       },
     },
     name: {
@@ -99,7 +99,7 @@ const menteeSchema = new Schema(
         validator: function (value) {
           return validator.isAlpha(value.replace(/\s/g, ''));
         },
-        message: (props) => "Name contains invalid characters",
+        message: () => "Name contains invalid characters",
       },
     },
     email: {
@@ -119,7 +119,7 @@ const menteeSchema = new Schema(
           }
           return true;
         },
-        message: (props) => "The specified email is already in use",
+        message: () => "The specified email is already in use",
       },
     },
     password: {
@@ -151,7 +151,7 @@ const adminSchema = new Schema(
         validator: function (value) {
           return validator.isAlpha(value.replace(/\s/g, ''));
         },
-        message: (props) => "Name contains invalid characters",
+        message: () => "Name contains invalid characters",
       },
     },
     email: {
@@ -171,7 +171,7 @@ const adminSchema = new Schema(
           }
           return true;
         },
-        message: (props) => "The specified email is already in use",
+        message: () => "The specified email is already in use",
       },
     },
     password: {
