@@ -16,7 +16,7 @@ const menteeSchema = Joi.object({
   phone: Joi.string().required(),
   fatherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
   motherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
-  dateOfBirth: Joi.string().regex(/^\d{2}-\d{2}-\d{4}$/).required(),
+  dateOfBirth: Joi.date().required(),
   parentsPhone: Joi.string().required(),
   parentsEmail: Joi.string().email().required(),
   mentorMujid: Joi.string().alphanum().required(),

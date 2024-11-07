@@ -16,7 +16,7 @@ const menteeSchema = Joi.object({
   phone: Joi.string().required(),
   fatherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
   motherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
-  dateOfBirth: Joi.string().regex(/^\d{2}-\d{2}-\d{4}$/).required(),
+  dateOfBirth: Joi.date().required(),
   parentsPhone: Joi.string().required(),
   parentsEmail: Joi.string().email().required(),
   mentorMujid: Joi.string().alphanum().required(),
@@ -27,7 +27,7 @@ const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request to create new mentees
+// POST request to create a new mentee
 export async function POST(req) {
   try {
     await connect();
@@ -38,88 +38,71 @@ export async function POST(req) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    if (!Array.isArray(requestBody)) {
-      return createErrorResponse("Request body must be an array of mentees", 400);
+    const {
+      mujid,
+      yearOfRegistration,
+      name,
+      email,
+      phone,
+      fatherName,
+      motherName,
+      dateOfBirth,
+      parentsPhone,
+      parentsEmail,
+      mentorMujid,
+    } = requestBody;
+
+    const { error } = menteeSchema.validate({
+      mujid,
+      yearOfRegistration,
+      name,
+      email,
+      phone,
+      fatherName,
+      motherName,
+      dateOfBirth,
+      parentsPhone,
+      parentsEmail,
+      mentorMujid,
+    });
+    if (error) {
+      return createErrorResponse(error.details[0].message, 400);
     }
 
-    const validationErrors = [];
-    const menteesToSave = [];
-
-    for (const menteeData of requestBody) {
-      const {
-        mujid,
-        yearOfRegistration,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid,
-      } = menteeData;
-
-      const { error } = menteeSchema.validate({
-        mujid,
-        yearOfRegistration,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid,
-      });
-
-      if (error) {
-        validationErrors.push({ mujid, error: error.details[0].message });
-        continue;
-      }
-
-      // Check if the mentee already exists by mujid or email
-      const existingMentee = await Mentee.findOne({ $or: [{ mujid }, { email }] });
-      if (existingMentee) {
-        validationErrors.push({ mujid, error: "Mentee with this mujid or email already exists" });
-        continue;
-      }
-
-      // Check if the mentor exists
-      const mentor = await Mentor.findOne({ mujid: mentorMujid });
-      if (!mentor) {
-        validationErrors.push({ mujid, error: "Mentor with this mujid not found" });
-        continue;
-      }
-
-      menteesToSave.push({
-        mujid,
-        yearOfRegistration,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid,
-      });
+    // Check if the mentee already exists by mujid or email
+    const existingMentee = await Mentee.findOne({ $or: [{ mujid }, { email }] });
+    if (existingMentee) {
+      return createErrorResponse("Mentee with this mujid or email already exists", 400);
     }
 
-    if (validationErrors.length > 0) {
-      return createErrorResponse(validationErrors, 400);
+    // Check if the mentor exists
+    const mentor = await Mentor.findOne({ mujid: mentorMujid });
+    if (!mentor) {
+      return createErrorResponse("Mentor with this mujid not found", 400);
     }
+
+    const newMentee = new Mentee({
+      mujid,
+      yearOfRegistration,
+      name,
+      email,
+      phone,
+      fatherName,
+      motherName,
+      dateOfBirth,
+      parentsPhone,
+      parentsEmail,
+      mentorMujid, // Store mentor's mujid directly
+    });
 
     try {
-      await Mentee.insertMany(menteesToSave);
+      await newMentee.save();
     } catch (error) {
-      console.error("Error saving new mentees:", error);
-      return createErrorResponse("Error saving new mentees", 500);
+      console.error("Error saving new mentee:", error);
+      return createErrorResponse("Error saving new mentee", 500);
     }
 
-    return NextResponse.json({ message: "Mentees added successfully" }, { status: 201 });
+    return NextResponse.json({ message: "Mentee added successfully" }, { status: 201 });
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
