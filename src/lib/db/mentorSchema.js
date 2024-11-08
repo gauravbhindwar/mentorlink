@@ -63,6 +63,9 @@ const mentorSchema = new Schema(
                 },
             },
         ],
+        otp: String,
+    otpExpires: Date,
+    isOtpUsed: { type: Boolean, default: false }
     },
     { timestamps: true }
 );

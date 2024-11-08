@@ -1,11 +1,9 @@
 "use client"
-import React from 'react'
+import React, { useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
 import { Button } from "@/components/ui/button"
 import {
     Form,
@@ -22,13 +20,16 @@ import {
     InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { useRouter } from 'next/navigation'
+import axios from 'axios'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const FormSchema = z.object({
     email: z.string().email({ message: "Invalid email address" }),
     pin: z.string().min(6, { message: "Your one-time password must be 6 characters." }),
 })
 
-const Login = ({ handleLogin, role }) => {
+const Login = ({ role }) => {
     const form = useForm({
         resolver: zodResolver(FormSchema),
         defaultValues: {
@@ -37,39 +38,69 @@ const Login = ({ handleLogin, role }) => {
         },
     })
 
+    const [email, setEmail] = useState('')
+    const [otpSent, setOtpSent] = useState(false)
+    const [otp, setOtp] = useState('')
     const router = useRouter()
 
-    function onSubmit(data) {
-        if (typeof handleLogin === 'function') {
-            handleLogin(data)
-            toast({
-                title: "You submitted the following values:",
-                description: (
-                    <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-                        <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-                    </pre>
-                ),
-            })
+    const handleFormSubmit = async (event) => {
+        event.preventDefault()
+        console.log(email)
+        console.log(role)
 
-            // Perform role-based redirection
-            if (role === 'mentor') {
-                router.push('/pages/mentordashboard')
-            } else if (role === 'mentee') {
-                router.push('/pages/menteedashboard')
-            } else if (role === 'admin') {
-                router.push('/pages/admindashboard')
-            } else if (role === 'hod') {
-                router.push('/pages/hoddashboard')
+        if (!otpSent) {
+            // Send OTP
+            try {
+                const response = await axios.post('/api/auth/send-otp', {
+                    email: email,
+                    role: role
+                })
+                if (response.status === 200) {
+                    toast.success("OTP sent successfully")
+                    setOtpSent(true)
+                } else {
+                    toast.error("Error sending one-time password. Please try again later.")
+                }
+            } catch {
+                toast.error("Error sending OTP")
             }
         } else {
-            console.error("handleLogin is not a function")
+            // Verify OTP
+            try {
+                const response = await axios.post('/api/auth/send-otp', {
+                    email: email,
+                    role: role,
+                    otp: otp
+                })
+                if (response.status === 200) {
+                    toast.success("OTP verified successfully")
+                    // Redirect based on role
+                    if (role === 'mentor') {
+                        router.push('/pages/mentordashboard');
+                    } else if (role === 'mentee') {
+                        router.push('/pages/menteedashboard');
+                    } else if (role === 'admin' || role === 'superadmin') {
+                        router.push('/pages/admindashboard');
+                    }
+                    // router.push('/dashboard')
+                } else {
+                    toast.error(response.data.message)
+                }
+            } catch {
+                toast.error("Error verifying OTP")
+            }
         }
+    }
+
+    const handleOtpChange = (value) => {
+        setOtp(value)
     }
 
     return (
         <div className='flex flex-col mt-20 gap-6 items-center justify-center text-center'>
+            <ToastContainer />
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+                <form onSubmit={handleFormSubmit} className="w-2/3 space-y-6">
                     <FormField
                         control={form.control}
                         name="email"
@@ -78,7 +109,13 @@ const Login = ({ handleLogin, role }) => {
                                 <FormLabel>Enter Your Email</FormLabel>
                                 <FormControl>
                                     <div className='w-96'>
-                                        <Input {...field} placeholder='Email' type="email"
+                                        <Input
+                                            {...field}
+                                            placeholder='Email'
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            name='email'
                                             className='w-full overflow-hidden text-ellipsis'
                                         />
                                     </div>
@@ -90,32 +127,36 @@ const Login = ({ handleLogin, role }) => {
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="pin"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>One-Time Password</FormLabel>
-                                <FormControl>
-                                    <InputOTP maxLength={6} {...field}>
-                                        <InputOTPGroup>
-                                            <InputOTPSlot index={0} />
-                                            <InputOTPSlot index={1} />
-                                            <InputOTPSlot index={2} />
-                                            <InputOTPSlot index={3} />
-                                            <InputOTPSlot index={4} />
-                                            <InputOTPSlot index={5} />
-                                        </InputOTPGroup>
-                                    </InputOTP>
-                                </FormControl>
-                                <FormDescription>
-                                    Please enter the one-time password sent to your phone.
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button type="submit">Submit</Button>
+                    {otpSent && (
+                        <FormField
+                            control={form.control}
+                            name="pin"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>One-Time Password</FormLabel>
+                                    <FormControl>
+                                        <InputOTP maxLength={6} {...field} value={otp} onChange={handleOtpChange}>
+                                            <InputOTPGroup>
+                                                <InputOTPSlot index={0} />
+                                                <InputOTPSlot index={1} />
+                                                <InputOTPSlot index={2} />
+                                                <InputOTPSlot index={3} />
+                                                <InputOTPSlot index={4} />
+                                                <InputOTPSlot index={5} />
+                                            </InputOTPGroup>
+                                        </InputOTP>
+                                    </FormControl>
+                                    <FormDescription>
+                                        Please enter the one-time password sent to your email.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+                    <Button type='submit'>
+                        {otpSent ? 'Verify OTP' : 'Send OTP'}
+                    </Button>
                 </form>
             </Form>
         </div>

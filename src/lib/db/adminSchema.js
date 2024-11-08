@@ -31,6 +31,9 @@ const adminSchema = new Schema(
             enum: ["admin", "superadmin"],
             default: "admin",
         },
+        otp: String,
+    otpExpires: Date,
+    isOtpUsed: { type: Boolean, default: false }
     },
     { timestamps: true }
 );

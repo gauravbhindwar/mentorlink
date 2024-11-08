@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import validator from "validator";
-import moment from "moment";
 
 const { Schema } = mongoose;
 
@@ -83,6 +82,9 @@ const menteeSchema = new Schema(
             type: String,
             required: true,
         },
+        otp: String,
+    otpExpires: Date,
+    isOtpUsed: { type: Boolean, default: false }
     },
     { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } }
 );
