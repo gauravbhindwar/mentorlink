@@ -1,5 +1,5 @@
-import { connect } from "../../../../../lib/dbConfig";
-import { Mentee, Mentor } from "../../../../../lib/dbModels";
+import { connect } from "../../../lib/dbConfig";
+import { Mentee, Mentor } from "../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
@@ -45,6 +45,12 @@ export async function POST(req) {
     const validationErrors = [];
     const menteesToSave = [];
 
+    // Assuming the authenticated mentor's mujid is available in the request headers
+    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    if (!authenticatedMentorMujid) {
+      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+    }
+
     for (const menteeData of requestBody) {
       const {
         mujid,
@@ -86,10 +92,10 @@ export async function POST(req) {
         continue;
       }
 
-      // Check if the mentor exists
+      // Check if the mentor exists and is the authenticated mentor
       const mentor = await Mentor.findOne({ mujid: mentorMujid });
-      if (!mentor) {
-        validationErrors.push({ mujid, error: "Mentor with this mujid not found" });
+      if (!mentor || mentor.mujid !== authenticatedMentorMujid) {
+        validationErrors.push({ mujid, error: "Mentor with this mujid not found or not authorized" });
         continue;
       }
 
@@ -137,9 +143,15 @@ export async function GET(req) {
       return createErrorResponse("Mujid is required", 400);
     }
 
-    const mentee = await Mentee.findOne({ mujid });
+    // Assuming the authenticated mentor's mujid is available in the request headers
+    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    if (!authenticatedMentorMujid) {
+      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+    }
+
+    const mentee = await Mentee.findOne({ mujid, mentorMujid: authenticatedMentorMujid });
     if (!mentee) {
-      return createErrorResponse("Mentee not found", 404);
+      return createErrorResponse("Mentee not found or not authorized", 404);
     }
 
     return NextResponse.json(mentee, { status: 200 });
@@ -191,8 +203,14 @@ export async function PUT(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
+    // Assuming the authenticated mentor's mujid is available in the request headers
+    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    if (!authenticatedMentorMujid) {
+      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+    }
+
     const updatedMentee = await Mentee.findOneAndUpdate(
-      { mujid },
+      { mujid, mentorMujid: authenticatedMentorMujid },
       {
         yearOfRegistration,
         name,
@@ -209,7 +227,7 @@ export async function PUT(req) {
     );
 
     if (!updatedMentee) {
-      return createErrorResponse("Mentee not found", 404);
+      return createErrorResponse("Mentee not found or not authorized", 404);
     }
 
     return NextResponse.json({ message: "Mentee updated successfully" }, { status: 200 });
@@ -241,14 +259,20 @@ export async function PATCH(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
+    // Assuming the authenticated mentor's mujid is available in the request headers
+    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    if (!authenticatedMentorMujid) {
+      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+    }
+
     const updatedMentee = await Mentee.findOneAndUpdate(
-      { mujid },
+      { mujid, mentorMujid: authenticatedMentorMujid },
       { $set: updateFields },
       { new: true }
     );
 
     if (!updatedMentee) {
-      return createErrorResponse("Mentee not found", 404);
+      return createErrorResponse("Mentee not found or not authorized", 404);
     }
 
     return NextResponse.json({ message: "Mentee updated successfully" }, { status: 200 });
@@ -269,9 +293,15 @@ export async function DELETE(req) {
       return createErrorResponse("Mujid is required", 400);
     }
 
-    const deletedMentee = await Mentee.findOneAndDelete({ mujid });
+    // Assuming the authenticated mentor's mujid is available in the request headers
+    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    if (!authenticatedMentorMujid) {
+      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+    }
+
+    const deletedMentee = await Mentee.findOneAndDelete({ mujid, mentorMujid: authenticatedMentorMujid });
     if (!deletedMentee) {
-      return createErrorResponse("Mentee not found", 404);
+      return createErrorResponse("Mentee not found or not authorized", 404);
     }
 
     return NextResponse.json({ message: "Mentee deleted successfully" }, { status: 200 });

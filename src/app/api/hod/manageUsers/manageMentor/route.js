@@ -1,6 +1,6 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Mentor, Admin } from "../../../../../lib/dbModels";
-import { NextResponse, NextRequest } from "next/server";
+import { Mentor } from "../../../../../lib/dbModels";
+import { NextResponse } from "next/server";
 import Joi from "joi";
 
 // Define the Joi schema for validation
@@ -8,11 +8,13 @@ const mentorSchema = Joi.object({
   email: Joi.string().email().required(),
   name: Joi.string().required(),
   mujid: Joi.string().required(),
-  admin: Joi.string().optional(),
   phone: Joi.string().optional(),
   designation: Joi.string().optional(),
   password: Joi.string().min(6).optional(),
   token: Joi.string().optional(),
+  roles: Joi.array()
+    .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
+    .default(['mentor']),
 });
 
 // Utility function to handle errors
@@ -24,86 +26,49 @@ const createErrorResponse = (message, statusCode = 400) => {
 export async function POST(req) {
   try {
     await connect();
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (err) {
-      return createErrorResponse("Invalid JSON input", err);
+    const requestBody = await req.json().catch(() => null);
+
+    if (!requestBody) {
+      return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { email, name, mujid, phone, designation, admin } = requestBody;
-
-    const { error } = mentorSchema.validate({
-      email,
-      name,
-      mujid,
-      admin,
-    });
+    const { error } = mentorSchema.validate(requestBody);
     if (error) {
-      return createErrorResponse(error.details[0].message);
+      return createErrorResponse(error.details[0].message, 400);
     }
 
-    // Check if the mentor already exists
+    const { email, mujid } = requestBody;
     const existingMentor = await Mentor.findOne({ email });
     if (existingMentor) {
-      return createErrorResponse("Email already exists");
+      return createErrorResponse("Email already exists", 400);
     }
 
-    let newMentor;
-    if (!phone) {
-      newMentor = new Mentor({
-        email,
-        name,
-        mujid,
-        designation,
-        admin,
-      });
-    } else if (!designation) {
-      newMentor = new Mentor({
-        email,
-        name,
-        mujid,
-        phone,
-        admin,
-      });
-    } else {
-      newMentor = new Mentor({
-        email,
-        name,
-        mujid,
-        phone,
-        designation,
-        admin,
-      });
-    }
+    const newMentor = new Mentor(requestBody);
+    await newMentor.save();
 
-    try {
-      await newMentor.save();
-    } catch (error) {
-      return createErrorResponse("Error saving new mentor", 500);
-    }
-
-    return NextResponse.json({ message: "Mentor added successfully" }, { status: 201 });
+    return NextResponse.json(
+      { message: "Mentor added successfully" },
+      { status: 201 }
+    );
   } catch (error) {
+    console.error("Error creating mentor:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
 
 // GET request to fetch all mentors
 export async function GET() {
-  await connect();
   try {
+    await connect();
     const mentors = await Mentor.find({});
     const totalMentors = await Mentor.countDocuments();
 
     return NextResponse.json(
-      {
-        mentors,
-        totalMentors,
-      },
+      { mentors, totalMentors },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error fetching mentors:", error);
     return createErrorResponse("Failed to fetch mentors", 500);
   }
 }
@@ -112,24 +77,19 @@ export async function GET() {
 export async function DELETE(req) {
   try {
     await connect();
+    const requestBody = await req.json().catch(() => null);
 
-    // Parse request body
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (err) {
-      return createErrorResponse("Invalid JSON input");
+    if (!requestBody) {
+      return createErrorResponse("Invalid JSON input", 400);
     }
 
     const { mujid } = requestBody;
 
     if (!mujid) {
-      return createErrorResponse("mujid is required for deletion");
+      return createErrorResponse("mujid is required for deletion", 400);
     }
 
-    // Delete the mentor
     const deletedMentor = await Mentor.findOneAndDelete({ mujid });
-
     if (!deletedMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
@@ -139,94 +99,94 @@ export async function DELETE(req) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error deleting mentor:", error);
     return createErrorResponse("Failed to delete mentor", 500);
   }
 }
+
 // PUT request to update a mentor's details
 export async function PUT(req) {
   try {
     await connect();
+    const requestBody = await req.json().catch(() => null);
 
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (err) {
-      return createErrorResponse("Invalid JSON input");
+    if (!requestBody) {
+      return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { email, name, mujid, phone, designation, admin } = requestBody;
+    const { mujid } = requestBody;
 
-    const { error } = mentorSchema.validate({
-      email,
-      name,
-      mujid,
-      admin,
-    });
+    if (!mujid) {
+      return createErrorResponse("mujid is required for updating", 400);
+    }
+
+    const { error } = mentorSchema.validate(requestBody);
     if (error) {
-      return createErrorResponse(error.details[0].message);
+      return createErrorResponse(error.details[0].message, 400);
     }
 
-    // Check if the mentor exists
-    const existingMentor = await Mentor.findOne({ mujid });
-    if (!existingMentor) {
+    const updatedMentor = await Mentor.findOneAndUpdate(
+      { mujid },
+      requestBody,
+      { new: true }
+    );
+
+    if (!updatedMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
 
-    existingMentor.email = email;
-    existingMentor.name = name;
-    existingMentor.phone = phone;
-    existingMentor.designation = designation;
-    existingMentor.admin = admin;
-
-    try {
-      await existingMentor.save();
-    } catch (error) {
-      return createErrorResponse("Error updating mentor", 500);
-    }
-
-    return NextResponse.json({ message: "Mentor updated successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: "Mentor updated successfully", updatedMentor },
+      { status: 200 }
+    );
   } catch (error) {
+    console.error("Error updating mentor:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
+
 // PATCH request to partially update a mentor's details
 export async function PATCH(req) {
   try {
     await connect();
+    const requestBody = await req.json().catch(() => null);
 
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (err) {
-      return createErrorResponse("Invalid JSON input");
+    if (!requestBody) {
+      return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid, email, name, phone, designation, admin } = requestBody;
+    const { mujid, ...updateData } = requestBody;
 
     if (!mujid) {
-      return createErrorResponse("mujid is required for updating");
+      return createErrorResponse("mujid is required for updating", 400);
     }
 
-    // Find the mentor
-    const existingMentor = await Mentor.findOne({ mujid });
-    if (!existingMentor) {
+    // Partial validation for PATCH, applying defaults only for provided fields
+    const schema = mentorSchema.fork(Object.keys(updateData), (schema) =>
+      schema.optional()
+    );
+
+    const { error } = schema.validate(updateData);
+    if (error) {
+      return createErrorResponse(error.details[0].message, 400);
+    }
+
+    const updatedMentor = await Mentor.findOneAndUpdate(
+      { mujid },
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
 
-    if (email) existingMentor.email = email;
-    if (name) existingMentor.name = name;
-    if (phone) existingMentor.phone = phone;
-    if (designation) existingMentor.designation = designation;
-    if (admin) existingMentor.admin = admin;
-
-    try {
-      await existingMentor.save();
-    } catch (error) {
-      return createErrorResponse("Error updating mentor", 500);
-    }
-
-    return NextResponse.json({ message: "Mentor updated successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: "Mentor updated successfully", updatedMentor },
+      { status: 200 }
+    );
   } catch (error) {
+    console.error("Error partially updating mentor:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }

@@ -20,20 +20,17 @@ const HomePage = () => {
         console.log("Mentor Login", data);
     }
 
-    const handleMenteeLogin = (data) => {
-        // Add your logic here for mentee login
-        console.log("Mentee Login", data)
-    }
+  const handleMenteeLogin = (data) => {
+    console.log("Mentee Login", data);
+  };
 
-    const handleAdminLogin = (data) => {
-        // Add your logic here for admin login
-        console.log("Admin Login", data)
-    }
+  const handleAdminLogin = (data) => {
+    console.log("Admin Login", data);
+  };
 
-    const handleHodLogin = (data) => {
-        // Add your logic here for HOD login
-        console.log("HOD Login", data)
-    }
+  const handleHodLogin = (data) => {
+    console.log("HOD Login", data);
+  };
 
     return (
         // <div className='flex flex-col mt-20 gap-6 items-center justify-center text-center'>
@@ -121,4 +118,4 @@ const HomePage = () => {
     )
 }
 
-export default HomePage
+export default HomePage;
