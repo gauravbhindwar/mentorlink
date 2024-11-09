@@ -1,10 +1,10 @@
 import React from 'react'
-import DashboardLayout from '@/components/DashboardLayout/DashboardLayout'
+import ViewMentee from '@/components/ViewMentee/ViewMentee'
 
 const page = () => {
     return (
         <>
-            <DashboardLayout />
+            <ViewMentee />
         </>
     )
 }

@@ -1,121 +1,85 @@
-"use client"
-import React, { useState } from 'react'
-import { Button } from '../ui/button'
-import { Label } from '@/components/ui/label'
-import Login from '@/components/Login/Login'
-import '@/app/styles.css';
+"use client";
+import React, { useState } from "react";
+import { Button } from "../ui/button";
+import Login from "@/components/Login/Login";
+import Navbar from "@/components/subComponents/Navbar"; // Import Navbar component
+import { motion } from "framer-motion"; // For animations
 
 const HomePage = () => {
-    const [loginType, setLoginType] = useState(null)
+  const [loginType, setLoginType] = useState(null);
 
-    const [activeButton, setActiveButton] = useState('');
+  return (
+    <>
+      {/* Navbar */}
+      <Navbar />
 
-    const handleButtonClick = (type) => {
-        setActiveButton(type);
-        setLoginType(type);
-    };
-
-    const handleMentorLogin = (data) => {
-        // Add your logic here for mentor login
-        console.log("Mentor Login", data);
-    }
-
-  const handleMenteeLogin = (data) => {
-    console.log("Mentee Login", data);
-  };
-
-  const handleAdminLogin = (data) => {
-    console.log("Admin Login", data);
-  };
-
-  const handleHodLogin = (data) => {
-    console.log("HOD Login", data);
-  };
-
-    return (
-        // <div className='flex flex-col mt-20 gap-6 items-center justify-center text-center'>
-        //     {!loginType && (
-        //         <>
-        //             <div>
-        //                 <div>
-        //                     <Label>Login As Mentor</Label>
-        //                 </div>
-        //                 <Button onClick={() => setLoginType('mentor')}>Mentor Login</Button>
-        //             </div>
-        //             <div>
-        //                 <div>
-        //                     <Label>Login As Mentee</Label>
-        //                 </div>
-        //                 <Button onClick={() => setLoginType('mentee')}>Mentee Login</Button>
-        //             </div>
-        //             <div>
-        //                 <div>
-        //                     <Label>Login As Admin</Label>
-        //                 </div>
-        //                 <Button onClick={() => setLoginType('admin')}>Admin Login</Button>
-        //             </div>
-        //             <div>
-        //                 <div>
-        //                     <Label>Login As HOD</Label>
-        //                 </div>
-        //                 <Button onClick={() => setLoginType('hod')}>HOD Login</Button>
-        //             </div>
-        //         </>
-        //     )}
-        //     {loginType === 'mentor' && <Login handleLogin={handleMentorLogin} role="mentor" />}
-        //     {loginType === 'mentee' && <Login handleLogin={handleMenteeLogin} role="mentee" />}
-        //     {loginType === 'admin' && <Login handleLogin={handleAdminLogin} role="admin" />}
-        //     {loginType === 'hod' && <Login handleLogin={handleHodLogin} role="hod" />}
-        // </div>
-        <>
-            <div className="loginBox w-1/3 mx-auto my-20">
-                <div className="tabDiv flex justify-around bg-slate-900 p-4 pb-0 text-gray-300">
-                    
-                <div className="w-1/4">
-                        <button
-                            className={`btn-class ${activeButton === 'mentee' ? 'active' : ''}`}
-                            onClick={() => handleButtonClick('mentee')}
-                        >
-                            Mentee
-                        </button>
-                    </div>
-                    <div className="w-1/4">
-                        <button
-                            className={`btn-class ${activeButton === 'mentor' ? 'active' : ''}`}
-                            onClick={() => handleButtonClick('mentor')}
-                        >
-                            Mentor
-                        </button>
-                    </div>
-                    <div className="w-1/4">
-                        <button
-                            className={`btn-class ${activeButton === 'admin' ? 'active' : ''}`}
-                            onClick={() => handleButtonClick('admin')}
-                        >
-                            Admin
-                        </button>
-                    </div>
-                    <div className="w-1/4">
-                        <button
-                            className={`btn-class ${activeButton === 'hod' ? 'active' : ''}`}
-                            onClick={() => handleButtonClick('hod')}
-                        >
-                            HoD
-                        </button>
-                    </div>
-
-                </div>
-
-
-                <div>
-                    {loginType === 'mentor' && <Login handleLogin={handleMentorLogin} role="mentor" />}
-                    {loginType === 'mentee' && <Login handleLogin={handleMenteeLogin} role="mentee" />}
-                    {loginType === 'admin' && <Login handleLogin={handleAdminLogin} role="admin" />}
-                    {loginType === 'hod' && <Login handleLogin={handleHodLogin} role="hod" />}
-                </div>
+      {/* Home Page Content */}
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4 md:px-8">
+        {!loginType && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="bg-white shadow-lg rounded-xl p-6 md:p-8 space-y-6 w-full max-w-md"
+          >
+            {/* Mentor Button */}
+            <div className="space-y-4">
+              <Button
+                className="w-full py-2 md:py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg transition-all duration-300 ease-in-out text-sm md:text-base"
+                onClick={() => setLoginType("mentor")}
+              >
+                Mentor Login
+              </Button>
             </div>
-        </>
-    )
-}
+
+            {/* Mentee Button */}
+            <div className="space-y-4">
+              <Button
+                className="w-full py-2 md:py-3 rounded-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-teal-500 hover:to-green-500 text-white shadow-lg transition-all duration-300 ease-in-out text-sm md:text-base"
+                onClick={() => setLoginType("mentee")}
+              >
+                Mentee Login
+              </Button>
+            </div>
+
+            {/* Admin Button */}
+            <div className="space-y-4">
+              <Button
+                className="w-full py-2 md:py-3 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-blue-600 hover:to-indigo-500 text-white shadow-lg transition-all duration-300 ease-in-out text-sm md:text-base"
+                onClick={() => setLoginType("admin")}
+              >
+                Admin Login
+              </Button>
+            </div>
+
+            {/* SuperAdmin Button */}
+            <div className="space-y-4">
+              <Button
+                className="w-full py-2 md:py-3 rounded-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-pink-500 hover:to-red-500 text-white shadow-lg transition-all duration-300 ease-in-out text-sm md:text-base"
+                onClick={() => setLoginType("superadmin")}
+              >
+                SuperAdmin Login
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {loginType && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full max-w-lg"
+          >
+            {loginType === "mentor" && <Login role="mentor" />}
+            {loginType === "mentee" && <Login role="mentee" />}
+            {loginType === "admin" && <Login role="admin" />}
+            {loginType === "superadmin" && <Login role="superadmin" />}
+          </motion.div>
+        )}
+      </div>
+    </>
+  );
+};
 
 export default HomePage;

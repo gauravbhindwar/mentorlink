@@ -1,20 +1,17 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Mentor } from "../../../../../lib/dbModels";
+import { Admin } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
 // Define the Joi schema for validation
-const mentorSchema = Joi.object({
+const adminSchema = Joi.object({
   email: Joi.string().email().required(),
   name: Joi.string().required(),
   mujid: Joi.string().required(),
-  phone: Joi.string().optional(),
-  designation: Joi.string().optional(),
-  password: Joi.string().min(6).optional(),
-  token: Joi.string().optional(),
+  phone: Joi.string().required(),
   roles: Joi.array()
     .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
-    .default(['mentor']),
+    .default(['admin']),
 });
 
 // Utility function to handle errors
@@ -22,7 +19,7 @@ const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request to create a new mentor
+// POST request to create a new admin
 export async function POST(req) {
   try {
     await connect();
@@ -32,48 +29,48 @@ export async function POST(req) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { error } = mentorSchema.validate(requestBody);
+    const { error } = adminSchema.validate(requestBody);
     if (error) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const { email, mujid } = requestBody;
-    const existingMentor = await Mentor.findOne({ email });
-    if (existingMentor) {
+    const { email} = requestBody;
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
       return createErrorResponse("Email already exists", 400);
     }
 
-    const newMentor = new Mentor(requestBody);
-    await newMentor.save();
+    const newAdmin = new Admin(requestBody);
+    await newAdmin.save();
 
     return NextResponse.json(
-      { message: "Mentor added successfully" },
+      { message: "Admin added successfully" },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating mentor:", error);
+    console.error("Error creating admin:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
 
-// GET request to fetch all mentors
+// GET request to fetch all admins
 export async function GET() {
   try {
     await connect();
-    const mentors = await Mentor.find({});
-    const totalMentors = await Mentor.countDocuments();
+    const admins = await Admin.find({});
+    const totalAdmins = await Admin.countDocuments();
 
     return NextResponse.json(
-      { mentors, totalMentors },
+      { admins, totalAdmins },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching mentors:", error);
-    return createErrorResponse("Failed to fetch mentors", 500);
+    console.error("Error fetching admins:", error);
+    return createErrorResponse("Failed to fetch admins", 500);
   }
 }
 
-// DELETE request to delete a mentor by mujid
+// DELETE request to delete an admin by mujid
 export async function DELETE(req) {
   try {
     await connect();
@@ -89,22 +86,22 @@ export async function DELETE(req) {
       return createErrorResponse("mujid is required for deletion", 400);
     }
 
-    const deletedMentor = await Mentor.findOneAndDelete({ mujid });
-    if (!deletedMentor) {
-      return createErrorResponse("Mentor not found", 404);
+    const deletedAdmin = await Admin.findOneAndDelete({ mujid });
+    if (!deletedAdmin) {
+      return createErrorResponse("Admin not found", 404);
     }
 
     return NextResponse.json(
-      { message: "Mentor deleted successfully", deletedMentor },
+      { message: "Admin deleted successfully", deletedAdmin },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error deleting mentor:", error);
-    return createErrorResponse("Failed to delete mentor", 500);
+    console.error("Error deleting admin:", error);
+    return createErrorResponse("Failed to delete admin", 500);
   }
 }
 
-// PUT request to update a mentor's details
+// PUT request to update an admin's details
 export async function PUT(req) {
   try {
     await connect();
@@ -120,32 +117,32 @@ export async function PUT(req) {
       return createErrorResponse("mujid is required for updating", 400);
     }
 
-    const { error } = mentorSchema.validate(requestBody);
+    const { error } = adminSchema.validate(requestBody);
     if (error) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const updatedMentor = await Mentor.findOneAndUpdate(
+    const updatedAdmin = await Admin.findOneAndUpdate(
       { mujid },
       requestBody,
       { new: true }
     );
 
-    if (!updatedMentor) {
-      return createErrorResponse("Mentor not found", 404);
+    if (!updatedAdmin) {
+      return createErrorResponse("Admin not found", 404);
     }
 
     return NextResponse.json(
-      { message: "Mentor updated successfully", updatedMentor },
+      { message: "Admin updated successfully", updatedAdmin },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating mentor:", error);
+    console.error("Error updating admin:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
 
-// PATCH request to partially update a mentor's details
+// PATCH request to partially update an admin's details
 export async function PATCH(req) {
   try {
     await connect();
@@ -162,7 +159,7 @@ export async function PATCH(req) {
     }
 
     // Partial validation for PATCH, applying defaults only for provided fields
-    const schema = mentorSchema.fork(Object.keys(updateData), (schema) =>
+    const schema = adminSchema.fork(Object.keys(updateData), (schema) =>
       schema.optional()
     );
 
@@ -171,22 +168,22 @@ export async function PATCH(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const updatedMentor = await Mentor.findOneAndUpdate(
+    const updatedAdmin = await Admin.findOneAndUpdate(
       { mujid },
       updateData,
       { new: true }
     );
 
-    if (!updatedMentor) {
-      return createErrorResponse("Mentor not found", 404);
+    if (!updatedAdmin) {
+      return createErrorResponse("Admin not found", 404);
     }
 
     return NextResponse.json(
-      { message: "Mentor updated successfully", updatedMentor },
+      { message: "Admin updated successfully", updatedAdmin },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error partially updating mentor:", error);
+    console.error("Error partially updating admin:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
