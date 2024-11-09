@@ -30,3 +30,24 @@
 div .active {
     @apply !text-violet-400;
 }
+
+
+/* Admin Panel */
+table {
+    table-layout: fixed;
+    @apply overflow-x-auto;
+
+}
+
+tr * {
+    @apply border-x text-center overflow-auto min-w-[12.5%];
+}
+
+th {
+    @apply bg-orange-300
+}
+
+#semesterChoose option {
+    @apply bg-white text-black;
+    font-family: Arial, Helvetica, sans-serif;
+}
