@@ -82,3 +82,13 @@
 .animate-popup {
   animation: fadeIn 0.3s ease-out;
 }
+
+.bg-blue-500 {
+  background-color: #3b82f6;
+}
+.hover\:bg-blue-600:hover {
+  background-color: #2563eb;
+}
+.transition-all {
+  transition: all 0.3s ease-in-out;
+}

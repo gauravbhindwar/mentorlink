@@ -1,12 +1,11 @@
 "use client"
 import React from 'react'
-import { Button } from '../ui/button'
 import { useRouter } from 'next/navigation'
 
 const MentorDashBoard = () => {
     const router = useRouter(); // Hook to handle routing
 
-    // Function to handle redirection when buttons are clicked
+    // Function to handle redirection when cards are clicked
     const handleViewMenteeClick = () => {
         router.push('/pages/viewmentee'); // Redirects to '/view-mentee' page
     }
@@ -28,48 +27,48 @@ const MentorDashBoard = () => {
     }
 
     return (
-        <div className='flex flex-col justify-start items-center min-h-screen py-6'>
-            {/* Buttons Section */}
+        <div className='flex flex-col justify-start items-center min-h-screen py-6 overflow-hidden'>
+            {/* Cards Section */}
             <div className='flex flex-wrap gap-6 justify-center items-center'>
                 <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleViewMenteeClick} // Button click handler
+                    <div
+                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all cursor-pointer'
+                        onClick={handleViewMenteeClick} // Card click handler
                     >
                         View Mentee
-                    </Button>
+                    </div>
                 </div>
                 <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleScheduleMeetingClick} // Button click handler
+                    <div
+                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all cursor-pointer'
+                        onClick={handleScheduleMeetingClick} // Card click handler
                     >
                         Schedule New Meeting
-                    </Button>
+                    </div>
                 </div>
                 <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleAddMeetingInfoClick} // Button click handler
+                    <div
+                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all cursor-pointer'
+                        onClick={handleAddMeetingInfoClick} // Card click handler
                     >
                         Add Meeting Information
-                    </Button>
+                    </div>
                 </div>
                 <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleGenerateReportClick} // Button click handler
+                    <div
+                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all cursor-pointer'
+                        onClick={handleGenerateReportClick} // Card click handler
                     >
                         Generate Meeting Report
-                    </Button>
+                    </div>
                 </div>
                 <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleStudentQueryClick} // Button click handler
+                    <div
+                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all cursor-pointer'
+                        onClick={handleStudentQueryClick} // Card click handler
                     >
                         Student Query
-                    </Button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -82,12 +82,15 @@ const menteeSchema = new Schema(
             type: String,
             required: true,
         },
-        otp: String,
-    otpExpires: Date,
-    isOtpUsed: { type: Boolean, default: false }
+        otp: { type: String },
+        otpExpires: { type: Date },
+        isOtpUsed: { type: Boolean, default: false }
     },
     { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } }
 );
+
+menteeSchema.index({ email: 1 }, { unique: true, sparse: true });
+menteeSchema.index({ mujid: 1 }, { unique: true, sparse: true });
 
 const Mentee = mongoose.models.Mentee || mongoose.model("Mentee", menteeSchema);
 

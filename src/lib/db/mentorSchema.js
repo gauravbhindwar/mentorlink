@@ -63,14 +63,17 @@ const mentorSchema = new Schema(
                 },
             },
         ],
-        otp: String,
-    otpExpires: Date,
-    isOtpUsed: { type: Boolean, default: false }
-    },
+        otp: { type: String },
+        otpExpires: { type: Date },
+        isOtpUsed: { type: Boolean, default: false }
+    }
+    ,
+
     { timestamps: true }
 );
 
 mentorSchema.index({ email: 1 }, { unique: true, sparse: true });
+mentorSchema.index({ mujid: 1 }, { unique: true, sparse: true });
 
 const Mentor = mongoose.models.Mentor || mongoose.model("Mentor", mentorSchema);
 
