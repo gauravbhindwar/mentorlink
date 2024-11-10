@@ -9,7 +9,10 @@ const adminSchema = new Schema(
             type: String,
             required: true,
             unique: true,
-            validate: [validator.isAlphanumeric, "mujid contains invalid characters"],
+            validate: {
+                validator: (value) => /^[A-Z0-9]+$/.test(value),
+                message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
+            },
         },
         name: {
             type: String,
@@ -28,14 +31,25 @@ const adminSchema = new Schema(
             lowercase: true,
             validate: [validator.isEmail, "Invalid email format"],
         },
-        role: {
-            type: String,
-            enum: ["admin", "superadmin"],
-            default: "admin",
-        },
         otp: { type: String },
         otpExpires: { type: Date },
-        isOtpUsed: { type: Boolean, default: false }
+        isOtpUsed: { type: Boolean, default: false },
+        phone: {
+            type: String,
+            required: true,
+            validate: {
+                validator: function(value) {
+                    // Allow +91 prefix (optional) followed by 10 digits
+                    return /^(\+91)?[6-9]\d{9}$/.test(value);
+                },
+                message: "Invalid phone number. Must be a valid Indian phone number"
+            },
+        },
+        roles: {
+            type: [String],
+            enum: ["mentor", "admin", "superadmin"],
+            default: ["admin"],
+        },
     },
     { timestamps: true }
 );

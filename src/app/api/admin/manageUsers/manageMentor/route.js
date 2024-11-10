@@ -10,7 +10,6 @@ const mentorSchema = Joi.object({
   mujid: Joi.string().required(),
   phone: Joi.string().required(),
   designation: Joi.string().optional(),
-  token: Joi.string().optional(),
   roles: Joi.array()
     .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
     .default(['mentor']),

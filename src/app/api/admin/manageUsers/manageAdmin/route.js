@@ -8,7 +8,17 @@ const adminSchema = Joi.object({
   email: Joi.string().email().required(),
   name: Joi.string().required(),
   mujid: Joi.string().required(),
-  phone: Joi.string().required(),
+  phone: Joi.string()
+    .pattern(/^(\+91)?[6-9]\d{9}$/)    // This regex pattern matches a valid Indian phone number
+    // The pattern: ^[6-9]\d{9}$ means:
+    // - ^ asserts start of a line
+    // - [6-9] matches one of the numbers 6, 7, 8 or 9
+    // - \d{9} matches exactly 9 digits
+    // - $ asserts end of a line
+    .required()
+    .messages({
+      'string.pattern.base': 'Phone number must be a valid Indian phone number'
+    }),
   roles: Joi.array()
     .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
     .default(['admin']),
@@ -34,7 +44,7 @@ export async function POST(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const { email} = requestBody;
+    const { email } = requestBody;
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
       return createErrorResponse("Email already exists", 400);

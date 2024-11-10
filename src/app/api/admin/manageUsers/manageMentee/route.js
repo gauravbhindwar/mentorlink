@@ -1,5 +1,5 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Mentee, Mentor } from "../../../../../lib/dbModels";
+import { Mentee, Mentor, year } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
@@ -11,6 +11,10 @@ const menteeSchema = Joi.object({
     .min(1900)
     .max(new Date().getFullYear())
     .required(),
+  year: Joi.number().integer().min(1900).max(new Date().getFullYear()).required(),
+  term: Joi.string().valid("odd", "even").required(),
+  semester: Joi.number().integer().min(1).max(8).required(),
+  section: Joi.string().required(),
   name: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
   email: Joi.string().email().required(),
   phone: Joi.string().required(),
@@ -49,6 +53,10 @@ export async function POST(req) {
       const {
         mujid,
         yearOfRegistration,
+        year,
+        term,
+        semester,
+        section,
         name,
         email,
         phone,
@@ -57,12 +65,16 @@ export async function POST(req) {
         dateOfBirth,
         parentsPhone,
         parentsEmail,
-        mentorMujid,
+        mentorMujid
       } = menteeData;
 
       const { error } = menteeSchema.validate({
         mujid,
         yearOfRegistration,
+        year,
+        term,
+        semester,
+        section,
         name,
         email,
         phone,
@@ -71,7 +83,7 @@ export async function POST(req) {
         dateOfBirth,
         parentsPhone,
         parentsEmail,
-        mentorMujid,
+        mentorMujid
       });
 
       if (error) {
@@ -96,6 +108,10 @@ export async function POST(req) {
       menteesToSave.push({
         mujid,
         yearOfRegistration,
+        year,
+        term,
+        semester,
+        section,
         name,
         email,
         phone,
@@ -104,7 +120,7 @@ export async function POST(req) {
         dateOfBirth,
         parentsPhone,
         parentsEmail,
-        mentorMujid,
+        mentorMujid
       });
     }
 
@@ -126,23 +142,33 @@ export async function POST(req) {
   }
 }
 
-// GET request to read a mentee by mujid
+// GET request to read mentees based on filters
 export async function GET(req) {
   try {
     await connect();
     const { searchParams } = new URL(req.url);
-    const mujid = searchParams.get('mujid');
+    const year = searchParams.get('year');
+    const term = searchParams.get('term');
+    const semester = searchParams.get('semester');
+    const section = searchParams.get('section'); // add section parameter
+    const mentorMujid = searchParams.get('mentorMujid'); // updated parameter name
 
-    if (!mujid) {
-      return createErrorResponse("Mujid is required", 400);
+    const filters = {};
+    if (year) filters.year = parseInt(year, 10); // parse year as integer
+    if (term) filters.term = term;
+    if (semester) filters.semester = semester;
+    if (section) filters.section = section; // add section filter
+    if (mentorMujid) filters.mentorMujid = mentorMujid;
+
+    console.log('Filters applied:', filters); // Add this line to log the filters
+
+    const mentees = await Mentee.find(filters);
+    console.log('Mentees found:', mentees); // Add this line to log the mentees found
+    if (!mentees.length) {
+      return createErrorResponse("No mentees found", 404);
     }
 
-    const mentee = await Mentee.findOne({ mujid });
-    if (!mentee) {
-      return createErrorResponse("Mentee not found", 404);
-    }
-
-    return NextResponse.json(mentee, { status: 200 });
+    return NextResponse.json(mentees, { status: 200 });
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
@@ -163,6 +189,10 @@ export async function PUT(req) {
     const {
       mujid,
       yearOfRegistration,
+      year,
+      term,
+      semester,
+      section,
       name,
       email,
       phone,
@@ -177,6 +207,10 @@ export async function PUT(req) {
     const { error } = menteeSchema.validate({
       mujid,
       yearOfRegistration,
+      year,
+      term,
+      semester,
+      section,
       name,
       email,
       phone,
@@ -195,6 +229,10 @@ export async function PUT(req) {
       { mujid },
       {
         yearOfRegistration,
+        year,
+        term,
+        semester,
+        section,
         name,
         email,
         phone,
@@ -236,7 +274,9 @@ export async function PATCH(req) {
       return createErrorResponse("Mujid is required", 400);
     }
 
-    const { error } = Joi.object(updateFields).validate(updateFields);
+    // Validate only the fields that are being updated
+    const schema = Joi.object(updateFields).unknown(true);
+    const { error } = schema.validate(updateFields);
     if (error) {
       return createErrorResponse(error.details[0].message, 400);
     }
@@ -251,7 +291,7 @@ export async function PATCH(req) {
       return createErrorResponse("Mentee not found", 404);
     }
 
-    return NextResponse.json({ message: "Mentee updated successfully" }, { status: 200 });
+    return NextResponse.json(updatedMentee, { status: 200 });
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
