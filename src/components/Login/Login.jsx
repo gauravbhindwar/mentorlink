@@ -25,6 +25,7 @@ import { motion } from "framer-motion"; // For animations
 import "react-toastify/dist/ReactToastify.css";
 import { Eye, EyeOff } from "lucide-react"; // Icons for show/hide
 import { signIn } from "next-auth/react";
+import Image from 'next/image';
 
 const FormSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -187,6 +188,13 @@ const Login = ({ role }) => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md bg-white shadow-lg rounded-xl p-6 md:p-8"
       >
+        <Image 
+          src="/muj-logo.svg" 
+          alt="MUJ Logo" 
+          width={150} 
+          height={150} 
+          style={{ width: "auto", height: "auto" }} 
+        />
         <Form {...form}>
           <form onSubmit={handleFormSubmit} className="space-y-6">
             <FormField

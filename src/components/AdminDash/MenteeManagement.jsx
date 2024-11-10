@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Container, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle } from '@mui/material';
+import { Box, Typography, Button, Paper, Container, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle, LinearProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -60,10 +60,13 @@ const MenteeManagement = () => {
     parentsEmail: '',
     mentorMujid: '',
   });
+  
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentee, setSelectedMentee] = useState(null);
   const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, mentee: null });
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const showAlert = (message, severity) => {
     setAlert({ open: true, message, severity });
@@ -172,17 +175,62 @@ const MenteeManagement = () => {
     handleDialogClose();
   };
 
-  const handleFileUpload = (e) => {
-    // Implement file upload logic here
-    console.log('File uploaded:', e.target.files[0]);
+  const handleFileUpload = async (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    if (!validTypes.includes(file.type)) {
+      showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post('/api/admin/manageUsers/uploadMentees', formData, {
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+
+      const { results } = response.data;
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      showAlert(
+        `Upload complete: ${successful} mentees added/updated, ${failed} failed`,
+        failed > 0 ? 'warning' : 'success'
+      );
+
+      // Refresh the mentee list
+      if (handleSearch) {
+        handleSearch([]);
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error uploading file', 'error');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      handleDialogClose();
+    }
   };
 
-  const onDrop = (acceptedFiles) => {
-    // Handle file drop
-    console.log('Files dropped:', acceptedFiles);
-  };
-
-  const { getRootProps, getInputProps } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+    },
+    multiple: false
+  });
 
   useEffect(() => {
     const updateSemesters = () => {
@@ -289,7 +337,7 @@ const MenteeManagement = () => {
             onFilterChange={handleFilterChange}
             onSearch={handleSearch}
             onSearchAll={handleSearchAll}
-            onAddNew={handleDialogOpen}
+            onAddNew={handleDialogOpen} // Pass the handler
             onReset={handleReset}
           />
 
@@ -311,149 +359,173 @@ const MenteeManagement = () => {
         </Paper>
       </Container>
 
-      <Dialog open={openDialog} onClose={handleDialogClose} fullWidth maxWidth="lg" sx={{ '& .MuiDialog-paper': { width: '80%' } }}>
-        <DialogTitle>
-          Add New Mentee
-          <IconButton
-            aria-label="close"
-            onClick={handleDialogClose}
-            sx={{
+      <Dialog 
+  open={openDialog} 
+  onClose={handleDialogClose} 
+  fullWidth 
+  maxWidth="lg" 
+  sx={{ 
+    '& .MuiDialog-paper': { 
+      width: '90%',
+      maxHeight: '90vh'
+    } 
+  }}
+>
+  <DialogTitle>
+    Add New Mentee
+    <IconButton
+      aria-label="close"
+      onClick={handleDialogClose}
+      sx={{
+        position: 'absolute',
+        right: 8,
+        top: 8,
+        color: (theme) => theme.palette.grey[500],
+      }}
+    >
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+  <DialogContent dividers>
+    <Box sx={{ 
+      display: 'flex', 
+      gap: 4,
+      height: '70vh'
+    }}>
+      {/* Left side - Form with scroll */}
+      <Box sx={{ 
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        overflowY: 'auto',
+        pr: 2,
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: '#f1f1f1',
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: '#888',
+          borderRadius: '4px',
+          '&:hover': {
+            background: '#666',
+          },
+        },
+      }}>
+        {Object.entries(menteeDetails).map(([key, value]) => (
+          <TextField
+            key={key}
+            label={key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+            name={key}
+            type={key === 'dateOfBirth' ? 'date' : key.includes('email') ? 'email' : 'text'}
+            value={value}
+            onChange={handleInputChange}
+            required
+            InputLabelProps={key === 'dateOfBirth' ? { shrink: true } : undefined}
+          />
+        ))}
+      </Box>
+
+      <Divider orientation="vertical" flexItem>OR</Divider>
+
+      {/* Right side - Upload with fixed height */}
+      <Box 
+        {...getRootProps()} 
+        sx={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 4,
+          border: '2px dashed',
+          borderColor: 'primary.main',
+          borderRadius: 3,
+          bgcolor: 'background.paper',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          position: 'relative',
+          overflow: 'hidden',
+          '&:hover': {
+            bgcolor: 'primary.50',
+            borderColor: 'primary.dark',
+            transform: 'translateY(-2px)',
+            boxShadow: 2,
+          },
+          '&:active': {
+            transform: 'translateY(0)',
+          }
+        }}
+      >
+        <input {...getInputProps()} />
+        <UploadFileIcon 
+          sx={{ 
+            fontSize: 80, 
+            color: 'primary.main', 
+            mb: 3,
+            transition: 'transform 0.3s ease',
+            '&:hover': {
+              transform: 'scale(1.1)'
+            }
+          }} 
+        />
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+          Drag & Drop Excel File
+        </Typography>
+        <Typography variant="body1" color="textSecondary" align="center" sx={{ mb: 2 }}>
+          or click to select file
+        </Typography>
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            color: 'primary.main',
+            bgcolor: 'primary.50',
+            px: 2,
+            py: 0.5,
+            borderRadius: 1
+          }}
+        >
+          Supported formats: .xls, .xlsx
+        </Typography>
+        {isUploading && (
+          <Box 
+            sx={{ 
               position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
+              bottom: 0,
+              left: 0,
+              right: 0,
+              bgcolor: 'rgba(255, 255, 255, 0.9)',
+              p: 2
             }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ display: 'flex', gap: 2 }}>
-          <Box component="form" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Mujid"
-              name="mujid"
-              value={menteeDetails.mujid}
-              onChange={handleInputChange}
-              required
+            <LinearProgress 
+              variant="determinate" 
+              value={uploadProgress}
+              sx={{
+                height: 8,
+                borderRadius: 4,
+              }}
             />
-            <TextField
-              label="Year of Registration"
-              name="yearOfRegistration"
-              type="number"
-              value={menteeDetails.yearOfRegistration}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Name"
-              name="name"
-              value={menteeDetails.name}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Email"
-              name="email"
-              type="email"
-              value={menteeDetails.email}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Phone"
-              name="phone"
-              value={menteeDetails.phone}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Father's Name"
-              name="fatherName"
-              value={menteeDetails.fatherName}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Mother's Name"
-              name="motherName"
-              value={menteeDetails.motherName}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Date of Birth"
-              name="dateOfBirth"
-              type="date"
-              value={menteeDetails.dateOfBirth}
-              onChange={handleInputChange}
-              InputLabelProps={{ shrink: true }}
-              required
-            />
-            <TextField
-              label="Parents' Phone"
-              name="parentsPhone"
-              value={menteeDetails.parentsPhone}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Parents' Email"
-              type="email"
-              name="parentsEmail"
-              value={menteeDetails.parentsEmail}
-              onChange={handleInputChange}
-              required
-            />
-            <TextField
-              label="Mentor Mujid"
-              name="mentorMujid"
-              value={menteeDetails.mentorMujid}
-              onChange={handleInputChange}
-              required
-            />
-          </Box>
-          <Divider orientation="vertical" flexItem>
-            OR
-          </Divider>
-          <Box {...getRootProps()} sx={{
-            flex: 1,
-            border: '2px dashed #f97316',
-            padding: 2,
-            textAlign: 'center',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            '&:hover': {
-              backgroundColor: '#fff8f1'
-            }
-          }}>
-            <input {...getInputProps()} />
-            <Typography variant="body1" color="textSecondary">
-              OR upload file or drag and drop here
+            <Typography variant="caption" align="center" display="block" sx={{ mt: 1 }}>
+              {uploadProgress}% uploaded
             </Typography>
-            <Button
-              variant="contained"
-              component="label"              
-              startIcon={<UploadFileIcon />}              
-              sx={{ mt: 2 }}            
-            >              
-              Upload File              
-              <input                
-                type="file"
-                hidden
-                onChange={handleFileUpload}
-              />
-            </Button>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleFormSubmit} variant="contained" color="primary">
-            Submit
-          </Button>
-        </DialogActions>
-      </Dialog>
+        )}
+      </Box>
+    </Box>
+  </DialogContent>
+  <DialogActions sx={{ p: 2, gap: 1 }}>
+    <Button onClick={handleDialogClose} variant="outlined" color="error">
+      Cancel
+    </Button>
+    <Button onClick={handleFormSubmit} variant="contained" color="primary">
+      Add Mentee
+    </Button>
+  </DialogActions>
+</Dialog>
 
       <Dialog 
         open={editDialog} 
@@ -577,7 +649,7 @@ const MenteeManagement = () => {
       <Dialog open={confirmDialog.open} onClose={handleConfirmClose}>
         <DialogTitle>Confirm Update</DialogTitle>
         <DialogContent>
-          Are you sure you want to update this mentee's data? This action is non-reversible.
+          Are you sure you want to update this mentee&apos;s data? This action is non-reversible.
         </DialogContent>
         <DialogActions>
           <Button onClick={handleConfirmClose} color="primary">

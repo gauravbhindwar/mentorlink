@@ -1,12 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Button, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { 
+  Box, 
+  Button, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem,
+  Snackbar,
+  Slide,
+  Alert,
+  AlertTitle
+} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
-import { Alert, AlertTitle, Slide, Snackbar } from '@mui/material';
+// import { Mentee } from '../../lib/dbModels';
 
-const FilterSection = ({ filters, onFilterChange, onSearch, onSearchAll, onAddNew, onReset }) => {
+const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew }) => {
+
   const [isLoading, setIsLoading] = useState({
     search: false,
     searchAll: false,
@@ -15,6 +27,24 @@ const FilterSection = ({ filters, onFilterChange, onSearch, onSearchAll, onAddNe
 
   const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
   const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
+
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [newMentee, setNewMentee] = useState({
+    mujid: '',
+    yearOfRegistration: '',
+    name: '',
+    email: '',
+    phone: '',
+    fatherName: '',
+    motherName: '',
+    dateOfBirth: '',
+    parentsPhone: '',
+    parentsEmail: '',
+    mentorMujid: sessionStorage.getItem('mujid') || ''
+  });
+
+  const [editDialog, setEditDialog] = useState(false);
+  const [selectedMentee, setSelectedMentee] = useState(null);
 
   useEffect(() => {
     setIsSearchAllEnabled(Object.values(filters).some(x => x !== ''));
@@ -125,21 +155,80 @@ const FilterSection = ({ filters, onFilterChange, onSearch, onSearchAll, onAddNe
     }
   };
 
-  const handleAddNew = async () => {
-    setIsLoading(prev => ({ ...prev, addNew: true }));
+  const handleAddNew = () => {
+    setOpenAddDialog(true);
+  };
+
+  const handleAddClose = () => {
+    setOpenAddDialog(false);
+    setNewMentee({
+      ...newMentee,
+      mujid: '',
+      yearOfRegistration: '',
+      name: '',
+      email: '',
+      phone: '',
+      fatherName: '',
+      motherName: '',
+      dateOfBirth: '',
+      parentsPhone: '',
+      parentsEmail: ''
+    });
+  };
+
+  const handleAddInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewMentee(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAddSubmit = async () => {
     try {
-      await axios.post('/api/mentees/validate', filters);
-      onAddNew();
+      const response = await axios.post('/api/admin/manageUsers/manageMentee', newMentee);
+      showAlert('Mentee added successfully', 'success');
+      handleAddClose();
+      // Refresh the mentee list if needed
+      if (onSearch) {
+        onSearch([]);
+      }
     } catch (error) {
-      console.error('Validation error:', error);
-    } finally {
-      setIsLoading(prev => ({ ...prev, addNew: false }));
+      showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
     }
   };
 
   const handleReset = () => {
     sessionStorage.removeItem('menteeData'); // Clear session storage on reset
     onReset();
+  };
+
+  const handleEditClose = () => {
+    setSelectedMentee(null);
+    setEditDialog(false);
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setSelectedMentee(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleUpdate = async () => {
+    try {
+      const response = await axios.patch('/api/admin/manageUsers/manageMentee', selectedMentee);
+      showAlert('Mentee updated successfully', 'success');
+      setMentees(prevMentees => 
+        prevMentees.map(mentee => 
+          mentee.mujid === selectedMentee.mujid ? response.data : mentee
+        )
+      );
+      handleEditClose();
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error updating mentee', 'error');
+    }
   };
 
   const filterControls = [
@@ -188,10 +277,10 @@ const FilterSection = ({ filters, onFilterChange, onSearch, onSearchAll, onAddNe
       icon: true 
     },
     { 
-      label: isLoading.addNew ? 'Processing...' : 'Add New Mentee',
-      onClick: handleAddNew,
+      label: 'Add New Mentee',
+      onClick: onAddNew, // Changed to use prop
       color: 'primary',
-      disabled: isLoading.addNew,
+      disabled: false,
       icon: false 
     },
     { 
@@ -287,6 +376,7 @@ const FilterSection = ({ filters, onFilterChange, onSearch, onSearchAll, onAddNe
           </Button>
         ))}
       </Box>
+
     </Box>
   );
 };
