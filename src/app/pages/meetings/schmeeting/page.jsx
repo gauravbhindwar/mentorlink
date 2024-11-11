@@ -1,9 +1,7 @@
-import React from 'react'
+import ScheduleMeetingComponent from '@/components/Meetings/ScheduleMeetingComponent'
 
-const page = () => {
-  return (
-    <div>Schedule Meeting page</div>
-  )
+const ScheduleMeetingPage = () => {
+  return <ScheduleMeetingComponent />
 }
 
-export default page
+export default ScheduleMeetingPage

@@ -1,7 +1,11 @@
-import HomePage from "@/components/HomePage/HomePage";
+'use client'
+
+import HomePage from '@/components/HomePage/HomePage'
+
 export default function Home() {
   return (
-    <>      
-      <HomePage /></>
-  );
+    <main>
+      <HomePage />
+    </main>
+  )
 }

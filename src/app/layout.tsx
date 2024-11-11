@@ -20,7 +20,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
       <Navbar />
-        <div className=' items-center min-h-screen overflow-hidden'>{children}</div>
+        <div >{children}</div>
       </body>
     </html>
   );

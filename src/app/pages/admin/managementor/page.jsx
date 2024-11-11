@@ -1,8 +1,11 @@
 import React from 'react'
+import MentorManagement from '../../../../components/AdminDash/MentorManagement'
 
 const page = () => {
   return (
-    <div>Manage Mentor Page</div>
+    <>
+    <MentorManagement />
+    </>
   )
 }
 

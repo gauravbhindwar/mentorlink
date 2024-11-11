@@ -11,40 +11,20 @@ import {
   Snackbar,
   Slide,
   Alert,
-  AlertTitle
+  AlertTitle,
+  CircularProgress
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
-// import { Mentee } from '../../lib/dbModels';
 
 const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew }) => {
-
   const [isLoading, setIsLoading] = useState({
     search: false,
-    searchAll: false,
-    addNew: false
+    searchAll: false
   });
 
   const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
   const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
-
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [newMentee, setNewMentee] = useState({
-    mujid: '',
-    yearOfRegistration: '',
-    name: '',
-    email: '',
-    phone: '',
-    fatherName: '',
-    motherName: '',
-    dateOfBirth: '',
-    parentsPhone: '',
-    parentsEmail: '',
-    mentorMujid: sessionStorage.getItem('mujid') || ''
-  });
-
-  const [editDialog, setEditDialog] = useState(false);
-  const [selectedMentee, setSelectedMentee] = useState(null);
 
   useEffect(() => {
     setIsSearchAllEnabled(Object.values(filters).some(x => x !== ''));
@@ -57,30 +37,6 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
 
   const handleSearch = async () => {
     setIsLoading(prev => ({ ...prev, search: true }));
-    const storedMentees = sessionStorage.getItem('menteeData');
-    if (storedMentees) {
-      const menteeData = JSON.parse(storedMentees);
-      const filteredMentees = menteeData.filter(mentee => {
-        return (!filters.year || mentee.year === parseInt(filters.year, 10)) &&
-               (!filters.term || mentee.term === filters.term) &&
-               (!filters.semester || mentee.semester === filters.semester) &&
-               (!filters.section || mentee.section === filters.section) &&
-               (!filters.mentorMujid || mentee.mentorMujid === filters.mentorMujid);
-      });
-
-      if (filteredMentees.length === 0) {
-        showAlert('No mentees found with the selected filters', 'error');
-      } else {
-        showAlert(`Found ${filteredMentees.length} mentees`, 'success');
-      }
-
-      onSearch(filteredMentees);
-      setIsLoading(prev => ({ ...prev, search: false }));
-      return;
-    }
-
-    sessionStorage.removeItem('menteeData');
-    onSearch([]);
     try {
       const mentorMujid = sessionStorage.getItem('mujid');
       if (!mentorMujid) {
@@ -88,21 +44,47 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         return;
       }
 
+      // Create query object with all non-empty filters
+      const queryFilters = {
+        mentorMujid,
+        ...(filters.year && { year: parseInt(filters.year, 10) }),
+        ...(filters.term && { term: filters.term }),
+        ...(filters.semester && { semester: filters.semester }),
+        ...(filters.section && { section: filters.section })
+      };
+
+      // Only proceed if we have necessary filters
+      const hasRequiredFilters = Object.keys(queryFilters).length > 1; // More than just mentorMujid
+      if (!hasRequiredFilters) {
+        showAlert('Please select at least one filter', 'warning');
+        onSearch([]);
+        return;
+      }
+
       const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-        params: {
-          year: parseInt(filters.year, 10),
-          term: filters.term,
-          semester: filters.semester,
-          section: filters.section,
-          mentorMujid
-        }
+        params: queryFilters
       });
+
       const menteeData = response.data;
-      sessionStorage.setItem('menteeData', JSON.stringify(menteeData));
-      showAlert(`Found ${menteeData.length} mentees`, 'success');
-      onSearch(menteeData);
+      
+      // Filter data based on all selected criteria
+      const filteredData = menteeData.filter(mentee => {
+        return Object.entries(queryFilters).every(([key, value]) => {
+          if (key === 'year') return mentee[key] === value;
+          return mentee[key] === value;
+        });
+      });
+
+      if (filteredData.length > 0) {
+        sessionStorage.setItem('menteeData', JSON.stringify(filteredData));
+        onSearch(filteredData);
+      } else {
+        onSearch([]);
+        showAlert('No mentees found matching all selected filters', 'info');
+      }
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
+      onSearch([]);
     } finally {
       setIsLoading(prev => ({ ...prev, search: false }));
     }
@@ -110,125 +92,47 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
 
   const handleSearchAll = async () => {
     setIsLoading(prev => ({ ...prev, searchAll: true }));
-    const storedMentees = sessionStorage.getItem('menteeData');
-    if (storedMentees) {
-      const menteeData = JSON.parse(storedMentees);
-      const filteredMentees = menteeData.filter(mentee => {
-        return (!filters.year || mentee.year === parseInt(filters.year, 10)) &&
-               (!filters.term || mentee.term === filters.term) &&
-               (!filters.semester || mentee.semester === filters.semester) &&
-               (!filters.section || mentee.section === filters.section) &&
-               (!filters.mentorMujid || mentee.mentorMujid === filters.mentorMujid);
-      });
-
-      if (filteredMentees.length === 0) {
-        showAlert('No mentees found with the selected filters', 'error');
-      } else {
-        showAlert(`Found ${filteredMentees.length} mentees`, 'success');
-      }
-
-      onSearchAll(filteredMentees);
-      setIsLoading(prev => ({ ...prev, searchAll: false }));
-      return;
-    }
-
-    sessionStorage.removeItem('menteeData');
-    onSearchAll([]);
     try {
-      const response = await axios.get('/api/admin/search', {
-        params: {
-          year: filters.year,
-          term: filters.term,
-          semester: filters.semester,
-          section: filters.section,
-          mentorMujid: sessionStorage.getItem('mujid')
-        }
+      const queryFilters = {
+        mentorMujid: sessionStorage.getItem('mujid'),
+        ...(filters.year && { year: parseInt(filters.year, 10) }),
+        ...(filters.term && { term: filters.term }),
+        ...(filters.semester && { semester: filters.semester }),
+        ...(filters.section && { section: filters.section })
+      };
+
+      const response = await axios.get('/api/admin/search', { 
+        params: queryFilters 
       });
+
       const menteeData = response.data;
-      sessionStorage.setItem('menteeData', JSON.stringify(menteeData));
-      showAlert(`Found ${menteeData.length} mentees`, 'success');
-      onSearchAll(menteeData);
+      
+      // Filter data to match all selected criteria
+      const filteredData = menteeData.filter(mentee => {
+        return Object.entries(queryFilters).every(([key, value]) => {
+          if (key === 'year') return mentee[key] === value;
+          return mentee[key] === value;
+        });
+      });
+
+      if (filteredData.length > 0) {
+        sessionStorage.setItem('menteeData', JSON.stringify(filteredData));
+        onSearchAll(filteredData);
+      } else {
+        onSearchAll([]);
+        showAlert('No mentees found matching all selected filters', 'info');
+      }
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
+      onSearchAll([]);
     } finally {
       setIsLoading(prev => ({ ...prev, searchAll: false }));
-    }
-  };
-
-  const handleAddNew = () => {
-    setOpenAddDialog(true);
-  };
-
-  const handleAddClose = () => {
-    setOpenAddDialog(false);
-    setNewMentee({
-      ...newMentee,
-      mujid: '',
-      yearOfRegistration: '',
-      name: '',
-      email: '',
-      phone: '',
-      fatherName: '',
-      motherName: '',
-      dateOfBirth: '',
-      parentsPhone: '',
-      parentsEmail: ''
-    });
-  };
-
-  const handleAddInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewMentee(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleAddSubmit = async () => {
-    try {
-      const response = await axios.post('/api/admin/manageUsers/manageMentee', newMentee);
-      showAlert('Mentee added successfully', 'success');
-      handleAddClose();
-      // Refresh the mentee list if needed
-      if (onSearch) {
-        onSearch([]);
-      }
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
     }
   };
 
   const handleReset = () => {
     sessionStorage.removeItem('menteeData'); // Clear session storage on reset
     onReset();
-  };
-
-  const handleEditClose = () => {
-    setSelectedMentee(null);
-    setEditDialog(false);
-  };
-
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setSelectedMentee(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleUpdate = async () => {
-    try {
-      const response = await axios.patch('/api/admin/manageUsers/manageMentee', selectedMentee);
-      showAlert('Mentee updated successfully', 'success');
-      setMentees(prevMentees => 
-        prevMentees.map(mentee => 
-          mentee.mujid === selectedMentee.mujid ? response.data : mentee
-        )
-      );
-      handleEditClose();
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error updating mentee', 'error');
-    }
   };
 
   const filterControls = [
@@ -305,12 +209,21 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         open={alert.open}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         TransitionComponent={(props) => <Slide {...props} direction="down" />}
+        sx={{
+          '& .MuiAlert-root': {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            color: '#fff'
+          }
+        }}
       >
         <Alert severity={alert.severity} onClose={() => setAlert({ ...alert, open: false })}>
           <AlertTitle>{alert.severity === 'error' ? 'Error' : 'Success'}</AlertTitle>
           {alert.message}
         </Alert>
       </Snackbar>
+
       <Box sx={{ 
         display: 'flex', 
         gap: 2, 
@@ -321,17 +234,67 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
           <FormControl 
             key={control.name} 
             size="small" 
-            sx={{ minWidth: 120 }}
+            sx={{ 
+              minWidth: 120,
+              '& .MuiOutlinedInput-root': {
+                color: 'white',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '12px',
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#f97316',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#f97316',
+                },
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&.Mui-focused': {
+                  color: '#f97316',
+                },
+              },
+              '& .MuiSelect-icon': {
+                color: '#f97316',
+              },
+              '& .MuiMenuItem-root': {
+                color: 'white',
+              }
+            }}
           >
             <InputLabel>{control.label}</InputLabel>
             <Select
               value={filters[control.name] || ''}
               label={control.label}
               onChange={(e) => {
-                sessionStorage.removeItem('menteeData'); // Clear session storage on filter change
+                sessionStorage.removeItem('menteeData');
                 onFilterChange(control.name, e.target.value);
               }}
               disabled={control.name === 'semester' && !filters.term}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    bgcolor: 'rgba(0, 0, 0, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    '& .MuiMenuItem-root': {
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(249, 115, 22, 0.1)',
+                      },
+                      '&.Mui-selected': {
+                        bgcolor: 'rgba(249, 115, 22, 0.2)',
+                        '&:hover': {
+                          bgcolor: 'rgba(249, 115, 22, 0.3)',
+                        }
+                      }
+                    }
+                  }
+                }
+              }}
             >
               <MenuItem value="">
                 <em>None</em>
@@ -365,10 +328,23 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
               borderRadius: '50px',
               px: { xs: 2, sm: 3 },
               py: { xs: 0.5, sm: 1 },
-              boxShadow: 2,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+              background: button.color === 'primary' ? '#f97316' : 
+                         button.color === 'secondary' ? '#ea580c' : 
+                         'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: 'white',
               '&:hover': {
                 transform: button.disabled ? 'none' : 'scale(1.05)',
-                transition: 'transform 0.2s'
+                transition: 'transform 0.2s',
+                background: button.color === 'primary' ? '#ea580c' : 
+                           button.color === 'secondary' ? '#c2410c' : 
+                           'rgba(255, 255, 255, 0.2)',
+              },
+              '&:disabled': {
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: 'rgba(255, 255, 255, 0.3)',
               }
             }}
           >
@@ -377,6 +353,11 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         ))}
       </Box>
 
+      {isLoading.search || isLoading.searchAll ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+          <CircularProgress sx={{ color: '#f97316' }} />
+        </Box>
+      ) : null}
     </Box>
   );
 };

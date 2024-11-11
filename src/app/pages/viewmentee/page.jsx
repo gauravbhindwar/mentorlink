@@ -1,12 +1,5 @@
-import React from 'react'
-import ViewMentee from '@/components/ViewMentee/ViewMentee'
+import ViewMentee from '@/components/mentor/ViewMentee'
 
-const page = () => {
-    return (
-        <>
-            <ViewMentee />
-        </>
-    )
+export default function ViewMenteePage() {
+  return <ViewMentee />
 }
-
-export default page

@@ -68,3 +68,16 @@ export async function archiveDataByMenteeMujid(menteeMujid) {
     await archiveData(Mentee, { mujid: menteeMujid });
     await archiveData(Meeting, { mentee: menteeMujid });
 }
+
+export async function getHistoricalData(filters = {}) {
+    const query = {};
+    if (filters.year) query['data.year'] = filters.year;
+    if (filters.term) query['data.term'] = filters.term;
+    if (filters.semester) query['data.semester'] = filters.semester;
+    if (filters.collection) query.collectionName = filters.collection;
+
+    return await HistoricalData.find(query)
+        .sort({ createdAt: -1 })
+        .limit(filters.limit || 100)
+        .skip(filters.skip || 0);
+}

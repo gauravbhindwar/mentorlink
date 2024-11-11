@@ -1,9 +1,7 @@
-import React from 'react'
+import MentorQueryComponent from '@/components/Queries/MentorQueryComponent'
 
-const page = () => {
-  return (
-    <div>Mentor Query page</div>
-  )
+const MentorQueryPage = () => {
+  return <MentorQueryComponent />
 }
 
-export default page
+export default MentorQueryPage

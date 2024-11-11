@@ -2,14 +2,14 @@
 import { DataGrid } from '@mui/x-data-grid';
 import { Button } from '@mui/material';
 
-const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
+const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
   const columns = [
-    {
-      field: 'serialNumber',
+    { 
+      field: 'serialNumber',    
       headerName: 'S.No',
       width: 70,
       renderCell: (params) => {
-        const index = mentees.findIndex(mentee => mentee.mujid === params.row.mujid);
+        const index = mentors.findIndex(mentor => mentor.mujid === params.row.mujid);
         return index + 1;
       },
       sortable: false,
@@ -18,7 +18,8 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
     { field: 'name', headerName: 'Name', width: 200 },
     { field: 'email', headerName: 'Email', width: 250 },
     { field: 'phone', headerName: 'Phone', width: 150 },
-    { field: 'semester', headerName: 'Semester', width: 100 },
+    { field: 'role', headerName: 'Role', width: 120 },
+    { field: 'meetingsScheduled', headerName: 'Meetings', width: 100 },
     {
       field: 'actions',
       headerName: 'Actions',
@@ -35,10 +36,10 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
             fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
             textTransform: 'capitalize',
             margin: 'auto',
-            color: '#f97316', // orange-500
+            color: '#f97316',
             borderColor: '#f97316',
             '&:hover': {
-              borderColor: '#ea580c', // orange-600
+              borderColor: '#ea580c',
               backgroundColor: 'rgba(249, 115, 22, 0.1)'
             }
           }}
@@ -47,56 +48,19 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
         </Button>
       ),
     },
-    { field: 'yearOfRegistration', headerName: 'Year of Registration', width: 180 },
-    { field: 'fatherName', headerName: 'Father\'s Name', width: 200 },
-    { field: 'motherName', headerName: 'Mother\'s Name', width: 200 },
-    { field: 'dateOfBirth', headerName: 'Date of Birth', width: 150 },
-    { field: 'parentsPhone', headerName: 'Parents\' Phone', width: 150 },
-    { field: 'parentsEmail', headerName: 'Parents\' Email', width: 250 },
-    { field: 'mentorMujid', headerName: 'Mentor Mujid', width: 150 },
   ].map(col => ({
     ...col,
     headerAlign: 'center',
     align: 'center',
     flex: 1,
     minWidth: col.minWidth || 150,
-    renderCell: col.field === 'actions' 
-      ? (params) => (
-          <Button
-            size={isSmallScreen ? "small" : "medium"}
-            variant="outlined"
-            onClick={() => onEditClick(params.row)}
-            sx={{ 
-              borderRadius: '12px', 
-              fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
-              textTransform: 'capitalize',
-              margin: 'auto',
-              color: '#f97316', // orange-500
-              borderColor: '#f97316',
-              '&:hover': {
-                borderColor: '#ea580c', // orange-600
-                backgroundColor: 'rgba(249, 115, 22, 0.1)'
-              }
-            }}
-          >
-            Edit
-          </Button>
-        )
-      : col.renderCell // Keep original renderCell if it exists
   }));
 
   return (
-    <div style={{ 
-      width: '100%', 
-      padding: '0 16px', 
-      marginBottom: '16px' 
-    }}>
-      <div style={{ 
-        height: '600px', 
-        width: '100%' 
-      }}>
+    <div style={{ width: '100%', padding: '0 16px', marginBottom: '16px' }}>
+      <div style={{ height: '600px', width: '100%' }}>
         <DataGrid
-          rows={mentees}
+          rows={mentors}
           columns={columns}
           getRowId={(row) => row.mujid}
           autoHeight
@@ -161,6 +125,7 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
               fontWeight: 700,
               color: '#f97316',
             },
+            // ...existing DataGrid styles from MenteeTable...
             '& .MuiDataGrid-footerContainer': {
               borderTop: '2px solid rgba(255, 255, 255, 0.1)',
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -217,12 +182,6 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               padding: '8px 16px',
             },
-            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': {
-              outline: 'none',
-            },
-            '& .MuiDataGrid-columnHeader--sortable:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.1)',
-            },
             '& .MuiMenuItem-root': {
               color: 'white',
               '&:hover': {
@@ -235,28 +194,14 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
               border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '8px',
             },
-            '& .MuiSvgIcon-root': {
-              color: '#f97316',
-            },
           }}
           disableSelectionOnClick
           disableColumnMenu={false}
           disableColumnFilter={false}
-          loading={!mentees.length}
+          loading={!mentors.length}
           initialState={{
             pagination: {
               paginationModel: { pageSize: 10, page: 0 },
-            },
-            columns: {
-              columnVisibilityModel: {
-                yearOfRegistration: false,
-                fatherName: false,
-                motherName: false,
-                dateOfBirth: false,
-                parentsPhone: false,
-                parentsEmail: false,
-                mentorMujid: false,
-              },
             },
           }}
           pageSizeOptions={[5, 10, 25, 50]}
@@ -268,4 +213,4 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
   );
 };
 
-export default MenteeTable;
+export default MentorTable;
