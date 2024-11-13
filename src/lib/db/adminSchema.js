@@ -5,6 +5,15 @@ const { Schema } = mongoose;
 
 const adminSchema = new Schema(
     {
+        mujid: {
+            type: String,
+            required: true,
+            unique: true,
+            validate: {
+                validator: (value) => /^[A-Z0-9]+$/.test(value),
+                message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
+            },
+        },
         name: {
             type: String,
             required: true,
@@ -22,23 +31,31 @@ const adminSchema = new Schema(
             lowercase: true,
             validate: [validator.isEmail, "Invalid email format"],
         },
-        password: {
+        otp: { type: String },
+        otpExpires: { type: Date },
+        isOtpUsed: { type: Boolean, default: false },
+        phone: {
             type: String,
             required: true,
+            validate: {
+                validator: function(value) {
+                    // Allow +91 prefix (optional) followed by 10 digits
+                    return /^(\+91)?[6-9]\d{9}$/.test(value);
+                },
+                message: "Invalid phone number. Must be a valid Indian phone number"
+            },
         },
-        role: {
-            type: String,
-            enum: ["admin", "superadmin"],
-            default: "admin",
+        roles: {
+            type: [String],
+            enum: ["mentor", "admin", "superadmin"],
+            default: ["admin"],
         },
-        otp: String,
-    otpExpires: Date,
-    isOtpUsed: { type: Boolean, default: false }
     },
     { timestamps: true }
 );
 
 adminSchema.index({ email: 1 }, { unique: true, sparse: true });
+adminSchema.index({ mujid: 1 }, { unique: true, sparse: true });
 
 const Admin = mongoose.models.Admin || mongoose.model("Admin", adminSchema);
 

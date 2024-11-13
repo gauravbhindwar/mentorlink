@@ -1,79 +1,135 @@
 "use client"
 import React from 'react'
-import { Button } from '../ui/button'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import Navbar from '@/components/subComponents/Navbar'
 
 const MentorDashBoard = () => {
-    const router = useRouter(); // Hook to handle routing
+    const router = useRouter();
 
-    // Function to handle redirection when buttons are clicked
-    const handleViewMenteeClick = () => {
-        router.push('/pages/viewmentee'); // Redirects to '/view-mentee' page
-    }
-
-    const handleScheduleMeetingClick = () => {
-        router.push('/pages/schedulemeeting'); // Redirects to '/schedule-meeting' page
-    }
-
-    const handleAddMeetingInfoClick = () => {
-        router.push('/pages/addmeetinginfo'); // Redirects to '/add-meeting-info' page
-    }
-
-    const handleGenerateReportClick = () => {
-        router.push('/pages/generatereport'); // Redirects to '/generate-report' page
-    }
-
-    const handleStudentQueryClick = () => {
-        router.push('/pages/studentquery'); // Redirects to '/student-query' page
-    }
+    const cards = [
+        {
+            title: 'View Mentees',
+            icon: '👨‍🎓',
+            description: 'View and manage assigned mentees',
+            gradient: 'from-orange-500 via-amber-500 to-yellow-500',
+            shadowColor: 'rgba(251, 146, 60, 0.4)',
+            onClick: () => router.push('/pages/viewmentee') // Updated path
+        },
+        {
+            title: 'Schedule Meeting',
+            icon: '📅',
+            description: 'Create and schedule new meetings',
+            gradient: 'from-pink-500 via-rose-500 to-red-500',
+            shadowColor: 'rgba(244, 63, 94, 0.4)',
+            onClick: () => router.push('/pages/meetings/schmeeting') // Updated path
+        },
+        {
+            title: 'Meeting Reports',
+            icon: '📊',
+            description: 'Generate and manage meeting reports',
+            gradient: 'from-purple-500 via-violet-500 to-indigo-500',
+            shadowColor: 'rgba(147, 51, 234, 0.4)',
+            onClick: () => router.push('/pages/meetings/mreport')
+        },
+        {
+            title: 'Meeting Outcomes',
+            icon: '📝',
+            description: 'Add and update meeting details',
+            gradient: 'from-blue-500 via-cyan-500 to-teal-500',
+            shadowColor: 'rgba(59, 130, 246, 0.4)',
+            onClick: () => router.push('/pages/meetings/addmeetinginfo')
+        },
+        {
+            title: 'Student Queries',
+            icon: '❓',
+            description: 'Handle mentee questions and concerns',
+            gradient: 'from-green-500 via-emerald-500 to-teal-500',
+            shadowColor: 'rgba(16, 185, 129, 0.4)',
+            onClick: () => router.push('/pages/squery')
+        }
+    ];
 
     return (
-        <div className='flex flex-col justify-start items-center min-h-screen py-6'>
-            {/* Buttons Section */}
-            <div className='flex flex-wrap gap-6 justify-center items-center'>
-                <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleViewMenteeClick} // Button click handler
+        <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
+            {/* Enhanced Background Effects */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
+                <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl" />
+                <div className="absolute inset-0 backdrop-blur-3xl" />
+            </div>
+
+            <Navbar />
+
+            <div className="relative z-10 px-4 md:px-6 pt-20 pb-10">
+                {/* Header Section */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center py-8"
+                >
+                    <motion.h1 
+                        className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
                     >
-                        View Mentee
-                    </Button>
-                </div>
-                <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleScheduleMeetingClick} // Button click handler
+                        Mentor Dashboard
+                    </motion.h1>
+                    <motion.p 
+                        className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
                     >
-                        Schedule New Meeting
-                    </Button>
-                </div>
-                <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleAddMeetingInfoClick} // Button click handler
-                    >
-                        Add Meeting Information
-                    </Button>
-                </div>
-                <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleGenerateReportClick} // Button click handler
-                    >
-                        Generate Meeting Report
-                    </Button>
-                </div>
-                <div className='flex justify-center items-center'>
-                    <Button
-                        className='text-lg py-4 px-8 rounded-full bg-gray-300 border-2 border-orange-500 text-black hover:bg-orange-300 hover:text-black hover:border-orange-400 hover:ring-4 hover:ring-orange-300 transition-all'
-                        onClick={handleStudentQueryClick} // Button click handler
-                    >
-                        Student Query
-                    </Button>
-                </div>
+                        Manage your mentees and mentorship activities
+                    </motion.p>
+                </motion.div>
+
+                {/* Cards Grid */}
+                <motion.div 
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                >
+                    {cards.map((card, index) => (
+                        <motion.div
+                            key={card.title}
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ 
+                                opacity: 1, 
+                                y: 0,
+                                transition: { delay: index * 0.1 }
+                            }}
+                            whileHover={{ 
+                                scale: 1.03,
+                                boxShadow: `0 0 30px ${card.shadowColor}`,
+                            }}
+                            className={`
+                                relative overflow-hidden
+                                bg-gradient-to-br ${card.gradient}
+                                rounded-lg p-4
+                                cursor-pointer
+                                transition-all duration-500
+                                border border-white/10
+                                backdrop-blur-sm
+                                hover:border-white/20
+                            `}
+                            onClick={card.onClick}
+                        >
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <span className="text-3xl mb-3 block">{card.icon}</span>
+                            <h3 className="text-lg font-bold text-white mb-2">{card.title}</h3>
+                            <p className="text-white/80 text-sm">
+                                {card.description}
+                            </p>
+                            <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:w-24 group-hover:h-24 transition-all" />
+                        </motion.div>
+                    ))}
+                </motion.div>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default MentorDashBoard
+export default MentorDashBoard;

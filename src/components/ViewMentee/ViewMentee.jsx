@@ -83,7 +83,7 @@ const Page = () => {
         <>
             <Navbar className="fixed top-0 z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 h-14" />
 
-            <div className="pt-20 px-4 sm:px-8 md:px-10 lg:px-20">
+            <div>
                 <div className="relative flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-4xl mx-auto">
                     <div className="flex flex-col gap-1 w-full md:w-1/3">
                         <label className="font-medium text-gray-700 dark:text-gray-300">
@@ -187,7 +187,7 @@ const Page = () => {
                 {/* Popup with Report Form */}
                 {showPopup && (
                     <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg animate-popup">
+                        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg animate-popup relative">
                             <h3 className="text-xl font-medium text-gray-700">Report Selection</h3>
                             <div className="flex flex-col gap-4 mt-4">
                                 {/* Report Type */}
@@ -251,10 +251,24 @@ const Page = () => {
                             </div>
 
                             <button
-                                className="absolute top-2 right-2 text-gray-700 dark:text-gray-200"
+                                className="absolute top-0 right-0 p-1 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+                                style={{top: '0.5rem', right: '0.5rem'}}
                                 onClick={handleClosePopup}
                             >
-                                X
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
                             </button>
                         </div>
                     </div>

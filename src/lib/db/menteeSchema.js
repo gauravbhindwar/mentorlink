@@ -22,6 +22,32 @@ const menteeSchema = new Schema(
                 message: "Invalid year of registration",
             },
         },
+        year: {
+            type: Number,
+            required: false,
+            validate: {
+                validator: (value) => {
+                    const currentYear = new Date().getFullYear();
+                    return value >= currentYear - 20 && value <= currentYear;
+                },
+                message: "Year must be within the past 20 years and the current year",
+            },
+        },
+        term: {
+            type: String,
+            enum: ["odd", "even"],
+            required: false,
+        },
+        semester: {
+            type: Number,
+            min: 1,
+            max: 8,
+            required: false,
+        },
+        section: {
+            type: String,
+            required: false,
+        },
         name: {
             type: String,
             required: true,
@@ -64,7 +90,7 @@ const menteeSchema = new Schema(
         },
         dateOfBirth: {
             type: String,
-            required: true,
+            required: false,
         },
         parentsPhone: {
             type: String,
@@ -82,12 +108,15 @@ const menteeSchema = new Schema(
             type: String,
             required: true,
         },
-        otp: String,
-    otpExpires: Date,
-    isOtpUsed: { type: Boolean, default: false }
+        otp: { type: String },
+        otpExpires: { type: Date },
+        isOtpUsed: { type: Boolean, default: false }
     },
     { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } }
 );
+
+menteeSchema.index({ email: 1 }, { unique: true, sparse: true });
+menteeSchema.index({ mujid: 1 }, { unique: true, sparse: true });
 
 const Mentee = mongoose.models.Mentee || mongoose.model("Mentee", menteeSchema);
 

@@ -34,7 +34,7 @@ export async function POST(req) {
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch (err) {
+    } catch {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
@@ -168,7 +168,7 @@ export async function PUT(req) {
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch (err) {
+    } catch {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
@@ -244,7 +244,7 @@ export async function PATCH(req) {
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch (err) {
+    } catch{
       return createErrorResponse("Invalid JSON input", 400);
     }
 

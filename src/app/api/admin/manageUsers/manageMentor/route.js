@@ -8,10 +8,8 @@ const mentorSchema = Joi.object({
   email: Joi.string().email().required(),
   name: Joi.string().required(),
   mujid: Joi.string().required(),
-  phone: Joi.string().optional(),
+  phone: Joi.string().required(),
   designation: Joi.string().optional(),
-  password: Joi.string().min(6).optional(),
-  token: Joi.string().optional(),
   roles: Joi.array()
     .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
     .default(['mentor']),
@@ -37,7 +35,7 @@ export async function POST(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const { email, mujid } = requestBody;
+    const { email} = requestBody;
     const existingMentor = await Mentor.findOne({ email });
     if (existingMentor) {
       return createErrorResponse("Email already exists", 400);

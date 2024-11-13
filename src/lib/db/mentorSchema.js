@@ -9,7 +9,10 @@ const mentorSchema = new Schema(
             type: String,
             required: true,
             unique: true,
-            validate: [validator.isAlphanumeric, "mujid contains invalid characters"],
+            validate: {
+                validator: (value) => /^[A-Z0-9]+$/.test(value),
+                message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
+            },
         },
         name: {
             type: String,
@@ -43,34 +46,43 @@ const mentorSchema = new Schema(
             type: Number,
             default: 0,
         },
-        assignedMentees: [
-            {
-                menteeMujid: {
-                    type: String,
-                    validate: [validator.isAlphanumeric, "mentee mujid contains invalid characters"],
+        otp: { type: String },
+        otpExpires: { type: Date },
+        isOtpUsed: { type: Boolean, default: false },
+        year: {
+            type: Number,
+            required: false,
+            validate: {
+                validator: (value) => {
+                    const currentYear = new Date().getFullYear();
+                    return value >= currentYear - 20 && value <= currentYear;
                 },
-                year: {
-                    type: Number,
-                    validate: {
-                        validator: (value) => value >= 1900 && value <= new Date().getFullYear(),
-                        message: "Invalid year",
-                    },
-                },
-                semester: {
-                    type: Number,
-                    min: 1,
-                    max: 8,
-                },
+                message: "Year must be within the past 20 years and the current year",
             },
-        ],
-        otp: String,
-    otpExpires: Date,
-    isOtpUsed: { type: Boolean, default: false }
-    },
+        },
+        term: {
+            type: String,
+            enum: ["odd", "even"],
+            required: false,
+        },
+        semester: {
+            type: Number,
+            min: 1,
+            max: 8,
+            required: false,
+        },
+        section: {
+            type: String,
+            required: false,
+        }
+    }
+    ,
+
     { timestamps: true }
 );
 
 mentorSchema.index({ email: 1 }, { unique: true, sparse: true });
+mentorSchema.index({ mujid: 1 }, { unique: true, sparse: true });
 
 const Mentor = mongoose.models.Mentor || mongoose.model("Mentor", mentorSchema);
 

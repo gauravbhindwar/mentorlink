@@ -1,12 +1,5 @@
-import React from 'react'
-import DashboardLayout from '@/components/DashboardLayout/DashboardLayout'
+import ViewMentee from '@/components/mentor/ViewMentee'
 
-const page = () => {
-    return (
-        <>
-            <DashboardLayout />
-        </>
-    )
+export default function ViewMenteePage() {
+  return <ViewMentee />
 }
-
-export default page
