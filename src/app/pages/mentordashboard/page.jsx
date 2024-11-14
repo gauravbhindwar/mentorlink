@@ -10,7 +10,7 @@ const page = () => {
         <>
             <Navbar/>
 
-            <div className="pt-20 px-4 sm:px-8 md:px-10 lg:px-20">
+            <div>
                 <MentorDashBoard />
             </div>
         </>

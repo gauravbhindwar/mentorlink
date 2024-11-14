@@ -22,6 +22,32 @@ const menteeSchema = new Schema(
                 message: "Invalid year of registration",
             },
         },
+        year: {
+            type: Number,
+            required: false,
+            validate: {
+                validator: (value) => {
+                    const currentYear = new Date().getFullYear();
+                    return value >= currentYear - 20 && value <= currentYear;
+                },
+                message: "Year must be within the past 20 years and the current year",
+            },
+        },
+        term: {
+            type: String,
+            enum: ["odd", "even"],
+            required: false,
+        },
+        semester: {
+            type: Number,
+            min: 1,
+            max: 8,
+            required: false,
+        },
+        section: {
+            type: String,
+            required: false,
+        },
         name: {
             type: String,
             required: true,
@@ -64,7 +90,7 @@ const menteeSchema = new Schema(
         },
         dateOfBirth: {
             type: String,
-            required: true,
+            required: false,
         },
         parentsPhone: {
             type: String,
