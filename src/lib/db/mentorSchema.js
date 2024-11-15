@@ -1,89 +1,32 @@
 import mongoose from "mongoose";
-import validator from "validator";
 
-const { Schema } = mongoose;
-
-const mentorSchema = new Schema(
-    {
-        mujid: {
-            type: String,
-            required: true,
-            unique: true,
-            validate: {
-                validator: (value) => /^[A-Z0-9]+$/.test(value),
-                message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
-            },
-        },
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-            validate: {
-                validator: (value) => validator.isAlpha(value.replace(/\s/g, "")),
-                message: "Name contains invalid characters",
-            },
-        },
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true,
-            lowercase: true,
-            validate: [validator.isEmail, "Invalid email format"],
-        },
-        phone: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true,
-        },
-        role: {
-            type: String,
-            enum: ["mentor", "admin", "superadmin"],
-            default: "mentor",
-        },
-        meetingsScheduled: {
-            type: Number,
-            default: 0,
-        },
-        otp: { type: String },
-        otpExpires: { type: Date },
-        isOtpUsed: { type: Boolean, default: false },
-        year: {
-            type: Number,
-            required: false,
-            validate: {
-                validator: (value) => {
-                    const currentYear = new Date().getFullYear();
-                    return value >= currentYear - 20 && value <= currentYear;
-                },
-                message: "Year must be within the past 20 years and the current year",
-            },
-        },
-        term: {
-            type: String,
-            enum: ["odd", "even"],
-            required: false,
-        },
-        semester: {
-            type: Number,
-            min: 1,
-            max: 8,
-            required: false,
-        },
-        section: {
-            type: String,
-            required: false,
+const mentorsSchema = new mongoose.Schema({
+    name: { type: String, required: true }, // Full name of the mentor
+    email: { type: String, required: true, unique: true }, // Unique email for the mentor
+    MUJid: { type: String, required: true, unique: true  ,
+        validate: {
+        validator: (value) => /^[A-Z0-9]+$/.test(value),
+        message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
+    },}, // Unique MUJID for the mentor
+    phone_number: { 
+        type: String, 
+        required: true,
+        validate: {
+            validator: (value) => /^\d{10}$/.test(value),
+            message: "Phone number must be a 10-digit number"
         }
-    }
-    ,
+    }, // Contact number of the mentor
+    address: { type: String }, // Mentor's address (optional)
+    gender: { type: String }, // Gender of the mentor (optional)
+    profile_picture: { type: String }, // URL to profile picture (optional)
+    role: { type: [String], enum: ['mentor', 'admin', 'superadmin'], default: ['mentor'] }, // Role of the mentor
+    created_at: { type: Date, default: Date.now }, // Creation date of the mentor record
+    updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentor record
+    otp: { type: String },
+    otpExpires: { type: Date },
+    isOtpUsed: { type: Boolean, default: false }
+});
 
-    { timestamps: true }
-);
+const Mentor = mongoose.models.Mentor || mongoose.model("Mentor", mentorsSchema);
 
-mentorSchema.index({ email: 1 }, { unique: true, sparse: true });
-mentorSchema.index({ mujid: 1 }, { unique: true, sparse: true });
-
-const Mentor = mongoose.models.Mentor || mongoose.model("Mentor", mentorSchema);
-
-export default Mentor;
+export { Mentor };
