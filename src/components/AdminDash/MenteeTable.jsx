@@ -2,7 +2,7 @@
 import { DataGrid } from '@mui/x-data-grid';
 import { Button } from '@mui/material';
 
-const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
+const MenteeTable = ({ mentees, onEditClick, isSmallScreen, onAssignClick }) => {
   const columns = [
     {
       field: 'serialNumber',
@@ -47,6 +47,32 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
         </Button>
       ),
     },
+    {
+      field: 'assign',
+      headerName: 'Assign Mentor',
+      width: 150,
+      renderCell: (params) => (
+        <Button
+          size={isSmallScreen ? "small" : "medium"}
+          variant="outlined"
+          onClick={() => onAssignClick(params.row)}
+          sx={{ 
+            borderRadius: '12px', 
+            fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
+            textTransform: 'capitalize',
+            margin: 'auto',
+            color: '#f97316', // orange-500
+            borderColor: '#f97316',
+            '&:hover': {
+              borderColor: '#ea580c', // orange-600
+              backgroundColor: 'rgba(249, 115, 22, 0.1)'
+            }
+          }}
+        >
+          Assign
+        </Button>
+      ),
+    },
     { field: 'yearOfRegistration', headerName: 'Year of Registration', width: 180 },
     { field: 'fatherName', headerName: 'Father\'s Name', width: 200 },
     { field: 'motherName', headerName: 'Mother\'s Name', width: 200 },
@@ -80,6 +106,28 @@ const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
             }}
           >
             Edit
+          </Button>
+        )
+      : col.field === 'assign'
+      ? (params) => (
+          <Button
+            size={isSmallScreen ? "small" : "medium"}
+            variant="outlined"
+            onClick={() => onAssignClick(params.row)}
+            sx={{ 
+              borderRadius: '12px', 
+              fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
+              textTransform: 'capitalize',
+              margin: 'auto',
+              color: '#f97316', // orange-500
+              borderColor: '#f97316',
+              '&:hover': {
+                borderColor: '#ea580c', // orange-600
+                backgroundColor: 'rgba(249, 115, 22, 0.1)'
+              }
+            }}
+          >
+            Assign
           </Button>
         )
       : col.renderCell // Keep original renderCell if it exists

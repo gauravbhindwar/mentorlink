@@ -2,7 +2,6 @@ import { connect } from "../../../../lib/dbConfig";
 import { Mentee } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 
-// Utility function to handle errors
 const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };

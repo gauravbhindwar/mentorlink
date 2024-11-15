@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Container, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle, LinearProgress } from '@mui/material';
+import { Box, Typography, Button, Paper, Container, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -55,12 +55,26 @@ const MenteeManagement = () => {
     name: '',
     email: '',
     phone: '',
+    address: '',
+    dob: '',
+    gender: '',
+    profile_picture: '',
     fatherName: '',
+    fatherEmail: '',
+    fatherPhone: '',
+    fatherAlternatePhone: '',
     motherName: '',
-    dateOfBirth: '',
-    parentsPhone: '',
-    parentsEmail: '',
+    motherEmail: '',
+    motherPhone: '',
+    motherAlternatePhone: '',
+    guardianName: '',
+    guardianEmail: '',
+    guardianPhone: '',
+    guardianRelation: '',
     mentorMujid: '',
+    session: '',
+    current_semester: '',
+    section: ''
   });
   
   const [editDialog, setEditDialog] = useState(false);
@@ -69,7 +83,15 @@ const MenteeManagement = () => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, mentee: null });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState(null); // Add error state
+
+  const [assignDialog, setAssignDialog] = useState(false);
+  const [assignmentDetails, setAssignmentDetails] = useState({
+    mentor_MUJid: '',
+    mentee_MUJid: '',
+    session: '',
+    current_semester: '',
+    section: ''
+  });
 
   const showAlert = (message, severity) => {
     setAlert({ open: true, message, severity });
@@ -118,6 +140,43 @@ const MenteeManagement = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleAssignClick = (mentee) => {
+    setAssignmentDetails({
+        ...assignmentDetails,
+        mentee_MUJid: mentee.mujid
+    });
+    setAssignDialog(true);
+  };
+
+  const handleAssignClose = () => {
+    setAssignDialog(false);
+    setAssignmentDetails({
+        mentor_MUJid: '',
+        mentee_MUJid: '',
+        session: '',
+        current_semester: '',
+        section: ''
+    });
+  };
+
+  const handleAssignInputChange = (e) => {
+    const { name, value } = e.target;
+    setAssignmentDetails(prev => ({
+        ...prev,
+        [name]: value
+    }));
+  };
+
+  const handleAssignSubmit = async () => {
+    try {
+        const response = await axios.post('/api/admin/manageUsers/assignMentor', assignmentDetails);
+        showAlert('Mentor assigned successfully', 'success');
+        handleAssignClose();
+    } catch (error) {
+        showAlert(error.response?.data?.error || 'Error assigning mentor', 'error');
+    }
   };
 
   const theme = createTheme({
@@ -180,11 +239,15 @@ const MenteeManagement = () => {
     setMenteeDetails({ ...menteeDetails, [name]: value });
   };
 
-  const handleFormSubmit = () => {
-    // Implement form submission logic here
-    console.log('Mentee Details:', menteeDetails);
-    handleDialogClose();
-  };
+  const handleFormSubmit = async () => {
+    try {
+        const response = await axios.post('/api/admin/manageUsers/manageMentee', [menteeDetails]);
+        showAlert('Mentee added successfully', 'success');
+        handleDialogClose();
+    } catch (error) {
+        showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
+    }
+};
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -234,6 +297,39 @@ const MenteeManagement = () => {
     }
   };
 
+  const handleBulkAssign = async (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    const validTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    if (!validTypes.includes(file.type)) {
+        showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
+        return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await axios.post('/api/admin/manageUsers/bulkAssign', formData, {
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                setUploadProgress(percentCompleted);
+            }
+        });
+
+        showAlert('Bulk assignment completed successfully', 'success');
+        handleSearch([]); // Refresh the mentee list
+    } catch (error) {
+        showAlert(error.response?.data?.error || 'Error uploading file', 'error');
+    } finally {
+        setIsUploading(false);
+        setUploadProgress(0);
+        handleDialogClose();
+    }
+};
+
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: handleFileUpload,
     accept: {
@@ -242,6 +338,14 @@ const MenteeManagement = () => {
     },
     multiple: false
   });
+
+  const handleBulkUploadClick = () => {
+    const inputElement = document.createElement('input');
+    inputElement.type = 'file';
+    inputElement.accept = '.xls,.xlsx';
+    inputElement.onchange = (e) => handleFileUpload(e.target.files);
+    inputElement.click();
+  };
 
   useEffect(() => {
     const updateSemesters = () => {
@@ -356,7 +460,6 @@ const MenteeManagement = () => {
           opacity: 1,
         },
       },
-      // Add styles for date picker icon
       '& .MuiInputAdornment-root .MuiSvgIcon-root': {
         color: '#f97316',
       },
@@ -374,6 +477,7 @@ const MenteeManagement = () => {
   if (!mounted) return null;
 
   return (
+    
     <ThemeProvider theme={theme}>
       {/* Toast/Alert Container - Moved outside main content */}
       <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md max-h-screen">
@@ -487,6 +591,7 @@ const MenteeManagement = () => {
                   <MenteeTable 
                     mentees={mentees}
                     onEditClick={handleEditClick}
+                    onAssignClick={handleAssignClick}
                     isSmallScreen={isSmallScreen}
                   />
                 )}
@@ -495,11 +600,10 @@ const MenteeManagement = () => {
           </motion.div>
         </div>
 
-        {/* Dialogs with updated styling */}
         <Dialog 
           open={openDialog} 
           onClose={handleDialogClose}
-          maxWidth="md"
+          maxWidth="lg" 
           fullWidth
           PaperProps={{ sx: dialogStyles.paper }}
         >
@@ -525,144 +629,114 @@ const MenteeManagement = () => {
           </DialogTitle>
           <DialogContent sx={dialogStyles.content}>
             <Box sx={{ 
-              display: 'flex', 
-              gap: 4,
-              minHeight: '60vh',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)', // Changed from 3 columns to 2
+              gap: 3,
+              minHeight: '40vh', // Reduced height since we have fewer fields
+              overflowY: 'auto',
+              pr: 2,
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(249, 115, 22, 0.5)',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: 'rgba(249, 115, 22, 0.7)',
+                },
+              },
+              '& .MuiTextField-root': dialogStyles.textField,
             }}>
-              {/* Left side - Form */}
-              <Box sx={{ 
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                overflowY: 'auto',
-                pr: 2,
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: '4px',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: 'rgba(249, 115, 22, 0.5)',
-                  borderRadius: '4px',
-                  '&:hover': {
-                    background: 'rgba(249, 115, 22, 0.7)',
-                  },
-                },
-                '& .MuiTextField-root': dialogStyles.textField,
-              }}>
-                {Object.entries(menteeDetails).map(([key, value]) => (
-                  <TextField
-                    key={key}
-                    label={key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
-                    name={key}
-                    type={key === 'dateOfBirth' ? 'date' : key.includes('email') ? 'email' : 'text'}
-                    value={value}
-                    onChange={handleInputChange}
-                    required
-                    InputLabelProps={key === 'dateOfBirth' ? { shrink: true } : undefined}
-                  />
-                ))}
+              {/* Essential Information */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                  Student Information
+                </Typography>
+                <TextField
+                  label="MUJid"
+                  name="MUJid"
+                  value={menteeDetails.mujid}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={menteeDetails.name}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="College Email"
+                  name="email"
+                  type="email"
+                  value={menteeDetails.email}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Phone"
+                  name="phone"
+                  value={menteeDetails.phone}
+                  onChange={handleInputChange}
+                  required
+                />
+                
               </Box>
 
-              <Divider orientation="vertical" flexItem sx={{ 
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                '&.MuiDivider-root': {
-                  '&::before, &::after': {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                },
-              }}>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>OR</Typography>
-              </Divider>
-
-              {/* Right side - Upload */}
-              <Box 
-                {...getRootProps()} 
-                sx={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: 4,
-                  border: '2px dashed',
-                  borderColor: 'rgba(249, 115, 22, 0.5)',
-                  borderRadius: 3,
-                  bgcolor: 'rgba(255, 255, 255, 0.02)',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  position: 'relative',
-                  '&:hover': {
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    borderColor: '#f97316',
-                    transform: 'translateY(-2px)',
-                  },
-                  '&:active': {
-                    transform: 'translateY(0)',
-                  }
-                }}
-              >
-                <input {...getInputProps()} />
-                <UploadFileIcon sx={{ 
-                  fontSize: 60, 
-                  color: '#f97316', 
-                  mb: 2,
-                  transition: 'transform 0.3s ease',
-                  '&:hover': {
-                    transform: 'scale(1.1)'
-                  }
-                }} />
-                <Typography variant="h6" gutterBottom sx={{ 
-                  color: 'white',
-                  fontWeight: 600,
-                  textAlign: 'center'
-                }}>
-                  Drag & Drop Excel File
+              {/* Academic Information */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                  Academic Information
                 </Typography>
-                <Typography sx={{ 
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  textAlign: 'center',
-                  mb: 2
-                }}>
-                  or click to select file
-                </Typography>
-                <Typography sx={{ 
-                  color: '#f97316',
-                  bgcolor: 'rgba(249, 115, 22, 0.1)',
-                  px: 2,
-                  py: 0.5,
-                  borderRadius: 1,
-                  fontSize: '0.875rem'
-                }}>
-                  Supported formats: .xls, .xlsx
-                </Typography>
-                {isUploading && (
-                  <Box 
-                    sx={{ 
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      bgcolor: 'rgba(255, 255, 255, 0.9)',
-                      p: 2
-                    }}
-                  >
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={uploadProgress}
-                      sx={{
-                        height: 8,
-                        borderRadius: 4,
-                      }}
-                    />
-                    <Typography variant="caption" align="center" display="block" sx={{ mt: 1 }}>
-                      {uploadProgress}% uploaded
-                    </Typography>
-                  </Box>
-                )}
+              
+                <TextField
+                  label="Year of Registration"
+                  name="yearOfRegistration"
+                  type="number"
+                  value={menteeDetails.yearOfRegistration}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Section"
+                  name="section"
+                  value={menteeDetails.section}
+                  onChange={handleInputChange}
+                  required
+                  inputProps={{
+                    maxLength: 1,
+                    pattern: "[A-Z]",
+                    style: { textTransform: 'uppercase' }
+                  }}
+                  helperText="Enter a single capital letter (A-Z)"
+                />
+                <TextField
+                  select
+                  label="Current Semester"
+                  name="current_semester"
+                  value={menteeDetails.current_semester}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <MenuItem value="">Select Semester</MenuItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                    <MenuItem key={sem} value={sem}>
+                      Semester {sem}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Mentor MUJid"
+                  name="mentorMujid"
+                  value={menteeDetails.mentorMujid}
+                  onChange={handleInputChange}
+                  required
+                />
               </Box>
             </Box>
           </DialogContent>
@@ -835,6 +909,109 @@ const MenteeManagement = () => {
               }}
             >
               Update
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog 
+          open={assignDialog} 
+          onClose={handleAssignClose}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: dialogStyles.paper }}
+        >
+          <DialogTitle sx={dialogStyles.title}>
+            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+              Assign Mentor
+            </Typography>
+            <IconButton
+              aria-label="close"
+              onClick={handleAssignClose}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&:hover': {
+                  color: '#f97316',
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={dialogStyles.content}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 2,
+              '& .MuiTextField-root': dialogStyles.textField,
+            }}>
+              <TextField
+                label="Mentor MUJid"
+                name="mentor_MUJid"
+                value={assignmentDetails.mentor_MUJid}
+                onChange={handleAssignInputChange}
+                required
+              />
+              <TextField
+                label="Session"
+                name="session"
+                value={assignmentDetails.session}
+                onChange={handleAssignInputChange}
+                required
+              />
+              <TextField
+                label="Current Semester"
+                name="current_semester"
+                type="number"
+                value={assignmentDetails.current_semester}
+                onChange={handleAssignInputChange}
+                required
+              />
+              <TextField
+                select
+                label="Section"
+                name="section"
+                value={assignmentDetails.section}
+                onChange={handleAssignInputChange}
+                required
+              >
+                <MenuItem value="">Select Section</MenuItem>
+                <MenuItem value="A">A</MenuItem>
+                <MenuItem value="B">B</MenuItem>
+                <MenuItem value="C">C</MenuItem>
+                <MenuItem value="D">D</MenuItem>
+                <MenuItem value="E">E</MenuItem>
+              </TextField>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={dialogStyles.actions}>
+            <Button 
+              onClick={handleAssignClose}
+              variant="outlined"
+              sx={{
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAssignSubmit}
+              variant="contained"
+              sx={{
+                bgcolor: '#f97316',
+                '&:hover': {
+                  bgcolor: '#ea580c',
+                },
+              }}
+            >
+              Assign
             </Button>
           </DialogActions>
         </Dialog>

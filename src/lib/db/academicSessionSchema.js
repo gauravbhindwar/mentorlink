@@ -1,7 +1,7 @@
-
 import mongoose from "mongoose";
 
 const academicSessionsSchema = new mongoose.Schema({
+    session_id: { type: Number, required: true }, 
     start_year: { type: Number, required: true }, // Start year of the session
     end_year: { type: Number, required: true }, // End year of the session
     semesters: [{
@@ -49,6 +49,12 @@ const academicSessionsSchema = new mongoose.Schema({
     }],
     created_at: { type: Date, default: Date.now }, // Creation date of the session
     updated_at: { type: Date, default: Date.now } // Last updated date
+});
+
+// Middleware to enforce `session_id` equals `start_year`
+academicSessionsSchema.pre('save', function (next) {
+    this.session_id = this.start_year;
+    next();
 });
 
 const AcademicSession = mongoose.models.AcademicSession || mongoose.model('AcademicSession', academicSessionsSchema);

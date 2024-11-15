@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connect } from "../../../../lib/dbConfig";
 import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
 import { NextResponse } from 'next/server';
@@ -35,12 +35,12 @@ const storeOtpForUser = async (email, role, otp) => {
         case 'mentor':
             User = Mentor;
             break;
-        case 'mentee':
-            User = Mentee;
-            break;
         case 'admin':
         case 'superadmin': // Combined case for both admin types
             User = Admin;
+            break;
+        case 'mentee':
+            User = Mentee;
             break;
         default:
             throw new Error("Invalid role");
@@ -69,16 +69,16 @@ const storeOtpForUser = async (email, role, otp) => {
 
 // Main POST handler to send OTP
 export async function POST(req) {
-    const { email, role } = await req.json();
-
-    if (!email || !role) {
-        return NextResponse.json(
-            { success: false, message: "Email and role are required" },
-            { status: 400 }
-        );
-    }
-
     try {
+        const { email, role } = await req.json();
+
+        if (!email || !role) {
+            return NextResponse.json(
+                { success: false, message: "Email and role are required" },
+                { status: 400 }
+            );
+        }
+
         // Generate OTP and send it via email
         const generatedOtp = generateOtp();
         await storeOtpForUser(email, role, generatedOtp); // Store OTP in user document

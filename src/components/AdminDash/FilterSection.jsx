@@ -15,9 +15,11 @@ import {
   CircularProgress
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import axios from 'axios';
 
-const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew }) => {
+// Add this prop to the component parameters
+const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload }) => {
   const [isLoading, setIsLoading] = useState({
     search: false,
     searchAll: false
@@ -60,7 +62,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         onSearch([]);
         return;
       }
-
+      
       const response = await axios.get('/api/admin/manageUsers/manageMentee', {
         params: queryFilters
       });
@@ -316,6 +318,17 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
       </Box>
       
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Button
+          variant="contained"
+          onClick={onBulkUpload}
+          startIcon={<UploadFileIcon />}
+          sx={{
+            bgcolor: '#ea580c',
+            '&:hover': { bgcolor: '#c2410c' }
+          }}
+        >
+          Bulk Upload
+        </Button>
         {buttons.map(button => (
           <Button 
             key={button.label}

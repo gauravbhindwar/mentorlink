@@ -17,10 +17,10 @@ const menteesSchema = new mongoose.Schema({
         }
     }, // Contact number of the mentee
     address: { type: String }, // Mentee's address (optional)
-    dob: { type: Date, required: true }, // Date of birth of the mentee
+    dob: { type: Date }, // Date of birth of the mentee
     gender: { type: String }, // Gender of the mentee (optional)
     profile_picture: { type: String }, // URL to profile picture (optional)
-    yeayearOfRegistration: {    type: Number,
+    yearOfRegistration: {    type: Number,
         required: true,
         validate: {
             validator: (value) => {
@@ -29,21 +29,19 @@ const menteesSchema = new mongoose.Schema({
             },
             message: "Invalid year of registration",
         },}, // Year of registration for the mentee
+    section: { type: String, required: true },
+    current_semester: { type: Number, required: true, min: 1, max: 8 },
     parents: {
         father: {
-            name: { type: String, required: true },
-            email: { type: String, required: true },
-            phone: { type: String, required: true },
+            name: { type: String },
+            email: { type: String },
+            phone: { type: String },
             alternatePhone: { type: String }
         },
         mother: {
-            name: { type: String, required: true },
-            email: {
-                type: String,
-                required: true,
-                default: function () { return this.parents?.father?.email; }
-            },
-            phone: { type: String, required: true },
+            name: { type: String },
+            email: { type: String },
+            phone: { type: String },
             alternatePhone: { type: String }
         },
         guardian: {
