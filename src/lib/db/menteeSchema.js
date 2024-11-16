@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { AcademicSession } from "./academicSessionSchema";
 
 const menteesSchema = new mongoose.Schema({
     name: { type: String, required: true }, // Full name of the mentee
@@ -9,17 +10,14 @@ const menteesSchema = new mongoose.Schema({
         message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
     },}, // Unique MUJID for the mentee
     phone: { 
-        type: String, 
-        required: true,
+        type: String,
+        required: false,
         validate: {
             validator: (value) => /^\d{10}$/.test(value),
             message: "Phone number must be a 10-digit number"
         }
     }, // Contact number of the mentee
-    address: { type: String, default: '' }, // Change to have a default empty string
-    dob: { type: Date, required: false }, // Change to not required
-    gender: { type: String }, // Gender of the mentee (optional)
-    profile_picture: { type: String }, // URL to profile picture (optional)
+    address: { type: String },
     yearOfRegistration: {    type: Number,
         required: true,
         validate: {
@@ -30,10 +28,9 @@ const menteesSchema = new mongoose.Schema({
             message: "Invalid year of registration",
         },}, // Year of registration for the mentee
     section: { type: String, required: true },
-    current_semester: { type: Number, required: true, min: 1, max: 8 },
-    startYear: { type: Number, required: true }, // Add startYear field
-    endYear: { type: Number, required: true }, // Add endYear field
-    academicSession: { type: String, required: true }, // Add academicSession field
+    semester: { type: Number, required: true, min: 1, max: 8 },
+    academicYear: { type: String, required: true }, // Changed from AcademicYear
+    academicSession: { type: String, required: true }, // Changed from AcademicSession
     parents: {
         father: {
             name: { type: String },
@@ -54,6 +51,7 @@ const menteesSchema = new mongoose.Schema({
             relation: { type: String }
         }
     },
+    mentorMujid: { type: String ,required:true}, // MUJid of the assigned mentor
     created_at: { type: Date, default: Date.now }, // Creation date of the mentee record
     updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentee record
     otp: { type: String },

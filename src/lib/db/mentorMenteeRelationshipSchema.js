@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Mentor } from "./mentorSchema";
 import { Mentee } from "./menteeSchema";
+import { AcademicSession } from "./academicSessionSchema";
 
 const mentorMenteeRelationshipSchema = new mongoose.Schema({
     mentor_MUJid: { type: String, required: true }, // MUJid of the mentor
@@ -8,6 +9,7 @@ const mentorMenteeRelationshipSchema = new mongoose.Schema({
     session: { type: String, required: true }, // Required
     current_semester: { type: Number, required: true }, // Required
     section: { type: String, required: true, enum: ['A', 'B', 'C', 'D', 'E'] }, // Required with enum
+    academicSession: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicSession' }, // Reference to academic session
     completed_meetings: [{
         meeting_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicSession.semesters.meetings', required: true }, // Reference to completed meeting
         meeting_date: { type: Date, required: true } // Date when the meeting was completed
@@ -67,9 +69,16 @@ mentorMenteeRelationshipSchema.statics.assignMentor = async function (assignment
         throw new Error(`Mentee with MUJid ${mentee_MUJid} does not exist`);
     }
 
+    // Create or update the academic session
+    const academicSession = await AcademicSession.findOneAndUpdate(
+        { start_year: session.split('-')[0], end_year: session.split('-')[1] },
+        { $set: { start_year: session.split('-')[0], end_year: session.split('-')[1] } },
+        { upsert: true, new: true }
+    );
+
     return this.updateOne(
-        { mentor_MUJid, mentee_MUJid },
         { mentor_MUJid, mentee_MUJid, session, current_semester, section },
+        { mentor_MUJid, mentee_MUJid, session, current_semester, section, academicSession: academicSession._id },
         { upsert: true }
     );
 };
