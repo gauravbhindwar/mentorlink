@@ -39,22 +39,42 @@ const calculateCurrentSemester = (yearOfRegistration) => {
   return Math.min(totalSemesters, 8);
 };
 
+const getCurrentAcademicYear = () => {
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1; // 1-12
+  const currentYear = currentDate.getFullYear();
+  
+  // If current month is after June (start of academic year), use current year
+  // Otherwise use previous year
+  const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
+  const endYear = startYear + 1;
+  return `${startYear}-${endYear}`;
+};
+
+const generateAcademicSessions = (startYear, endYear) => {
+  if (!startYear || !endYear) return [];
+  return [
+    `July-December ${startYear}`,
+    `January-June ${endYear}`
+  ];
+};
+
 const MenteeManagement = () => {
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(false); // Set initial loading state to false
   const [mounted, setMounted] = useState(false);
-  const [year, setYear] = useState('');
-  const [term, setTerm] = useState('');
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
   const [semester, setSemester] = useState('');
   const [section, setSection] = useState('');
   const [isFilterSelected, setIsFilterSelected] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
-    mujid: '',
+    MUJid: '',           // Changed from mujid to MUJid to match schema
     yearOfRegistration: '',
     name: '',
     email: '',
-    phone: '',
+    phone: '', // Make sure this field name matches backend schema
     address: '',
     dob: '',
     gender: '',
@@ -74,7 +94,9 @@ const MenteeManagement = () => {
     mentorMujid: '',
     session: '',
     current_semester: '',
-    section: ''
+    section: '',
+    academicYear: getCurrentAcademicYear(),
+    academicSession: ''
   });
   
   const [editDialog, setEditDialog] = useState(false);
@@ -92,6 +114,71 @@ const MenteeManagement = () => {
     current_semester: '',
     section: ''
   });
+
+  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    const validTypes = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post('/api/admin/manageUsers/bulkUpload', formData, {
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+
+      showAlert('File uploaded successfully!', 'success');
+      handleBulkUploadClose();
+      // Refresh the mentee list
+      if (handleSearch) {
+        handleSearch([]);
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error uploading file', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+    },
+    multiple: false
+  });
+
+  const handleBulkUploadOpen = () => {
+    setBulkUploadDialog(true);
+  };
+
+  const handleBulkUploadClose = () => {
+    setBulkUploadDialog(false);
+    setUploadProgress(0);
+    setUploading(false);
+  };
+
+  const handleBulkUploadClick = () => {
+    setBulkUploadDialog(true);
+  };
 
   const showAlert = (message, severity) => {
     setAlert({ open: true, message, severity });
@@ -206,8 +293,8 @@ const MenteeManagement = () => {
   }, []);
 
   useEffect(() => {
-    setIsFilterSelected(Boolean(year || term || semester || section));
-  }, [year, term, semester, section]);
+    setIsFilterSelected(Boolean(academicYear || academicSession || semester || section));
+  }, [academicYear, academicSession, semester, section]);
 
   const handleSearch = (data) => {
     setMentees(data); // Just update the state with data from FilterSection
@@ -218,8 +305,8 @@ const MenteeManagement = () => {
   };
 
   const handleReset = () => {
-    setYear('');
-    setTerm('');
+    setAcademicYear('');
+    setAcademicSession('');
     setSemester('');
     setSection('');
     setMentees([]); // Clear mentees data
@@ -236,7 +323,22 @@ const MenteeManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setMenteeDetails({ ...menteeDetails, [name]: value });
+    if (name === 'academicYear' && value) {
+      const [startYear] = value.split('-');
+      const endYear = parseInt(startYear) + 1;
+      const newSessions = generateAcademicSessions(startYear, endYear.toString());
+      setAcademicSessions(newSessions);
+      setMenteeDetails(prev => ({
+        ...prev,
+        [name]: value,
+        academicSession: newSessions[0] // Set first session by default
+      }));
+    } else {
+      setMenteeDetails(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleFormSubmit = async () => {
@@ -245,57 +347,20 @@ const MenteeManagement = () => {
         showAlert('Mentee added successfully', 'success');
         handleDialogClose();
     } catch (error) {
-        showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
+        // Parse error message properly
+        const errorMessage = error.response?.data?.error;
+        if (Array.isArray(errorMessage)) {
+            // If it's an array of validation errors, show the first one
+            showAlert(errorMessage[0]?.error || 'Error adding mentee', 'error');
+        } else if (typeof errorMessage === 'string') {
+            // If it's a simple string error
+            showAlert(errorMessage, 'error');
+        } else {
+            // Fallback error message
+            showAlert('Error adding mentee', 'error');
+        }
     }
 };
-
-  const handleFileUpload = async (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = [
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    ];
-    if (!validTypes.includes(file.type)) {
-      showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
-      return;
-    }
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await axios.post('/api/admin/manageUsers/uploadMentees', formData, {
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
-      });
-
-      const { results } = response.data;
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
-
-      showAlert(
-        `Upload complete: ${successful} mentees added/updated, ${failed} failed`,
-        failed > 0 ? 'warning' : 'success'
-      );
-
-      // Refresh the mentee list
-      if (handleSearch) {
-        handleSearch([]);
-      }
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error uploading file', 'error');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      handleDialogClose();
-    }
-  };
 
   const handleBulkAssign = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -330,22 +395,88 @@ const MenteeManagement = () => {
     }
 };
 
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: handleFileUpload,
-    accept: {
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-    },
-    multiple: false
-  });
-
-  const handleBulkUploadClick = () => {
-    const inputElement = document.createElement('input');
-    inputElement.type = 'file';
-    inputElement.accept = '.xls,.xlsx';
-    inputElement.onchange = (e) => handleFileUpload(e.target.files);
-    inputElement.click();
-  };
+  const renderBulkUploadDialog = () => (
+    <Dialog
+      open={bulkUploadDialog}
+      onClose={handleBulkUploadClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: {
+        ...dialogStyles.paper,
+        overflow: 'hidden'
+      }}}
+    >
+      <DialogTitle sx={dialogStyles.title}>
+        <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+          Bulk Upload Mentees
+        </Typography>
+        <IconButton
+          onClick={handleBulkUploadClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&:hover': { color: '#f97316' }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ ...dialogStyles.content, p: 0 }}>
+        <Box
+          {...getRootProps()}
+          sx={{
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2,
+            border: '2px dashed',
+            borderColor: isDragActive ? '#f97316' : 'rgba(255, 255, 255, 0.2)',
+            borderRadius: 2,
+            bgcolor: isDragActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer',
+            '&:hover': {
+              borderColor: '#f97316',
+              bgcolor: 'rgba(249, 115, 22, 0.05)'
+            }
+          }}
+        >
+          <input {...getInputProps()} />
+          <UploadFileIcon sx={{ fontSize: 48, color: '#f97316' }} />
+          <Typography variant="h6" sx={{ color: 'white', textAlign: 'center' }}>
+            {isDragActive
+              ? 'Drop the Excel file here'
+              : 'Drag & drop an Excel file here, or click to select'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
+            Supports .xls and .xlsx files only
+          </Typography>
+        </Box>
+        {uploading && (
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
+              Uploading... {uploadProgress}%
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={uploadProgress}
+              sx={{
+                height: 8,
+                borderRadius: 4,
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                '& .MuiLinearProgress-bar': {
+                  bgcolor: '#f97316'
+                }
+              }}
+            />
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 
   useEffect(() => {
     const updateSemesters = () => {
@@ -380,21 +511,34 @@ const MenteeManagement = () => {
     return () => clearTimeout(timeout);
   }, []);
 
+  const [startYear, setStartYear] = useState(''); // Add state for startYear
+  const [endYear, setEndYear] = useState(''); // Add state for endYear
+
   const filterConfig = {
-    year,
-    term,
+    academicYear,
+    academicSession,
     semester,
     section,
+    startYear, // Add startYear to filterConfig
+    endYear // Add endYear to filterConfig
   };
 
   const handleFilterChange = (name, value) => {
     const setters = {
-      year: setYear,
-      term: setTerm,
+      academicYear: setAcademicYear,
+      academicSession: setAcademicSession,
       semester: setSemester,
-      section: setSection
+      section: setSection,
+      startYear: setStartYear, // Add setter for startYear
+      endYear: setEndYear // Add setter for endYear
     };
-    setters[name](value);
+    
+    if (typeof setters[name] === 'function') {
+      setters[name](value);
+    } else {
+      console.error(`No setter function found for filter: ${name}`);
+    }
+    
     setMentees([]); // Clear data when filter options change
   };
 
@@ -474,6 +618,28 @@ const MenteeManagement = () => {
     },
   };
 
+  useEffect(() => {
+    const currentAcademicYear = getCurrentAcademicYear();
+    const [startYear] = currentAcademicYear.split('-');
+    const endYear = parseInt(startYear) + 1;
+    const sessions = generateAcademicSessions(startYear, endYear.toString());
+    
+    // Determine current session based on month
+    const currentMonth = new Date().getMonth() + 1;
+    const currentSession = currentMonth >= 7 && currentMonth <= 12 
+      ? sessions[0] // July-December
+      : sessions[1]; // January-June
+
+    setAcademicSessions(sessions);
+    setMenteeDetails(prev => ({
+      ...prev,
+      academicYear: currentAcademicYear,
+      academicSession: currentSession
+    }));
+  }, []);
+
+  const [academicSessions, setAcademicSessions] = useState([]);
+
   if (!mounted) return null;
 
   return (
@@ -548,16 +714,6 @@ const MenteeManagement = () => {
             >
               Mentee Management
             </motion.h1>
-            {/* <motion.p 
-              className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-12" // Increased margin-bottom
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              Manage and monitor student mentees effectively
-            </motion.p> */}
-
-            {/* Filter Section with updated styling */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -571,6 +727,7 @@ const MenteeManagement = () => {
                 onSearchAll={handleSearchAll}
                 onAddNew={handleDialogOpen}
                 onReset={handleReset}
+                onBulkUpload={handleBulkUploadOpen}
               />
             </motion.div>
 
@@ -658,8 +815,8 @@ const MenteeManagement = () => {
                 </Typography>
                 <TextField
                   label="MUJid"
-                  name="MUJid"
-                  value={menteeDetails.mujid}
+                  name="MUJid"         // Changed from mujid to MUJid
+                  value={menteeDetails.MUJid}  // Changed from mujid to MUJid
                   onChange={handleInputChange}
                   required
                 />
@@ -685,15 +842,6 @@ const MenteeManagement = () => {
                   onChange={handleInputChange}
                   required
                 />
-                
-              </Box>
-
-              {/* Academic Information */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                  Academic Information
-                </Typography>
-              
                 <TextField
                   label="Year of Registration"
                   name="yearOfRegistration"
@@ -702,19 +850,49 @@ const MenteeManagement = () => {
                   onChange={handleInputChange}
                   required
                 />
+                
+              </Box>
+
+              {/* Academic Information */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                  Academic Information
+                </Typography>
                 <TextField
-                  label="Section"
-                  name="section"
-                  value={menteeDetails.section}
+                  label="Academic Year"
+                  name="academicYear"
+                  select
+                  value={menteeDetails.academicYear}
                   onChange={handleInputChange}
                   required
-                  inputProps={{
-                    maxLength: 1,
-                    pattern: "[A-Z]",
-                    style: { textTransform: 'uppercase' }
-                  }}
-                  helperText="Enter a single capital letter (A-Z)"
-                />
+                >
+                  {(() => {
+                    const currentAcademicYear = getCurrentAcademicYear();
+                    const [currentStartYear] = currentAcademicYear.split('-');
+                    const startYear = parseInt(currentStartYear);
+                    
+                    return [
+                      currentAcademicYear,
+                      `${startYear-1}-${startYear}`,
+                      `${startYear-2}-${startYear-1}`,
+                      `${startYear-3}-${startYear-2}`
+                    ].map(year => (
+                      <MenuItem key={year} value={year}>{year}</MenuItem>
+                    ));
+                  })()}
+                </TextField>
+                <TextField
+                  label="Academic Session"
+                  name="academicSession"
+                  select
+                  value={menteeDetails.academicSession}
+                  onChange={handleInputChange}
+                  required
+                >
+                  {academicSessions.map(session => (
+                    <MenuItem key={session} value={session}>{session}</MenuItem>
+                  ))}
+                </TextField>
                 <TextField
                   select
                   label="Current Semester"
@@ -730,6 +908,19 @@ const MenteeManagement = () => {
                     </MenuItem>
                   ))}
                 </TextField>
+                <TextField
+                  label="Section"
+                  name="section"
+                  value={menteeDetails.section}
+                  onChange={handleInputChange}
+                  required
+                  inputProps={{
+                    maxLength: 1,
+                    pattern: "[A-Z]",
+                    style: { textTransform: 'uppercase' }
+                  }}
+                  helperText="Enter a single capital letter (A-Z)"
+                />
                 <TextField
                   label="Mentor MUJid"
                   name="mentorMujid"
@@ -1017,36 +1208,4 @@ const MenteeManagement = () => {
         </Dialog>
 
         <Dialog 
-          open={confirmDialog.open} 
-          onClose={handleConfirmClose}
-          PaperProps={{
-            style: {
-              background: 'rgba(0, 0, 0, 0.8)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '1rem',
-            },
-          }}
-        >
-          <DialogTitle>Confirm Update</DialogTitle>
-          <DialogContent>
-            Are you sure you want to update this mentee&apos;s data? This action is non-reversible.
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleConfirmClose} color="primary">
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmUpdate} color="secondary">
-              Confirm
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Toast notifications */}
-        <Toaster position="top-right" />
-      </div>
-    </ThemeProvider>
-  );
-};
-
-export default MenteeManagement;
+          open={confirmDialog.open}           onClose={handleConfirmClose}          PaperProps={{            style: {              background: 'rgba(0, 0, 0, 0.8)',              backdropFilter: 'blur(10px)',              border: '1px solid rgba(255, 255, 255, 0.1)',              borderRadius: '1rem',            },          }}        >          <DialogTitle>Confirm Update</DialogTitle>          <DialogContent>            Are you sure you want to update this mentee&apos;s data? This action is non-reversible.          </DialogContent>          <DialogActions>            <Button onClick={handleConfirmClose} color="primary">              Cancel            </Button>            <Button onClick={handleConfirmUpdate} color="secondary">              Confirm            </Button>          </DialogActions>        </Dialog>        {renderBulkUploadDialog()}        {/* Toast notifications */}        <Toaster position="top-right" />      </div>    </ThemeProvider>  );};export default MenteeManagement;

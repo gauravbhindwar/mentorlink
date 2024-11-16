@@ -8,7 +8,7 @@ const menteesSchema = new mongoose.Schema({
         validator: (value) => /^[A-Z0-9]+$/.test(value),
         message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
     },}, // Unique MUJID for the mentee
-    phone_number: { 
+    phone: { 
         type: String, 
         required: true,
         validate: {
@@ -16,8 +16,8 @@ const menteesSchema = new mongoose.Schema({
             message: "Phone number must be a 10-digit number"
         }
     }, // Contact number of the mentee
-    address: { type: String }, // Mentee's address (optional)
-    dob: { type: Date }, // Date of birth of the mentee
+    address: { type: String, default: '' }, // Change to have a default empty string
+    dob: { type: Date, required: false }, // Change to not required
     gender: { type: String }, // Gender of the mentee (optional)
     profile_picture: { type: String }, // URL to profile picture (optional)
     yearOfRegistration: {    type: Number,
@@ -31,6 +31,9 @@ const menteesSchema = new mongoose.Schema({
         },}, // Year of registration for the mentee
     section: { type: String, required: true },
     current_semester: { type: Number, required: true, min: 1, max: 8 },
+    startYear: { type: Number, required: true }, // Add startYear field
+    endYear: { type: Number, required: true }, // Add endYear field
+    academicSession: { type: String, required: true }, // Add academicSession field
     parents: {
         father: {
             name: { type: String },
