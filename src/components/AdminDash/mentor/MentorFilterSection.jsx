@@ -1,66 +1,85 @@
 'use client';
-
-import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem,
-  Snackbar,
-  Slide,
-  Alert,
-  AlertTitle,
-  CircularProgress
-} from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
+import { Box, Button, FormControl, InputLabel, Select, MenuItem, TextField } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import axios from 'axios';
+import { createPortal } from 'react-dom';
 
-const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew }) => {
-  const [isLoading, setIsLoading] = useState({
-    search: false,
-    searchAll: false
-  });
-  const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
-  const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
+const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBulkUpload }) => {
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
+  const [academicSessions, setAcademicSessions] = useState([]);
+  const [mentorStatus, setMentorStatus] = useState('');
+  const dropdownRoot = document.getElementById('dropdown-root');
+  const [yearSuggestions, setYearSuggestions] = useState([]);
+  const [sessionSuggestions, setSessionSuggestions] = useState([]);
 
+  const getCurrentAcademicYear = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+    const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
+    const endYear = startYear + 1;
+    return `${startYear}-${endYear}`;
+  };
+
+  const generateAcademicSessions = (academicYear) => {
+    if (!academicYear) return [];
+    const [startYear, endYear] = academicYear.split('-');
+    return [
+      `JULY-DECEMBER ${startYear}`,
+      `JANUARY-JUNE ${endYear}`
+    ];
+  };
+
+  const generateYearSuggestions = (input) => {
+    if (!input) return [];
+    const currentYear = new Date().getFullYear();
+    const suggestions = [];
+    
+    // Generate last 5 years suggestions
+    for (let i = 0; i < 5; i++) {
+      const year = currentYear - i;
+      const academicYear = `${year}-${year + 1}`;
+      if (academicYear.startsWith(input)) {
+        suggestions.push(academicYear);
+      }
+    }
+    return suggestions;
+  };
+
+  const generateSessionSuggestions = (input) => {
+    if (!academicYear || !input) return [];
+    const [startYear, endYear] = academicYear.split('-');
+    const possibleSessions = [
+      `JULY-DECEMBER ${startYear}`,
+      `JANUARY-JUNE ${endYear}`
+    ];
+    
+    return possibleSessions.filter(session => 
+      session.toLowerCase().includes(input.toLowerCase())
+    );
+  };
   useEffect(() => {
-    setIsSearchAllEnabled(Object.values(filters).some(x => x !== ''));
-  }, [filters]);
+    const currentYear = getCurrentAcademicYear();
+    setAcademicYear(currentYear);
+    setAcademicSessions(generateAcademicSessions(currentYear));
+  }, []);
 
-  const showAlert = (message, severity) => {
-    setAlert({ open: true, message, severity });
-    setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
+  const handleAcademicYearChange = (event) => {
+    const year = event.target.value;
+    setAcademicYear(year);
+    setAcademicSessions(generateAcademicSessions(year));
+    setAcademicSession('');
   };
 
-  const handleSearch = async () => {
-    if (!onSearch) return;
-    setIsLoading(prev => ({ ...prev, search: true }));
-    try {
-      await onSearch();
-    } catch (error) {
-      showAlert(error.message || 'Error searching', 'error');
-    } finally {
-      setIsLoading(prev => ({ ...prev, search: false }));
-    }
-  };
-
-  const handleSearchAll = async () => {
-    if (!onSearchAll) return;
-    setIsLoading(prev => ({ ...prev, searchAll: true }));
-    try {
-      await onSearchAll();
-    } catch (error) {
-      showAlert(error.message || 'Error searching all', 'error');
-    } finally {
-      setIsLoading(prev => ({ ...prev, searchAll: false }));
-    }
+  const handleSearch = () => {
+    onSearch({ academicYear, academicSession, mentorStatus });
   };
 
   const handleReset = () => {
-    sessionStorage.removeItem('menteeData'); // Clear session storage on reset
-    onReset();
+    setAcademicYear('');
+    setAcademicSession('');
+    setMentorStatus('');
   };
 
   const filterControlStyles = {
@@ -94,6 +113,30 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     }
   };
 
+  const textFieldStyles = {
+    '& .MuiOutlinedInput-root': {
+      color: 'white',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '12px',
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#f97316',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#f97316',
+      },
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    '& .MuiInputLabel-root': {
+      color: 'rgba(255, 255, 255, 0.7)',
+      '&.Mui-focused': {
+        color: '#f97316',
+      },
+    },
+  };
+
   const buttonStyles = (color) => ({
     borderRadius: '50px',
     px: { xs: 2, sm: 3 },
@@ -116,147 +159,360 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     }
   });
 
-  const filterControls = [
-    {
-      name: 'year',
-      label: 'Year',
-      options: (() => {
-        const currentYear = new Date().getFullYear();
-        // According to schema: past 20 years to current year
-        return Array.from({ length: 21 }, (_, i) => currentYear - i);
-      })()
+  const comboBoxStyles = {
+    position: 'relative',
+    minWidth: 200,
+    '& .MuiTextField-root': {
+      width: '100%',
+      '& .MuiOutlinedInput-root': {
+        color: 'white',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '12px',
+        '&:hover .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#f97316',
+        },
+        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#f97316',
+        },
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+      },
+      '& .MuiInputLabel-root': {
+        color: 'rgba(255, 255, 255, 0.7)',
+        '&.Mui-focused': {
+          color: '#f97316',
+        },
+      },
     },
-    {
-      name: 'term',
-      label: 'Term',
-      options: ['odd', 'even'] // From schema enum
+    '& .options-dropdown': {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      zIndex: 9999,
+      backgroundColor: '#1a1a1a',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '8px',
+      marginTop: '4px',
+      padding: '8px 0',
+      maxHeight: '200px',
+      overflowY: 'auto',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+      backdropFilter: 'blur(10px)',
+      '&::-webkit-scrollbar': {
+        width: '8px',
+      },
+      '&::-webkit-scrollbar-track': {
+        background: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: '4px',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        background: 'rgba(249, 115, 22, 0.5)',
+        borderRadius: '4px',
+        '&:hover': {
+          background: 'rgba(249, 115, 22, 0.7)',
+        },
+      },
+      '& .option-item': {
+        padding: '8px 16px',
+        color: 'white',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        },
+      },
     },
-    {
-      name: 'semester',
-      label: 'Semester',
-      options: Array.from({ length: 8 }, (_, i) => i + 1) // From schema min:1, max:8
-    },
-    {
-      name: 'section',
-      label: 'Section',
-      options: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
-    },
-    {
-      name: 'role',
-      label: 'Role',
-      options: ['mentor', 'admin', 'superadmin'] // From schema enum
-    }
-  ];
+  };
 
-  const buttons = [
-    { 
-      label: isLoading.search ? 'Searching...' : 'Search',
-      onClick: handleSearch,
-      color: 'primary',
-      disabled: !Object.values(filters).every(x => x !== ''), // disable button if any of the filter values is empty
-      icon: true 
-    },
-    { 
-      label: isLoading.searchAll ? 'Loading...' : 'Search All',
-      onClick: handleSearchAll,
-      color: 'secondary',
-      disabled: !isSearchAllEnabled, // enable button only if at least one filter value is selected
-      icon: true 
-    },
-    { 
-      label: 'Add New Mentor',
-      onClick: onAddNew, // Changed to use prop
-      color: 'primary',
-      disabled: false,
-      icon: false 
-    },
-    { 
-      label: 'Reset',
-      onClick: handleReset,
-      color: 'default',
-      disabled: false,
-      icon: false 
+  const [showYearOptions, setShowYearOptions] = useState(false);
+  const [showSessionOptions, setShowSessionOptions] = useState(false);
+  const yearRef = useRef(null);
+  const sessionRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (yearRef.current && !yearRef.current.contains(event.target)) {
+        setShowYearOptions(false);
+      }
+      if (sessionRef.current && !sessionRef.current.contains(event.target)) {
+        setShowSessionOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const validateAcademicYear = (value) => {
+    if (!value) return false;
+    const regex = /^(\d{4})-(\d{4})$/;
+    if (!regex.test(value)) return false;
+    
+    const [startYear, endYear] = value.split('-').map(Number);
+    return endYear === startYear + 1;
+  };
+
+  const validateAcademicSession = (value) => {
+    const regex = /^(JANUARY|JULY)-(JUNE|DECEMBER)\s(\d{4})$/;
+    if (!regex.test(value)) return false;
+
+    const [, month, ] = value.match(regex);
+    const validMonths = ['JANUARY', 'JULY'];
+    return validMonths.includes(month);
+  };
+
+  const handleAcademicYearInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    // Auto-format while typing
+    if (value.length === 4 && !value.includes('-')) {
+      value = `${value}-${parseInt(value) + 1}`;
     }
-  ];
+    
+    // Update suggestions
+    if (value.length > 0) {
+      setYearSuggestions(generateYearSuggestions(value));
+      setShowYearOptions(true);
+    } else {
+      setYearSuggestions([]);
+      setShowYearOptions(false);
+    }
+
+    setAcademicYear(value);
+    if (validateAcademicYear(value)) {
+      setAcademicSessions(generateAcademicSessions(value));
+    }
+  };
+
+  const handleAcademicSessionInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    // Auto-format while typing
+    if (value.startsWith('JUL')) {
+      value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
+    } else if (value.startsWith('JAN')) {
+      value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
+    }
+    
+    // Update suggestions
+    if (value.length > 0) {
+      setSessionSuggestions(generateSessionSuggestions(value));
+      setShowSessionOptions(true);
+    } else {
+      setSessionSuggestions([]);
+      setShowSessionOptions(false);
+    }
+    
+    setAcademicSession(value);
+  };
+
+  const showAlert = (message) => {
+    console.warn(message);
+  };
+
+  const filterSectionStyles = {
+    wrapper: {
+      background: 'rgba(17, 25, 40, 0.75)',
+      backdropFilter: 'blur(16px)',
+      borderRadius: '24px',
+      padding: '24px',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+    },
+    filterGrid: {
+      display: 'grid',
+      gridTemplateColumns: {
+        xs: '1fr',
+        sm: 'repeat(2, 1fr)',
+      },
+      gap: '16px',
+      mb: 3,
+    },
+    buttonGroup: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '12px',
+      justifyContent: 'flex-end',
+      mt: 2,
+    }
+  };
+
+  useEffect(() => {
+    // Handle any document-dependent code here
+  }, []);
 
   return (
-    <Box sx={{ 
-      display: 'flex',
-      flexDirection: { xs: 'column', md: 'row' },
-      gap: 2,
-      mb: 3,
-      alignItems: { xs: 'stretch', md: 'center' },
-      justifyContent: 'space-between'
-    }}>
-      <Snackbar
-        open={alert.open}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        TransitionComponent={(props) => <Slide {...props} direction="down" />}
-      >
-        <Alert severity={alert.severity} onClose={() => setAlert({ ...alert, open: false })}>
-          <AlertTitle>{alert.severity === 'error' ? 'Error' : 'Success'}</AlertTitle>
-          {alert.message}
-        </Alert>
-      </Snackbar>
-      <Box sx={{ 
-        display: 'flex', 
-        gap: 2, 
-        flexDirection: { xs: 'column', sm: 'row' },
-        flexWrap: 'wrap'
-      }}>
-        {filterControls.map((control) => (
-          <FormControl 
-            key={control.name} 
-            size="small" 
-            sx={filterControlStyles}
-          >
-            <InputLabel>{control.label}</InputLabel>
-            <Select
-              value={filters[control.name] || ''}
-              label={control.label}
-              onChange={(e) => {
-                sessionStorage.removeItem('menteeData'); // Clear session storage on filter change
-                onFilterChange(control.name, e.target.value);
-              }}
-              disabled={control.name === 'semester' && !filters.term}
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {(control.getDynamicOptions 
-                ? control.getDynamicOptions(filters.term)
-                : control.options
-              ).map((option) => (
-                <MenuItem key={option} value={option}>
-                  {typeof option === 'string' 
-                    ? option.charAt(0).toUpperCase() + option.slice(1) 
-                    : `${control.label} ${option}`
-                  }
-                </MenuItem>
+    <Box sx={filterSectionStyles.wrapper}>
+      <Box sx={filterSectionStyles.filterGrid}>
+        <Box ref={yearRef} sx={comboBoxStyles}>
+          <TextField
+            label="Academic Year"
+            value={academicYear}
+            onChange={handleAcademicYearInput}
+            onClick={() => setShowYearOptions(true)}
+            size="small"
+            placeholder="YYYY-YYYY"
+            helperText={
+              <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
+              &quot; Example: 2023-2024&quot;
+              </Box>
+            }
+            sx={{
+              ...textFieldStyles,
+              '& .MuiOutlinedInput-root': {
+                ...textFieldStyles['& .MuiOutlinedInput-root'],
+                background: 'rgba(255, 255, 255, 0.05)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
+                },
+              },
+            }}
+          />
+          {showYearOptions && dropdownRoot && createPortal(
+            <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
+              {(yearSuggestions.length > 0 ? yearSuggestions : 
+                (() => {
+                  const currentYear = new Date().getFullYear();
+                  return [0, 1, 2, 3].map(offset => `${currentYear - offset}-${currentYear - offset + 1}`);
+                })()
+              ).map(year => (
+                <Box
+                  key={year}
+                  className="option-item"
+                  onClick={() => {
+                    setAcademicYear(year);
+                    setShowYearOptions(false);
+                    setAcademicSessions(generateAcademicSessions(year));
+                    // Auto-select first session when year changes
+                    const sessions = generateAcademicSessions(year);
+                    if (sessions.length > 0) {
+                      setAcademicSession(sessions[0]);
+                    }
+                  }}
+                >
+                  {year}
+                </Box>
               ))}
-            </Select>
-          </FormControl>
-        ))}
-      </Box>
-      
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        {buttons.map(button => (
-          <Button 
-            key={button.label}
-            variant="contained" 
-            color={button.color}
-            onClick={button.onClick}
-            disabled={button.disabled}
-            startIcon={button.icon ? <SearchIcon /> : null}
-            sx={buttonStyles(button.color)}
+            </Box>,
+            dropdownRoot
+          )}
+        </Box>
+
+        <Box ref={sessionRef} sx={comboBoxStyles}>
+          <TextField
+            label="Academic Session"
+            value={academicSession}
+            onChange={handleAcademicSessionInput}
+            onClick={() => setShowSessionOptions(true)}
+            size="small"
+            placeholder="MONTH-MONTH YYYY"
+            helperText={
+              <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
+              &quot; Type &apos;jul&apos; or &apos;jan&apos; for quick selection&quot;
+              </Box>
+            }
+            disabled={!academicYear}
+          />
+          {showSessionOptions && dropdownRoot && createPortal(
+            <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
+              {(sessionSuggestions.length > 0 ? sessionSuggestions : academicSessions).map(session => (
+                <Box
+                  key={session}
+                  className="option-item"
+                  onClick={() => {
+                    setAcademicSession(session);
+                    setShowSessionOptions(false);
+                  }}
+                >
+                  {session}
+                </Box>
+              ))}
+            </Box>,
+            dropdownRoot
+          )}
+        </Box>
+
+        <FormControl size="small" sx={filterControlStyles}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={mentorStatus}
+            label="Status"
+            onChange={(e) => setMentorStatus(e.target.value)}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  bgcolor: '#1a1a1a',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  '& .MuiMenuItem-root': {
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: '#2a2a2a',
+                    },
+                    '&.Mui-selected': {
+                      bgcolor: '#333333',
+                      '&:hover': {
+                        bgcolor: '#404040',
+                      }
+                    }
+                  }
+                }
+              }
+            }}
           >
-            {button.label}
-          </Button>
-        ))}
+            <MenuItem value=""><em>None</em></MenuItem>
+            <MenuItem value="active">Active</MenuItem>
+            <MenuItem value="inactive">Inactive</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
+      <Box sx={filterSectionStyles.buttonGroup}>
+        <Button
+          variant="contained"
+          onClick={handleSearch}
+          startIcon={<SearchIcon />}
+          sx={{ 
+            ...buttonStyles('primary'),
+            minWidth: '120px',
+            height: '40px',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 20px rgba(249, 115, 22, 0.2)',
+            },
+          }}
+        >
+          Search
+        </Button>
+        <Button
+          variant="contained"
+          onClick={onAddNew}
+          sx={buttonStyles('secondary')}
+        >
+          Add New Mentor
+        </Button>
+        <Button
+          variant="contained"
+          onClick={onBulkUpload}
+          sx={buttonStyles('secondary')}
+        >
+          Upload File
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleReset}
+          sx={buttonStyles('secondary')}
+        >
+          Reset
+        </Button>
+      </Box>
     </Box>
   );
 };
 
-export default FilterSection;
+export default MentorFilterSection;

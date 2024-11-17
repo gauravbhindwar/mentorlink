@@ -1,51 +1,61 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button } from '@mui/material';
+import { Button, IconButton, Box } from '@mui/material'; // Add Box import
+import DeleteIcon from '@mui/icons-material/Delete';
 
-const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
+const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => {
   const columns = [
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
       width: 70,
       renderCell: (params) => {
-        const index = mentors.findIndex(mentor => mentor.mujid === params.row.mujid);
+        const index = mentors.findIndex(mentor => mentor.MUJid === params.row.MUJid);
         return index + 1;
       },
       sortable: false,
     },
-    { field: 'mujid', headerName: 'Mujid', width: 150 },
+    { field: 'MUJid', headerName: 'MUJid', width: 150 },
     { field: 'name', headerName: 'Name', width: 200 },
     { field: 'email', headerName: 'Email', width: 250 },
-    { field: 'phone', headerName: 'Phone', width: 150 },
-    { field: 'role', headerName: 'Role', width: 120 },
-    { field: 'meetingsScheduled', headerName: 'Meetings', width: 100 },
+    { field: 'phone_number', headerName: 'Phone', width: 150 },
+    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
+    { field: 'academicSession', headerName: 'Session', width: 200 },
+    { field: 'role', headerName: 'Role', width: 150,
+      renderCell: (params) => params.row.role.join(', ')
+    },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 120,
-      headerAlign: 'center',
-      align: 'center',
+      width: 150,
       renderCell: (params) => (
-        <Button
-          size={isSmallScreen ? "small" : "medium"}
-          variant="outlined"
-          onClick={() => onEditClick(params.row)}
-          sx={{ 
-            borderRadius: '12px', 
-            fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
-            textTransform: 'capitalize',
-            margin: 'auto',
-            color: '#f97316',
-            borderColor: '#f97316',
-            '&:hover': {
-              borderColor: '#ea580c',
-              backgroundColor: 'rgba(249, 115, 22, 0.1)'
-            }
-          }}
-        >
-          Edit
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => onEditClick(params.row)}
+            sx={{ 
+              borderRadius: '12px', 
+              fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
+              textTransform: 'capitalize',
+              margin: 'auto',
+              color: '#f97316',
+              borderColor: '#f97316',
+              '&:hover': {
+                borderColor: '#ea580c',
+                backgroundColor: 'rgba(249, 115, 22, 0.1)'
+              }
+            }}
+          >
+            Edit
+          </Button>
+          <IconButton
+            onClick={() => onDeleteClick(params.row.MUJid)}
+            sx={{ color: 'error.main' }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
       ),
     },
   ].map(col => ({
@@ -57,12 +67,18 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
   }));
 
   return (
-    <div style={{ width: '100%', padding: '0 16px', marginBottom: '16px' }}>
+    <div style={{ 
+      width: '100%', 
+      padding: '0 16px', 
+      marginBottom: '16px',
+      position: 'relative',
+      zIndex: 1 // Lower z-index for table
+    }}>
       <div style={{ height: '600px', width: '100%' }}>
         <DataGrid
           rows={mentors}
           columns={columns}
-          getRowId={(row) => row.mujid}
+          getRowId={(row) => row.MUJid}
           autoHeight
           sx={{
             border: 'none',
@@ -70,6 +86,8 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
             backdropFilter: 'blur(10px)',
             borderRadius: 2,
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+            position: 'relative',
+            zIndex: 1,
             '& .MuiDataGrid-main': {
               border: 'none',
               overflow: 'unset',
@@ -91,6 +109,7 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
               '&:focus': {
                 outline: 'none',
               },
+              zIndex: 1
             },
             '& .MuiDataGrid-row': {
               transition: 'all 0.3s ease',
@@ -104,14 +123,17 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
             },
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
               color: '#f97316',
+              color: '#1e293b',
+              borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
+              borderTop: '2px solid rgba(255, 255, 255, 0.1)',
               fontSize: '1rem',
               fontWeight: 600,
               padding: '8px',
               paddingRight: '16px',
               minHeight: '60px !important',
               maxHeight: 'unset !important',
+              zIndex: 1
             },
             '& .MuiDataGrid-columnHeader': {
               '&:focus': {

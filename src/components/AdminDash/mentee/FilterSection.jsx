@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Button, 
@@ -14,11 +14,10 @@ import {
   AlertTitle,
   CircularProgress,
   TextField,
-  Autocomplete
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import axios from 'axios';
+import { createPortal } from 'react-dom';
 
 const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload, mentees }) => {
   const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
@@ -28,11 +27,17 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     add: false,
     bulkAdd: false
   });
-
-  const [academicSessions, setAcademicSessions] = useState([]);
+  const [academicYear, setAcademicYear] = useState('');  const [academicSessions, setAcademicSessions] = useState([]);
   const [currentAcademicYear, setCurrentAcademicYear] = useState('');
   const [currentAcademicSession, setCurrentAcademicSession] = useState('');
   const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
+  const [yearSuggestions, setYearSuggestions] = useState([]);
+  const [sessionSuggestions, setSessionSuggestions] = useState([]);
+  const [showYearOptions, setShowYearOptions] = useState(false);
+  const [showSessionOptions, setShowSessionOptions] = useState(false);
+  const yearRef = useRef(null);
+  const sessionRef = useRef(null);
+  const dropdownRoot = document.getElementById('dropdown-root');
 
   const generateAcademicSessions = (academicYear) => {
     if (!academicYear) return [];
@@ -71,19 +76,24 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
   };
 
   useEffect(() => {
-    if (!filters.academicYear || !filters.academicSession) {
-      const currentYear = getCurrentAcademicYear();
-      const sessions = generateAcademicSessions(currentYear);
-      setAcademicSessions(sessions);
-      setCurrentAcademicYear(currentYear);
-      setCurrentAcademicSession(sessions[0]);
-      
-      Promise.resolve().then(() => {
-        onFilterChange('academicYear', currentYear);
-        onFilterChange('academicSession', sessions[0]);
-      });
-    }
+    const currentYear = getCurrentAcademicYear();
+    setAcademicYear(currentYear);
+    handleFilterChange('academicYear', currentYear);
+    
+    // Don't set initial academic session
+    setCurrentAcademicSession('');
+    handleFilterChange('academicSession', '');
+    
+    // Generate available sessions but don't select one
+    setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
+
+  useEffect(() => {
+    if (!filters.academicYear) {
+      const currentYear = getCurrentAcademicYear();
+      handleFilterChange('academicYear', currentYear);
+    }
+  }, [filters.academicYear, onFilterChange]);
 
   useEffect(() => {
     if (filters.startYear && filters.endYear) {
@@ -159,12 +169,10 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         return;
       }
 
-      // Build query filters - section is optional
+      // Build query filters
       const queryFilters = {
         academicYear: filters.academicYear,
-        academicSession: filters.academicSession,
-        semester: parseInt(filters.semester),
-        ...(filters.section && { section: filters.section }), // Include section only if provided
+        academicSession: filters.academicSession
       };
 
       const response = await axios.get('/api/admin/manageUsers/manageMentee', { 
@@ -283,44 +291,219 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         onFilterChange('academicSession', currentSession);
       });
     }
-  }, []);
+  }, [filters.academicSession, filters.academicYear, onFilterChange]);
 
   const generateSemesterOptions = (academicSession) => {
     if (!academicSession) return [];
-    const sessionParts = academicSession.split(' ');
+    const sessionParts = academicSession.toUpperCase().split(' ');
     const sessionPeriod = sessionParts[0];
-    if (sessionPeriod === 'July-December') {
+    if (sessionPeriod.includes('JULY-DECEMBER')) {
       return [1, 3, 5, 7]; // Odd semesters
-    } else if (sessionPeriod === 'January-June') {
+    } else if (sessionPeriod.includes('JANUARY-JUNE')) {
       return [2, 4, 6, 8]; // Even semesters
     }
     return [];
+  };
+
+  const generateYearSuggestions = (input) => {
+    if (!input) return [];
+    const currentYear = new Date().getFullYear();
+    const suggestions = [];
+    
+    for (let i = 0; i < 5; i++) {
+      const year = currentYear - i;
+      const academicYear = `${year}-${year + 1}`;
+      if (academicYear.startsWith(input)) {
+        suggestions.push(academicYear);
+      }
+    }
+    return suggestions;
+  };
+
+  const generateSessionSuggestions = (input) => {
+    if (!academicYear || !input) return [];
+    const [startYear, endYear] = academicYear.split('-');
+    const possibleSessions = [
+      `JULY-DECEMBER ${startYear}`,
+      `JANUARY-JUNE ${endYear}`
+    ];
+    
+    return possibleSessions.filter(session => 
+      session.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (yearRef.current && !yearRef.current.contains(event.target)) {
+        setShowYearOptions(false);
+      }
+      if (sessionRef.current && !sessionRef.current.contains(event.target)) {
+        setShowSessionOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const validateAcademicYear = (value) => {
+    if (!value) return false;
+    const regex = /^(\d{4})-(\d{4})$/;
+    if (!regex.test(value)) return false;
+    
+    const [startYear, endYear] = value.split('-').map(Number);
+    return endYear === startYear + 1;
+  };
+
+  const handleAcademicYearInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    // Auto-format while typing
+    if (value.length === 4 && !value.includes('-')) {
+      value = `${value}-${parseInt(value) + 1}`;
+    }
+    
+    // Update suggestions
+    if (value.length > 0) {
+      setYearSuggestions(generateYearSuggestions(value));
+      setShowYearOptions(true);
+    } else {
+      setYearSuggestions([]);
+      setShowYearOptions(false);
+    }
+
+    setAcademicYear(value);
+    if (validateAcademicYear(value)) {
+      const sessions = generateAcademicSessions(value);
+      handleFilterChange('academicYear', value);
+      if (sessions.length > 0) {
+        handleFilterChange('academicSession', sessions[0]);
+      }
+    }
+  };
+
+
+  const handleAcademicSessionInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    // Auto-format while typing
+    if (value.startsWith('JUL')) {
+      value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
+    } else if (value.startsWith('JAN')) {
+      value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
+    }
+    
+    // Update suggestions
+    if (value.length > 0) {
+      setSessionSuggestions(generateSessionSuggestions(value));
+      setShowSessionOptions(true);
+    } else {
+      setSessionSuggestions([]);
+      setShowSessionOptions(false);
+    }
+    
+    handleFilterChange('academicSession', value);
   };
 
   const filterControls = [
     {
       name: 'academicYear',
       label: 'Academic Year',
-      options: (() => {
-        const currentYear = new Date().getFullYear();
-        return [
-          `${currentYear}-${currentYear + 1}`,
-          `${currentYear - 1}-${currentYear}`,
-          `${currentYear - 2}-${currentYear - 1}`,
-          `${currentYear - 3}-${currentYear - 2}`
-        ];
-      })()
+      customRender: (
+        <Box ref={yearRef} sx={comboBoxStyles}>
+          <TextField
+            size="small"
+            label="Academic Year"
+            value={academicYear || ''}  // Changed from filters.academicYear
+            onChange={handleAcademicYearInput}
+            onClick={() => setShowYearOptions(true)}
+            placeholder="YYYY-YYYY"
+            helperText={
+              <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
+                &quot; Example: 2023-2024&quot;
+              </Box>
+            }
+            sx={textFieldStyles}
+          />
+          {showYearOptions && dropdownRoot && createPortal(
+            <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
+              {(yearSuggestions.length > 0 ? yearSuggestions : 
+                (() => {
+                  const currentYear = new Date().getFullYear();
+                  return [0, 1, 2, 3].map(offset => `${currentYear - offset}-${currentYear - offset + 1}`);
+                })()
+              ).map(year => (
+                <Box
+                  key={year}
+                  className="option-item"
+                  onClick={() => {
+                    setAcademicYear(year);
+                    handleFilterChange('academicYear', year);
+                    setShowYearOptions(false);
+                    const sessions = generateAcademicSessions(year);
+                    if (sessions.length > 0) {
+                      handleFilterChange('academicSession', sessions[0]);
+                    }
+                  }}
+                >
+                  {year}
+                </Box>
+              ))}
+            </Box>,
+            dropdownRoot
+          )}
+        </Box>
+      )
     },
     {
       name: 'academicSession',
       label: 'Academic Session',
-      options: filters.academicYear ? generateAcademicSessions(filters.academicYear) : [],
-      disabled: !filters.academicYear
+      customRender: (
+        <Box ref={sessionRef} sx={comboBoxStyles}>
+          <TextField
+            size="small"
+            label="Academic Session"
+            value={filters.academicSession || ''}
+            onChange={handleAcademicSessionInput}
+            onClick={() => setShowSessionOptions(true)}
+            placeholder="MONTH-MONTH YYYY"
+            helperText={
+              <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
+                &quot; Type &apos;jul&apos; or &apos;jan&apos; for quick selection&quot;
+              </Box>
+            }
+            disabled={!academicYear}
+            sx={textFieldStyles}
+          />
+          {showSessionOptions && dropdownRoot && createPortal(
+            <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
+              {(sessionSuggestions.length > 0 ? sessionSuggestions : 
+                generateAcademicSessions(academicYear)
+              ).map(session => (
+                <Box
+                  key={session}
+                  className="option-item"
+                  onClick={() => {
+                    handleFilterChange('academicSession', session);
+                    setShowSessionOptions(false);
+                  }}
+                >
+                  {session}
+                </Box>
+              ))}
+            </Box>,
+            dropdownRoot
+          )}
+        </Box>
+      )
     },
     {
       name: 'semester',
       label: 'Semester',
-      options: generateSemesterOptions(filters.academicSession)
+      options: generateSemesterOptions(filters.academicSession),
+      disabled: !filters.academicSession,
+      getDynamicOptions: generateSemesterOptions
     },
     {
       name: 'section',
@@ -650,6 +833,38 @@ const alertStyles = {
   backdropFilter: 'blur(10px)',
   color: 'white',
   border: '1px solid rgba(255, 255, 255, 0.1)'
+};
+
+const comboBoxStyles = {
+  position: 'relative',
+  minWidth: 200,
+  '& .MuiTextField-root': {
+    width: '100%',
+  },
+  '& .options-dropdown': {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    backgroundColor: '#1a1a1a',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '8px',
+    marginTop: '4px',
+    padding: '8px 0',
+    maxHeight: '200px',
+    overflowY: 'auto',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+    '& .option-item': {
+      padding: '8px 16px',
+      color: 'white',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      '&:hover': {
+        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      },
+    },
+  },
 };
 
 export default FilterSection;

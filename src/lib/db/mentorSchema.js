@@ -20,6 +20,8 @@ const mentorsSchema = new mongoose.Schema({
     gender: { type: String }, // Gender of the mentor (optional)
     profile_picture: { type: String }, // URL to profile picture (optional)
     role: { type: [String], enum: ['mentor', 'admin', 'superadmin'], default: ['mentor'] }, // Role of the mentor
+    academicYear: { type: String, required: true }, // Academic year of the mentor
+    academicSession: { type: String, required: true }, // Academic session of the mentor
     created_at: { type: Date, default: Date.now }, // Creation date of the mentor record
     updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentor record
     otp: { type: String },

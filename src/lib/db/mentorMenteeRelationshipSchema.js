@@ -9,7 +9,9 @@ const mentorMenteeRelationshipSchema = new mongoose.Schema({
     session: { type: String, required: true }, // Required
     current_semester: { type: Number, required: true }, // Required
     section: { type: String, required: true, enum: ['A', 'B', 'C', 'D', 'E'] }, // Required with enum
-    academicSession: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicSession' }, // Reference to academic session
+    academicYear: { type: String, required: true }, // Academic year of the relationship
+    academicSession: { type: String, required: true }, // Academic session of the relationship
+    academicSessionRef: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicSession' }, // Reference to academic session
     completed_meetings: [{
         meeting_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicSession.semesters.meetings', required: true }, // Reference to completed meeting
         meeting_date: { type: Date, required: true } // Date when the meeting was completed
@@ -23,7 +25,7 @@ mentorMenteeRelationshipSchema.statics.bulkAssign = async function (assignments)
     const validAssignments = [];
 
     for (const assignment of assignments) {
-        const { mentor_MUJid, mentee_MUJid } = assignment;
+        const { mentor_MUJid, mentee_MUJid, academicYear, academicSession } = assignment;
 
         const mentorExists = await Mentor.exists({ MUJid: mentor_MUJid });
         const menteeExists = await Mentee.exists({ MUJid: mentee_MUJid });
@@ -38,14 +40,14 @@ mentorMenteeRelationshipSchema.statics.bulkAssign = async function (assignments)
             continue;
         }
 
-        validAssignments.push(assignment);
+        validAssignments.push({ mentor_MUJid, mentee_MUJid, academicYear, academicSession });
     }
 
     if (validAssignments.length > 0) {
-        const bulkOps = validAssignments.map(({ mentor_MUJid, mentee_MUJid, session, current_semester, section }) => ({
+        const bulkOps = validAssignments.map(({ mentor_MUJid, mentee_MUJid, academicYear, academicSession, session, current_semester, section }) => ({
             updateOne: {
                 filter: { mentor_MUJid, mentee_MUJid },
-                update: { mentor_MUJid, mentee_MUJid, session, current_semester, section },
+                update: { mentor_MUJid, mentee_MUJid, academicYear, academicSession, session, current_semester, section },
                 upsert: true
             }
         }));
@@ -56,7 +58,7 @@ mentorMenteeRelationshipSchema.statics.bulkAssign = async function (assignments)
 };
 
 mentorMenteeRelationshipSchema.statics.assignMentor = async function (assignment) {
-    const { mentor_MUJid, mentee_MUJid, session, current_semester, section } = assignment;
+    const { mentor_MUJid, mentee_MUJid, academicYear, session, current_semester, section } = assignment;
 
     const mentorExists = await Mentor.exists({ MUJid: mentor_MUJid });
     const menteeExists = await Mentee.exists({ MUJid: mentee_MUJid });
@@ -70,15 +72,15 @@ mentorMenteeRelationshipSchema.statics.assignMentor = async function (assignment
     }
 
     // Create or update the academic session
-    const academicSession = await AcademicSession.findOneAndUpdate(
+    const academicSessionRef = await AcademicSession.findOneAndUpdate(
         { start_year: session.split('-')[0], end_year: session.split('-')[1] },
         { $set: { start_year: session.split('-')[0], end_year: session.split('-')[1] } },
         { upsert: true, new: true }
     );
 
     return this.updateOne(
-        { mentor_MUJid, mentee_MUJid, session, current_semester, section },
-        { mentor_MUJid, mentee_MUJid, session, current_semester, section, academicSession: academicSession._id },
+        { mentor_MUJid, mentee_MUJid, academicYear, session, current_semester, section },
+        { mentor_MUJid, mentee_MUJid, academicYear, session, current_semester, section, academicSessionRef: academicSessionRef._id },
         { upsert: true }
     );
 };

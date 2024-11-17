@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Container, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -8,8 +8,9 @@ import { useDropzone } from 'react-dropzone';
 import MenteeTable from './MenteeTable';
 import FilterSection from './FilterSection';
 import { Toaster } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion} from 'framer-motion';
 import axios from 'axios';
+import BulkUploadPreview from '../common/BulkUploadPreview';
 
 const calculateCurrentSemester = (yearOfRegistration) => {
   const currentDate = new Date();
@@ -124,7 +125,6 @@ const MenteeManagement = () => {
   const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, mentee: null });
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
 
   const [assignDialog, setAssignDialog] = useState(false);
   const [assignmentDetails, setAssignmentDetails] = useState({
@@ -137,41 +137,64 @@ const MenteeManagement = () => {
 
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewData, setPreviewData] = useState({ data: [], errors: [] });
+  const [showPreview, setShowPreview] = useState(false);
 
   const [tableVisible, setTableVisible] = useState(false);
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
     if (!file) return;
-
+  
     const validTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
-
+  
     if (!validTypes.includes(file.type)) {
       showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
       return;
     }
-
+  
     setUploading(true);
+    setBulkUploadDialog(false); // Close the upload dialog
+    
     const formData = new FormData();
     formData.append('file', file);
-
+    formData.append('type', 'mentee'); // Add the type parameter
+  
     try {
-      const response = await axios.post('/api/admin/manageUsers/bulkUpload', formData, {
+      const previewResponse = await axios.post('/api/admin/manageUsers/previewUpload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);
         }
       });
+  
+      setPreviewData(previewResponse.data);
+      setShowPreview(true);
+    } catch (error) {
+      showAlert(error.response?.data?.error || error.message || 'Error processing file', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleConfirmUpload = async () => {
+    setUploading(true);
+    try {
+      const response = await axios.post('/api/admin/manageUsers/bulkUpload', {
+        data: previewData.data,
+        type: 'mentee' // Explicitly set type for mentees
+      });
 
       showAlert('File uploaded successfully!', 'success');
+      setShowPreview(false);
       handleBulkUploadClose();
-      // Refresh the mentee list
-      if (handleSearch) {
-        handleSearch([]);
-      }
+      handleSearch([]);
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error uploading file', 'error');
     } finally {
@@ -1897,6 +1920,15 @@ const MenteeManagement = () => {
                 </DialogActions>        
               </Dialog>        
               {renderBulkUploadDialog()}        
+              <BulkUploadPreview
+                open={showPreview}
+                onClose={() => setShowPreview(false)}
+                data={previewData.data}
+                errors={previewData.errors}
+                onConfirm={handleConfirmUpload}
+                isUploading={uploading}
+                type="mentee" // Specify the type as mentee
+              />
               {/* Toast notifications */}        
               <Toaster position="top-right" />      
             </div>    
@@ -1904,3 +1936,4 @@ const MenteeManagement = () => {
         );};
 
           export default MenteeManagement;
+

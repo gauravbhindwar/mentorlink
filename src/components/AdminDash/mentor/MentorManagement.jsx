@@ -1,6 +1,6 @@
-"use client";
-import { useState} from 'react';
-import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle, LinearProgress } from '@mui/material';
+'use client';
+import { useState, useEffect } from 'react';
+import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, Divider } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -8,30 +8,37 @@ import { useDropzone } from 'react-dropzone';
 import MentorTable from './MentorTable';
 import FilterSection from './MentorFilterSection';
 import { Toaster } from 'react-hot-toast';
-import axios from 'axios';
 import { motion } from 'framer-motion';
-
+import axios from 'axios';
+import BulkUploadPreview from '../common/BulkUploadPreview';
 
 const MentorManagement = () => {
   const [mentors, setMentors] = useState([]);
-  const [year, setYear] = useState('');
-  const [term, setTerm] = useState('');
-  const [semester, setSemester] = useState('');
-  const [section, setSection] = useState('');
-  const [isFilterSelected, setIsFilterSelected] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [mentorDetails, setMentorDetails] = useState({
-    mujid: '',
     name: '',
     email: '',
+    MUJid: '',
+    phone_number: '',
+    address: '',
+    gender: '',
+    profile_picture: '',
+    role: ['mentor'],
+    academicYear: '',
+    academicSession: ''
   });
-  const [loading, setLoading] = useState(false); // Set initial loading state to false
-  const [error, setError] = useState(null);
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [tableVisible, setTableVisible] = useState(false);
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
+  const [academicSessions, setAcademicSessions] = useState([]);
+  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
+  const [previewData, setPreviewData] = useState({ data: [], errors: [] });
+  const [showPreview, setShowPreview] = useState(false);
 
   const theme = createTheme({
     palette: {
@@ -109,28 +116,197 @@ const MentorManagement = () => {
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const handleAddMentor = async () => {
+  // Add these variables for dropzone
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploading, setUploading] = useState(false); // Changed from setUploading to uploading
+
+  const handleBulkUploadClose = () => {
+    setBulkUploadDialog(false);
+    setUploadProgress(0);
+    setUploading(false);
+  };
+
+  const handleFileUpload = async (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    const validTypes = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
+      return;
+    }
+
+    setUploading(true);
+    setBulkUploadDialog(false); // Close the upload dialog
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'mentor'); // Add the type parameter
+
     try {
-      setLoading(true);
-      const response = await axios.post('/api/admin/manageMentor', mentorDetails);
-      setMentors(prev => [...prev, response.data]);
-      setOpenDialog(false);
-      setMentorDetails({ mujid: '', name: '', email: '' });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add mentor');
+      const previewResponse = await axios.post('/api/admin/manageUsers/previewUpload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+
+      setPreviewData(previewResponse.data);
+      setShowPreview(true);
+    } catch (error) {
+      showAlert(error.response?.data?.error || error.message || 'Error processing file', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleConfirmUpload = async () => {
+    setUploading(true);
+    try {
+      const response = await axios.post('/api/admin/manageUsers/bulkUpload', {
+        data: previewData.data,
+        type: 'mentor' // Explicitly set type for mentors
+      });
+
+      showAlert('File uploaded successfully!', 'success');
+      setShowPreview(false);
+      handleBulkUploadClose();
+      fetchMentors();
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error uploading file', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Move useDropzone after handleFileUpload definition
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+    },
+    multiple: false
+  });
+
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentor');
+      setMentors(response.data.mentors);
+      setTableVisible(true);
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error fetching mentors', 'error');
+      setMentors([]);
+      setTableVisible(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditClick = (mentor) => {
-    setSelectedMentor(mentor);
-    setEditDialog(true);
+  const handleAddMentor = async () => {
+    try {
+      const response = await axios.post('/api/admin/manageUsers/manageMentor', mentorDetails);
+      showAlert('Mentor added successfully', 'success');
+      setOpenDialog(false);
+      fetchMentors();
+      setMentorDetails({
+        name: '',
+        email: '',
+        MUJid: '',
+        phone_number: '',
+        address: '',
+        gender: '',
+        profile_picture: '',
+        role: ['mentor'],
+        academicYear: '',
+        academicSession: ''
+      });
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error adding mentor', 'error');
+    }
   };
 
-  const handleEditClose = () => {
-    setSelectedMentor(null);
-    setEditDialog(false);
+  const handleEditMentor = async () => {
+    try {
+      await axios.put('/api/admin/manageUsers/manageMentor', selectedMentor);
+      showAlert('Mentor updated successfully', 'success');
+      setEditDialog(false);
+      fetchMentors();
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error updating mentor', 'error');
+    }
+  };
+
+  const handleDeleteMentor = async (MUJid) => {
+    try {
+      await axios.delete('/api/admin/manageUsers/manageMentor', { data: { MUJid } });
+      showAlert('Mentor deleted successfully', 'success');
+      fetchMentors();
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error deleting mentor', 'error');
+    }
+  };
+
+  const getCurrentAcademicYear = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+    const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
+    const endYear = startYear + 1;
+    return `${startYear}-${endYear}`;
+  };
+
+  const generateAcademicSessions = (academicYear) => {
+    if (!academicYear) return [];
+    const [startYear, endYear] = academicYear.split('-');
+    return [
+      `JULY-DECEMBER ${startYear}`,
+      `JANUARY-JUNE ${endYear}`
+    ];
+  };
+
+  useEffect(() => {
+    const currentAcadYear = getCurrentAcademicYear();
+    const sessions = generateAcademicSessions(currentAcadYear);
+    setAcademicSessions(sessions);
+    setMentorDetails(prev => ({
+      ...prev,
+      academicYear: currentAcadYear,
+      academicSession: sessions[0]
+    }));
+  }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'MUJid') {
+      // Ensure MUJid is capital letters and numbers only
+      const formattedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      setMentorDetails(prev => ({
+        ...prev,
+        [name]: formattedValue
+      }));
+    } else if (name === 'academicYear') {
+      const sessions = generateAcademicSessions(value);
+      setAcademicSessions(sessions);
+      setMentorDetails(prev => ({
+        ...prev,
+        [name]: value,
+        academicSession: sessions[0]
+      }));
+    } else {
+      setMentorDetails(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleEditInputChange = (e) => {
@@ -141,144 +317,13 @@ const MentorManagement = () => {
     }));
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setMentorDetails(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleUpdate = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.patch('/api/admin/manageMentor', selectedMentor);
-      setMentors(prevMentors => 
-        prevMentors.map(mentor => 
-          mentor.mujid === selectedMentor.mujid ? response.data : mentor
-        )
-      );
-      handleEditClose();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update mentor');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileUpload = async (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = [
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    ];
-    if (!validTypes.includes(file.type)) {
-      showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
-      return;
-    }
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await axios.post('/api/admin/manageMentor/upload', formData, {
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-        }
-      });
-
-      const { results } = response.data;
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
-
-      showAlert(
-        `Upload complete: ${successful} mentors added/updated, ${failed} failed`,
-        failed > 0 ? 'warning' : 'success'
-      );
-
-      // Refresh the mentor list
-      if (handleSearch) {
-        handleSearch([]);
-      }
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error uploading file', 'error');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      setOpenDialog(false);
-    }
-  };
-
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: handleFileUpload,
-    accept: {
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-    },
-    multiple: false
-  });
-
-  const fetchMentors = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/admin/manageMentor');
-      setMentors(response.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch mentors');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = () => {
-    fetchMentors(); // Fetch data when search is triggered
-  };
-
-  const handleFilterChange = (filterName, value) => {
-    switch (filterName) {
-      case 'year':
-        setYear(value);
-        break;
-      case 'term':
-        setTerm(value);
-        // Reset semester when term changes
-        setSemester('');
-        break;
-      case 'semester':
-        setSemester(value);
-        break;
-      case 'section':
-        setSection(value);
-        break;
-      default:
-        break;
-    }
-    setMentors([]); // Clear data when filter options change
-  };
-
-  const handleReset = () => {
-    setYear('');
-    setTerm('');
-    setSemester('');
-    setSection('');
-    setIsFilterSelected(false);
-  };
-
-  const filterConfig = {
-    year,
-    term,
-    semester,
-    section
-  };
-
   const showAlert = (message, severity) => {
     setAlert({ open: true, message, severity });
     setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
+  };
+
+  const handleBulkUploadOpen = () => {
+    setBulkUploadDialog(true);
   };
 
   return (
@@ -361,12 +406,23 @@ const MentorManagement = () => {
               className="bg-white/5 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/10"
             >
               <FilterSection 
-                filters={filterConfig}
-                onFilterChange={handleFilterChange}
                 onSearch={handleSearch}
-                onSearchAll={fetchMentors}
                 onAddNew={() => setOpenDialog(true)}
-                onReset={handleReset}
+                onBulkUpload={handleBulkUploadOpen}
+                filters={{
+                  academicYear,
+                  academicSession,
+                }}
+                onFilterChange={(name, value) => {
+                  switch(name) {
+                    case 'academicYear':
+                      setAcademicYear(value);
+                      break;
+                    case 'academicSession':
+                      setAcademicSession(value);
+                      break;
+                  }
+                }}
               />
             </motion.div>
 
@@ -376,17 +432,24 @@ const MentorManagement = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
               className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden mb-8"
+              style={{ position: 'relative', zIndex: 1 }} // Add this to ensure table stays below filters
             >
               <Box sx={{ 
                 overflowX: 'auto', 
                 minHeight: '150px',
                 maxHeight: 'calc(100vh - 400px)',
-                overflowY: 'auto' 
+                overflowY: 'auto',
+                position: 'relative',
+                zIndex: 1
               }}>
                 {!loading && mentors.length > 0 && (
                   <MentorTable 
                     mentors={mentors}
-                    onEditClick={handleEditClick}
+                    onEditClick={(mentor) => {
+                      setSelectedMentor(mentor);
+                      setEditDialog(true);
+                    }}
+                    onDeleteClick={handleDeleteMentor}
                     isSmallScreen={isSmallScreen}
                   />
                 )}
@@ -453,18 +516,129 @@ const MentorManagement = () => {
                 },
                 '& .MuiTextField-root': dialogStyles.textField,
               }}>
-                {Object.entries(mentorDetails).map(([key, value]) => (
-                  <TextField
-                    key={key}
-                    label={key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
-                    name={key}
-                    type={key.includes('email') ? 'email' : 'text'}
-                    value={value}
-                    onChange={handleInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                ))}
+                <TextField
+                  label="MUJid"
+                  name="MUJid"
+                  value={mentorDetails.MUJid}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={mentorDetails.name}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={mentorDetails.email}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Phone Number"
+                  name="phone_number"
+                  value={mentorDetails.phone_number}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  select
+                  label="Gender"
+                  name="gender"
+                  value={mentorDetails.gender}
+                  onChange={handleInputChange}
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </TextField>
+                <TextField
+                  select
+                  label="Role"
+                  name="role"
+                  value={mentorDetails.role}
+                  onChange={handleInputChange}
+                  SelectProps={{ multiple: true }}
+                >
+                  <MenuItem value="mentor">Mentor</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="superadmin">Super Admin</MenuItem>
+                </TextField>
+                <TextField
+                  label="Academic Year"
+                  name="academicYear"
+                  select
+                  value={mentorDetails.academicYear}
+                  onChange={handleInputChange}
+                  required
+                  SelectProps={{
+                    MenuProps: {
+                      PaperProps: {
+                        sx: {
+                          bgcolor: '#1a1a1a',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          '& .MuiMenuItem-root': {
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: '#2a2a2a',
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: '#333333',
+                              '&:hover': {
+                                bgcolor: '#404040',
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }}
+                >
+                  {(() => {
+                    const currentYear = new Date().getFullYear();
+                    return [
+                      `${currentYear}-${currentYear + 1}`,
+                      `${currentYear - 1}-${currentYear}`,
+                      `${currentYear - 2}-${currentYear - 1}`,
+                      `${currentYear - 3}-${currentYear - 2}`
+                    ].map(year => (
+                      <MenuItem key={year} value={year}>{year}</MenuItem>
+                    ));
+                  })()}
+                </TextField>
+                <TextField
+                  label="Academic Session"
+                  name="academicSession"
+                  select
+                  value={mentorDetails.academicSession || ''}
+                  onChange={handleInputChange}
+                  disabled={!mentorDetails.academicYear}
+                  required
+                  SelectProps={{
+                    MenuProps: {
+                      PaperProps: {
+                        sx: {
+                          bgcolor: '#1a1a1a',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          '& .MuiMenuItem-root': {
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: '#2a2a2a',
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }}
+                >
+                  {academicSessions.map(session => (
+                    <MenuItem key={session} value={session}>{session}</MenuItem>
+                  ))}
+                </TextField>
               </Box>
 
               {/* Divider */}
@@ -579,12 +753,154 @@ const MentorManagement = () => {
         {/* Edit Dialog */}
         <Dialog 
           open={editDialog} 
-          onClose={handleEditClose}
-          // ...existing dialog props...
+          onClose={() => setEditDialog(false)}
+          maxWidth="md"
+          fullWidth
           PaperProps={{ sx: dialogStyles.paper }}
         >
-          {/* ...existing dialog content... */}
+          <DialogTitle sx={dialogStyles.title}>
+            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+              Edit Mentor
+            </Typography>
+            <IconButton
+              aria-label="close"
+              onClick={() => setEditDialog(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&:hover': {
+                  color: '#f97316',
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={dialogStyles.content}>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 4,
+              minHeight: '60vh',
+            }}>
+              {/* Left side - Form */}
+              <Box sx={{ 
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                overflowY: 'auto',
+                pr: 2,
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: 'rgba(249, 115, 22, 0.5)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    background: 'rgba(249, 115, 22, 0.7)',
+                  },
+                },
+                '& .MuiTextField-root': dialogStyles.textField,
+              }}>
+                <TextField
+                  label="MUJid"
+                  name="MUJid"
+                  value={selectedMentor?.MUJid || ''}
+                  onChange={handleEditInputChange}
+                  required
+                />
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={selectedMentor?.name || ''}
+                  onChange={handleEditInputChange}
+                  required
+                />
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={selectedMentor?.email || ''}
+                  onChange={handleEditInputChange}
+                  required
+                />
+                <TextField
+                  label="Phone Number"
+                  name="phone"
+                  value={selectedMentor?.phone_number || ''}
+                  onChange={handleEditInputChange}
+                  required
+                />
+                <TextField
+                  select
+                  label="Gender"
+                  name="gender"
+                  value={selectedMentor?.gender || ''}
+                  onChange={handleEditInputChange}
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </TextField>
+                <TextField
+                  select
+                  label="Role"
+                  name="role"
+                  value={selectedMentor?.role || []}
+                  onChange={handleEditInputChange}
+                  SelectProps={{ multiple: true }}
+                >
+                  <MenuItem value="mentor">Mentor</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="superadmin">Super Admin</MenuItem>
+                </TextField>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={dialogStyles.actions}>
+            <Button 
+              onClick={() => setEditDialog(false)}
+              variant="outlined"
+              sx={{
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleEditMentor}
+              variant="contained"
+              sx={{
+                bgcolor: '#f97316',
+                '&:hover': {
+                  bgcolor: '#ea580c',
+                },
+              }}
+            >
+              Update Mentor
+            </Button>
+          </DialogActions>
         </Dialog>
+        <BulkUploadPreview
+          open={showPreview}
+          onClose={() => setShowPreview(false)}
+          data={previewData.data}
+          errors={previewData.errors}
+          onConfirm={handleConfirmUpload}
+          isUploading={uploading}
+          type="mentor" // Specify the type as mentor
+        />
       </div>
     </ThemeProvider>
   );

@@ -1,16 +1,31 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Mentor, Admin } from "../../../../../lib/dbModels"; // Ensure Admin is imported
+import { Mentor, Admin } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
-// Define the Joi schema for validation
+// Updated schema with proper validations
 const mentorSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
-  MUJid: Joi.string().required(), // Remove strict pattern for testing
-  phone_number: Joi.string().required(), // Remove strict pattern for testing
-  profile_picture: Joi.string().optional(),
-  role: Joi.array().items(Joi.string().valid('mentor', 'admin', 'superadmin')).default(['mentor']) // Allow 'admin' and 'superadmin' as valid values
+  MUJid: Joi.string().required(),
+  phone_number: Joi.string().required(),
+  address: Joi.string().allow('', null),
+  gender: Joi.string().valid('male', 'female', 'other').allow('', null),
+  profile_picture: Joi.string().allow('', null),
+  role: Joi.array().items(Joi.string().valid('mentor', 'admin', 'superadmin')).default(['mentor']),
+  academicYear: Joi.string()
+    .pattern(/^\d{4}-\d{4}$/)
+    .custom((value, helpers) => {
+      const [startYear, endYear] = value.split('-').map(Number);
+      if (endYear !== startYear + 1) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    })
+    .allow('', null),
+  academicSession: Joi.string()
+    .pattern(/^(JULY-DECEMBER|JANUARY-JUNE)\s\d{4}$/)
+    .allow('', null)
 });
 
 // Utility function to handle errors
@@ -18,123 +33,79 @@ const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request to create new mentors
+// POST request with better error handling
 export async function POST(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
-    });
-    let requestBody;
-
-    // Try reading the request directly first
-    try {
-      requestBody = await req.json();
-    } catch (parseError) {
-      console.error('Direct JSON parsing failed:', parseError);
-      
-      // Fallback to manual text parsing
-      try {
-        const rawText = await req.text();
-        console.log('Raw text received:', rawText);
-        
-        // Clean the input if needed
-        const cleanedText = rawText.trim();
-        requestBody = JSON.parse(cleanedText);
-      } catch (textError) {
-        console.error('Text parsing failed:', textError);
-        return createErrorResponse("Invalid JSON format. Please check your payload formatting.", 400);
-      }
-    }
-
-    console.log('Final parsed request body:', requestBody);
-
-    // Ensure requestBody is an array
-    if (!Array.isArray(requestBody)) {
-      requestBody = [requestBody];
-    }
-
-    if (requestBody.length === 0) {
-      return createErrorResponse("Empty request body", 400);
-    }
-
-    // Validate each mentor object
-    const validationErrors = [];
-    for (let i = 0; i < requestBody.length; i++) {
-      console.log(`Validating entry ${i + 1}:`, requestBody[i]);
-      const { error, value } = mentorSchema.validate(requestBody[i], { 
-        abortEarly: false,
-        stripUnknown: true 
-      });
-      if (error) {
-        console.error(`Validation error for entry ${i + 1}:`, error);
-        validationErrors.push(`Entry ${i + 1}: ${error.details.map(d => d.message).join(', ')}`);
-      }
-    }
-
-    if (validationErrors.length > 0) {
-      console.log('Validation errors:', validationErrors);
-      return createErrorResponse(validationErrors.join('; '), 400);
-    }
-
-    // Check for duplicate emails or MUJids
-    const emails = requestBody.map(mentor => mentor.email);
-    const mujIds = requestBody.map(mentor => mentor.MUJid);
+    await connect();
+    let data = await req.json();
     
+    // Handle both single object and array of objects
+    const mentorsToCreate = Array.isArray(data) ? data : [data];
+    
+    // Validate all mentors
+    const validationErrors = [];
+    mentorsToCreate.forEach((mentor, index) => {
+      const { error } = mentorSchema.validate(mentor);
+      if (error) validationErrors.push(`Mentor ${index + 1}: ${error.message}`);
+    });
+    
+    if (validationErrors.length > 0) {
+      return NextResponse.json({ error: validationErrors }, { status: 400 });
+    }
+
+    // Check for duplicates
     const existingMentors = await Mentor.find({
-      $or: [
-        { email: { $in: emails } },
-        { MUJid: { $in: mujIds } }
-      ]
+      $or: mentorsToCreate.map(m => ({ 
+        $or: [
+          { email: m.email }, 
+          { MUJid: m.MUJid }
+        ]
+      }))
     });
 
     if (existingMentors.length > 0) {
-      return createErrorResponse("One or more mentors with given email or MUJid already exist", 400);
+      return NextResponse.json({
+        error: "Duplicate entries found for email or MUJid"
+      }, { status: 409 });
     }
 
-    // Create all mentors
-    const createdMentors = await Mentor.insertMany(requestBody);
-
-    // If the user is also an admin, store in Admin collection
-    for (const mentor of requestBody) {
-      if (mentor.role && (mentor.role.includes('admin') || mentor.role.includes('superadmin'))) {
-        const existingAdmin = await Admin.findOne({
-          $or: [{ email: mentor.email }, { MUJid: mentor.MUJid }]
-        });
-        if (!existingAdmin) {
-          const newAdmin = new Admin(mentor);
-          await newAdmin.save();
-        }
-      }
-    }
-
-    return NextResponse.json(
-      { message: "Mentors added successfully", mentors: createdMentors },
-      { status: 201 }
+    const createdMentors = await Mentor.insertMany(mentorsToCreate);
+    
+    // Handle admin roles
+    const adminsToCreate = mentorsToCreate.filter(m => 
+      m.role.some(r => ['admin', 'superadmin'].includes(r))
     );
+    
+    if (adminsToCreate.length > 0) {
+      await Admin.insertMany(adminsToCreate);
+    }
+
+    return NextResponse.json({ 
+      message: "Mentors created successfully",
+      mentors: createdMentors 
+    }, { status: 201 });
   } catch (error) {
-    console.error("Error in POST handler:", error);
-    return createErrorResponse(error.message || "Server error processing request", 500);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// GET request to fetch all mentors
-export async function GET() {
+// GET request with improved filtering
+export async function GET(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
+    await connect();
+    const { searchParams } = new URL(req.url);
+    const query = {};
+    
+    // Add filters only if they exist in searchParams
+    ['academicYear', 'academicSession'].forEach(param => {
+      const value = searchParams.get(param);
+      if (value) query[param] = value.toUpperCase();
     });
-    const mentors = await Mentor.find({});
-    const totalMentors = await Mentor.countDocuments();
 
-    return NextResponse.json(
-      { mentors, totalMentors },
-      { status: 200 }
-    );
+    const mentors = await Mentor.find(query);
+    return NextResponse.json({ mentors, total: mentors.length }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching mentors:", error);
-    return createErrorResponse(error.message || "Failed to fetch mentors", 500);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
