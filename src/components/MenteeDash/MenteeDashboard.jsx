@@ -329,6 +329,14 @@ const cards = [
     shadowColor: "rgba(16, 185, 129, 0.4)",
     onClick: () => {},
   },
+  {
+    title: "View Past Meetings",
+    icon: "📊",
+    description: "View the meeting reports for previously held meetings",
+    gradient: "from-purple-500 via-violet-500 to-indigo-500",
+    shadowColor: "rgba(147, 51, 234, 0.4)",
+    onClick: () => {},
+  },
 ];
 
 export default MenteeDashboard;
