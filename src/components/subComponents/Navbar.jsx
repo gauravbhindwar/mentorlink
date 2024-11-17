@@ -47,7 +47,7 @@ const Navbar = () => {
 
     const handleDashboard = () => {
         if (role === 'admin' || role === 'superadmin') {
-            router.push('/pages/admindashboard')
+            router.push('/pages/admin/admindashboard')
         } else if (role === 'mentor') {
             router.push('/pages/mentordashboard')
         } else if (role === 'mentee') {

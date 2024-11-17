@@ -1,7 +1,7 @@
-import Mentor from "./db/mentorSchema";
-import Mentee from "./db/menteeSchema";
-import Admin from "./db/adminSchema";
-import Meeting from "./db/meetingSchema";
-import HistoricalData from "./db/historicalDataSchema";
+import { Mentor } from "./db/mentorSchema";
+import { Mentee } from "./db/menteeSchema";
+import { MentorMenteeRelationship } from "./db/mentorMenteeRelationshipSchema";
+import { AcademicSession } from "./db/academicSessionSchema";
+import { Admin } from "./db/adminSchema"; // Ensure Admin is imported
 
-export { Mentor, Mentee, Admin, Meeting, HistoricalData, year };
+export { Mentor, Mentee, MentorMenteeRelationship, AcademicSession, Admin };

@@ -1,123 +1,66 @@
 import mongoose from "mongoose";
-import validator from "validator";
 
-const { Schema } = mongoose;
-
-const menteeSchema = new Schema(
-    {
-        mujid: {
-            type: String,
-            required: true,
-            unique: true,
-            validate: [validator.isAlphanumeric, "mujid contains invalid characters"],
-        },
-        yearOfRegistration: {
-            type: Number,
-            required: true,
-            validate: {
-                validator: (value) => {
-                    const currentYear = new Date().getFullYear();
-                    return value >= 1900 && value <= currentYear;
-                },
-                message: "Invalid year of registration",
+const menteesSchema = new mongoose.Schema({
+    name: { type: String, required: true }, // Full name of the mentee
+    email: { type: String, required: true, unique: true }, // Unique email for the mentee
+    MUJid: { type: String, required: true, unique: true  ,
+        validate: {
+        validator: (value) => /^[A-Z0-9]+$/.test(value),
+        message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
+    },}, // Unique MUJID for the mentee
+    phone: { 
+        type: String, 
+        required: true,
+        validate: {
+            validator: (value) => /^\d{10}$/.test(value),
+            message: "Phone number must be a 10-digit number"
+        }
+    }, // Contact number of the mentee
+    address: { type: String, default: '' }, // Change to have a default empty string
+    dob: { type: Date, required: false }, // Change to not required
+    gender: { type: String }, // Gender of the mentee (optional)
+    profile_picture: { type: String }, // URL to profile picture (optional)
+    yearOfRegistration: {    type: Number,
+        required: true,
+        validate: {
+            validator: (value) => {
+                const currentYear = new Date().getFullYear();
+                return value >= 1900 && value <= currentYear;
             },
+            message: "Invalid year of registration",
+        },}, // Year of registration for the mentee
+    section: { type: String, required: true },
+    current_semester: { type: Number, required: true, min: 1, max: 8 },
+    startYear: { type: Number, required: true }, // Add startYear field
+    endYear: { type: Number, required: true }, // Add endYear field
+    academicSession: { type: String, required: true }, // Add academicSession field
+    parents: {
+        father: {
+            name: { type: String },
+            email: { type: String },
+            phone: { type: String },
+            alternatePhone: { type: String }
         },
-        year: {
-            type: Number,
-            required: false,
-            validate: {
-                validator: (value) => {
-                    const currentYear = new Date().getFullYear();
-                    return value >= currentYear - 20 && value <= currentYear;
-                },
-                message: "Year must be within the past 20 years and the current year",
-            },
+        mother: {
+            name: { type: String },
+            email: { type: String },
+            phone: { type: String },
+            alternatePhone: { type: String }
         },
-        term: {
-            type: String,
-            enum: ["odd", "even"],
-            required: false,
-        },
-        semester: {
-            type: Number,
-            min: 1,
-            max: 8,
-            required: false,
-        },
-        section: {
-            type: String,
-            required: false,
-        },
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-            validate: {
-                validator: (value) => validator.isAlpha(value.replace(/\s/g, "")),
-                message: "Name contains invalid characters",
-            },
-        },
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true,
-            lowercase: true,
-            validate: [validator.isEmail, "Invalid email format"],
-        },
-        phone: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-        fatherName: {
-            type: String,
-            required: true,
-            trim: true,
-            validate: {
-                validator: (value) => validator.isAlpha(value.replace(/\s/g, "")),
-                message: "Father's name contains invalid characters",
-            },
-        },
-        motherName: {
-            type: String,
-            required: true,
-            trim: true,
-            validate: {
-                validator: (value) => validator.isAlpha(value.replace(/\s/g, "")),
-                message: "Mother's name contains invalid characters",
-            },
-        },
-        dateOfBirth: {
-            type: String,
-            required: false,
-        },
-        parentsPhone: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-        parentsEmail: {
-            type: String,
-            required: true,
-            trim: true,
-            lowercase: true,
-            validate: [validator.isEmail, "Invalid parents' email format"],
-        },
-        mentorMujid: {
-            type: String,
-            required: true,
-        },
-        otp: { type: String },
-        otpExpires: { type: Date },
-        isOtpUsed: { type: Boolean, default: false }
+        guardian: {
+            name: { type: String },
+            email: { type: String },
+            phone: { type: String },
+            relation: { type: String }
+        }
     },
-    { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } }
-);
+    created_at: { type: Date, default: Date.now }, // Creation date of the mentee record
+    updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentee record
+    otp: { type: String },
+    otpExpires: { type: Date },
+    isOtpUsed: { type: Boolean, default: false }
+});
 
-menteeSchema.index({ email: 1 }, { unique: true, sparse: true });
-menteeSchema.index({ mujid: 1 }, { unique: true, sparse: true });
+const Mentee = mongoose.models.Mentee || mongoose.model("Mentee", menteesSchema);
 
-const Mentee = mongoose.models.Mentee || mongoose.model("Mentee", menteeSchema);
-
-export default Mentee;
+export { Mentee };

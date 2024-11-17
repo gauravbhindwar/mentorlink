@@ -47,7 +47,6 @@ const Login = ({ role }) => {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [showEmail, setShowEmail] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
   const [resendEnabled, setResendEnabled] = useState(false);
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false); // Add loading state
@@ -115,7 +114,7 @@ const Login = ({ role }) => {
         const response = await axios.post("/api/auth/send-otp", {
           email: email,
           role: role,
-        });
+        }); 
         if (response.status === 200) {
           showToast.success("OTP sent successfully");
           setOtpSent(true);
@@ -165,8 +164,8 @@ const Login = ({ role }) => {
           // Redirect based on role
           const dashboardPath = 
             role === "mentor" ? "/pages/mentordashboard" :
-            role === "mentee" ? "/" :
-            "/pages/admindashboard";
+            role === "mentee" ? "/pages/menteedashboard" :
+            "/pages/admin/admindashboard";
 
           router.push(dashboardPath);
         } else {
@@ -323,25 +322,6 @@ const Login = ({ role }) => {
                             disabled={otpSent}
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
-                            {/* <motion.button
-                              type="button"
-                              className="p-2 rounded-full
-                                       text-gray-500 hover:text-orange-500 
-                                       focus:outline-none
-                                       hover:bg-orange-50
-                                       transition-colors"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setShowEmail(!showEmail);
-                              }}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              {showEmail ? 
-                                <EyeOff size={20} className="min-w-[20px]" /> : 
-                                <Eye size={20} className="min-w-[20px]" />
-                              }
-                            </motion.button> */}
                           </div>
                         </div>
                       </motion.div>
@@ -390,7 +370,7 @@ const Login = ({ role }) => {
                                 }
                                 className="gap-3"
                               >
-                                <InputOTPGroup className="gap-2 flex justify-center"> {/* Reduced gap from 3 to 2 */}
+                                <InputOTPGroup className="gap-2 flex justify-center"> 
                                   {[0, 1, 2, 3, 4, 5].map((index) => (
                                     <InputOTPSlot
                                       key={index}
