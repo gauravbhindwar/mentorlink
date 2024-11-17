@@ -4,8 +4,8 @@ import Navbar from '../subComponents/Navbar';
 import "@/app/styles.css";
 
 const Page = () => {
-    const academicYears = ["2023-2024", "2022-2023", "2021-2022"];
-    const academicSessions = ["DEC-JUNE(EVEN SEM)", "JUL-NOV(ODD SEM)"];
+    const academicYears = ["2023-24", "2022-23", "2021-22"];
+    const academicSessions = ["DEC-JUNE (EVEN SEM)", "JUL-NOV (ODD SEM)"];
     const oddSem = ["III", "IV", "VII"];
     const evenSem = ["IV", "VI", "VIII"];
 
@@ -208,16 +208,16 @@ const Page = () => {
                                 {/* Conditional Sub-Options */}
                                 {selectedReport === 'MOM' && (
                                     <div className="flex flex-col gap-1">
-                                        <label className="font-medium text-gray-700">MOM Report</label>
+                                        <label className="font-medium text-gray-700">Minutes of the Meeting Report</label>
                                         <select
                                             className="select p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
                                             value={selectedSubOption}
                                             onChange={handleSubOptionChange}
                                         >
-                                            <option value="">Select MOM</option>
-                                            <option value="MOMOption1">MOM 1</option>
-                                            <option value="MOMOption2">MOM 2</option>
-                                            <option value="MOMOption3">MOM 3</option>
+                                            <option value="">Select Meeting</option>
+                                            <option value="MOMOption1">Meeting 1</option>
+                                            <option value="MOMOption2">Meeting 2</option>
+                                            <option value="MOMOption3">Meeting 3</option>
                                         </select>
                                     </div>
                                 )}
@@ -230,7 +230,7 @@ const Page = () => {
                                             value={selectedSubOption}
                                             onChange={handleSubOptionChange}
                                         >
-                                            <option value="">Select CONSOLIDATE</option>
+                                            <option value="">Consolidate</option>
                                         </select>
                                     </div>
                                 )}

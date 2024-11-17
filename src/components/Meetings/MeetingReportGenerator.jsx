@@ -182,7 +182,7 @@ const MeetingReportGenerator = () => {
 
         {/* Report Type Bubbles */}
         <motion.div 
-          className="flex flex-col items-center gap-6 mt-12"
+          className="flex flex-row justify-center items-center gap-6 mt-12"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
@@ -193,7 +193,7 @@ const MeetingReportGenerator = () => {
           >
             <div className="bg-gradient-to-r from-orange-500 to-pink-500 rounded-full p-1">
               <div className="bg-black rounded-full p-6">
-                <h3 className="text-xl font-bold text-white mb-2">MOM Report</h3>
+                <h3 className="text-xl font-bold text-white mb-2">Minutes of Meeting Report</h3>
                 {selectedReport === 'mom' && renderMOMButtons()}
               </div>
             </div>
