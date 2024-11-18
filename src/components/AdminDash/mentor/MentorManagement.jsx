@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, Divider } from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, Divider, List, ListItem, ListItemText } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -51,24 +51,28 @@ const MentorManagement = () => {
     },
   });
 
-  // Add this dialogStyles object
+  // Update dialogStyles object
   const dialogStyles = {
     paper: {
-      background: 'rgba(17, 17, 17, 0.95)',
+      background: 'linear-gradient(145deg, #1a1a1a 0%, #2d1a12 100%)',
       backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '1rem',
-      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+      border: '1px solid rgba(249, 115, 22, 0.2)',
+      borderRadius: '1.5rem',
+      boxShadow: '0 8px 32px rgba(249, 115, 22, 0.1)',
       color: 'white',
+      minWidth: '80vw',
+      maxWidth: '1200px',
+      maxHeight: '90vh',
     },
     title: {
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-      px: 3,
-      py: 2,
+      borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
+      background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, rgba(0, 0, 0, 0) 100%)',
+      px: 4,
+      py: 3,
     },
     content: {
-      px: 3,
-      py: 2,
+      px: 4,
+      py: 3,
     },
     textField: {
       '& .MuiOutlinedInput-root': {
@@ -76,7 +80,11 @@ const MentorManagement = () => {
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
         backdropFilter: 'blur(10px)',
         borderRadius: '12px',
-        transition: 'all 0.2s ease',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
+        },
         '&:hover .MuiOutlinedInput-notchedOutline': {
           borderColor: '#f97316',
         },
@@ -84,15 +92,9 @@ const MentorManagement = () => {
           borderColor: '#f97316',
           borderWidth: '2px',
         },
-        '&.Mui-disabled': {
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-          },
-        },
       },
       '& .MuiOutlinedInput-notchedOutline': {
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: 'rgba(249, 115, 22, 0.3)',
       },
       '& .MuiInputLabel-root': {
         color: 'rgba(255, 255, 255, 0.7)',
@@ -103,14 +105,14 @@ const MentorManagement = () => {
       '& .MuiInputBase-input': {
         '&::placeholder': {
           color: 'rgba(255, 255, 255, 0.5)',
-          opacity: 1,
         },
       },
     },
     actions: {
-      p: 3,
-      gap: 1,
-      borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+      p: 4,
+      gap: 2,
+      borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+      background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, rgba(0, 0, 0, 0) 100%)',
     },
   };
 
@@ -172,15 +174,18 @@ const MentorManagement = () => {
     try {
       const response = await axios.post('/api/admin/manageUsers/bulkUpload', {
         data: previewData.data,
-        type: 'mentor' // Explicitly set type for mentors
+        type: 'mentor'
       });
 
-      showAlert('File uploaded successfully!', 'success');
-      setShowPreview(false);
-      handleBulkUploadClose();
-      fetchMentors();
+      if (response.data && response.status === 201) {
+        showAlert('Mentors uploaded successfully!', 'success');
+        setShowPreview(false);
+        handleBulkUploadClose();
+        await fetchMentors(); // Await the fetch
+      }
     } catch (error) {
-      showAlert(error.response?.data?.error || 'Error uploading file', 'error');
+      const errorMessage = error.response?.data?.error || 'Error uploading mentors';
+      showAlert(errorMessage, 'error');
     } finally {
       setUploading(false);
     }
@@ -211,26 +216,46 @@ const MentorManagement = () => {
     }
   };
 
+  const validateForm = () => {
+    const errors = [];
+    if (!mentorDetails.MUJid) errors.push('MUJid is required');
+    if (!mentorDetails.name) errors.push('Name is required');
+    if (!mentorDetails.email) errors.push('Email is required');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mentorDetails.email)) errors.push('Invalid email format');
+    if (!mentorDetails.phone_number) errors.push('Phone number is required');
+    if (!mentorDetails.academicYear) errors.push('Academic year is required');
+    if (!mentorDetails.academicSession) errors.push('Academic session is required');
+    return errors;
+  };
+
   const handleAddMentor = async () => {
+    const errors = validateForm();
+    if (errors.length > 0) {
+      showAlert(errors.join(', '), 'error');
+      return;
+    }
     try {
       const response = await axios.post('/api/admin/manageUsers/manageMentor', mentorDetails);
-      showAlert('Mentor added successfully', 'success');
-      setOpenDialog(false);
-      fetchMentors();
-      setMentorDetails({
-        name: '',
-        email: '',
-        MUJid: '',
-        phone_number: '',
-        address: '',
-        gender: '',
-        profile_picture: '',
-        role: ['mentor'],
-        academicYear: '',
-        academicSession: ''
-      });
+      if (response.data && response.status === 201) {
+        showAlert('Mentor added successfully', 'success');
+        setOpenDialog(false);
+        await fetchMentors(); // Await the fetch
+        setMentorDetails({
+          name: '',
+          email: '',
+          MUJid: '',
+          phone_number: '',
+          address: '',
+          gender: '',
+          profile_picture: '',
+          role: ['mentor'],
+          academicYear: '',
+          academicSession: ''
+        });
+      }
     } catch (error) {
-      showAlert(error.response?.data?.error || 'Error adding mentor', 'error');
+      const errorMessage = error.response?.data?.error || 'Error adding mentor';
+      showAlert(errorMessage, 'error');
     }
   };
 
@@ -317,7 +342,42 @@ const MentorManagement = () => {
     }));
   };
 
+  const toastStyles = {
+    success: {
+      style: {
+        background: '#10B981',
+        color: '#fff',
+        padding: '16px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      },
+      iconTheme: {
+        primary: '#fff',
+        secondary: '#10B981',
+      },
+    },
+    error: {
+      style: {
+        background: '#EF4444',
+        color: '#fff',
+        padding: '16px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      },
+      iconTheme: {
+        primary: '#fff',
+        secondary: '#EF4444',
+      },
+    },
+  };
+
   const showAlert = (message, severity) => {
+    const toastConfig = {
+      style: toastStyles[severity].style,
+      iconTheme: toastStyles[severity].iconTheme,
+    };
+    
+    toast[severity === 'success' ? 'success' : 'error'](message, toastConfig);
     setAlert({ open: true, message, severity });
     setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
   };
@@ -326,52 +386,146 @@ const MentorManagement = () => {
     setBulkUploadDialog(true);
   };
 
+  // Add these new state variables
+  const [yearSuggestions, setYearSuggestions] = useState([]);
+  const [sessionSuggestions, setSessionSuggestions] = useState([]);
+  const [showYearOptions, setShowYearOptions] = useState(false);
+  const [showSessionOptions, setShowSessionOptions] = useState(false);
+  const yearRef = useRef(null);
+  const sessionRef = useRef(null);
+
+  // Add these new helper functions
+  const generateYearSuggestions = (input) => {
+    if (!input) return [];
+    const currentYear = new Date().getFullYear();
+    const suggestions = [];
+    for (let i = 0; i < 5; i++) {
+      const year = currentYear - i;
+      const academicYear = `${year}-${year + 1}`;
+      if (academicYear.startsWith(input)) {
+        suggestions.push(academicYear);
+      }
+    }
+    return suggestions;
+  };
+
+  const handleAcademicYearInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    if (value.length === 4 && !value.includes('-')) {
+      value = `${value}-${parseInt(value) + 1}`;
+    }
+    
+    if (value.length > 0) {
+      setYearSuggestions(generateYearSuggestions(value));
+      setShowYearOptions(true);
+    } else {
+      setYearSuggestions([]);
+      setShowYearOptions(false);
+    }
+
+    setMentorDetails(prev => ({
+      ...prev,
+      academicYear: value
+    }));
+    
+    if (validateAcademicYear(value)) {
+      const sessions = generateAcademicSessions(value);
+      setAcademicSessions(sessions);
+      setMentorDetails(prev => ({
+        ...prev,
+        academicSession: sessions[0]
+      }));
+    }
+  };
+
+  const handleAcademicSessionInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    if (value.startsWith('JUL')) {
+      value = `JULY-DECEMBER ${mentorDetails.academicYear?.split('-')[0]}`;
+    } else if (value.startsWith('JAN')) {
+      value = `JANUARY-JUNE ${mentorDetails.academicYear?.split('-')[1]}`;
+    }
+    
+    if (value.length > 0) {
+      setSessionSuggestions(generateAcademicSessions(mentorDetails.academicYear));
+      setShowSessionOptions(true);
+    } else {
+      setSessionSuggestions([]);
+      setShowSessionOptions(false);
+    }
+    
+    setMentorDetails(prev => ({
+      ...prev,
+      academicSession: value
+    }));
+  };
+
+  const validateAcademicYear = (value) => {
+    if (!value) return false;
+    const regex = /^(\d{4})-(\d{4})$/;
+    if (!regex.test(value)) return false;
+    const [startYear, endYear] = value.split('-').map(Number);
+    return endYear === startYear + 1;
+  };
+
+  const fetchMentors = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentor');
+      if (response.data && response.data.mentors) {
+        setMentors(response.data.mentors);
+        setTableVisible(true);
+      }
+    } catch (error) {
+      showAlert('Error fetching mentors', 'error');
+      setMentors([]);
+      setTableVisible(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <ThemeProvider theme={theme}>
-      {/* Toast/Alert Container */}
-      <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md max-h-screen">
+      {/* Toast/Alert Container - Updated positioning and styling */}
+      <div className="fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md">
         <Toaster 
           position="top-center"
+          reverseOrder={false}
+          gutter={8}
           toastOptions={{
             duration: 3000,
-            style: {
-              background: 'rgba(0, 0, 0, 0.8)',
-              color: '#fff',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '0.75rem',
-            },
+            success: toastStyles.success,
+            error: toastStyles.error,
           }}
         />
-        <Snackbar
-          open={alert.open}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          TransitionComponent={(props) => <Slide {...props} direction="down" />}
-          sx={{
-            '& .MuiSnackbarContent-root': {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '0.75rem',
-            }
-          }}
-        >
-          <Alert 
-            severity={alert.severity} 
-            onClose={() => setAlert({ ...alert, open: false })}
-            sx={{
-              backgroundColor: 'transparent',
-              color: '#fff',
-              '& .MuiAlert-icon': {
-                color: '#fff'
-              }
-            }}
-          >
-            <AlertTitle>{alert.severity === 'error' ? 'Error' : 'Success'}</AlertTitle>
-            {alert.message}
-          </Alert>
-        </Snackbar>
       </div>
+
+      {/* Replace the Snackbar component with a simpler success/error message */}
+      {alert.open && (
+        <div
+          className={`fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md p-4 rounded-lg shadow-lg ${
+            alert.severity === 'success' ? 'bg-green-600' : 'bg-red-600'
+          }`}
+          role="alert"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-white font-medium">
+                {alert.message}
+              </span>
+            </div>
+            <button
+              onClick={() => setAlert({ ...alert, open: false })}
+              className="text-white opacity-70 hover:opacity-100"
+            >
+              <CloseIcon fontSize="small" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
         {/* Background Effects */}
@@ -488,30 +642,30 @@ const MentorManagement = () => {
           </DialogTitle>
           <DialogContent sx={dialogStyles.content}>
             <Box sx={{ 
-              display: 'flex', 
+              display: 'grid',
+              gridTemplateColumns: '2fr 1px 1fr',
               gap: 4,
               minHeight: '60vh',
             }}>
               {/* Left side - Form */}
               <Box sx={{ 
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 3,
                 overflowY: 'auto',
                 pr: 2,
                 '&::-webkit-scrollbar': {
                   width: '8px',
                 },
                 '&::-webkit-scrollbar-track': {
-                  background: 'rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(249, 115, 22, 0.1)',
                   borderRadius: '4px',
                 },
                 '&::-webkit-scrollbar-thumb': {
                   background: 'rgba(249, 115, 22, 0.5)',
                   borderRadius: '4px',
                   '&:hover': {
-                    background: 'rgba(249, 115, 22, 0.7)',
+                    background: '#f97316',
                   },
                 },
                 '& .MuiTextField-root': dialogStyles.textField,
@@ -522,6 +676,7 @@ const MentorManagement = () => {
                   value={mentorDetails.MUJid}
                   onChange={handleInputChange}
                   required
+                  sx={{ gridColumn: '1 / -1' }}
                 />
                 <TextField
                   label="Name"
@@ -571,109 +726,135 @@ const MentorManagement = () => {
                 <TextField
                   label="Academic Year"
                   name="academicYear"
-                  select
                   value={mentorDetails.academicYear}
-                  onChange={handleInputChange}
+                  onChange={handleAcademicYearInput}
                   required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a',
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333',
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
+                  inputRef={yearRef}
+                  onFocus={() => setShowYearOptions(true)}
+                  onBlur={() => setTimeout(() => setShowYearOptions(false), 100)}
+                />
+                {showYearOptions && yearSuggestions.length > 0 && (
+                  <List
+                    sx={{
+                      position: 'absolute',
+                      zIndex: 10,
+                      width: '100%',
+                      bgcolor: 'rgba(17, 17, 17, 0.95)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '0.5rem',
+                      mt: 1,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      '& .MuiListItem-root': {
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 255, 255, 0.1)',
+                        },
+                      },
+                    }}
+                  >
+                    {yearSuggestions.map((suggestion, index) => (
+                      <ListItem
+                        key={index}
+                        onClick={() => {
+                          setMentorDetails(prev => ({
+                            ...prev,
+                            academicYear: suggestion
+                          }));
+                          setShowYearOptions(false);
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 255, 255, 0.1)',
                           }
-                        }
-                      }
-                    }
-                  }}
-                >
-                  {(() => {
-                    const currentYear = new Date().getFullYear();
-                    return [
-                      `${currentYear}-${currentYear + 1}`,
-                      `${currentYear - 1}-${currentYear}`,
-                      `${currentYear - 2}-${currentYear - 1}`,
-                      `${currentYear - 3}-${currentYear - 2}`
-                    ].map(year => (
-                      <MenuItem key={year} value={year}>{year}</MenuItem>
-                    ));
-                  })()}
-                </TextField>
+                        }}
+                      >
+                        <ListItemText primary={suggestion} />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
                 <TextField
                   label="Academic Session"
                   name="academicSession"
-                  select
-                  value={mentorDetails.academicSession || ''}
-                  onChange={handleInputChange}
-                  disabled={!mentorDetails.academicYear}
+                  value={mentorDetails.academicSession}
+                  onChange={handleAcademicSessionInput}
                   required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a',
-                            }
+                  inputRef={sessionRef}
+                  onFocus={() => setShowSessionOptions(true)}
+                  onBlur={() => setTimeout(() => setShowSessionOptions(false), 100)}
+                />
+                {showSessionOptions && sessionSuggestions.length > 0 && (
+                  <List
+                    sx={{
+                      position: 'absolute',
+                      zIndex: 10,
+                      width: '100%',
+                      bgcolor: 'rgba(17, 17, 17, 0.95)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '0.5rem',
+                      mt: 1,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      '& .MuiListItem-root': {
+                        color: 'white',
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 255, 255, 0.1)',
+                        },
+                      },
+                    }}
+                  >
+                    {sessionSuggestions.map((suggestion, index) => (
+                      <ListItem
+                        key={index}
+                        onClick={() => {
+                          setMentorDetails(prev => ({
+                            ...prev,
+                            academicSession: suggestion
+                          }));
+                          setShowSessionOptions(false);
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 255, 255, 0.1)',
                           }
-                        }
-                      }
-                    }
-                  }}
-                >
-                  {academicSessions.map(session => (
-                    <MenuItem key={session} value={session}>{session}</MenuItem>
-                  ))}
-                </TextField>
+                        }}
+                      >
+                        <ListItemText primary={suggestion} />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
               </Box>
 
-              {/* Divider */}
+              {/* Divider with gradient */}
               <Divider orientation="vertical" flexItem sx={{ 
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                '&.MuiDivider-root': {
-                  '&::before, &::after': {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                },
-              }}>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>OR</Typography>
-              </Divider>
+                borderColor: 'rgba(249, 115, 22, 0.2)',
+                background: 'linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%)',
+                width: '1px',
+              }} />
 
               {/* Right side - Upload */}
               <Box 
                 {...getRootProps()} 
                 sx={{
-                  flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
                   padding: 4,
                   border: '2px dashed',
-                  borderColor: 'rgba(249, 115, 22, 0.5)',
-                  borderRadius: 3,
-                  bgcolor: 'rgba(255, 255, 255, 0.02)',
+                  borderColor: 'rgba(249, 115, 22, 0.3)',
+                  borderRadius: '1rem',
+                  background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.05) 0%, rgba(0, 0, 0, 0) 100%)',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
-                  position: 'relative',
                   '&:hover': {
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    borderColor: '#f97316',
                     transform: 'translateY(-2px)',
+                    borderColor: '#f97316',
+                    boxShadow: '0 8px 32px rgba(249, 115, 22, 0.15)',
                   },
                 }}
               >

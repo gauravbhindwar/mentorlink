@@ -1,19 +1,19 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog } from '@headlessui/react';
+import axios from 'axios';
 
-const MeetingReportGenerator = () => {
-  const [filters, setFilters] = useState({
-    year: '',
-    term: '',
-    semester: '',
-    section: ''
-  });
-  
+const MeetingReportGenerator = ({ initialParams }) => {
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
+  const [semester, setSemester] = useState('');
+  const [section, setSection] = useState('');
+  const [meetings, setMeetings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [academicYears, setAcademicYears] = useState([]);
+  const [academicSessions, setAcademicSessions] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [isMOMDialogOpen, setIsMOMDialogOpen] = useState(false);
-  const [isConsolidateDialogOpen, setIsConsolidateDialogOpen] = useState(false);
   const [momDetails, setMomDetails] = useState({
     date: '',
     attendees: '',
@@ -21,13 +21,99 @@ const MeetingReportGenerator = () => {
     discussion: '',
     actionItems: ''
   });
-
+  const [isMOMDialogOpen, setIsMOMDialogOpen] = useState(false);
+  const [isConsolidateDialogOpen, setIsConsolidateDialogOpen] = useState(false);
   const [actionMenu, setActionMenu] = useState({
     isOpen: false,
     position: { x: 0, y: 0 },
     reportType: '',
     selectedMOM: ''
   });
+
+  const getCurrentAcademicYear = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+    const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
+    const endYear = startYear + 1;
+    return `${startYear}-${endYear}`;
+  };
+
+  const generateAcademicSessions = (academicYear) => {
+    if (!academicYear) return [];
+    const [startYear, endYear] = academicYear.split('-');
+    return [
+        `JULY-DECEMBER ${startYear}`,
+        `JANUARY-JUNE ${endYear}`
+    ];
+  };
+
+  useEffect(() => {
+    const currentAcadYear = getCurrentAcademicYear();
+    const sessions = generateAcademicSessions(currentAcadYear);
+    setAcademicYear(currentAcadYear);
+    setAcademicSession(sessions[0]);
+    setAcademicYears([
+      currentAcadYear,
+      `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
+      `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
+    ]);
+    setAcademicSessions(sessions);
+  }, []);
+
+  const handleAcademicYearChange = (e) => {
+    const value = e.target.value;
+    setAcademicYear(value);
+    if (value.length === 4) {
+      const startYear = parseInt(value);
+      const endYear = startYear + 1;
+      const newAcademicYear = `${startYear}-${endYear}`;
+      setAcademicYear(newAcademicYear);
+      const sessions = generateAcademicSessions(newAcademicYear);
+      setAcademicSessions(sessions);
+      setAcademicSession(sessions[0]);
+    }
+  };
+
+  const handleAcademicSessionChange = (e) => {
+    setAcademicSession(e.target.value);
+  };
+
+  const handleSemesterChange = (e) => {
+    setSemester(e.target.value);
+  };
+
+  const handleSectionChange = (e) => {
+    const value = e.target.value.toUpperCase();
+    if (/^[A-Z]?$/.test(value)) {
+      setSection(value);
+    }
+  };
+
+  const fetchMeetings = async () => {
+    setLoading(true);
+    if (!academicYear || !academicSession || !semester) {
+      alert('Please select an academic year, session, and semester.');
+      setLoading(false);
+      return;
+    }
+    try {
+      const response = await axios.get('/api/meetings/report', {
+        params: {
+          year: academicYear.split('-')[0],
+          session: academicSession,
+          semester: semester,
+          section: section
+        }
+      });
+      setMeetings(response.data);
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
+      alert(error.response?.data?.error || 'Failed to fetch meetings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -38,7 +124,7 @@ const MeetingReportGenerator = () => {
   };
 
   const handleSearch = () => {
-    console.log('Searching with filters:', filters);
+    fetchMeetings(filters);
   };
 
   const handleGenerateMOM = () => {
@@ -85,38 +171,111 @@ const MeetingReportGenerator = () => {
     </div>
   );
 
-  const handleConsolidateClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setActionMenu({
-      isOpen: true,
-      position: { x: rect.left, y: rect.bottom + window.scrollY },
-      reportType: 'consolidate',
-      selectedMOM: ''
-    });
+  const handleConsolidateClick = () => {
+    setSelectedReport('consolidate');
+    setIsConsolidateDialogOpen(true);
   };
 
-  const filterControls = [
-    {
-      name: 'year',
-      options: [2021, 2022, 2023, 2024]
-    },
-    {
-      name: 'term',
-      options: ['odd', 'even']
-    },
-    {
-      name: 'semester',
-      getDynamicOptions: (term) => {
-        if (term === 'odd') return [1, 3, 5, 7];
-        if (term === 'even') return [2, 4, 6, 8];
-        return [];
-      }
-    },
-    {
-      name: 'section',
-      options: ['A', 'B', 'C', 'D', 'E', 'F']
-    }
-  ];
+  const renderMeetingsReport = () => {
+    if (loading) return <div>Loading...</div>;
+    if (!meetings.length) return <div>No meetings found</div>;
+
+    return (
+      <div className="space-y-4">
+        {meetings.map((meeting, index) => (
+          <div key={index} className="bg-white/5 p-4 rounded-lg">
+            <h3>Meeting Date: {new Date(meeting.meeting_date).toLocaleDateString()}</h3>
+            <p>Time: {meeting.meeting_time}</p>
+            <div className="mt-2">
+              <h4>Notes:</h4>
+              <p>Topic: {meeting.meeting_notes.TopicOfDiscussion}</p>
+              <p>Outcome: {meeting.meeting_notes.outcome}</p>
+              {/* Add more meeting details as needed */}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderFilterControls = () => (
+    <form onSubmit={(e) => { e.preventDefault(); fetchMeetings(); }} className="flex flex-wrap gap-4">
+      <div className="space-y-3 flex-1 min-w-[200px]">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Academic Year</label>
+          <input
+            type="text"
+            list="academicYears"
+            placeholder="YYYY-YYYY"
+            value={academicYear}
+            onChange={handleAcademicYearChange}
+            className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+          />
+          <datalist id="academicYears">
+            {academicYears.map((year, index) => (
+              <option key={index} value={year} />
+            ))}
+          </datalist>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Academic Session</label>
+          <input
+            type="text"
+            list="academicSessions"
+            placeholder="MONTH-MONTH YYYY"
+            value={academicSession}
+            onChange={handleAcademicSessionChange}
+            className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+          />
+          <datalist id="academicSessions">
+            {academicSessions.map((session, index) => (
+              <option key={index} value={session} />
+            ))}
+          </datalist>
+        </div>
+      </div>
+
+      <div className="space-y-3 flex-1 min-w-[200px]">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
+          <input
+            type="text"
+            placeholder="Enter Semester"
+            value={semester}
+            onChange={handleSemesterChange}
+            className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
+          <input
+            type="text"
+            placeholder="Enter Section"
+            value={section}
+            onChange={handleSectionChange}
+            className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3 flex-1 min-w-[200px]">
+        <button 
+          type="submit" 
+          className="w-full btn-orange disabled:opacity-50"
+          disabled={loading}
+        >
+          {loading ? 'Fetching...' : 'Fetch Meeting Reports'}
+        </button>
+      </div>
+    </form>
+  );
+
+  const handleMOMClick = () => {
+    setSelectedReport('mom');
+    setIsMOMDialogOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative pt-20">
@@ -143,42 +302,13 @@ const MeetingReportGenerator = () => {
           </motion.h1>
         </motion.div>
 
-        {/* New Filter Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap justify-center gap-4 mb-8"
-        >
-          {filterControls.map((control) => (
-            <select
-              key={control.name}
-              value={filters[control.name]}
-              onChange={(e) => setFilters(prev => ({ ...prev, [control.name]: e.target.value }))}
-              className="bg-gray-900 border border-gray-700 text-gray-100 rounded-lg px-4 py-2 backdrop-blur-sm min-w-[120px]
-                        hover:border-orange-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none
-                        transition-all duration-200"
-            >
-              <option value="" className="bg-gray-900 text-gray-100">
-                {control.name.charAt(0).toUpperCase() + control.name.slice(1)}
-              </option>
-              {(control.getDynamicOptions 
-                ? control.getDynamicOptions(filters.term)
-                : control.options
-              ).map(option => (
-                <option key={option} value={option} className="bg-gray-900 text-gray-100">
-                  {option}
-                </option>
-              ))}
-            </select>
-          ))}
-          
-          <button
-            onClick={handleSearch}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-all"
-          >
-            Search
-          </button>
-        </motion.div>
+        {/* Single Filter Section */}
+        {renderFilterControls()}
+
+        {/* Render meetings report */}
+        <div className="bg-white/5 backdrop-blur-lg rounded-xl p-6">
+          {renderMeetingsReport()}
+        </div>
 
         {/* Report Type Bubbles */}
         <motion.div 
@@ -189,7 +319,7 @@ const MeetingReportGenerator = () => {
           <motion.div
             className="group relative cursor-pointer"
             whileHover={{ scale: 1.05 }}
-            onClick={() => setSelectedReport('mom')}
+            onClick={handleMOMClick}
           >
             <div className="bg-gradient-to-r from-orange-500 to-pink-500 rounded-full p-1">
               <div className="bg-black rounded-full p-6">

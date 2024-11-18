@@ -25,45 +25,37 @@ const AdminDashboard = () => {
             onClick: () => router.push('/pages/admin/managementor')
         },
         {
-            title: 'Meetings',
-            icon: '📅',
-            description: 'Schedule and manage meetings',
-            gradient: 'from-purple-500 via-violet-500 to-indigo-500',
-            shadowColor: 'rgba(147, 51, 234, 0.4)',
-            onClick: () => router.push('/pages/meetings/schmeeting')
-        },
-        {
-            title: 'Meeting Reports',
+            title: 'Manage Meetings',
             icon: '📊',
-            description: 'Generate and manage meeting reports',
+            description: 'Manage meetings & Generate Meeting Reports',
             gradient: 'from-purple-500 via-violet-500 to-indigo-500',
             shadowColor: 'rgba(147, 51, 234, 0.4)',
-            onClick: () => router.push('/pages/meetings/mreport')
+            onClick: () => router.push('/pages/admin/managemeeting')
         },
-        {
-            title: 'Manage Admins',
-            icon: '👨‍💼',
-            description: 'Control admin access and permissions',
-            gradient: 'from-blue-500 via-cyan-500 to-teal-500',
-            shadowColor: 'rgba(59, 130, 246, 0.4)',
-            onClick: () => router.push('/pages/admin/manageadmins')
-        },
-        {
-            title: 'Student Queries',
-            icon: '❓',
-            description: 'Handle student support requests',
-            gradient: 'from-green-500 via-emerald-500 to-teal-500',
-            shadowColor: 'rgba(16, 185, 129, 0.4)',
-            onClick: () => router.push('/pages/squery')
-        },
-        {
-            title: 'Mentor Queries',
-            icon: '💭',
-            description: 'Address mentor inquiries',
-            gradient: 'from-yellow-500 via-amber-500 to-orange-500',
-            shadowColor: 'rgba(245, 158, 11, 0.4)',
-            onClick: () => router.push('/pages/admin/mquery')
-        },
+        // {
+        //     title: 'Manage Admins',
+        //     icon: '👨‍💼',
+        //     description: 'Control admin access and permissions',
+        //     gradient: 'from-blue-500 via-cyan-500 to-teal-500',
+        //     shadowColor: 'rgba(59, 130, 246, 0.4)',
+        //     onClick: () => router.push('/pages/admin/manageadmins')
+        // },
+        // {
+        //     title: 'Student Queries',
+        //     icon: '❓',
+        //     description: 'Handle student support requests',
+        //     gradient: 'from-green-500 via-emerald-500 to-teal-500',
+        //     shadowColor: 'rgba(16, 185, 129, 0.4)',
+        //     onClick: () => router.push('/pages/squery')
+        // },
+        // {
+        //     title: 'Mentor Queries',
+        //     icon: '💭',
+        //     description: 'Address mentor inquiries',
+        //     gradient: 'from-yellow-500 via-amber-500 to-orange-500',
+        //     shadowColor: 'rgba(245, 158, 11, 0.4)',
+        //     onClick: () => router.push('/pages/admin/mquery')
+        // },
         {
             title: 'Archives',
             icon: '📚',

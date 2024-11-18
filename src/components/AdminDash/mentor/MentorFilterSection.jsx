@@ -357,7 +357,7 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
             placeholder="YYYY-YYYY"
             helperText={
               <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
-              &quot; Example: 2023-2024&quot;
+               Example: 2023-2024
               </Box>
             }
             sx={{
@@ -413,7 +413,7 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
             placeholder="MONTH-MONTH YYYY"
             helperText={
               <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
-              &quot; Type &apos;jul&apos; or &apos;jan&apos; for quick selection&quot;
+              Type &apos;jul&apos; or &apos;jan&apos; for quick selection
               </Box>
             }
             disabled={!academicYear}
@@ -496,13 +496,13 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
         >
           Add New Mentor
         </Button>
-        <Button
+        {/* <Button
           variant="contained"
           onClick={onBulkUpload}
           sx={buttonStyles('secondary')}
         >
           Upload File
-        </Button>
+        </Button> */}
         <Button
           variant="contained"
           onClick={handleReset}

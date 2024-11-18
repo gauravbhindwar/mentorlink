@@ -50,7 +50,7 @@ export async function POST(req) {
     });
     
     if (validationErrors.length > 0) {
-      return NextResponse.json({ error: validationErrors }, { status: 400 });
+      return NextResponse.json({ error: validationErrors.join(', ') }, { status: 400 });
     }
 
     // Check for duplicates
@@ -83,9 +83,12 @@ export async function POST(req) {
     return NextResponse.json({ 
       message: "Mentors created successfully",
       mentors: createdMentors 
-    }, { status: 201 });
+    }, { status: 201 }); // Use 201 for creation
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error in POST /api/admin/manageUsers/manageMentor:', error);
+    return NextResponse.json({ 
+      error: "Failed to create mentor(s). " + error.message 
+    }, { status: 500 });
   }
 }
 

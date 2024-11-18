@@ -3,11 +3,18 @@ import mongoose from "mongoose";
 const mentorsSchema = new mongoose.Schema({
     name: { type: String, required: true }, // Full name of the mentor
     email: { type: String, required: true, unique: true }, // Unique email for the mentor
-    MUJid: { type: String, required: true, unique: true  ,
+    MUJid: { 
+        type: String, 
+        required: true, 
+        unique: true,
+        uppercase: true,
         validate: {
-        validator: (value) => /^[A-Z0-9]+$/.test(value),
-        message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
-    },}, // Unique MUJID for the mentor
+            validator: function(v) {
+                return /^[A-Z0-9]+$/.test(v);
+            },
+            message: props => `${props.value} is not a valid MUJid! Must be uppercase alphanumeric only.`
+        }
+    }, // Unique MUJID for the mentor
     phone_number: { 
         type: String, 
         required: true,
@@ -27,6 +34,14 @@ const mentorsSchema = new mongoose.Schema({
     otp: { type: String },
     otpExpires: { type: Date },
     isOtpUsed: { type: Boolean, default: false }
+});
+
+// Add a pre-save middleware to ensure MUJid is uppercase
+mentorsSchema.pre('save', function(next) {
+    if (this.MUJid) {
+        this.MUJid = this.MUJid.toUpperCase();
+    }
+    next();
 });
 
 const Mentor = mongoose.models.Mentor || mongoose.model("Mentor", mentorsSchema);
