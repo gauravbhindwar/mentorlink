@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiUpload } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
 import { storeFile } from '@/utils/browserStorage';
+import axios from 'axios';
+import { set } from 'mongoose';
 
 const ScheduleMeeting = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -11,9 +13,11 @@ const ScheduleMeeting = () => {
   const [selectedSection, setSelectedSection] = useState('');
   const [mentorId, setMentorId] = useState('');
   const [availableSemesters, setAvailableSemesters] = useState([]);
-  const [meetingNumber, setMeetingNumber] = useState('1');
+  // const [meetingNumber, setMeetingNumber] = useState('1');
+  const [meetingTopic, setMeetingTopic] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [loading, setLoading] = useState(false);
+  const [meetingId, setMeetingId] = useState('');
 
   // Add new state variables
   const [academicYear, setAcademicYear] = useState('');
@@ -22,6 +26,9 @@ const ScheduleMeeting = () => {
   const [ setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
+  const [customAlert, setCustomAlert] = useState('')
+  const [formattedDate, setFormattedDate] = useState();
+  const [formattedTime, setFormattedTime] = useState('');
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
 
@@ -40,6 +47,13 @@ const ScheduleMeeting = () => {
     if (value.length === 2 && !/^[A-Z][1-9]$/.test(value)) return;
     
     setSelectedSection(value);
+  };
+
+  const handleMeetingTopicChange = (e) => {
+    let value = e.target.value;
+    // Only allow uppercase letters and numbers
+    // if (!/^[A-Z0-9]*$/.test(value)) return;
+    setMeetingTopic(value);
   };
 
   const handleMentorIdChange = (e) => {
@@ -65,9 +79,55 @@ const ScheduleMeeting = () => {
       minute: '2-digit',
       hour12: true
     }).toUpperCase(); // Makes AM/PM uppercase
-
-    return `${formattedDate} ${formattedTime}`;
+    setFormattedDate(formattedDate);
+    setFormattedTime(formattedTime);
   };
+
+  useEffect(() => {
+    const generateMeetingId = async () => {
+      try {
+        const response = await axios.get('/api/meeting/mentors/schmeeting', {
+          params: {
+            mentor_id: mentorId,
+            semester: currentSemester,
+            section: selectedSection,
+            session: academicSession,
+            year: academicYear
+          }
+        });
+
+        if (response.data) {
+          const meetingsHeld = response.data?.meetings;
+          
+          
+          console.log('Mentor meetings:', meetingsHeld);
+          // console.log('Meeting count:', meetingCount);
+          
+          // Set meeting ID with proper count
+          setMeetingId(`${mentorId}-M${selectedSection}${meetingsHeld.length + 1}`);
+          setCustomAlert('')
+        }
+      } catch (error) {
+        // console.error('Error fetching meetings:', error.response?.data || error.message);
+        setMeetingId(error.response?.data.error);
+        setCustomAlert(error.response?.data.error)
+      }
+    };
+
+    if (mentorId && currentSemester && selectedSection && academicSession && academicYear) {
+      generateMeetingId();
+    }
+  }, [mentorId, currentSemester, selectedSection, academicSession, academicYear]); // Add proper dependencies
+
+  useEffect(() => {
+    if (customAlert) {
+      const timer = setTimeout(() => {
+        setCustomAlert('');
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [customAlert]);
 
   // Calculate current semester based on date
   useEffect(() => {
@@ -89,38 +149,63 @@ const ScheduleMeeting = () => {
       setCurrentSemester(semester);
 
       // Set available semesters based on the current term
-      const semesters = isOddTerm ? [3, 5, 7] : [2, 4, 6, 8];
+      const semesters = isOddTerm ? [1, 3, 5, 7] : [2, 4, 6, 8];
       setAvailableSemesters(semesters);
     };
 
     calculateSemester();
   }, []);
 
-  // Update available sections based on the selected semester
-  useEffect(() => {
-    const sectionsBySemester = {
-      1: 'A',
-      2: 'B',
-      3: 'C',
-      4: 'D',
-      5: 'E',
-      6: 'F',
-      7: 'G',
-      8: 'H'
-    };
-    setSelectedSection(sectionsBySemester[currentSemester] || '');
-  }, [currentSemester]);
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
   };
 
-  const getMeetingTitle = (value) => {
-    return value === 'Additional' 
-      ? 'MENTOR-MENTEE ADDITIONAL MEETING' 
-      : `MENTOR-MENTEE MEETING ${value}`;
-  };
+  const handleMeetingScheduled = () => {
+    const scheduleMeeting = async () => {
+      try {
+        // Validate required fields
+        setLoading(true);
+        if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
+          throw new Error('Please fill all required fields');
+        }
+
+        const response = await axios.post('/api/meeting/mentors/schmeeting', {
+          mentor_id: mentorId,
+          meeting_id: meetingId,
+          meeting_topic: meetingTopic,
+          date: formattedDate,
+          time: formattedTime,
+          // file: selectedFile,
+          semester: currentSemester,
+          section: selectedSection,
+          session: academicSession,
+          year: academicYear
+        });
+
+        if (response.data) {
+          if (response.data.status == 200) {
+            // Meeting scheduled successfully
+            
+            console.log('Meeting scheduled successfully');
+          } else {
+            // Meeting scheduling failed
+            console.log(response.data)
+            console.log('Meeting scheduling failed:', response.data.error);
+          }
+        } else {
+          // Meeting scheduling failed
+          console.log('Meeting scheduling failed:', response.data.error);
+        }
+      } catch (error) {
+        console.error('Error scheduling meeting:', error);
+        setCustomAlert('Meeting scheduling failed')
+      }
+    }
+
+    scheduleMeeting();
+    setLoading(false);
+  }
 
   // Add new function to get mentees
   const getMentees = async (mentorId, semester, section) => {
@@ -152,6 +237,7 @@ const ScheduleMeeting = () => {
     return endYear === startYear + 1;
   };
 
+  
   const generateYearSuggestions = (input) => {
     if (!input) return [];
     const currentYear = new Date().getFullYear();
@@ -240,72 +326,72 @@ const ScheduleMeeting = () => {
   }, []);
 
   // Update form submission handler
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
 
-    try {
-      // Validate required fields
-      if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
-        throw new Error('Please fill all required fields');
-      }
+  //   try {
+  //     // Validate required fields
+  //     if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
+  //       throw new Error('Please fill all required fields');
+  //     }
 
-      if (!academicYear || !academicSession) {
-        throw new Error('Please select Academic Year and Session');
-      }
+  //     if (!academicYear || !academicSession) {
+  //       throw new Error('Please select Academic Year and Session');
+  //     }
 
-      // First get all mentees
-      const mentees = await getMentees(mentorId, currentSemester, selectedSection);
+  //     // First get all mentees
+  //     const mentees = await getMentees(mentorId, currentSemester, selectedSection);
 
-      // Convert file to base64 if exists
-      let fileData = null;
-      if (selectedFile) {
-        fileData = await storeFile(selectedFile);
-      }
+  //     // Convert file to base64 if exists
+  //     let fileData = null;
+  //     if (selectedFile) {
+  //       fileData = await storeFile(selectedFile);
+  //     }
       
-      // Prepare email data
-      const emailData = {
-        academicYear,
-        academicSession,
-        mentorId,
-        branch: fixedBranch,
-        semester: currentSemester,
-        section: selectedSection,
-        meetingTitle: getMeetingTitle(meetingNumber),
-        dateTime: formatDateTime(dateTime),
-        mentees: mentees, // Array of mentee email addresses
-        hasAttachment: !!selectedFile,
-        attachment: fileData, // Send base64 data
-        attachmentName: selectedFile?.name,
-      };
+  //     // Prepare email data
+  //     const emailData = {
+  //       academicYear,
+  //       academicSession,
+  //       mentorId,
+  //       branch: fixedBranch,
+  //       semester: currentSemester,
+  //       section: selectedSection,
+  //       meetingTitle: getMeetingTitle(meetingNumber),
+  //       dateTime: formatDateTime(dateTime),
+  //       mentees: mentees, // Array of mentee email addresses
+  //       hasAttachment: !!selectedFile,
+  //       attachment: fileData, // Send base64 data
+  //       attachmentName: selectedFile?.name,
+  //     };
 
-      // Schedule meeting and send emails
-      const response = await fetch('/api/meeting', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailData),
-      });
+  //     // Schedule meeting and send emails
+  //     const response = await fetch('/api/meeting', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(emailData),
+  //     });
 
-      if (!response.ok) {
-        throw new Error('Failed to schedule meeting');
-      }
+  //     if (!response.ok) {
+  //       throw new Error('Failed to schedule meeting');
+  //     }
 
-      // Show success message
-      alert('Meeting scheduled and emails sent successfully!');
+  //     // Show success message
+  //     alert('Meeting scheduled and emails sent successfully!');
       
-      // Reset form
-      setSelectedFile(null);
-      setDateTime('');
+  //     // Reset form
+  //     setSelectedFile(null);
+  //     setDateTime('');
       
-    } catch (error) {
-      console.error('Error:', error);
-      alert(error.message || 'Failed to schedule meeting');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('Error:', error);
+  //     alert(error.message || 'Failed to schedule meeting');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <AnimatePresence>
@@ -334,7 +420,10 @@ const ScheduleMeeting = () => {
             className="max-w-4xl mx-auto"
           >
             <div className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-              <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+              <form onSubmit={(e)=>{
+                e.preventDefault();
+                handleMeetingScheduled();
+              }} className="grid grid-cols-2 gap-4">
                 {/* Left Column */}
                 <div className="space-y-3">
                   {/* Add Mentor MUJID field */}
@@ -357,31 +446,6 @@ const ScheduleMeeting = () => {
                       value={fixedBranch}
                       disabled
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm opacity-60"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
-                    <select 
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
-                      value={currentSemester}
-                      onChange={(e) => setCurrentSemester(Number(e.target.value))}
-                    >
-                      {availableSemesters.map(sem => (
-                        <option key={sem} value={sem} className="bg-black text-white">Semester {sem}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
-                    <input 
-                      type="text"
-                      value={selectedSection}
-                      onChange={handleSectionChange}
-                      placeholder="Enter section (e.g., A1)"
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
-                      maxLength={2}
                     />
                   </div>
 
@@ -447,23 +511,57 @@ const ScheduleMeeting = () => {
                       </div>
                     )}
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
+                    <select 
+                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                      value={currentSemester}
+                      onChange={(e) => setCurrentSemester(Number(e.target.value))}
+                    >
+                      {availableSemesters.map(sem => (
+                        <option key={sem} value={sem} className="bg-black text-white">Semester {sem}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
+                    <input 
+                      type="text"
+                      value={selectedSection}
+                      onChange={handleSectionChange}
+                      placeholder="Enter section (e.g., A1)"
+                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                      maxLength={2}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Meeting ID</label>
+                    <input
+                      type="text"
+                      placeholder="Meeting ID"
+                      disabled={true}
+                      value={meetingId}
+                      className="w-full bg-black/20 border border-white/10 rounded-lg pointer-events-none p-2 text-white text-sm disabled:opacity-50"
+                    />
+                  </div>
+                  
                 </div>
 
                 {/* Right Column - reordered and added fields */}
                 <div className="space-y-3">
                   {/* Meeting Title moved to top */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Meeting Title</label>
-                    <select
-                      value={meetingNumber}
-                      onChange={(e) => setMeetingNumber(e.target.value)}
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Meeting Topic</label>
+                    <textarea 
+                      value={meetingTopic}
+                      onChange={handleMeetingTopicChange}
+                      placeholder="Enter meeting topic"
+                      rows='3'
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
-                    >
-                      <option value="1">MENTOR-MENTEE MEETING 1</option>
-                      <option value="2">MENTOR-MENTEE MEETING 2</option>
-                      <option value="3">MENTOR-MENTEE MEETING 3</option>
-                      <option value="Additional">MENTOR-MENTEE ADDITIONAL MEETING</option>
-                    </select>
+                    />
                   </div>
 
                   {/* Added Date & Time field */}
@@ -473,27 +571,25 @@ const ScheduleMeeting = () => {
                       <input
                         type="datetime-local"
                         value={dateTime}
-                        onChange={(e) => setDateTime(e.target.value)}
+                        onChange={(e) => {
+                          setDateTime(e.target.value)
+                          formatDateTime(e.target.value)
+                        }}
                         className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm [&::-webkit-calendar-picker-indicator]:invert"
                         step="1800"
                       />
-                      {dateTime && (
-                        <div className="absolute right-0 top-0 h-full flex items-center pr-3 text-sm text-gray-400">
-                          {formatDateTime(dateTime)} {/* Will now show like "12/31/2023 02:30 PM" */}
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   {/* Meeting Agenda */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Meeting Agenda</label>
                     <textarea
                       placeholder="Describe the meeting agenda..."
                       rows="5" // Reduced from 7 to accommodate new fields
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                     />
-                  </div>
+                  </div> */}
 
                   {/* File upload section */}
                   <div className="relative">
@@ -517,10 +613,18 @@ const ScheduleMeeting = () => {
                   <button 
                     type="submit" 
                     className="w-full btn-orange disabled:opacity-50"
-                    disabled={loading}
+                    disabled={loading || customAlert}
+                    onClick={
+                      handleMeetingScheduled
+                    }
                   >
                     {loading ? 'Scheduling...' : 'Schedule Meeting'}
                   </button>
+                  {
+                    customAlert && (
+                      <p className='text-md text-red-600 font-semibold w-[100%] flex justify-center'><span>{customAlert}</span></p>
+                    )
+                  }
                 </div>
               </form>
             </div>
