@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUpload } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
@@ -8,7 +9,9 @@ import axios from 'axios';
 import { set } from 'mongoose';
 
 const ScheduleMeeting = () => {
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
   const [mentorId, setMentorId] = useState('');
@@ -102,15 +105,21 @@ const ScheduleMeeting = () => {
           
           console.log('Mentor meetings:', meetingsHeld);
           // console.log('Meeting count:', meetingCount);
-          
+          if(meetingsHeld.length == 4){
+            setMeetingId('You have already scheduled 4 meetings for this section')
+            setCustomAlert('You have already scheduled 4 meetings for this section')
+            setDisabled(true);
+          }
           // Set meeting ID with proper count
           setMeetingId(`${mentorId}-M${selectedSection}${meetingsHeld.length + 1}`);
           setCustomAlert('')
+          setDisabled(false);
         }
       } catch (error) {
         // console.error('Error fetching meetings:', error.response?.data || error.message);
         setMeetingId(error.response?.data.error);
         setCustomAlert(error.response?.data.error)
+        setDisabled(true);
       }
     };
 
@@ -119,15 +128,15 @@ const ScheduleMeeting = () => {
     }
   }, [mentorId, currentSemester, selectedSection, academicSession, academicYear]); // Add proper dependencies
 
-  useEffect(() => {
-    if (customAlert) {
-      const timer = setTimeout(() => {
-        setCustomAlert('');
-      }, 5000);
+  // useEffect(() => {
+  //   if (customAlert) {
+  //     const timer = setTimeout(() => {
+  //       setCustomAlert('');
+  //     }, 5000);
 
-      return () => clearTimeout(timer);
-    }
-  }, [customAlert]);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [customAlert]);
 
   // Calculate current semester based on date
   useEffect(() => {
@@ -173,9 +182,9 @@ const ScheduleMeeting = () => {
         const response = await axios.post('/api/meeting/mentors/schmeeting', {
           mentor_id: mentorId,
           meeting_id: meetingId,
-          meeting_topic: meetingTopic,
-          date: formattedDate,
-          time: formattedTime,
+          TopicOfDiscussion: meetingTopic,
+          meeting_date: formattedDate,
+          meeting_time: formattedTime,
           // file: selectedFile,
           semester: currentSemester,
           section: selectedSection,
@@ -184,13 +193,12 @@ const ScheduleMeeting = () => {
         });
 
         if (response.data) {
-          if (response.data.status == 200) {
+          if (response.status == 200) {
             // Meeting scheduled successfully
-            
-            console.log('Meeting scheduled successfully');
+            router.push('/pages/mentordashboard');
           } else {
             // Meeting scheduling failed
-            console.log(response.data)
+            // console.log(response.data)
             console.log('Meeting scheduling failed:', response.data.error);
           }
         } else {
@@ -198,8 +206,8 @@ const ScheduleMeeting = () => {
           console.log('Meeting scheduling failed:', response.data.error);
         }
       } catch (error) {
-        console.error('Error scheduling meeting:', error);
-        setCustomAlert('Meeting scheduling failed')
+        console.log('Error scheduling meeting:', error);
+        setCustomAlert('Failed to schedule meeting')
       }
     }
 
@@ -393,6 +401,16 @@ const ScheduleMeeting = () => {
   //   }
   // };
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <AnimatePresence>
       <motion.div className="min-h-screen h-screen bg-[#0a0a0a] overflow-hidden relative">
@@ -422,7 +440,6 @@ const ScheduleMeeting = () => {
             <div className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
               <form onSubmit={(e)=>{
                 e.preventDefault();
-                handleMeetingScheduled();
               }} className="grid grid-cols-2 gap-4">
                 {/* Left Column */}
                 <div className="space-y-3">
@@ -613,7 +630,7 @@ const ScheduleMeeting = () => {
                   <button 
                     type="submit" 
                     className="w-full btn-orange disabled:opacity-50"
-                    disabled={loading || customAlert}
+                    disabled={loading || isDisabled}
                     onClick={
                       handleMeetingScheduled
                     }
