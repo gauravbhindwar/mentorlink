@@ -67,6 +67,7 @@ export async function POST(req) {
     const errors = [];
     const validData = [];
 
+    // Updated validation for new schema structure
     transformedData.forEach((row, index) => {
       const rowErrors = [];
 
@@ -76,6 +77,15 @@ export async function POST(req) {
 
       if (!row.email || !row.email.includes('@')) {
         rowErrors.push('Invalid email format');
+      }
+
+      if (!row.academicYear || !/^\d{4}-\d{4}$/.test(row.academicYear)) {
+        rowErrors.push('Invalid academic year format (YYYY-YYYY)');
+      }
+
+      if (!row.academicSession || 
+          !['JULY-DECEMBER', 'JANUARY-JUNE'].includes(row.academicSession.split(' ')[0])) {
+        rowErrors.push('Invalid academic session');
       }
 
       if (type === 'mentee') {

@@ -1,13 +1,13 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, Divider, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress, MenuItem, Divider, List, ListItem, ListItemText } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useDropzone } from 'react-dropzone';
 import MentorTable from './MentorTable';
 import FilterSection from './MentorFilterSection';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';  // Add toast here
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import BulkUploadPreview from '../common/BulkUploadPreview';
@@ -30,13 +30,10 @@ const MentorManagement = () => {
   });
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState(null);
-  const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [previewData, setPreviewData] = useState({ data: [], errors: [] });
   const [showPreview, setShowPreview] = useState(false);
 
@@ -118,16 +115,14 @@ const MentorManagement = () => {
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Add these variables for dropzone
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploading, setUploading] = useState(false); // Changed from setUploading to uploading
+  // Add this variable for dropzone
+  const [uploading, setUploading] = useState(false);
 
   const handleBulkUploadClose = () => {
-    setBulkUploadDialog(false);
     setUploadProgress(0);
     setUploading(false);
+    setShowPreview(false);
   };
-
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
     if (!file) return;
@@ -143,8 +138,7 @@ const MentorManagement = () => {
     }
 
     setUploading(true);
-    setBulkUploadDialog(false); // Close the upload dialog
-    
+    setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', 'mentor'); // Add the type parameter
@@ -206,11 +200,9 @@ const MentorManagement = () => {
     try {
       const response = await axios.get('/api/admin/manageUsers/manageMentor');
       setMentors(response.data.mentors);
-      setTableVisible(true);
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error fetching mentors', 'error');
       setMentors([]);
-      setTableVisible(false);
     } finally {
       setLoading(false);
     }
@@ -218,22 +210,43 @@ const MentorManagement = () => {
 
   const validateForm = () => {
     const errors = [];
-    if (!mentorDetails.MUJid) errors.push('MUJid is required');
-    if (!mentorDetails.name) errors.push('Name is required');
-    if (!mentorDetails.email) errors.push('Email is required');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mentorDetails.email)) errors.push('Invalid email format');
-    if (!mentorDetails.phone_number) errors.push('Phone number is required');
-    if (!mentorDetails.academicYear) errors.push('Academic year is required');
-    if (!mentorDetails.academicSession) errors.push('Academic session is required');
+    const requiredFields = {
+      name: 'Name',
+      email: 'Email',
+      MUJid: 'MUJid',
+      phone_number: 'Phone number',
+      academicYear: 'Academic year',
+      academicSession: 'Academic session'
+    };
+
+    Object.entries(requiredFields).forEach(([field, label]) => {
+      if (!mentorDetails[field]) {
+        errors.push(`${label} is required`);
+      }
+    });
+
+    if (!/^\d{10}$/.test(mentorDetails.phone_number)) {
+      errors.push('Phone number must be 10 digits');
+    }
+
+    if (!/^[A-Z0-9]+$/.test(mentorDetails.MUJid)) {
+      errors.push('MUJid must contain only uppercase letters and numbers');
+    }
+
+    if (mentorDetails.academicYear && !/^\d{4}-\d{4}$/.test(mentorDetails.academicYear)) {
+      errors.push('Academic year must be in format YYYY-YYYY');
+    }
+
     return errors;
   };
 
   const handleAddMentor = async () => {
     const errors = validateForm();
     if (errors.length > 0) {
-      showAlert(errors.join(', '), 'error');
+      showAlert(errors.join('\n'), 'error');
       return;
     }
+
     try {
       const response = await axios.post('/api/admin/manageUsers/manageMentor', mentorDetails);
       if (response.data && response.status === 201) {
@@ -378,21 +391,15 @@ const MentorManagement = () => {
     };
     
     toast[severity === 'success' ? 'success' : 'error'](message, toastConfig);
-    setAlert({ open: true, message, severity });
-    setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
   };
 
   const handleBulkUploadOpen = () => {
-    setBulkUploadDialog(true);
+    setShowPreview(true);
   };
-
-  // Add these new state variables
-  const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const yearRef = useRef(null);
-  const sessionRef = useRef(null);
 
   // Add these new helper functions
   const generateYearSuggestions = (input) => {
@@ -478,7 +485,7 @@ const MentorManagement = () => {
         setMentors(response.data.mentors);
         setTableVisible(true);
       }
-    } catch (error) {
+    } catch{
       showAlert('Error fetching mentors', 'error');
       setMentors([]);
       setTableVisible(false);
@@ -502,30 +509,6 @@ const MentorManagement = () => {
           }}
         />
       </div>
-
-      {/* Replace the Snackbar component with a simpler success/error message */}
-      {alert.open && (
-        <div
-          className={`fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md p-4 rounded-lg shadow-lg ${
-            alert.severity === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}
-          role="alert"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="text-white font-medium">
-                {alert.message}
-              </span>
-            </div>
-            <button
-              onClick={() => setAlert({ ...alert, open: false })}
-              className="text-white opacity-70 hover:opacity-100"
-            >
-              <CloseIcon fontSize="small" />
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
         {/* Background Effects */}
@@ -776,15 +759,19 @@ const MentorManagement = () => {
                   </List>
                 )}
                 <TextField
+                  select
                   label="Academic Session"
                   name="academicSession"
                   value={mentorDetails.academicSession}
                   onChange={handleAcademicSessionInput}
                   required
-                  inputRef={sessionRef}
-                  onFocus={() => setShowSessionOptions(true)}
-                  onBlur={() => setTimeout(() => setShowSessionOptions(false), 100)}
-                />
+                >
+                  {academicSessions.map((session) => (
+                    <MenuItem key={session} value={session}>
+                      {session}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 {showSessionOptions && sessionSuggestions.length > 0 && (
                   <List
                     sx={{
@@ -879,7 +866,7 @@ const MentorManagement = () => {
                 }}>
                   Supported formats: .xls, .xlsx
                 </Typography>
-                {isUploading && (
+                {uploading && (
                   <Box sx={{ 
                     position: 'absolute',
                     bottom: 0,
@@ -888,7 +875,7 @@ const MentorManagement = () => {
                     bgcolor: 'rgba(0, 0, 0, 0.8)',
                     p: 2,
                   }}>
-                    <LinearProgress 
+                    <LinearProgress
                       variant="determinate" 
                       value={uploadProgress}
                       sx={{ height: 8, borderRadius: 4 }}

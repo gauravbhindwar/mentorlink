@@ -5,95 +5,220 @@ import { NextResponse } from 'next/server';
 import bcrypt from "bcryptjs";
 
 const verifyOtpForUser = async (email, role, otp) => {
-    let User;
-    switch (role) {
-        case 'mentor':
-            User = Mentor;
-            break;
-        case 'mentee':
-            User = Mentee;
-            break;
-        case 'admin':
-        case 'superadmin':
-            User = Admin;
-            break;
-        default:
-            return { success: false, message: "Invalid role" };
+    try {
+        console.log('Connecting to database...');
+        await connect();
+        let User;
+
+        switch (role.toLowerCase()) {
+            case 'mentor':
+                User = Mentor;
+                console.log('Searching for mentor with email:', email);
+                const mentor = await User.findOne({
+                    'academicRecords.sessions.mentorInfo.email': email
+                });
+
+                if (!mentor) {
+                    console.log('No mentor found with email:', email);
+                    return { success: false, message: `No ${role} found with email ${email}` };
+                }
+
+                // Get the current session's mentor info
+                const currentSession = mentor.academicRecords
+                    .flatMap(record => record.sessions)
+                    .find(session => session.mentorInfo.email === email);
+
+                if (!currentSession) {
+                    return { success: false, message: "Session not found" };
+                }
+
+                const mentorInfo = currentSession.mentorInfo;
+
+                console.log('Found mentor:', {
+                    email: mentorInfo.email,
+                    hasOTP: !!mentorInfo.auth?.otp,
+                    otpExpires: mentorInfo.auth?.otpExpires,
+                    isUsed: mentorInfo.auth?.isOtpUsed
+                });
+
+                // If already verified, allow login
+                if (mentorInfo.auth?.isVerified) {
+                    return { 
+                        success: true, 
+                        message: "Already verified",
+                        mujid: mentorInfo.MUJid,
+                        isVerified: true
+                    };
+                }
+
+                // Check if OTP exists
+                if (!mentorInfo.auth?.otp) {
+                    mentorInfo.auth = mentorInfo.auth || {};
+                    mentorInfo.auth.otp = undefined;
+                    mentorInfo.auth.otpExpires = undefined;
+                    mentorInfo.auth.isOtpUsed = false;
+                    await mentor.save();
+                    return { 
+                        success: false, 
+                        message: "No valid OTP found. Please request a new OTP.",
+                        requireNewOtp: true 
+                    };
+                }
+
+                // Check if OTP is already used
+                if (mentorInfo.auth.isOtpUsed) {
+                    mentorInfo.auth.otp = undefined;
+                    mentorInfo.auth.otpExpires = undefined;
+                    await mentor.save();
+                    return { success: false, message: "OTP has already been used" };
+                }
+
+                // Check OTP expiration
+                if (mentorInfo.auth.otpExpires < Date.now()) {
+                    mentorInfo.auth.otp = undefined;
+                    mentorInfo.auth.otpExpires = undefined;
+                    await mentor.save();
+                    return { success: false, message: "OTP expired" };
+                }
+
+                // Verify OTP
+                const mentorOtpValid = await bcrypt.compare(otp, mentorInfo.auth.otp);
+                if (!mentorOtpValid) {
+                    return { success: false, message: "Invalid OTP" };
+                }
+
+                // Mark OTP as used after successful verification
+                mentorInfo.auth.isOtpUsed = true;
+                mentorInfo.auth.isVerified = true;
+                mentorInfo.auth.otp = undefined;
+                mentorInfo.auth.otpExpires = undefined;
+                await mentor.save();
+
+                return { 
+                    success: true, 
+                    message: "Verified successfully",
+                    mujid: mentorInfo.MUJid,
+                    isVerified: true
+                };
+
+            case 'admin':
+            case 'superadmin':
+                User = Admin;
+                console.log('Searching for admin with email:', email);
+                const admin = await User.findOne({ 
+                    email: { $regex: new RegExp(`^${email}$`, 'i') }
+                });
+
+                if (!admin) {
+                    console.log('No admin found with email:', email);
+                    return { success: false, message: `No ${role} found with email ${email}` };
+                }
+
+                console.log('Found admin:', {
+                    email: admin.email,
+                    hasOTP: !!admin.otp,
+                    otpExpires: admin.otpExpires,
+                    isUsed: admin.isOtpUsed,
+                    isVerified: admin.isVerified
+                });
+
+                // If already verified, allow login
+                if (admin.isVerified) {
+                    return { 
+                        success: true, 
+                        message: "Already verified",
+                        mujid: admin.MUJid,
+                        isVerified: true
+                    };
+                }
+
+                // Check if OTP exists
+                if (!admin.otp) {
+                    admin.resetOtp(); // Reset OTP state
+                    await admin.save();
+                    return { 
+                        success: false, 
+                        message: "No valid OTP found. Please request a new OTP.",
+                        requireNewOtp: true 
+                    };
+                }
+
+                // Check if OTP is already used
+                if (admin.isOtpUsed) {
+                    admin.resetOtp(); // Reset OTP state for next use
+                    await admin.save();
+                    return { success: false, message: "OTP has already been used" };
+                }
+
+                // Check OTP expiration
+                if (admin.otpExpires < Date.now()) {
+                    admin.resetOtp();
+                    await admin.save();
+                    return { success: false, message: "OTP expired" };
+                }
+
+                // Verify OTP
+                const adminOtpValid = await bcrypt.compare(otp, admin.otp);
+                if (!adminOtpValid) {
+                    return { success: false, message: "Invalid OTP" };
+                }
+
+                // Mark OTP as used after successful verification
+                admin.markOtpAsUsed();
+                await admin.save();
+
+                return { 
+                    success: true, 
+                    message: "Verified successfully",
+                    mujid: admin.MUJid,
+                    isVerified: true
+                };
+
+            default:
+                return { success: false, message: "Invalid role" };
+        }
+    } catch (error) {
+        console.error('Verification error:', error);
+        throw error;
     }
-
-    await connect();
-
-    const user = await User.findOne({ email });
-    if (!user) {
-        return { success: false, message: `${role} not found` };
-    }
-
-    // Check if already verified
-    if (user.isOtpUsed) {
-        return { success: true, message: "Previously verified" };
-    }
-
-    // Check if valid OTP exists
-    if (!user.otp || !user.otpExpires) {
-        return { success: false, message: "No valid OTP found" };
-    }
-
-    // Check expiration
-    if (user.otpExpires < Date.now()) {
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        await user.save();
-        return { success: false, message: "OTP expired" };
-    }
-
-    // Verify OTP
-    const isOtpValid = await bcrypt.compare(otp, user.otp);
-    if (!isOtpValid) {
-        return { success: false, message: "Invalid OTP" };
-    }
-
-    // Mark as verified
-    user.isOtpUsed = true;
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    await user.save();
-
-    // Return mujid with success response
-    return { 
-        success: true, 
-        message: "Verified successfully",
-        mujid: user.mujid 
-    };
 };
 
 export async function POST(req) {
     try {
         const { email, role, otp } = await req.json();
-        console.log('Verifying OTP for:', email, 'Role:', role);
+        console.log('Starting OTP verification for:', { email, role, hasOTP: !!otp });
 
         if (!email || !role || !otp) {
             return NextResponse.json({
                 success: false,
                 message: "Missing required fields",
                 verified: false
-            }, { status: 200 }); // Changed to 200 for NextAuth
+            }, { status: 400 });
         }
 
         const result = await verifyOtpForUser(email, role, otp);
         
+        // If OTP needs to be regenerated
+        if (result.requireNewOtp) {
+            return NextResponse.json({
+                success: false,
+                message: result.message,
+                verified: false,
+                requireNewOtp: true
+            }, { status: 401 }); // Use 401 for authentication failure requiring new OTP
+        }
+        
         return NextResponse.json({
-            success: result.success,
-            message: result.message,
-            verified: result.success,
-            mujid: result.mujid // Include mujid in response
-        }, { status: 200 }); // Always return 200 for NextAuth
+            ...result,
+            verified: result.success
+        }, { status: result.success ? 200 : 400 });
 
     } catch (error) {
-        console.error('OTP verification error:', error.message);
+        console.error('OTP verification error:', error);
         return NextResponse.json({
             success: false,
-            message: error.message || "Verification failed",
+            message: "Verification failed: " + error.message,
             verified: false
-        }, { status: 200 }); // Changed to 200 for NextAuth
+        }, { status: 500 });
     }
 }

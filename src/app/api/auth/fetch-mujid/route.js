@@ -7,16 +7,25 @@ export async function POST(req) {
     const { email, role } = await req.json();
     let user;
     if (role === "mentor") {
-        user = await Mentor.findOne({ email });
+        // Updated query for nested structure
+        user = await Mentor.findOne({
+            'academicRecords.sessions.mentorInfo.email': email
+        });
+        
+        if (user) {
+            const session = user.academicRecords
+                .flatMap(record => record.sessions)
+                .find(session => session.mentorInfo.email === email);
+                
+            return NextResponse.json({ 
+                mujid: session.mentorInfo.MUJid 
+            }, { status: 200 });
+        }
     } else if (role === "mentee") {
         user = await Mentee.findOne({ email });
     } else if (role === "admin" || role === "superadmin") {
         user = await Admin.findOne({ email });
     }
-    if (user) {
-        return NextResponse.json({ mujid: user.mujid }, { status: 200 });
-    } else {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
 }
 

@@ -4,9 +4,11 @@ import { NextResponse } from 'next/server';
 
 const checkMentorEmail = async (email) => {
     try {
-        console.log(email);
         await connect();
-        const mentor = await Mentor.findOne({ email });
+        const mentor = await Mentor.findOne({
+            'academicRecords.sessions.mentorInfo.email': email
+        });
+        
         if (mentor) {
             return NextResponse.json({ message: "Mentor found" }, { status: 200 });
         } else {

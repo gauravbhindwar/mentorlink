@@ -28,19 +28,50 @@ const sendOtpEmail = async (email, otp) => {
     });
 };
 
-// Function to check user based on role and store OTP in their document
+// Modified function to handle nested schema structure
 const storeOtpForUser = async (email, role, otp) => {
     let User;
+    let query;
+    let update;
+
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     switch (role) {
         case 'mentor':
             User = Mentor;
+            // Find mentor by email in nested structure
+            query = { 'academicRecords.sessions.mentorInfo.email': email };
+            update = {
+                $set: {
+                    'academicRecords.$[].sessions.$[session].mentorInfo.auth': {
+                        otp: hashedOtp,
+                        otpExpires: otpExpires,
+                        isOtpUsed: false
+                    }
+                }
+            };
             break;
         case 'admin':
-        case 'superadmin': // Combined case for both admin types
+        case 'superadmin':
             User = Admin;
+            // Standard update for admin
+            query = { email };
+            update = {
+                otp: hashedOtp,
+                otpExpires: otpExpires,
+                isOtpUsed: false
+            };
             break;
         case 'mentee':
             User = Mentee;
+            // Standard update for mentee
+            query = { email };
+            update = {
+                otp: hashedOtp,
+                otpExpires: otpExpires,
+                isOtpUsed: false
+            };
             break;
         default:
             throw new Error("Invalid role");
@@ -48,23 +79,31 @@ const storeOtpForUser = async (email, role, otp) => {
 
     await connect();
     
-    const user = await User.findOne({ email });
-    if (!user) {
-        throw new Error(`${role} not found`);
+    if (role === 'mentor') {
+        const user = await User.findOne(query);
+        if (!user) {
+            throw new Error(`${role} not found`);
+        }
+
+        // Update auth info for all matching sessions
+        await User.updateOne(
+            query,
+            update,
+            {
+                arrayFilters: [
+                    { 'session.mentorInfo.email': email }
+                ]
+            }
+        );
+        return user;
+    } else {
+        // For non-mentor roles, use standard update
+        const user = await User.findOneAndUpdate(query, update, { new: true });
+        if (!user) {
+            throw new Error(`${role} not found`);
+        }
+        return user;
     }
-
-    // Hash the OTP
-    const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // Update user document
-    user.otp = hashedOtp;
-    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    user.isOtpUsed = false;
-
-    // Save and verify
-    await user.save();
-
-    return user;
 };
 
 // Main POST handler to send OTP
@@ -79,15 +118,21 @@ export async function POST(req) {
             );
         }
 
-        // Generate OTP and send it via email
         const generatedOtp = generateOtp();
-        await storeOtpForUser(email, role, generatedOtp); // Store OTP in user document
-        await sendOtpEmail(email, generatedOtp); // Send OTP email
+        await storeOtpForUser(email, role, generatedOtp);
+        await sendOtpEmail(email, generatedOtp);
 
-        return NextResponse.json({ success: true, message: "OTP sent" }, { status: 200 });
+        return NextResponse.json({ 
+            success: true, 
+            message: "OTP sent successfully" 
+        }, { status: 200 });
     } catch (error) {
+        console.error('Error sending OTP:', error);
         return NextResponse.json(
-            { success: false, message: error.message || "Error processing request" },
+            { 
+                success: false, 
+                message: error.message || "Error processing request" 
+            },
             { status: 500 }
         );
     }

@@ -33,62 +33,91 @@ const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request with better error handling
+// Helper function to create admin record
+async function createAdminRecord(mentorData) {
+  const adminData = {
+    name: mentorData.name,
+    email: mentorData.email,
+    MUJid: mentorData.MUJid,
+    phone_number: mentorData.phone_number,
+    role: mentorData.role,
+    created_at: new Date(),
+    updated_at: new Date()
+  };
+  
+  return await Admin.create(adminData);
+}
+
+// POST request with admin creation
 export async function POST(req) {
   try {
     await connect();
     let data = await req.json();
     
-    // Handle both single object and array of objects
     const mentorsToCreate = Array.isArray(data) ? data : [data];
-    
-    // Validate all mentors
-    const validationErrors = [];
-    mentorsToCreate.forEach((mentor, index) => {
-      const { error } = mentorSchema.validate(mentor);
-      if (error) validationErrors.push(`Mentor ${index + 1}: ${error.message}`);
-    });
-    
-    if (validationErrors.length > 0) {
-      return NextResponse.json({ error: validationErrors.join(', ') }, { status: 400 });
+    const createdMentors = [];
+    const createdAdmins = [];
+
+    for (const mentor of mentorsToCreate) {
+      // Required fields validation
+      const requiredFields = ['name', 'email', 'MUJid', 'phone_number', 'academicYear', 'academicSession'];
+      const missingFields = requiredFields.filter(field => !mentor[field]);
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      const [sessionName, year] = mentor.academicSession.split(' ');
+      if (!['JULY-DECEMBER', 'JANUARY-JUNE'].includes(sessionName)) {
+        throw new Error('Invalid academicSession format');
+      }
+
+      // Transform data to match schema structure
+      const transformedMentor = {
+        academicRecords: [{
+          academicYear: mentor.academicYear,
+          sessions: [{
+            sessionName,
+            mentorInfo: {
+              name: mentor.name,
+              email: mentor.email,
+              MUJid: mentor.MUJid,
+              phone_number: mentor.phone_number,
+              address: mentor.address || '',
+              gender: mentor.gender || '',
+              profile_picture: mentor.profile_picture || '',
+              role: mentor.role || ['mentor'],
+              auth: { isOtpUsed: false }
+            }
+          }]
+        }]
+      };
+
+      try {
+        const createdMentor = await Mentor.create(transformedMentor);
+        createdMentors.push(createdMentor);
+
+        if (mentor.role?.some(role => ['admin', 'superadmin'].includes(role))) {
+          const createdAdmin = await createAdminRecord(mentor);
+          createdAdmins.push(createdAdmin);
+        }
+      } catch (err) {
+        if (err.code === 11000) { // Duplicate key error
+          throw new Error(`Duplicate entry found for ${Object.keys(err.keyPattern).join(', ')}`);
+        }
+        throw err;
+      }
     }
-
-    // Check for duplicates
-    const existingMentors = await Mentor.find({
-      $or: mentorsToCreate.map(m => ({ 
-        $or: [
-          { email: m.email }, 
-          { MUJid: m.MUJid }
-        ]
-      }))
-    });
-
-    if (existingMentors.length > 0) {
-      return NextResponse.json({
-        error: "Duplicate entries found for email or MUJid"
-      }, { status: 409 });
-    }
-
-    const createdMentors = await Mentor.insertMany(mentorsToCreate);
     
-    // Handle admin roles
-    const adminsToCreate = mentorsToCreate.filter(m => 
-      m.role.some(r => ['admin', 'superadmin'].includes(r))
-    );
-    
-    if (adminsToCreate.length > 0) {
-      await Admin.insertMany(adminsToCreate);
-    }
-
     return NextResponse.json({ 
-      message: "Mentors created successfully",
-      mentors: createdMentors 
-    }, { status: 201 }); // Use 201 for creation
+      message: "Records created successfully",
+      mentors: createdMentors,
+      admins: createdAdmins
+    }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/manageUsers/manageMentor:', error);
+    console.error('Error in POST:', error);
     return NextResponse.json({ 
-      error: "Failed to create mentor(s). " + error.message 
-    }, { status: 500 });
+      error: error.message || "Failed to create records"
+    }, { status: 400 });
   }
 }
 
@@ -97,96 +126,106 @@ export async function GET(req) {
   try {
     await connect();
     const { searchParams } = new URL(req.url);
-    const query = {};
     
-    // Add filters only if they exist in searchParams
-    ['academicYear', 'academicSession'].forEach(param => {
-      const value = searchParams.get(param);
-      if (value) query[param] = value.toUpperCase();
-    });
+    // Updated query for nested structure
+    const query = {};
+    if (searchParams.get('academicYear')) {
+      query['academicRecords.academicYear'] = searchParams.get('academicYear');
+    }
+    if (searchParams.get('academicSession')) {
+      query['academicRecords.sessions.sessionName'] = searchParams.get('academicSession').split(' ')[0];
+    }
 
     const mentors = await Mentor.find(query);
-    return NextResponse.json({ mentors, total: mentors.length }, { status: 200 });
+    
+    // Transform response to match frontend expectations
+    const transformedMentors = mentors.map(mentor => {
+      const latestRecord = mentor.academicRecords[mentor.academicRecords.length - 1];
+      const latestSession = latestRecord?.sessions[latestRecord.sessions.length - 1];
+      return {
+        ...latestSession?.mentorInfo,
+        academicYear: latestRecord?.academicYear,
+        academicSession: `${latestSession?.sessionName} ${latestRecord?.academicYear.split('-')[0]}`
+      };
+    });
+
+    return NextResponse.json({ mentors: transformedMentors });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// DELETE request to delete a mentor by MUJid
+// DELETE request to delete from both collections
 export async function DELETE(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
-    });
-    const requestBody = await req.json().catch(() => null);
-
-    if (!requestBody) {
-      return createErrorResponse("Invalid JSON input", 400);
-    }
-
-    const { MUJid } = requestBody;
+    await connect();
+    const { MUJid } = await req.json();
 
     if (!MUJid) {
       return createErrorResponse("MUJid is required for deletion", 400);
     }
 
-    const deletedMentor = await Mentor.findOneAndDelete({ MUJid });
+    const [deletedMentor, deletedAdmin] = await Promise.all([
+      Mentor.findOneAndDelete({ 'academicRecords.sessions.mentorInfo.MUJid': MUJid }),
+      Admin.findOneAndDelete({ MUJid })
+    ]);
+
     if (!deletedMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
 
-    return NextResponse.json(
-      { message: "Mentor deleted successfully", deletedMentor },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      message: "Records deleted successfully",
+      deletedMentor,
+      deletedAdmin
+    }, { status: 200 });
   } catch (error) {
-    console.error("Error deleting mentor:", error);
-    return createErrorResponse(error.message || "Failed to delete mentor", 500);
+    return createErrorResponse(error.message || "Failed to delete records", 500);
   }
 }
 
-// PUT request to update a mentor's details
+// PUT request to update both collections
 export async function PUT(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
+    const { MUJid, ...updateData } = await req.json();
+
+    // Update mentor
+    const mentor = await Mentor.findOne({
+      'academicRecords.sessions.mentorInfo.MUJid': MUJid
     });
-    const requestBody = await req.json().catch(() => null);
 
-    if (!requestBody) {
-      return createErrorResponse("Invalid JSON input", 400);
+    if (!mentor) {
+      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
     }
 
-    const { MUJid } = requestBody;
+    // Update the latest session's mentor info
+    const latestRecord = mentor.academicRecords[mentor.academicRecords.length - 1];
+    const latestSession = latestRecord.sessions[latestRecord.sessions.length - 1];
+    Object.assign(latestSession.mentorInfo, updateData);
+    await mentor.save();
 
-    if (!MUJid) {
-      return createErrorResponse("MUJid is required for updating", 400);
+    // Update or create admin record if role includes admin/superadmin
+    let admin = null;
+    if (updateData.role && updateData.role.some(role => ['admin', 'superadmin'].includes(role))) {
+      admin = await Admin.findOne({ MUJid });
+      if (admin) {
+        Object.assign(admin, { ...updateData, updated_at: new Date() });
+        await admin.save();
+      } else {
+        admin = await createAdminRecord({ MUJid, ...updateData });
+      }
+    } else {
+      // Remove from admin collection if no longer admin/superadmin
+      await Admin.findOneAndDelete({ MUJid });
     }
 
-    const { error } = mentorSchema.validate(requestBody);
-    if (error) {
-      return createErrorResponse(error.details[0].message, 400);
-    }
-
-    const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid },
-      requestBody,
-      { new: true }
-    );
-
-    if (!updatedMentor) {
-      return createErrorResponse("Mentor not found", 404);
-    }
-
-    return NextResponse.json(
-      { message: "Mentor updated successfully", updatedMentor },
-      { status: 200 }
-    );
+    return NextResponse.json({ 
+      message: "Records updated successfully",
+      mentor,
+      admin
+    });
   } catch (error) {
-    console.error("Error updating mentor:", error);
-    return createErrorResponse(error.message || "Something went wrong on the server", 500);
+    return createErrorResponse(error.message || "Failed to update records", 500);
   }
 }
 

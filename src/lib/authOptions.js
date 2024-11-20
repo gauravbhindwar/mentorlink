@@ -10,13 +10,18 @@ export const authOptions = {
                 otp: { label: "OTP", type: "text" },
                 role: { label: "Role", type: "text" },
             },
-            async authorize(credentials, req) {
+            async authorize(credentials) {
                 try {
                     if (!credentials?.email || !credentials?.otp || !credentials?.role) {
                         throw new Error("Missing credentials");
                     }
 
-                    // Verify OTP and get user info in one step
+                    console.log('Attempting verification with:', {
+                        email: credentials.email,
+                        role: credentials.role,
+                        hasOTP: !!credentials.otp
+                    });
+
                     const verifyResponse = await axios.post(
                         `${process.env.NEXTAUTH_URL}/api/auth/verify-otp`,
                         {
@@ -26,20 +31,29 @@ export const authOptions = {
                         }
                     );
 
-                    if (!verifyResponse.data?.success) {
-                        throw new Error(verifyResponse.data?.message || "Authentication failed");
+                    console.log('Verification response:', verifyResponse.data);
+
+                    if (verifyResponse.data?.requireNewOtp) {
+                        throw new Error("Please request a new OTP");
                     }
 
-                    // Return user object with all necessary information
+                    if (!verifyResponse.data?.success && !verifyResponse.data?.isVerified) {
+                        throw new Error(verifyResponse.data?.message || "Verification failed");
+                    }
+
                     return {
                         id: verifyResponse.data.mujid,
                         email: credentials.email,
                         role: credentials.role,
-                        mujid: verifyResponse.data.mujid
+                        mujid: verifyResponse.data.mujid,
+                        isVerified: true
                     };
 
                 } catch (error) {
-                    console.error("Authorize error:", error.message);
+                    console.error("Authorization error:", {
+                        message: error.message,
+                        response: error.response?.data
+                    });
                     return null;
                 }
             },

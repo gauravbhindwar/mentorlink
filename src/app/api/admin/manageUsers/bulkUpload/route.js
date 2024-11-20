@@ -27,6 +27,34 @@ export async function POST(req) {
             }, { status: 400 });
         }
 
+        if (type === 'mentor') {
+            const transformedData = uploadData.map(mentor => ({
+                academicRecords: [{
+                    academicYear: mentor.academicYear,
+                    sessions: [{
+                        sessionName: mentor.academicSession.split(' ')[0],
+                        mentorInfo: {
+                            name: mentor.name,
+                            email: mentor.email,
+                            MUJid: mentor.MUJid,
+                            phone_number: mentor.phone_number,
+                            gender: mentor.gender,
+                            role: mentor.role || ['mentor'],
+                            auth: {
+                                isOtpUsed: false
+                            }
+                        }
+                    }]
+                }]
+            }));
+
+            const savedMentors = await Mentor.insertMany(transformedData);
+            return NextResponse.json({
+                message: "Bulk upload completed",
+                savedCount: savedMentors.length
+            }, { status: 201 });
+        }
+
         const Model = type === 'mentee' ? Mentee : Mentor;
         const savedItems = [];
         const errors = [];

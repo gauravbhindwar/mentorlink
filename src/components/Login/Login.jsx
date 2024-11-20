@@ -130,7 +130,7 @@ const Login = ({ role }) => {
       }
     } else {
       try {
-        // Verify OTP
+        // Verify OTP first
         const verifyResponse = await axios.post("/api/auth/verify-otp", {
           email: email,
           role: role,
@@ -139,11 +139,12 @@ const Login = ({ role }) => {
 
         if (!verifyResponse.data.success) {
           showToast.error(verifyResponse.data.message || "OTP verification failed");
+          setOtp(""); // Just clear the OTP input, don't reset otpSent
           setLoading(false);
           return;
         }
 
-        // Sign in with credentials
+        // Sign in with credentials after successful verification
         const result = await signIn("credentials", {
           email,
           role,
@@ -154,28 +155,37 @@ const Login = ({ role }) => {
         if (result?.ok) {
           showToast.success("Login successful!");
           
-          // Store session data
-          sessionStorage.setItem('email', email);
-          sessionStorage.setItem('role', role);
-          if (verifyResponse.data?.mujid) {
-            sessionStorage.setItem('mujid', verifyResponse.data.mujid);
-          }
+          // Store session data with role from verification response
+          const sessionData = {
+            email,
+            role: verifyResponse.data.role || role,
+            mujid: verifyResponse.data.mujid
+          };
 
-          // Redirect based on role
-          const dashboardPath = 
-            role === "mentor" ? "/pages/mentordashboard" :
-            role === "mentee" ? "/pages/menteedashboard" :
-            "/pages/admin/admindashboard";
+          // Store session data
+          Object.entries(sessionData).forEach(([key, value]) => {
+            if (value) sessionStorage.setItem(key, value);
+          });
+
+          // Redirect based on role from verification response
+          const dashboardPath = {
+            'mentor': "/pages/mentordashboard",
+            'mentee': "/pages/menteedashboard",
+            'admin': "/pages/admin/admindashboard",
+            'superadmin': "/pages/admin/admindashboard"
+          }[sessionData.role] || "/";
 
           router.push(dashboardPath);
         } else {
           showToast.error(result?.error || "Login failed");
+          setOtp(""); // Just clear the OTP input, don't reset otpSent
         }
       } catch (error) {
         const errorMessage = error?.response?.data?.message || 
                            error?.message || 
                            "Error during authentication";
         showToast.error(errorMessage);
+        setOtp(""); // Just clear the OTP input, don't reset otpSent
       } finally {
         setLoading(false);
       }
