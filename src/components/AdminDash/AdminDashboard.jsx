@@ -32,14 +32,14 @@ const AdminDashboard = () => {
             shadowColor: 'rgba(147, 51, 234, 0.4)',
             onClick: () => router.push('/pages/admin/managemeeting')
         },
-        // {
-        //     title: 'Manage Admins',
-        //     icon: '👨‍💼',
-        //     description: 'Control admin access and permissions',
-        //     gradient: 'from-blue-500 via-cyan-500 to-teal-500',
-        //     shadowColor: 'rgba(59, 130, 246, 0.4)',
-        //     onClick: () => router.push('/pages/admin/manageadmins')
-        // },
+        {
+            title: 'Create New Academic Session',
+            icon: '📅',
+            description: 'Create and manage academic sessions',
+            gradient: 'from-green-500 via-emerald-500 to-teal-500',
+            shadowColor: 'rgba(16, 185, 129, 0.4)',
+            onClick: () => router.push('/pages/admin/createacademicsession')
+        },
         // {
         //     title: 'Student Queries',
         //     icon: '❓',

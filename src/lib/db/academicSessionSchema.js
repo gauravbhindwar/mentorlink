@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-// import { type } from "os";
 
 const academicSessionsSchema = new mongoose.Schema({
     start_year: { type: Number, required: true }, // Start year of the session
@@ -16,19 +15,19 @@ const academicSessionsSchema = new mongoose.Schema({
             }
         },
         semesters: [{
-            semester_number: { type: Number, required: true }, // Semester number (1-8)
-            start_date: { type: Date, required: true }, // Start date of the semester
-            end_date: { type: Date, required: true }, // End date of the semester
+            semester_number: { type: Number }, // Semester number (1-8)
+            start_date: { type: Date }, // Start date of the semester
+            end_date: { type: Date }, // End date of the semester
             sections: [{
                 name: { 
                     type: String, 
-                    required: true,
                     uppercase: true,
                     validate: {
                         validator: function(v) {
-                            return /^[A-F]$/.test(v);
+                            // Validate single uppercase letter
+                            return /^[A-Z]$/.test(v);
                         },
-                        message: 'Section must be a single uppercase letter A-F'
+                        message: 'Each section must be a single uppercase letter A-Z'
                     }
                 },
                 meetings: [{
@@ -38,7 +37,6 @@ const academicSessionsSchema = new mongoose.Schema({
                     mentor_id: {
                         type: String,
                         ref: 'Mentor',
-                        required: true,
                         uppercase: true,
                         validate: {
                             validator: function(v) {
@@ -50,7 +48,6 @@ const academicSessionsSchema = new mongoose.Schema({
                     mentee_ids: [{
                         type: String,
                         ref: 'Mentee',
-                        required: true,
                         uppercase: true,
                         validate: {
                             validator: function(v) {
@@ -59,10 +56,9 @@ const academicSessionsSchema = new mongoose.Schema({
                             message: 'Mentee MUJid must be uppercase alphanumeric only'
                         }
                     }],
-                    meeting_date: { type: Date, required: true },
+                    meeting_date: { type: Date },
                     meeting_time: {
                         type: String,
-                        required: true,
                         validate: {
                             validator: function (v) {
                                 const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/;
@@ -76,7 +72,6 @@ const academicSessionsSchema = new mongoose.Schema({
                         TypeOfInformation: { type: String },
                         NotesToStudent: { type: String },
                         feedbackFromMentee: { type: String },
-                        // feedbackFromMentor: { type: String },
                         outcome: { type: String },
                         closureRemarks: { type: String }
                     },
