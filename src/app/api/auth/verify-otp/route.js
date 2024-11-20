@@ -2,7 +2,7 @@
 import { connect } from "../../../../lib/dbConfig";
 import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
 import { NextResponse } from 'next/server';
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const verifyOtpForUser = async (email, role, otp) => {
     let User;

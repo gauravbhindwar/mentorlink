@@ -1,141 +1,91 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Mentee, Mentor, year } from "../../../../../lib/dbModels";
+import { Mentee } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
-// Define the Joi schema for validation
+// Update the schema validation
 const menteeSchema = Joi.object({
-  mujid: Joi.string().alphanum().required(),
-  yearOfRegistration: Joi.number()
-    .integer()
-    .min(1900)
-    .max(new Date().getFullYear())
-    .required(),
-  year: Joi.number().integer().min(1900).max(new Date().getFullYear()).required(),
-  term: Joi.string().valid("odd", "even").required(),
-  semester: Joi.number().integer().min(1).max(8).required(),
-  section: Joi.string().required(),
-  name: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
+  name: Joi.string().required(),
   email: Joi.string().email().required(),
-  phone: Joi.string().required(),
-  fatherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
-  motherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
-  dateOfBirth: Joi.string().regex(/^\d{2}-\d{2}-\d{4}$/).required(),
-  parentsPhone: Joi.string().required(),
-  parentsEmail: Joi.string().email().required(),
-  mentorMujid: Joi.string().alphanum().required(),
-});
+  MUJid: Joi.string().pattern(/^[A-Z0-9]+$/).required(),
+  phone: Joi.string().pattern(/^\d{10}$/).allow(''),
+  yearOfRegistration: Joi.number().required(),
+  section: Joi.string().required(),
+  semester: Joi.number().min(1).max(8).required(),
+  academicYear: Joi.string().required(),
+  academicSession: Joi.string().required(),
+  mentorMujid: Joi.string().required(),
+  parents: Joi.object({
+    father: Joi.object({
+      name: Joi.string().allow('', null),
+      email: Joi.string().email().allow('', null),
+      phone: Joi.string().allow('', null),
+      alternatePhone: Joi.string().allow('', null)
+    }).allow(null),
+    mother: Joi.object({
+      name: Joi.string().allow('', null),
+      email: Joi.string().email().allow('', null),
+      phone: Joi.string().allow('', null),
+      alternatePhone: Joi.string().allow('', null)
+    }).allow(null),
+    guardian: Joi.object({
+      name: Joi.string().allow('', null),
+      email: Joi.string().allow('', null),
+      phone: Joi.string().allow('', null),
+      relation: Joi.string().allow('', null)
+    }).allow(null)
+  }).optional().default({})
+}).unknown(true);
 
 // Utility function to handle errors
 const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request to create new mentees
+// Update POST handler to clean data before validation
 export async function POST(req) {
   try {
     await connect();
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (err) {
-      return createErrorResponse("Invalid JSON input", 400);
-    }
+    let menteeData = await req.json();
 
-    if (!Array.isArray(requestBody)) {
-      return createErrorResponse("Request body must be an array of mentees", 400);
-    }
-
-    const validationErrors = [];
-    const menteesToSave = [];
-
-    for (const menteeData of requestBody) {
-      const {
-        mujid,
-        yearOfRegistration,
-        year,
-        term,
-        semester,
-        section,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid
-      } = menteeData;
-
-      const { error } = menteeSchema.validate({
-        mujid,
-        yearOfRegistration,
-        year,
-        term,
-        semester,
-        section,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid
-      });
-
-      if (error) {
-        validationErrors.push({ mujid, error: error.details[0].message });
-        continue;
+    // Clean up parent data to ensure empty objects if not provided
+    menteeData = {
+      ...menteeData,
+      parents: {
+        father: menteeData.parents?.father || {},
+        mother: menteeData.parents?.mother || {},
+        guardian: menteeData.parents?.guardian || {}
       }
+    };
 
-      // Check if the mentee already exists by mujid or email
-      const existingMentee = await Mentee.findOne({ $or: [{ mujid }, { email }] });
-      if (existingMentee) {
-        validationErrors.push({ mujid, error: "Mentee with this mujid or email already exists" });
-        continue;
-      }
+    // Validate the data against the schema
+    const { error, value } = menteeSchema.validate(menteeData, {
+      abortEarly: false, // Get all errors, not just the first one
+      stripUnknown: true // Remove unknown fields
+    });
 
-      // Check if the mentor exists
-      const mentor = await Mentor.findOne({ mujid: mentorMujid });
-      if (!mentor) {
-        validationErrors.push({ mujid, error: "Mentor with this mujid not found" });
-        continue;
-      }
-
-      menteesToSave.push({
-        mujid,
-        yearOfRegistration,
-        year,
-        term,
-        semester,
-        section,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid
-      });
+    if (error) {
+      const errorMessages = error.details.map(detail => detail.message);
+      return createErrorResponse(errorMessages, 400);
     }
 
-    if (validationErrors.length > 0) {
-      return createErrorResponse(validationErrors, 400);
+    // Check for existing mentee
+    const existingMentee = await Mentee.findOne({
+      $or: [
+        { email: menteeData.email },
+        { MUJid: menteeData.MUJid }
+      ]
+    });
+
+    if (existingMentee) {
+      return createErrorResponse("Mentee already exists with this email or MUJid", 400);
     }
 
-    try {
-      await Mentee.insertMany(menteesToSave);
-    } catch (error) {
-      console.error("Error saving new mentees:", error);
-      return createErrorResponse("Error saving new mentees", 500);
-    }
+    // Create new mentee using validated data
+    const newMentee = new Mentee(value);
+    await newMentee.save();
 
-    return NextResponse.json({ message: "Mentees added successfully" }, { status: 201 });
+    return NextResponse.json({ message: "Mentee added successfully" }, { status: 201 });
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
@@ -147,102 +97,78 @@ export async function GET(req) {
   try {
     await connect();
     const { searchParams } = new URL(req.url);
-    const year = searchParams.get('year');
-    const term = searchParams.get('term');
+    
+    // Required filters
+    const academicYear = searchParams.get('academicYear');
+    const academicSession = searchParams.get('academicSession');
     const semester = searchParams.get('semester');
-    const section = searchParams.get('section'); // add section parameter
-    const mentorMujid = searchParams.get('mentorMujid'); // updated parameter name
 
-    const filters = {};
-    if (year) filters.year = parseInt(year, 10); // parse year as integer
-    if (term) filters.term = term;
-    if (semester) filters.semester = semester;
-    if (section) filters.section = section; // add section filter
-    if (mentorMujid) filters.mentorMujid = mentorMujid;
+    if (!academicYear || !academicSession || !semester) {
+      return createErrorResponse("Academic year, session, and semester are required", 400);
+    }
 
-    console.log('Filters applied:', filters); // Add this line to log the filters
+    const filters = {
+      academicYear,
+      academicSession,
+      semester: parseInt(semester, 10)
+    };
+
+    console.log('API Filters:', filters);
 
     const mentees = await Mentee.find(filters);
-    console.log('Mentees found:', mentees); // Add this line to log the mentees found
-    if (!mentees.length) {
+    
+    // Transform the data before sending
+    const transformedMentees = mentees.map(mentee => ({
+      _id: mentee._id.toString(),
+      MUJid: mentee.MUJid?.toUpperCase() || '',
+      mentorMujid: mentee.mentorMujid?.toUpperCase() || '',
+      name: mentee.name || '',
+      email: mentee.email || '',
+      phone: mentee.phone || '',
+      semester: mentee.semester || '',
+      section: mentee.section || '',
+      yearOfRegistration: mentee.yearOfRegistration || '',
+      // ...other fields...
+    }));
+
+    console.log('API Response:', transformedMentees);
+
+    if (!transformedMentees.length) {
       return createErrorResponse("No mentees found", 404);
     }
 
-    return NextResponse.json(mentees, { status: 200 });
+    return NextResponse.json(transformedMentees, { status: 200 });
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
 
-// PUT request to update a mentee by mujid
+// PUT request to update a mentee by MUJid
 export async function PUT(req) {
   try {
     await connect();
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch (err) {
+    } catch {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const {
-      mujid,
-      yearOfRegistration,
-      year,
-      term,
-      semester,
-      section,
-      name,
-      email,
-      phone,
-      fatherName,
-      motherName,
-      dateOfBirth,
-      parentsPhone,
-      parentsEmail,
-      mentorMujid,
-    } = requestBody;
+    const { MUJid, ...updateFields } = requestBody;
 
-    const { error } = menteeSchema.validate({
-      mujid,
-      yearOfRegistration,
-      year,
-      term,
-      semester,
-      section,
-      name,
-      email,
-      phone,
-      fatherName,
-      motherName,
-      dateOfBirth,
-      parentsPhone,
-      parentsEmail,
-      mentorMujid,
-    });
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required", 400);
+    }
+
+    const { error } = menteeSchema.validate({ ...updateFields, MUJid });
     if (error) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
     const updatedMentee = await Mentee.findOneAndUpdate(
-      { mujid },
-      {
-        yearOfRegistration,
-        year,
-        term,
-        semester,
-        section,
-        name,
-        email,
-        phone,
-        fatherName,
-        motherName,
-        dateOfBirth,
-        parentsPhone,
-        parentsEmail,
-        mentorMujid,
-      },
+      { MUJid },
+      { $set: updateFields },
       { new: true }
     );
 
@@ -257,21 +183,21 @@ export async function PUT(req) {
   }
 }
 
-// PATCH request to update specific fields of a mentee by mujid
+// PATCH request to update specific fields of a mentee by MUJid
 export async function PATCH(req) {
   try {
     await connect();
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch (err) {
+    } catch {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid, ...updateFields } = requestBody;
+    const { MUJid, ...updateFields } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("Mujid is required", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required", 400);
     }
 
     // Validate only the fields that are being updated
@@ -282,7 +208,7 @@ export async function PATCH(req) {
     }
 
     const updatedMentee = await Mentee.findOneAndUpdate(
-      { mujid },
+      { MUJid },
       { $set: updateFields },
       { new: true }
     );
@@ -298,18 +224,24 @@ export async function PATCH(req) {
   }
 }
 
-// DELETE request to delete a mentee by mujid
+// DELETE request to delete a mentee by MUJid
 export async function DELETE(req) {
   try {
     await connect();
-    const { searchParams } = new URL(req.url);
-    const mujid = searchParams.get('mujid');
-
-    if (!mujid) {
-      return createErrorResponse("Mujid is required", 400);
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch {
+      return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const deletedMentee = await Mentee.findOneAndDelete({ mujid });
+    const { MUJid } = requestBody;
+
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required", 400);
+    }
+
+    const deletedMentee = await Mentee.findOneAndDelete({ MUJid });
     if (!deletedMentee) {
       return createErrorResponse("Mentee not found", 404);
     }

@@ -9,42 +9,6 @@ import { motion } from 'framer-motion';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-// Route Comments:
-/*
- * API Routes:
- * GET    /api/admin/manageAdmin        - Fetch all admins
- * POST   /api/admin/manageAdmin        - Create new admin
- * PATCH  /api/admin/manageAdmin/:id    - Update admin
- * DELETE /api/admin/manageAdmin/:id    - Delete admin
- */
-
-// Dummy Data
-const dummyAdmins = [
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john@mentorlink.com',
-    role: 'Super Admin',
-    lastActive: '2024-01-15',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane@mentorlink.com',
-    role: 'Admin',
-    lastActive: '2024-01-14',
-    status: 'Active'
-  },
-  {
-    id: 3,
-    name: 'Mike Johnson',
-    email: 'mike@mentorlink.com',
-    role: 'Admin',
-    lastActive: '2024-01-10',
-    status: 'Inactive'
-  }
-];
 
 const AdminManagement = () => {
   const [admins, setAdmins] = useState([]);

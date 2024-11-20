@@ -1,27 +1,15 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Admin } from "../../../../../lib/dbModels";
+import { Mentor, Admin } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
 // Define the Joi schema for validation
 const adminSchema = Joi.object({
-  email: Joi.string().email().required(),
   name: Joi.string().required(),
-  mujid: Joi.string().required(),
-  phone: Joi.string()
-    .pattern(/^(\+91)?[6-9]\d{9}$/)    // This regex pattern matches a valid Indian phone number
-    // The pattern: ^[6-9]\d{9}$ means:
-    // - ^ asserts start of a line
-    // - [6-9] matches one of the numbers 6, 7, 8 or 9
-    // - \d{9} matches exactly 9 digits
-    // - $ asserts end of a line
-    .required()
-    .messages({
-      'string.pattern.base': 'Phone number must be a valid Indian phone number'
-    }),
-  roles: Joi.array()
-    .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
-    .default(['admin']),
+  email: Joi.string().email().required(),
+  MUJid: Joi.string().pattern(/^[A-Z0-9]+$/).required(),
+  phone_number: Joi.string().pattern(/^\d{10}$/).required(),
+  role: Joi.array().items(Joi.string().valid('admin', 'superadmin')).required()
 });
 
 // Utility function to handle errors
@@ -39,19 +27,33 @@ export async function POST(req) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
+    requestBody.role = ['admin', ...requestBody.role || []];
+
     const { error } = adminSchema.validate(requestBody);
     if (error) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const { email } = requestBody;
-    const existingAdmin = await Admin.findOne({ email });
+    const existingAdmin = await Admin.findOne({
+      $or: [{ email: requestBody.email }, { MUJid: requestBody.MUJid }]
+    });
     if (existingAdmin) {
-      return createErrorResponse("Email already exists", 400);
+      return createErrorResponse("Admin with this email or MUJid already exists", 400);
     }
 
     const newAdmin = new Admin(requestBody);
     await newAdmin.save();
+
+    // If the user is also a mentor, store in Mentor collection
+    if (requestBody.role.includes('mentor')) {
+      const existingMentor = await Mentor.findOne({
+        $or: [{ email: requestBody.email }, { MUJid: requestBody.MUJid }]
+      });
+      if (!existingMentor) {
+        const newMentor = new Mentor(requestBody);
+        await newMentor.save();
+      }
+    }
 
     return NextResponse.json(
       { message: "Admin added successfully" },
@@ -63,12 +65,12 @@ export async function POST(req) {
   }
 }
 
-// GET request to fetch all admins
+// GET request to fetch all admins and superadmins
 export async function GET() {
   try {
     await connect();
-    const admins = await Admin.find({});
-    const totalAdmins = await Admin.countDocuments();
+    const admins = await Mentor.find({ role: { $in: ['admin', 'superadmin'] } });
+    const totalAdmins = await Mentor.countDocuments({ role: { $in: ['admin', 'superadmin'] } });
 
     return NextResponse.json(
       { admins, totalAdmins },
@@ -80,7 +82,7 @@ export async function GET() {
   }
 }
 
-// DELETE request to delete an admin by mujid
+// DELETE request to delete an admin or superadmin by MUJid
 export async function DELETE(req) {
   try {
     await connect();
@@ -90,13 +92,13 @@ export async function DELETE(req) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid } = requestBody;
+    const { MUJid } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("mujid is required for deletion", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required for deletion", 400);
     }
 
-    const deletedAdmin = await Admin.findOneAndDelete({ mujid });
+    const deletedAdmin = await Mentor.findOneAndDelete({ MUJid, role: { $in: ['admin', 'superadmin'] } });
     if (!deletedAdmin) {
       return createErrorResponse("Admin not found", 404);
     }
@@ -111,7 +113,7 @@ export async function DELETE(req) {
   }
 }
 
-// PUT request to update an admin's details
+// PUT request to update an admin's or superadmin's details
 export async function PUT(req) {
   try {
     await connect();
@@ -121,10 +123,10 @@ export async function PUT(req) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid } = requestBody;
+    const { MUJid } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("mujid is required for updating", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required for updating", 400);
     }
 
     const { error } = adminSchema.validate(requestBody);
@@ -132,8 +134,8 @@ export async function PUT(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const updatedAdmin = await Admin.findOneAndUpdate(
-      { mujid },
+    const updatedAdmin = await Mentor.findOneAndUpdate(
+      { MUJid, role: { $in: ['admin', 'superadmin'] } },
       requestBody,
       { new: true }
     );
@@ -152,7 +154,7 @@ export async function PUT(req) {
   }
 }
 
-// PATCH request to partially update an admin's details
+// PATCH request to partially update an admin's or superadmin's details
 export async function PATCH(req) {
   try {
     await connect();
@@ -162,10 +164,10 @@ export async function PATCH(req) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid, ...updateData } = requestBody;
+    const { MUJid, ...updateData } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("mujid is required for updating", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required for updating", 400);
     }
 
     // Partial validation for PATCH, applying defaults only for provided fields
@@ -178,8 +180,8 @@ export async function PATCH(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const updatedAdmin = await Admin.findOneAndUpdate(
-      { mujid },
+    const updatedAdmin = await Mentor.findOneAndUpdate(
+      { MUJid, role: { $in: ['admin', 'superadmin'] } },
       updateData,
       { new: true }
     );

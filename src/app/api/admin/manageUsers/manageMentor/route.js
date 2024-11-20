@@ -1,18 +1,31 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { Mentor } from "../../../../../lib/dbModels";
+import { Mentor, Admin } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
-// Define the Joi schema for validation
+// Updated schema with proper validations
 const mentorSchema = Joi.object({
-  email: Joi.string().email().required(),
   name: Joi.string().required(),
-  mujid: Joi.string().required(),
-  phone: Joi.string().required(),
-  designation: Joi.string().optional(),
-  roles: Joi.array()
-    .items(Joi.string().valid('mentor', 'admin', 'superadmin'))
-    .default(['mentor']),
+  email: Joi.string().email().required(),
+  MUJid: Joi.string().required(),
+  phone_number: Joi.string().required(),
+  address: Joi.string().allow('', null),
+  gender: Joi.string().valid('male', 'female', 'other').allow('', null),
+  profile_picture: Joi.string().allow('', null),
+  role: Joi.array().items(Joi.string().valid('mentor', 'admin', 'superadmin')).default(['mentor']),
+  academicYear: Joi.string()
+    .pattern(/^\d{4}-\d{4}$/)
+    .custom((value, helpers) => {
+      const [startYear, endYear] = value.split('-').map(Number);
+      if (endYear !== startYear + 1) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    })
+    .allow('', null),
+  academicSession: Joi.string()
+    .pattern(/^(JULY-DECEMBER|JANUARY-JUNE)\s\d{4}$/)
+    .allow('', null)
 });
 
 // Utility function to handle errors
@@ -20,74 +33,105 @@ const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request to create a new mentor
+// POST request with better error handling
 export async function POST(req) {
   try {
     await connect();
-    const requestBody = await req.json().catch(() => null);
-
-    if (!requestBody) {
-      return createErrorResponse("Invalid JSON input", 400);
+    let data = await req.json();
+    
+    // Handle both single object and array of objects
+    const mentorsToCreate = Array.isArray(data) ? data : [data];
+    
+    // Validate all mentors
+    const validationErrors = [];
+    mentorsToCreate.forEach((mentor, index) => {
+      const { error } = mentorSchema.validate(mentor);
+      if (error) validationErrors.push(`Mentor ${index + 1}: ${error.message}`);
+    });
+    
+    if (validationErrors.length > 0) {
+      return NextResponse.json({ error: validationErrors.join(', ') }, { status: 400 });
     }
 
-    const { error } = mentorSchema.validate(requestBody);
-    if (error) {
-      return createErrorResponse(error.details[0].message, 400);
+    // Check for duplicates
+    const existingMentors = await Mentor.find({
+      $or: mentorsToCreate.map(m => ({ 
+        $or: [
+          { email: m.email }, 
+          { MUJid: m.MUJid }
+        ]
+      }))
+    });
+
+    if (existingMentors.length > 0) {
+      return NextResponse.json({
+        error: "Duplicate entries found for email or MUJid"
+      }, { status: 409 });
     }
 
-    const { email} = requestBody;
-    const existingMentor = await Mentor.findOne({ email });
-    if (existingMentor) {
-      return createErrorResponse("Email already exists", 400);
-    }
-
-    const newMentor = new Mentor(requestBody);
-    await newMentor.save();
-
-    return NextResponse.json(
-      { message: "Mentor added successfully" },
-      { status: 201 }
+    const createdMentors = await Mentor.insertMany(mentorsToCreate);
+    
+    // Handle admin roles
+    const adminsToCreate = mentorsToCreate.filter(m => 
+      m.role.some(r => ['admin', 'superadmin'].includes(r))
     );
+    
+    if (adminsToCreate.length > 0) {
+      await Admin.insertMany(adminsToCreate);
+    }
+
+    return NextResponse.json({ 
+      message: "Mentors created successfully",
+      mentors: createdMentors 
+    }, { status: 201 }); // Use 201 for creation
   } catch (error) {
-    console.error("Error creating mentor:", error);
-    return createErrorResponse("Something went wrong on the server", 500);
+    console.error('Error in POST /api/admin/manageUsers/manageMentor:', error);
+    return NextResponse.json({ 
+      error: "Failed to create mentor(s). " + error.message 
+    }, { status: 500 });
   }
 }
 
-// GET request to fetch all mentors
-export async function GET() {
+// GET request with improved filtering
+export async function GET(req) {
   try {
     await connect();
-    const mentors = await Mentor.find({});
-    const totalMentors = await Mentor.countDocuments();
+    const { searchParams } = new URL(req.url);
+    const query = {};
+    
+    // Add filters only if they exist in searchParams
+    ['academicYear', 'academicSession'].forEach(param => {
+      const value = searchParams.get(param);
+      if (value) query[param] = value.toUpperCase();
+    });
 
-    return NextResponse.json(
-      { mentors, totalMentors },
-      { status: 200 }
-    );
+    const mentors = await Mentor.find(query);
+    return NextResponse.json({ mentors, total: mentors.length }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching mentors:", error);
-    return createErrorResponse("Failed to fetch mentors", 500);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// DELETE request to delete a mentor by mujid
+// DELETE request to delete a mentor by MUJid
 export async function DELETE(req) {
   try {
-    await connect();
+    await connect().catch((err) => {
+      console.error("Database connection failed:", err);
+      throw new Error("Database connection failed");
+    });
     const requestBody = await req.json().catch(() => null);
 
     if (!requestBody) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid } = requestBody;
+    const { MUJid } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("mujid is required for deletion", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required for deletion", 400);
     }
 
-    const deletedMentor = await Mentor.findOneAndDelete({ mujid });
+    const deletedMentor = await Mentor.findOneAndDelete({ MUJid });
     if (!deletedMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
@@ -98,24 +142,27 @@ export async function DELETE(req) {
     );
   } catch (error) {
     console.error("Error deleting mentor:", error);
-    return createErrorResponse("Failed to delete mentor", 500);
+    return createErrorResponse(error.message || "Failed to delete mentor", 500);
   }
 }
 
 // PUT request to update a mentor's details
 export async function PUT(req) {
   try {
-    await connect();
+    await connect().catch((err) => {
+      console.error("Database connection failed:", err);
+      throw new Error("Database connection failed");
+    });
     const requestBody = await req.json().catch(() => null);
 
     if (!requestBody) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid } = requestBody;
+    const { MUJid } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("mujid is required for updating", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required for updating", 400);
     }
 
     const { error } = mentorSchema.validate(requestBody);
@@ -124,7 +171,7 @@ export async function PUT(req) {
     }
 
     const updatedMentor = await Mentor.findOneAndUpdate(
-      { mujid },
+      { MUJid },
       requestBody,
       { new: true }
     );
@@ -139,24 +186,27 @@ export async function PUT(req) {
     );
   } catch (error) {
     console.error("Error updating mentor:", error);
-    return createErrorResponse("Something went wrong on the server", 500);
+    return createErrorResponse(error.message || "Something went wrong on the server", 500);
   }
 }
 
 // PATCH request to partially update a mentor's details
 export async function PATCH(req) {
   try {
-    await connect();
+    await connect().catch((err) => {
+      console.error("Database connection failed:", err);
+      throw new Error("Database connection failed");
+    });
     const requestBody = await req.json().catch(() => null);
 
     if (!requestBody) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { mujid, ...updateData } = requestBody;
+    const { MUJid, ...updateData } = requestBody;
 
-    if (!mujid) {
-      return createErrorResponse("mujid is required for updating", 400);
+    if (!MUJid) {
+      return createErrorResponse("MUJid is required for updating", 400);
     }
 
     // Partial validation for PATCH, applying defaults only for provided fields
@@ -170,7 +220,7 @@ export async function PATCH(req) {
     }
 
     const updatedMentor = await Mentor.findOneAndUpdate(
-      { mujid },
+      { MUJid },
       updateData,
       { new: true }
     );
@@ -185,6 +235,6 @@ export async function PATCH(req) {
     );
   } catch (error) {
     console.error("Error partially updating mentor:", error);
-    return createErrorResponse("Something went wrong on the server", 500);
+    return createErrorResponse(error.message || "Something went wrong on the server", 500);
   }
 }

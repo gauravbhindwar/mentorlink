@@ -1,5 +1,5 @@
 import React from 'react'
-import MentorManagement from '../../../../components/AdminDash/MentorManagement'
+import MentorManagement from '../../../../components/AdminDash/mentor/MentorManagement'
 
 const page = () => {
   return (

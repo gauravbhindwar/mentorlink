@@ -1,25 +1,82 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button } from '@mui/material';
+import { Button, Box } from '@mui/material'; // Add Box import
+import { useMemo } from 'react';
 
-const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
+const MenteeTable = ({ mentees, onEditClick, isSmallScreen }) => {
+  // Debug logs
+  console.log('Raw mentees received:', mentees);
+
+  // Guard clause for invalid/empty data
+  if (!Array.isArray(mentees) || mentees.length === 0) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        height: '200px',
+        color: 'rgba(255, 255, 255, 0.5)'
+      }}>
+        No data available
+      </Box>
+    );
+  }
+
+  // Try to get data from session storage if no mentees provided
+  const effectiveMentees = useMemo(() => {
+    if ((!mentees || mentees.length === 0) && typeof window !== 'undefined') {
+      try {
+        const storedData = sessionStorage.getItem('menteeData');
+        return storedData ? JSON.parse(storedData) : [];
+      } catch (error) {
+        console.error('Error parsing stored data:', error);
+        return [];
+      }
+    }
+    return mentees;
+  }, [mentees]);
+
+  // Process mentees data
+  const processedMentees = effectiveMentees.map((mentee, index) => ({
+    id: mentee._id || mentee.id || `temp-${index}`, // Ensure unique ID
+    MUJid: (mentee.MUJid || mentee.mujid || '').toUpperCase(),
+    name: mentee.name || '',
+    email: mentee.email || '',
+    phone: mentee.phone || '',
+    semester: mentee.semester || '',
+    section: mentee.section || '',
+    yearOfRegistration: mentee.yearOfRegistration || '',
+    fatherName: mentee.fatherName || '',
+    motherName: mentee.motherName || '',
+    dateOfBirth: mentee.dateOfBirth || '',
+    parentsPhone: mentee.parentsPhone || '',
+    parentsEmail: mentee.parentsEmail || '',
+    mentorMujid: (mentee.mentorMujid || mentee.mentor_mujid || '').toUpperCase(),
+  }));
+
+  console.log('Processed mentees:', processedMentees);
+
   const columns = [
-    { 
-      field: 'serialNumber',    
+    {
+      field: 'serialNumber',
       headerName: 'S.No',
       width: 70,
       renderCell: (params) => {
-        const index = mentors.findIndex(mentor => mentor.mujid === params.row.mujid);
+        const index = processedMentees.findIndex(m => m.id === params.row.id);
         return index + 1;
       },
       sortable: false,
     },
-    { field: 'mujid', headerName: 'Mujid', width: 150 },
+    { 
+      field: 'MUJid', 
+      headerName: 'MUJid', 
+      width: 150,
+    },
     { field: 'name', headerName: 'Name', width: 200 },
     { field: 'email', headerName: 'Email', width: 250 },
     { field: 'phone', headerName: 'Phone', width: 150 },
-    { field: 'role', headerName: 'Role', width: 120 },
-    { field: 'meetingsScheduled', headerName: 'Meetings', width: 100 },
+    { field: 'semester', headerName: 'Semester', width: 100 },
+    { field: 'section', headerName: 'Section', width: 100 }, // Added section field
     {
       field: 'actions',
       headerName: 'Actions',
@@ -48,21 +105,33 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
         </Button>
       ),
     },
-  ].map(col => ({
-    ...col,
-    headerAlign: 'center',
-    align: 'center',
-    flex: 1,
-    minWidth: col.minWidth || 150,
-  }));
+    { field: 'yearOfRegistration', headerName: 'Year of Registration', width: 180 },
+    { field: 'fatherName', headerName: "Father's Name", width: 200 },
+    { field: 'motherName', headerName: "Mother's Name", width: 200 },
+    { field: 'dateOfBirth', headerName: 'Date of Birth', width: 150 },
+    { field: 'parentsPhone', headerName: "Parents' Phone", width: 150 },
+    { field: 'parentsEmail', headerName: "Parents' Email", width: 250 },
+    { 
+      field: 'mentorMujid', 
+      headerName: 'Mentor MUJID', 
+      width: 150,
+    },
+  ];
 
   return (
-    <div style={{ width: '100%', padding: '0 16px', marginBottom: '16px' }}>
-      <div style={{ height: '600px', width: '100%' }}>
+    <div style={{ 
+      width: '100%', 
+      padding: '0 16px', 
+      marginBottom: '16px' 
+    }}>
+      <div style={{ 
+        height: '600px', 
+        width: '100%' 
+      }}>
         <DataGrid
-          rows={mentors}
+          rows={processedMentees}
           columns={columns}
-          getRowId={(row) => row.mujid}
+          getRowId={(row) => row.id}
           autoHeight
           sx={{
             border: 'none',
@@ -125,7 +194,6 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
               fontWeight: 700,
               color: '#f97316',
             },
-            // ...existing DataGrid styles from MenteeTable...
             '& .MuiDataGrid-footerContainer': {
               borderTop: '2px solid rgba(255, 255, 255, 0.1)',
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -182,6 +250,12 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               padding: '8px 16px',
             },
+            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': {
+              outline: 'none',
+            },
+            '& .MuiDataGrid-columnHeader--sortable:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.1)',
+            },
             '& .MuiMenuItem-root': {
               color: 'white',
               '&:hover': {
@@ -194,14 +268,28 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
               border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '8px',
             },
+            '& .MuiSvgIcon-root': {
+              color: '#f97316',
+            },
           }}
           disableSelectionOnClick
           disableColumnMenu={false}
           disableColumnFilter={false}
-          loading={!mentors.length}
+          loading={!mentees || mentees.length === 0} // Updated loading condition
           initialState={{
             pagination: {
               paginationModel: { pageSize: 10, page: 0 },
+            },
+            columns: {
+              columnVisibilityModel: {
+                yearOfRegistration: false,
+                fatherName: false,
+                motherName: false,
+                dateOfBirth: false,
+                parentsPhone: false,
+                parentsEmail: false,
+                mentorMujid: true,
+              },
             },
           }}
           pageSizeOptions={[5, 10, 25, 50]}
@@ -213,4 +301,4 @@ const MentorTable = ({ mentors, onEditClick, isSmallScreen }) => {
   );
 };
 
-export default MentorTable;
+export default MenteeTable;

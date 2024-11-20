@@ -5,7 +5,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/subComponents/Navbar';
-import MenteeTable from '../AdminDash/MenteeTable'; // Reuse the table component
+import MenteeTable from '../AdminDash/mentee/MenteeTable'; // Reuse the table component
 
 const ViewMentee = () => {
     const [mentees, setMentees] = useState([]);
