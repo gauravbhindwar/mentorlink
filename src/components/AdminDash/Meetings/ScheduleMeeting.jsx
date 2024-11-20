@@ -5,7 +5,7 @@ import axios from 'axios';
 import LoadingComponent from '@/components/LoadingComponent';
 import { DataGrid } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { Dialog } from '@headlessui/react';
+// import { Dialog } from '@headlessui/react';
 
 const darkTheme = createTheme({
   palette: {
@@ -22,10 +22,10 @@ const ManageMeeting = () => {
   const [loading, setLoading] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [detailsDialog, setDetailsDialog] = useState({
-    open: false,
-    data: null
-  });
+  // const [detailsDialog, setDetailsDialog] = useState({
+  //   open: false,
+  //   data: null
+  // });
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();

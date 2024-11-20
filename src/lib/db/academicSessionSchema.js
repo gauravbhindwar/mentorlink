@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+// import { type } from "os";
 
 const academicSessionsSchema = new mongoose.Schema({
     start_year: { type: Number, required: true }, // Start year of the session
@@ -32,8 +33,7 @@ const academicSessionsSchema = new mongoose.Schema({
                 },
                 meetings: [{
                     meeting_id: {
-                        type: mongoose.Schema.Types.ObjectId, // Generate ObjectId instead of a string for better MongoDB practices
-                        auto: true
+                        type: String, // Generate ObjectId instead of a string for better MongoDB practices
                     },
                     mentor_id: {
                         type: String,
@@ -80,6 +80,17 @@ const academicSessionsSchema = new mongoose.Schema({
                         outcome: { type: String },
                         closureRemarks: { type: String }
                     },
+                    scheduledAT: {
+                        scheduleDate: {
+                            type: Date,
+                            default: null
+                        },
+                        scheduleTime: {
+                            type: String,
+                            default: null
+                        }
+                    },
+
                     created_at: { type: Date, default: Date.now },
                     updated_at: { type: Date, default: Date.now }
                 }]
