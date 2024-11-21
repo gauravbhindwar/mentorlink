@@ -1,13 +1,13 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, Divider, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions,  LinearProgress, MenuItem, Divider, List, ListItem, ListItemText, CircularProgress, Grid } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useDropzone } from 'react-dropzone';
 import MentorTable from './MentorTable';
 import FilterSection from './MentorFilterSection';
-import { Toaster } from 'react-hot-toast';
+import { Toaster ,toast} from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import BulkUploadPreview from '../common/BulkUploadPreview';
@@ -228,34 +228,125 @@ const MentorManagement = () => {
     return errors;
   };
 
+  // Add these new state variables after other state declarations
+  const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
+  const [existingMentorData, setExistingMentorData] = useState({});
+  const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
+  const [duplicateEditMode, setDuplicateEditMode] = useState(false);
+
+  // Add this new function to fetch mentor details
+  const fetchMentorDetails = async (MUJid) => {
+    if (!MUJid) {
+      console.error('MUJid is undefined');
+      toast.error('Invalid MUJid', {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
+      return;
+    }
+    
+    setFetchingMentorDetails(true);
+    try {
+      const response = await axios.get(`/api/admin/manageUsers/manageMentor/${MUJid}`);
+      if (response.data && response.data.mentor) {
+        setExistingMentorData(response.data.mentor);
+        // Pre-fill the mentorDetails with existing data for editing
+        setMentorDetails({
+          ...response.data.mentor,
+          // Ensure all required fields are present
+          role: response.data.mentor.role || ['mentor'],
+          academicYear: response.data.mentor.academicYear || getCurrentAcademicYear(),
+          academicSession: response.data.mentor.academicSession || generateAcademicSessions(getCurrentAcademicYear())[0]
+        });
+      } else {
+        throw new Error('No mentor data received');
+      }
+    } catch (error) {
+      console.error('Error fetching mentor:', error);
+      toast.error(error.response?.data?.error || 'Error fetching mentor details', {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
+      setDuplicateMentorDialog(false); // Close dialog on error
+    } finally {
+      setFetchingMentorDetails(false);
+    }
+  };
+
+  // Replace the handleAddMentor function
   const handleAddMentor = async () => {
     const errors = validateForm();
     if (errors.length > 0) {
-      showAlert(errors.join(', '), 'error');
+      toast.error(errors.join(', '), {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
       return;
     }
+  
     try {
       const response = await axios.post('/api/admin/manageUsers/manageMentor', mentorDetails);
+      
       if (response.data && response.status === 201) {
-        showAlert('Mentor added successfully', 'success');
-        setOpenDialog(false);
-        await fetchMentors(); // Await the fetch
-        setMentorDetails({
-          name: '',
-          email: '',
-          MUJid: '',
-          phone_number: '',
-          address: '',
-          gender: '',
-          profile_picture: '',
-          role: ['mentor'],
-          academicYear: '',
-          academicSession: ''
+        toast.success('Mentor added successfully', {
+          style: toastStyles.success.style,
+          iconTheme: toastStyles.success.iconTheme,
         });
+        setOpenDialog(false);
+        await fetchMentors();
+        resetMentorDetails();
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Error adding mentor';
-      showAlert(errorMessage, 'error');
+      if (error.response?.status === 409 && error.response.data?.existingMentor) {
+        const duplicateData = error.response.data.existingMentor;
+        
+        // Verify data before setting
+        if (duplicateData && duplicateData.MUJid) {
+          setExistingMentorData(duplicateData);
+          setDuplicateMentorDialog(true);
+          setOpenDialog(false);
+        } else {
+          toast.error('Duplicate entry found but details are incomplete', {
+            style: toastStyles.error.style,
+            iconTheme: toastStyles.error.iconTheme,
+          });
+        }
+      } else {
+        toast.error(error.response?.data?.error || 'Error adding mentor', {
+          style: toastStyles.error.style,
+          iconTheme: toastStyles.error.iconTheme,
+        });
+      }
+    }
+  };
+
+  // Add a reset function for mentor details
+  const resetMentorDetails = () => {
+    setMentorDetails({
+      name: '',
+      email: '',
+      MUJid: '',
+      phone_number: '',
+      address: '',
+      gender: '',
+      profile_picture: '',
+      role: ['mentor'],
+      academicYear: getCurrentAcademicYear(),
+      academicSession: generateAcademicSessions(getCurrentAcademicYear())[0]
+    });
+  };
+
+  // Add this new function to handle using existing data
+  const handleUseExistingData = () => {
+    if (existingMentorData && Object.keys(existingMentorData).length > 0) {
+      setSelectedMentor(existingMentorData);
+      setEditDialog(true);
+      setDuplicateMentorDialog(false);
+    } else {
+      toast.error('No existing mentor data available', {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
     }
   };
 
@@ -377,9 +468,11 @@ const MentorManagement = () => {
       iconTheme: toastStyles[severity].iconTheme,
     };
     
-    toast[severity === 'success' ? 'success' : 'error'](message, toastConfig);
-    setAlert({ open: true, message, severity });
-    setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
+    if (severity === 'success') {
+      toast.success(message, toastConfig);
+    } else {
+      toast.error(message, toastConfig);
+    }
   };
 
   const handleBulkUploadOpen = () => {
@@ -484,6 +577,39 @@ const MentorManagement = () => {
       setTableVisible(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Add this new function to handle patch update
+  const handlePatchUpdate = async () => {
+    if (!existingMentorData?.MUJid) {
+      toast.error('Invalid mentor data', {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
+      return;
+    }
+  
+    try {
+      const response = await axios.patch(
+        `/api/admin/manageUsers/manageMentor/${existingMentorData.MUJid}`, 
+        mentorDetails
+      );
+      
+      if (response.data) {
+        toast.success('Mentor updated successfully', {
+          style: toastStyles.success.style,
+          iconTheme: toastStyles.success.iconTheme,
+        });
+        setDuplicateMentorDialog(false);
+        setDuplicateEditMode(false);
+        await fetchMentors();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error updating mentor', {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
     }
   };
 
@@ -1082,6 +1208,181 @@ const MentorManagement = () => {
           isUploading={uploading}
           type="mentor" // Specify the type as mentor
         />
+
+        {/* Duplicate Mentor Dialog */}
+        <Dialog
+          open={duplicateMentorDialog}
+          onClose={() => {
+            setDuplicateMentorDialog(false);
+            setDuplicateEditMode(false);
+          }}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: dialogStyles.paper }}
+        >
+          <DialogTitle sx={{
+            ...dialogStyles.title,
+            borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
+          }}>
+            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+              {duplicateEditMode ? 'Edit Existing Mentor' : 'Mentor Already Exists'}
+            </Typography>
+            <IconButton
+              aria-label="close"
+              onClick={() => {
+                setDuplicateMentorDialog(false);
+                setDuplicateEditMode(false);
+              }}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&:hover': { color: '#f97316' },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{
+            ...dialogStyles.content,
+            my: 2,
+          }}>
+            {fetchingMentorDetails ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+                <CircularProgress sx={{ color: '#f97316' }} />
+              </Box>
+            ) : duplicateEditMode ? (
+              // Edit form for duplicate mentor
+              <Box sx={{ color: 'white' }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Name"
+                      name="name"
+                      value={mentorDetails.name}
+                      onChange={handleInputChange}
+                      sx={dialogStyles.textField}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      name="email"
+                      type="email"
+                      value={mentorDetails.email}
+                      onChange={handleInputChange}
+                      sx={dialogStyles.textField}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Phone Number"
+                      name="phone_number"
+                      value={mentorDetails.phone_number}
+                      onChange={handleInputChange}
+                      sx={dialogStyles.textField}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      select
+                      label="Gender"
+                      name="gender"
+                      value={mentorDetails.gender}
+                      onChange={handleInputChange}
+                      sx={dialogStyles.textField}
+                    >
+                      <MenuItem value="male">Male</MenuItem>
+                      <MenuItem value="female">Female</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </TextField>
+                  </Grid>
+                </Grid>
+              </Box>
+            ) : (
+              // Existing mentor details view
+              <Box sx={{ color: 'white' }}>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  A mentor with these details already exists:
+                </Typography>
+                <Box sx={{
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  p: 3,
+                  borderRadius: 2,
+                  border: '1px solid rgba(249, 115, 22, 0.2)',
+                }}>
+                  {/* Only render fields that exist in existingMentorData */}
+                  {Object.entries(existingMentorData).map(([key, value]) => {
+                    if (value && key !== '_id') {
+                      return (
+                        <Typography key={key} variant="body2" sx={{ mb: 1 }}>
+                          <strong>{key}:</strong> {Array.isArray(value) ? value.join(', ') : value}
+                        </Typography>
+                      );
+                    }
+                    return null;
+                  })}
+                </Box>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{
+            ...dialogStyles.actions,
+            justifyContent: 'space-between',
+            px: 3,
+            py: 2,
+          }}>
+            <Button
+              onClick={() => {
+                setDuplicateMentorDialog(false);
+                setDuplicateEditMode(false);
+              }}
+              variant="outlined"
+              sx={{
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            {duplicateEditMode ? (
+              <Button
+                onClick={handlePatchUpdate}
+                variant="contained"
+                sx={{
+                  bgcolor: '#f97316',
+                  '&:hover': {
+                    bgcolor: '#ea580c',
+                  },
+                }}
+              >
+                Update Mentor
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setDuplicateEditMode(true)}
+                variant="contained"
+                sx={{
+                  bgcolor: '#f97316',
+                  '&:hover': {
+                    bgcolor: '#ea580c',
+                  },
+                }}
+              >
+                Edit Details
+              </Button>
+            )}
+          </DialogActions>
+        </Dialog>
       </div>
     </ThemeProvider>
   );

@@ -1,9 +1,28 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button, IconButton, Box } from '@mui/material'; // Add Box import
+import { Button, IconButton, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'; // Add Dialog imports
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useState } from 'react'; // Add useState import
 
 const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => {
+  const [open, setOpen] = useState(false);
+  const [selectedMentorId, setSelectedMentorId] = useState(null);
+
+  const handleClickOpen = (mentorId) => {
+    setSelectedMentorId(mentorId);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedMentorId(null);
+  };
+
+  const handleDelete = () => {
+    onDeleteClick(selectedMentorId);
+    handleClose();
+  };
+
   const columns = [
     { 
       field: 'serialNumber',    
@@ -50,7 +69,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
             Edit
           </Button>
           <IconButton
-            onClick={() => onDeleteClick(params.row.MUJid)}
+            onClick={() => handleClickOpen(params.row.MUJid)}
             sx={{ color: 'error.main' }}
           >
             <DeleteIcon />
@@ -231,6 +250,25 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
           headerHeight={60}
         />
       </div>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+      >
+        <DialogTitle>{"Confirm Deletion"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this mentor?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="primary" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
