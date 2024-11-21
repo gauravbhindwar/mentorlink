@@ -436,39 +436,6 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
             dropdownRoot
           )}
         </Box>
-
-        <FormControl size="small" sx={filterControlStyles}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={mentorStatus}
-            label="Status"
-            onChange={(e) => setMentorStatus(e.target.value)}
-            MenuProps={{
-              PaperProps: {
-                sx: {
-                  bgcolor: '#1a1a1a',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  '& .MuiMenuItem-root': {
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: '#2a2a2a',
-                    },
-                    '&.Mui-selected': {
-                      bgcolor: '#333333',
-                      '&:hover': {
-                        bgcolor: '#404040',
-                      }
-                    }
-                  }
-                }
-              }
-            }}
-          >
-            <MenuItem value=""><em>None</em></MenuItem>
-            <MenuItem value="active">Active</MenuItem>
-            <MenuItem value="inactive">Inactive</MenuItem>
-          </Select>
-        </FormControl>
       </Box>
 
       <Box sx={filterSectionStyles.buttonGroup}>

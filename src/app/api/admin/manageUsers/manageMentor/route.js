@@ -33,61 +33,72 @@ const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
 };
 
-// POST request with better error handling
+// Update POST request handler
 export async function POST(req) {
   try {
     await connect();
-    let data = await req.json();
+    const mentorData = await req.json();
     
-    // Handle both single object and array of objects
-    const mentorsToCreate = Array.isArray(data) ? data : [data];
-    
-    // Validate all mentors
-    const validationErrors = [];
-    mentorsToCreate.forEach((mentor, index) => {
-      const { error } = mentorSchema.validate(mentor);
-      if (error) validationErrors.push(`Mentor ${index + 1}: ${error.message}`);
-    });
-    
-    if (validationErrors.length > 0) {
-      return NextResponse.json({ error: validationErrors.join(', ') }, { status: 400 });
+    if (!mentorData || Object.keys(mentorData).length === 0) {
+      return NextResponse.json({
+        error: "Invalid mentor data provided"
+      }, { status: 400 });
     }
 
-    // Check for duplicates
-    const existingMentors = await Mentor.find({
-      $or: mentorsToCreate.map(m => ({ 
-        $or: [
-          { email: m.email }, 
-          { MUJid: m.MUJid }
-        ]
-      }))
+    // Check if mentor already exists
+    const existingMentor = await Mentor.findOne({ 
+      $or: [
+        { MUJid: mentorData.MUJid },
+        { email: mentorData.email }
+      ]
     });
 
-    if (existingMentors.length > 0) {
+    if (existingMentor) {
+      // Safe access to existing mentor data
+      const duplicateData = {
+        MUJid: existingMentor?.MUJid || '',
+        name: existingMentor?.name || '',
+        email: existingMentor?.email || '',
+        phone_number: existingMentor?.phone_number || '',
+        gender: existingMentor?.gender || '',
+        role: Array.isArray(existingMentor?.role) ? existingMentor.role : ['mentor'],
+        academicYear: existingMentor?.academicYear || '',
+        academicSession: existingMentor?.academicSession || ''
+      };
+
       return NextResponse.json({
-        error: "Duplicate entries found for email or MUJid"
+        error: "Mentor already exists",
+        existingMentor: duplicateData,
+        duplicateField: mentorData.MUJid === existingMentor.MUJid ? 'MUJid' : 'email'
       }, { status: 409 });
     }
 
-    const createdMentors = await Mentor.insertMany(mentorsToCreate);
-    
-    // Handle admin roles
-    const adminsToCreate = mentorsToCreate.filter(m => 
-      m.role.some(r => ['admin', 'superadmin'].includes(r))
-    );
-    
-    if (adminsToCreate.length > 0) {
-      await Admin.insertMany(adminsToCreate);
+    // Validate mentor data
+    const { error } = mentorSchema.validate(mentorData);
+    if (error) {
+      return NextResponse.json({ 
+        error: error.details[0].message 
+      }, { status: 400 });
+    }
+
+    // Create new mentor
+    const newMentor = new Mentor(mentorData);
+    const savedMentor = await newMentor.save();
+
+    // Handle admin roles if present
+    if (mentorData.role?.includes('admin') || mentorData.role?.includes('superadmin')) {
+      await Admin.create(mentorData);
     }
 
     return NextResponse.json({ 
-      message: "Mentors created successfully",
-      mentors: createdMentors 
-    }, { status: 201 }); // Use 201 for creation
+      message: "Mentor created successfully",
+      mentor: savedMentor 
+    }, { status: 201 });
+
   } catch (error) {
-    console.error('Error in POST /api/admin/manageUsers/manageMentor:', error);
+    console.error('Error in POST:', error);
     return NextResponse.json({ 
-      error: "Failed to create mentor(s). " + error.message 
+      error: "Failed to create mentor: " + (error.message || "Unknown error")
     }, { status: 500 });
   }
 }
@@ -190,51 +201,52 @@ export async function PUT(req) {
   }
 }
 
-// PATCH request to partially update a mentor's details
+// Update PATCH request handler
 export async function PATCH(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
-    });
-    const requestBody = await req.json().catch(() => null);
-
-    if (!requestBody) {
-      return createErrorResponse("Invalid JSON input", 400);
+    await connect();
+    const data = await req.json();
+    
+    if (!data || !data.MUJid) {
+      return NextResponse.json({
+        error: "Invalid update data or missing MUJid"
+      }, { status: 400 });
     }
 
-    const { MUJid, ...updateData } = requestBody;
+    const { MUJid, ...updateData } = data;
 
-    if (!MUJid) {
-      return createErrorResponse("MUJid is required for updating", 400);
-    }
-
-    // Partial validation for PATCH, applying defaults only for provided fields
-    const schema = mentorSchema.fork(Object.keys(updateData), (schema) =>
-      schema.optional()
+    // Remove any undefined, null, or empty values
+    const cleanedData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, v]) => v != null && v !== '')
     );
 
-    const { error } = schema.validate(updateData);
-    if (error) {
-      return createErrorResponse(error.details[0].message, 400);
+    if (Object.keys(cleanedData).length === 0) {
+      return NextResponse.json({
+        error: "No valid update data provided"
+      }, { status: 400 });
     }
 
     const updatedMentor = await Mentor.findOneAndUpdate(
       { MUJid },
-      updateData,
+      { $set: cleanedData },
       { new: true }
     );
 
     if (!updatedMentor) {
-      return createErrorResponse("Mentor not found", 404);
+      return NextResponse.json({
+        error: "Mentor not found"
+      }, { status: 404 });
     }
 
-    return NextResponse.json(
-      { message: "Mentor updated successfully", updatedMentor },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      message: "Mentor updated successfully",
+      mentor: updatedMentor
+    }, { status: 200 });
+
   } catch (error) {
-    console.error("Error partially updating mentor:", error);
-    return createErrorResponse(error.message || "Something went wrong on the server", 500);
+    console.error('Error in PATCH:', error);
+    return NextResponse.json({
+      error: "Failed to update mentor: " + (error.message || "Unknown error")
+    }, { status: 500 });
   }
 }
