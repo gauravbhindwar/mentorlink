@@ -6,7 +6,7 @@ import { FiUpload } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
 import { storeFile } from '@/utils/browserStorage';
 import axios from 'axios';
-import { set } from 'mongoose';
+import { Toaster, toast } from 'react-hot-toast';
 
 const ScheduleMeeting = () => {
   const router = useRouter();
@@ -173,10 +173,10 @@ const ScheduleMeeting = () => {
   const handleMeetingScheduled = () => {
     const scheduleMeeting = async () => {
       try {
-        // Validate required fields
         setLoading(true);
         if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
-          throw new Error('Please fill all required fields');
+          toast.error('Please fill all required fields');
+          return;
         }
 
         const response = await axios.post('/api/meeting/mentors/schmeeting', {
@@ -185,7 +185,6 @@ const ScheduleMeeting = () => {
           TopicOfDiscussion: meetingTopic,
           meeting_date: formattedDate,
           meeting_time: formattedTime,
-          // file: selectedFile,
           semester: currentSemester,
           section: selectedSection,
           session: academicSession,
@@ -193,26 +192,22 @@ const ScheduleMeeting = () => {
         });
 
         if (response.data) {
-          if (response.status == 200) {
-            // Meeting scheduled successfully
-            router.push('/pages/mentordashboard');
+          if (response.status === 200) {
+            toast.success('Meeting scheduled successfully!');
+            router.push('/pages/mentor/mentordashboard');
           } else {
-            // Meeting scheduling failed
-            // console.log(response.data)
-            console.log('Meeting scheduling failed:', response.data.error);
+            toast.error(response.data.error || 'Failed to schedule meeting');
           }
-        } else {
-          // Meeting scheduling failed
-          console.log('Meeting scheduling failed:', response.data.error);
         }
       } catch (error) {
         console.log('Error scheduling meeting:', error);
-        setCustomAlert('Failed to schedule meeting')
+        toast.error(error.response?.data?.error || 'Failed to schedule meeting');
+      } finally {
+        setLoading(false);
       }
     }
 
     scheduleMeeting();
-    setLoading(false);
   }
 
   // Add new function to get mentees
@@ -414,6 +409,29 @@ const ScheduleMeeting = () => {
   return (
     <AnimatePresence>
       <motion.div className="min-h-screen h-screen bg-[#0a0a0a] overflow-hidden relative">
+        <Toaster 
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#333',
+              color: '#fff',
+            },
+            success: {
+              iconTheme: {
+                primary: '#22c55e',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
           <div className="absolute inset-0 backdrop-blur-3xl" />
@@ -438,8 +456,13 @@ const ScheduleMeeting = () => {
             className="max-w-4xl mx-auto"
           >
             <div className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-              <form onSubmit={(e)=>{
+              <form onSubmit={(e) => {
                 e.preventDefault();
+                if (!mentorId || !currentSemester || !selectedSection || !dateTime || !academicYear || !academicSession) {
+                  toast.error('Please fill all required fields');
+                  return;
+                }
+                handleMeetingScheduled();
               }} className="grid grid-cols-2 gap-4">
                 {/* Left Column */}
                 <div className="space-y-3">
@@ -628,8 +651,7 @@ const ScheduleMeeting = () => {
                   </div>
 
                   <button 
-                    type="submit" 
-                    className="w-full btn-orange disabled:opacity-50"
+                    type="submit"                     className="w-full btn-orange disabled:opacity-50"
                     disabled={loading || isDisabled}
                     onClick={
                       handleMeetingScheduled

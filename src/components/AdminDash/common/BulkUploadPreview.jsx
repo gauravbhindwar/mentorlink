@@ -38,10 +38,27 @@ const BulkUploadPreview = ({ open, onClose, data, errors, onConfirm, isUploading
     { field: 'academicSession', headerName: 'Academic Session', width: 180 }
   ];
 
-  const rows = data.map((row, index) => ({
-    id: index,
-    ...row
-  }));
+  // Updated row generation with robust ID handling
+  const rows = React.useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    
+    return data.map((row, index) => {
+      // Ensure all required fields have default values
+      const processedRow = {
+        MUJid: row.MUJid || `TEMP-${index}`,
+        name: row.name || '',
+        email: row.email || '',
+        phone_number: row.phone_number || '',
+        gender: row.gender || '',
+        role: Array.isArray(row.role) ? row.role : ['mentor'],
+        academicYear: row.academicYear || '',
+        academicSession: row.academicSession || '',
+        // Generate a guaranteed unique ID
+        id: `${index}-${row.MUJid || ''}-${row.email || ''}-${Date.now()}`
+      };
+      return processedRow;
+    });
+  }, [data]);
 
   return (
     <Dialog 
@@ -146,6 +163,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, onConfirm, isUploading
               rowsPerPageOptions={[5]}
               checkboxSelection
               disableSelectionOnClick
+              getRowId={(row) => row.id} // Add explicit getRowId function
               sx={{
                 '& .MuiDataGrid-cell': {
                   color: '#1e293b'

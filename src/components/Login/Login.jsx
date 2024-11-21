@@ -169,8 +169,8 @@ const Login = ({ role }) => {
 
           // Redirect based on role from verification response
           const dashboardPath = {
-            'mentor': "/pages/mentordashboard",
-            'mentee': "/pages/menteedashboard",
+            'mentor': "/pages/mentor/mentordashboard",
+            'mentee': "/pages/mentee/menteedashboard",
             'admin': "/pages/admin/admindashboard",
             'superadmin': "/pages/admin/admindashboard"
           }[sessionData.role] || "/";

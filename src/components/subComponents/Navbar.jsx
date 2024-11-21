@@ -9,7 +9,7 @@ const Navbar = () => {
     const [dropdownVisible, setDropdownVisible] = useState(false)
     const [email, setEmail] = useState('')
     const [role, setRole] = useState('')
-    const [localRole, setLocalRole] = useState('')
+    const [ setLocalRole] = useState('')
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const router = useRouter()
     let hideDropdownTimeout;
@@ -49,11 +49,11 @@ const Navbar = () => {
         if (role === 'admin' || role === 'superadmin') {
             router.push('/pages/admin/admindashboard')
         } else if (role === 'mentor') {
-            router.push('/pages/mentordashboard')
+            router.push('/pages/mentor/mentordashboard')
         } else if (role === 'mentee') {
-            router.push('/pages/menteedashboard')
+            router.push('/pages/mentee/menteedashboard')
         } else {
-            router.push('/') // Default dashboard
+            router.push('/') 
         }
     }
 
@@ -73,6 +73,18 @@ const Navbar = () => {
 
     const handleAboutUs = () => {
         router.push('/pages/about');
+    }
+
+    const handleMUJLogoClick = () => {
+        if (role === 'admin' || role === 'superadmin') {
+            router.push('/pages/admin/admindashboard')
+        } else if (role === 'mentor') {
+            router.push('/pages/mentor/mentordashboard')
+        } else if (role === 'mentee') {
+            router.push('/pages/mentee/menteedashboard')
+        } else {
+            router.push('/') 
+        }
     }
 
     return (
@@ -98,6 +110,7 @@ const Navbar = () => {
                             <Image 
                                 src="/muj-logo.svg" 
                                 alt="MUJ Logo" 
+                                onClick={handleMUJLogoClick}
                                 className="h-8 w-auto filter" 
                                 width={32} 
                                 height={32} 

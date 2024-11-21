@@ -14,7 +14,7 @@ const MentorDashBoard = () => {
             description: 'View and manage assigned mentees',
             gradient: 'from-orange-500 via-amber-500 to-yellow-500',
             shadowColor: 'rgba(251, 146, 60, 0.4)',
-            onClick: () => router.push('/pages/viewmentee') // Updated path
+            onClick: () => router.push('/pages/mentor/viewmentee') // Updated path
         },
         {
             title: 'Schedule Meeting',
@@ -22,7 +22,7 @@ const MentorDashBoard = () => {
             description: 'Create and schedule new meetings',
             gradient: 'from-pink-500 via-rose-500 to-red-500',
             shadowColor: 'rgba(244, 63, 94, 0.4)',
-            onClick: () => router.push('/pages/meetings/schmeeting') // Updated path
+            onClick: () => router.push('/pages/mentor/meetings/schmeeting') // Updated path
         },
         {
             title: 'Meeting Reports',
@@ -38,7 +38,7 @@ const MentorDashBoard = () => {
             description: 'Add and update meeting details',
             gradient: 'from-blue-500 via-cyan-500 to-teal-500',
             shadowColor: 'rgba(59, 130, 246, 0.4)',
-            onClick: () => router.push('/pages/meetings/addmeetinginfo')
+            onClick: () => router.push('/pages/mentor/meetings/addmeetinginfo')
         },
         {
             title: 'Student Queries',

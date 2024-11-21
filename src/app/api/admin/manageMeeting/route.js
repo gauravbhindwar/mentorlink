@@ -18,8 +18,7 @@ export async function GET(request) {
 
     try {
         const [startYear, endYear] = year.split('-').map(Number);
-        console.log('Parsing params:', { startYear, endYear, session, semester });
-
+        
         const academicSession = await AcademicSession.findOne({
             start_year: startYear,
             'sessions.name': session
@@ -32,7 +31,6 @@ export async function GET(request) {
         const targetSession = academicSession.sessions.find(s => s.name === session);
         const targetSemester = targetSession.semesters.find(s => s.semester_number === parseInt(semester));
         
-        // Get all meetings with their sections
         const meetingsWithSections = targetSemester.sections.flatMap(section => 
             section.meetings.map(meeting => ({
                 ...meeting.toObject(),
@@ -40,13 +38,42 @@ export async function GET(request) {
             }))
         );
 
-        // Get unique mentor IDs and mentee IDs
         const mentorMUJIds = [...new Set(meetingsWithSections.map(m => m.mentor_id))];
         const menteeIds = [...new Set(meetingsWithSections.flatMap(m => m.mentee_ids))];
 
-        // Fetch complete mentee details with full population
         const [mentorDetails, menteeDetails] = await Promise.all([
-            Mentor.find({ MUJid: { $in: mentorMUJIds } }),
+            Mentor.aggregate([
+                {
+                    $match: {
+                        'academicRecords': {
+                            $elemMatch: {
+                                'academicYear': year
+                            }
+                        }
+                    }
+                },
+                { $unwind: '$academicRecords' },
+                {
+                    $match: {
+                        'academicRecords.academicYear': year
+                    }
+                },
+                { $unwind: '$academicRecords.sessions' },
+                {
+                    $match: {
+                        'academicRecords.sessions.sessionName': session.split(' ')[0],
+                        'academicRecords.sessions.mentorInfo.MUJid': { 
+                            $in: mentorMUJIds 
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        mentorInfo: '$academicRecords.sessions.mentorInfo'
+                    }
+                }
+            ]),
             Mentee.find({ MUJid: { $in: menteeIds } }).select({
                 MUJid: 1,
                 name: 1,
@@ -58,10 +85,23 @@ export async function GET(request) {
                 academicSession: 1,
                 yearOfRegistration: 1,
                 parents: 1
-            }).exec()
+            })
         ]);
 
-        // Create detailed mentee lookup map
+        console.log('Mentor Details:', mentorDetails); // Add this for debugging
+
+        const mentorMap = new Map();
+        mentorDetails.forEach(mentor => {
+            if (mentor.mentorInfo) {
+                mentorMap.set(mentor.mentorInfo.MUJid, {
+                    MUJid: mentor.mentorInfo.MUJid,
+                    name: mentor.mentorInfo.name || 'Name not provided',
+                    email: mentor.mentorInfo.email || 'Email not provided',
+                    phone_number: mentor.mentorInfo.phone_number || 'Phone not provided'
+                });
+            }
+        });
+
         const menteeMap = new Map(menteeDetails.map(mentee => [
             mentee.MUJid,
             {
@@ -82,10 +122,9 @@ export async function GET(request) {
             }
         ]));
 
-        // Transform the data with complete mentee details
         const mentorMeetingsData = mentorMUJIds.map(MUJid => {
             const meetings = meetingsWithSections.filter(m => m.mentor_id === MUJid);
-            const mentor = mentorDetails.find(m => m.MUJid === MUJid);
+            const mentor = mentorMap.get(MUJid);
             
             return {
                 MUJid: mentor?.MUJid || MUJid,
@@ -98,22 +137,16 @@ export async function GET(request) {
                     date: meeting.meeting_date,
                     time: meeting.meeting_time,
                     section: meeting.section,
-                    mentees: meeting.mentee_ids.map(menteeId => {
-                        const menteeData = menteeMap.get(menteeId);
-                        if (!menteeData) {
-                            console.warn(`Mentee not found: ${menteeId}`);
-                        }
-                        return menteeData || {
-                            MUJid: menteeId,
-                            name: 'Unknown Mentee',
-                            email: 'Not found in database',
-                            phone: 'Not found',
-                            semester: 'Unknown',
-                            section: 'Unknown',
-                            academicYear: 'Unknown',
-                            academicSession: 'Unknown',
-                            yearOfRegistration: 'Unknown'
-                        };
+                    mentees: meeting.mentee_ids.map(menteeId => menteeMap.get(menteeId) || {
+                        MUJid: menteeId,
+                        name: 'Unknown Mentee',
+                        email: 'Not found in database',
+                        phone: 'Not found',
+                        semester: 'Unknown',
+                        section: 'Unknown',
+                        academicYear: 'Unknown',
+                        academicSession: 'Unknown',
+                        yearOfRegistration: 'Unknown'
                     }),
                     notes: meeting.meeting_notes
                 }))
@@ -138,18 +171,15 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Year, session, semester, and meeting details are required' }, { status: 400 });
         }
 
-        // Validate mentor_id format
         if (!meeting.mentor_id || !/^[A-Z0-9]+$/.test(meeting.mentor_id)) {
             return NextResponse.json({ error: 'Invalid mentor MUJid format. Must be uppercase alphanumeric only.' }, { status: 400 });
         }
 
-        // Validate mentee_ids format
         if (!meeting.mentee_ids || !Array.isArray(meeting.mentee_ids) || 
             !meeting.mentee_ids.every(id => /^[A-Z0-9]+$/.test(id))) {
             return NextResponse.json({ error: 'Invalid mentee MUJids format. Must be uppercase alphanumeric only.' }, { status: 400 });
         }
 
-        // Convert mentor_id and mentee_ids to uppercase
         meeting.mentor_id = meeting.mentor_id.toUpperCase();
         meeting.mentee_ids = meeting.mentee_ids.map(id => id.toUpperCase());
 
@@ -194,7 +224,6 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Meeting added successfully' }, { status: 201 });
         }
 
-        // If academic session exists, find or create necessary nested documents
         let targetSession = academicSession.sessions.find(s => s.name === session);
         if (!targetSession) {
             targetSession = {

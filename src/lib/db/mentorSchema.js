@@ -16,13 +16,23 @@ const mentorsSchema = new mongoose.Schema({
                 type: String,
                 enum: ['JULY-DECEMBER', 'JANUARY-JUNE']
             },
-            mentorInfo: {
+            mentorInfo: [{  // Changed to array
                 name: { type: String },
-                email: { type: String, unique: true },
+                email: { 
+                    type: String, 
+                    required: true,
+                    validate: {
+                        validator: function(v) {
+                            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+                        },
+                        message: props => `${props.value} is not a valid email address`
+                    }
+                },
                 MUJid: { 
                     type: String, 
-                    unique: true,
+                    required: true,
                     uppercase: true,
+                    sparse: true,
                     validate: {
                         validator: function(v) {
                             return /^[A-Z0-9]+$/.test(v);
@@ -52,11 +62,44 @@ const mentorsSchema = new mongoose.Schema({
                     isOtpUsed: { type: Boolean, default: false },
                     isVerified: { type: Boolean, default: false }  // Add this field
                 }
-            }
+            }]
         }]
     }],
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now }
+});
+
+// Update indexes for the new array structure
+mentorsSchema.index({
+    'academicRecords.academicYear': 1,
+    'academicRecords.sessions.sessionName': 1,
+    'academicRecords.sessions.mentorInfo.email': 1
+}, { 
+    unique: true,
+    sparse: true,
+    partialFilterExpression: {
+        'academicRecords.sessions.mentorInfo.email': { $type: 'string', $ne: '' }
+    }
+});
+
+mentorsSchema.index({
+    'academicRecords.sessions.mentorInfo.MUJid': 1,
+    'academicRecords.academicYear': 1,
+    'academicRecords.sessions.sessionName': 1
+}, { 
+    unique: true,
+    sparse: true,
+    partialFilterExpression: {
+        'academicRecords.sessions.mentorInfo.MUJid': { $type: 'string', $ne: '' }
+    }
+});
+
+// Add compound index for academic year and session filtering
+mentorsSchema.index({
+    'academicRecords.academicYear': 1,
+    'academicRecords.sessions.sessionName': 1,
+}, { 
+    background: true 
 });
 
 // Add a pre-save middleware to ensure MUJid is uppercase

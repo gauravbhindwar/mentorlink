@@ -2,13 +2,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Button, FormControl, InputLabel, Select, MenuItem, TextField } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import UploadFileIcon from '@mui/icons-material/UploadFile'; // Add this import
 import { createPortal } from 'react-dom';
+import UploadIcon from '@mui/icons-material/Upload';
+import ArticleIcon from '@mui/icons-material/Article';
+import DownloadIcon from '@mui/icons-material/Download';
+import { motion } from 'framer-motion';
 
 const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBulkUpload }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [mentorStatus, setMentorStatus] = useState('');
   const dropdownRoot = document.getElementById('dropdown-root');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
@@ -36,7 +40,6 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     const currentYear = new Date().getFullYear();
     const suggestions = [];
     
-    // Generate last 5 years suggestions
     for (let i = 0; i < 5; i++) {
       const year = currentYear - i;
       const academicYear = `${year}-${year + 1}`;
@@ -59,6 +62,7 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
       session.toLowerCase().includes(input.toLowerCase())
     );
   };
+
   useEffect(() => {
     const currentYear = getCurrentAcademicYear();
     setAcademicYear(currentYear);
@@ -73,13 +77,30 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
   };
 
   const handleSearch = () => {
-    onSearch({ academicYear, academicSession, mentorStatus });
+    if (!academicYear || !academicSession) {
+      alert('Please select both Academic Year and Session');
+      return;
+    }
+    
+    const [sessionName] = academicSession.split(' ');
+    
+    // Only clear storage when performing a new search
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('mentors');
+    }
+    
+    onSearch({
+      academicYear: academicYear.trim(),
+      sessionName // Send just JULY-DECEMBER or JANUARY-JUNE
+    });
   };
 
   const handleReset = () => {
     setAcademicYear('');
     setAcademicSession('');
-    setMentorStatus('');
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('mentors');
+    }
   };
 
   const filterControlStyles = {
@@ -267,12 +288,10 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
   const handleAcademicYearInput = (e) => {
     let value = e.target.value.toUpperCase();
     
-    // Auto-format while typing
     if (value.length === 4 && !value.includes('-')) {
       value = `${value}-${parseInt(value) + 1}`;
     }
     
-    // Update suggestions
     if (value.length > 0) {
       setYearSuggestions(generateYearSuggestions(value));
       setShowYearOptions(true);
@@ -290,14 +309,12 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
   const handleAcademicSessionInput = (e) => {
     let value = e.target.value.toUpperCase();
     
-    // Auto-format while typing
     if (value.startsWith('JUL')) {
       value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
     } else if (value.startsWith('JAN')) {
       value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
     }
     
-    // Update suggestions
     if (value.length > 0) {
       setSessionSuggestions(generateSessionSuggestions(value));
       setShowSessionOptions(true);
@@ -344,6 +361,17 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     // Handle any document-dependent code here
   }, []);
 
+  const UploadButton = () => (
+    <Button
+      variant="contained"
+      onClick={onBulkUpload}
+      sx={buttonStyles('secondary')}
+      startIcon={<UploadFileIcon />}
+    >
+      Upload File
+    </Button>
+  );
+
   return (
     <Box sx={filterSectionStyles.wrapper}>
       <Box sx={filterSectionStyles.filterGrid}>
@@ -388,7 +416,6 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
                     setAcademicYear(year);
                     setShowYearOptions(false);
                     setAcademicSessions(generateAcademicSessions(year));
-                    // Auto-select first session when year changes
                     const sessions = generateAcademicSessions(year);
                     if (sessions.length > 0) {
                       setAcademicSession(sessions[0]);
@@ -437,38 +464,7 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
           )}
         </Box>
 
-        <FormControl size="small" sx={filterControlStyles}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={mentorStatus}
-            label="Status"
-            onChange={(e) => setMentorStatus(e.target.value)}
-            MenuProps={{
-              PaperProps: {
-                sx: {
-                  bgcolor: '#1a1a1a',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  '& .MuiMenuItem-root': {
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: '#2a2a2a',
-                    },
-                    '&.Mui-selected': {
-                      bgcolor: '#333333',
-                      '&:hover': {
-                        bgcolor: '#404040',
-                      }
-                    }
-                  }
-                }
-              }
-            }}
-          >
-            <MenuItem value=""><em>None</em></MenuItem>
-            <MenuItem value="active">Active</MenuItem>
-            <MenuItem value="inactive">Inactive</MenuItem>
-          </Select>
-        </FormControl>
+       
       </Box>
 
       <Box sx={filterSectionStyles.buttonGroup}>
@@ -496,13 +492,7 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
         >
           Add New Mentor
         </Button>
-        {/* <Button
-          variant="contained"
-          onClick={onBulkUpload}
-          sx={buttonStyles('secondary')}
-        >
-          Upload File
-        </Button> */}
+        <UploadButton />
         <Button
           variant="contained"
           onClick={handleReset}

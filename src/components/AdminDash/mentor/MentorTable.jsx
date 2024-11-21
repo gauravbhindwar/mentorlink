@@ -1,16 +1,72 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button, IconButton, Box } from '@mui/material'; // Add Box import
+import { Button, IconButton, Box } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import React, { useEffect, useState, useMemo } from 'react';
 
-const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => {
+const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen, currentFilters = {} }) => {
+  const [processedMentors, setProcessedMentors] = useState([]);
+
+  const processData = useMemo(() => {
+    if (!mentors || !Array.isArray(mentors)) return [];
+    
+    const processed = mentors.flatMap(mentor => {
+      const matchingRecords = mentor.academicRecords?.filter(record => {
+        if (!currentFilters?.academicYear) return true;
+        return record.academicYear === currentFilters.academicYear;
+      }) || [];
+
+      return matchingRecords.flatMap(record => {
+        const matchingSessions = record.sessions?.filter(session => {
+          if (!currentFilters?.sessionName) return true;
+          return session.sessionName === currentFilters.sessionName;
+        }) || [];
+
+        return matchingSessions.flatMap(session => {
+          return (session.mentorInfo || []).map((info, index) => ({
+            id: `${info.MUJid || index}-${Date.now()}`,
+            MUJid: info.MUJid || '',
+            name: info.name || '',
+            email: info.email || '',
+            phone_number: info.phone_number || '',
+            role: Array.isArray(info.role) ? info.role : ['mentor'],
+            academicYear: record.academicYear || '',
+            academicSession: `${session.sessionName} ${record.academicYear?.split('-')[0] || ''}`,
+          }));
+        });
+      });
+    });
+
+    return processed;
+  }, [mentors, currentFilters.academicYear, currentFilters.sessionName]);
+
+  useEffect(() => {
+    if (processData.length > 0) {
+      sessionStorage.setItem('mentors', JSON.stringify(processData));
+      setProcessedMentors(processData);
+    } else {
+      const storedMentors = sessionStorage.getItem('mentors');
+      if (storedMentors) {
+        try {
+          const parsed = JSON.parse(storedMentors);
+          setProcessedMentors(parsed);
+        } catch (error) {
+          console.error('Error parsing stored mentors:', error);
+          setProcessedMentors([]);
+        }
+      }
+    }
+  }, [processData]);
+
+  console.log('Processed Mentors:', processedMentors); // Debug log
+
   const columns = [
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
       width: 70,
       renderCell: (params) => {
-        const index = mentors.findIndex(mentor => mentor.MUJid === params.row.MUJid);
+        const index = processedMentors.findIndex(mentor => mentor.MUJid === params.row.MUJid);
         return index + 1;
       },
       sortable: false,
@@ -76,9 +132,9 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
     }}>
       <div style={{ height: '600px', width: '100%' }}>
         <DataGrid
-          rows={mentors}
+          rows={processedMentors}
           columns={columns}
-          getRowId={(row) => row.MUJid}
+          getRowId={(row) => row.id}
           autoHeight
           sx={{
             border: 'none',
@@ -220,7 +276,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
           disableSelectionOnClick
           disableColumnMenu={false}
           disableColumnFilter={false}
-          loading={!mentors.length}
+          loading={!processedMentors.length}
           initialState={{
             pagination: {
               paginationModel: { pageSize: 10, page: 0 },
