@@ -8,19 +8,20 @@ import {
   InputLabel, 
   Select, 
   MenuItem,
-  Snackbar,
   Slide,
-  Alert,
-  AlertTitle,
   CircularProgress,
   TextField,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
+import toast from 'react-hot-toast';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
-const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload, mentees }) => {
-  const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
+const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload, onDelete, mentees }) => {
   const [isLoading, setIsLoading] = useState({
     search: false,
     searchAll: false,
@@ -38,6 +39,9 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
   const dropdownRoot = document.getElementById('dropdown-root');
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [mujidsToDelete, setMujidsToDelete] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const generateAcademicSessions = (academicYear) => {
     if (!academicYear) return [];
@@ -107,8 +111,26 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
   }, [filters]);
 
   const showAlert = (message, severity) => {
-    setAlert({ open: true, message, severity });
-    setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
+    switch (severity) {
+      case 'error':
+        toast.error(message);
+        break;
+      case 'success':
+        toast.success(message);
+        break;
+      case 'info':
+      case 'warning':
+        toast(message, {
+          icon: severity === 'warning' ? '⚠️' : 'ℹ️',
+          style: {
+            background: severity === 'warning' ? '#fff3cd' : '#cff4fc',
+            color: '#000'
+          }
+        });
+        break;
+      default:
+        toast(message);
+    }
   };
 
   const handleSearch = async () => {
@@ -150,7 +172,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
         showAlert('No mentees found', 'info');
       }
     } catch (error) {
-      console.error('Search error:', error);
+      // console.error('Search error:', error);
       sessionStorage.removeItem('menteeData');
       showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
       onSearch([]); // Pass empty array on error
@@ -406,6 +428,35 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     handleFilterChange('academicSession', value);
   };
 
+  const handleSearchAllClick = () => {
+    onSearchAll(); // Just call the function directly
+  };
+
+  const handleBulkDelete = async () => {
+    if (!mujidsToDelete.trim()) {
+      showAlert('Please enter at least one MUJID', 'warning');
+      return;
+    }
+
+    const mujids = mujidsToDelete.split(',').map(id => id.trim()).filter(Boolean);
+    if (mujids.length === 0) {
+      showAlert('Please enter valid MUJIDs', 'warning');
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await onDelete(mujids);
+      setDeleteDialog(false);
+      setMujidsToDelete('');
+      showAlert('Mentees deleted successfully', 'success');
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error deleting mentees', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const filterControls = [
     {
       name: 'academicYear',
@@ -566,7 +617,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     },
     { 
       label: isLoading.searchAll ? 'Loading...' : 'Search All',
-      onClick: handleSearchAll,
+      onClick: handleSearchAllClick,
       color: 'secondary',
       // Only require academicYear, academicSession, and semester for Search All
       disabled: !filters.academicYear || !filters.academicSession || !filters.semester,
@@ -592,51 +643,18 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
       color: 'secondary',
       disabled: isLoading.bulkAdd,
       icon: false 
+    },
+    { 
+      label: deleteLoading ? 'Deleting...' : 'Delete Mentees',
+      onClick: () => setDeleteDialog(true),
+      color: 'error',
+      disabled: deleteLoading,
+      icon: false 
     }
   ];
 
   return (
     <>
-      <Snackbar
-        open={alert.open}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        TransitionComponent={(props) => <Slide {...props} direction="left" />}
-        autoHideDuration={3000}
-        onClose={() => setAlert({ ...alert, open: false })}
-        sx={{
-          mt: 2,
-          '& .MuiSnackbarContent-root': {
-            marginTop: '64px'
-          }
-        }}
-      >
-        <Alert 
-          severity={alert.severity} 
-          onClose={() => setAlert({ ...alert, open: false })}
-          sx={{
-            minWidth: '300px',
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            color: '#fff',
-            position: 'relative',
-            zIndex: 9999,
-            '& .MuiAlert-icon': {
-              color: alert.severity === 'error' ? '#ff4444' : 
-                     alert.severity === 'success' ? '#00C851' : 
-                     alert.severity === 'warning' ? '#ffbb33' : '#33b5e5'
-            }
-          }}
-        >
-          <AlertTitle sx={{ color: '#f97316' }}>
-            {alert.severity === 'error' ? 'Error' : 
-             alert.severity === 'success' ? 'Success' : 
-             alert.severity === 'warning' ? 'Warning' : 'Info'}
-          </AlertTitle>
-          {alert.message}
-        </Alert>
-      </Snackbar>
-
       <Box sx={{ 
         display: 'flex',
         flexDirection: { xs: 'column', md: 'row' },
@@ -780,6 +798,47 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
           </Box>
         ) : null}
       </Box>
+
+      <Dialog 
+        open={deleteDialog} 
+        onClose={() => setDeleteDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: dialogStyles.paper }}
+      >
+        <DialogTitle sx={dialogStyles.title}>Delete Mentees</DialogTitle>
+        <DialogContent sx={dialogStyles.content}>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            value={mujidsToDelete}
+            onChange={(e) => setMujidsToDelete(e.target.value)}
+            placeholder="Enter MUJIDs separated by commas"
+            sx={textFieldStyles}
+          />
+        </DialogContent>
+        <DialogActions sx={dialogStyles.actions}>
+          <Button 
+            onClick={() => setDeleteDialog(false)}
+            variant="outlined"
+            sx={buttonStyles.outlined}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBulkDelete}
+            variant="contained"
+            disabled={deleteLoading}
+            sx={{
+              bgcolor: '#ef4444',
+              '&:hover': { bgcolor: '#dc2626' }
+            }}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
@@ -864,6 +923,26 @@ const comboBoxStyles = {
         backgroundColor: 'rgba(249, 115, 22, 0.1)',
       },
     },
+  },
+};
+
+const dialogStyles = {
+  paper: {
+    backgroundColor: '#1a1a1a',
+    color: 'white',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  title: {
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    paddingBottom: '8px',
+  },
+  content: {
+    paddingTop: '16px',
+  },
+  actions: {
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    paddingTop: '8px',
   },
 };
 

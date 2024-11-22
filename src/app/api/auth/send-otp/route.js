@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import smtpTransport from "nodemailer-smtp-transport";
 import bcrypt from "bcryptjs";
 import { connect } from "../../../../lib/dbConfig";
 import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
@@ -10,21 +11,30 @@ const generateOtp = () => {
 };
 
 // Configure the nodemailer transport for sending emails
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransport(smtpTransport({
     service: 'Gmail',
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-});
+    tls: {
+        rejectUnauthorized: false
+    }
+}));
 
 // Function to send OTP via email
 const sendOtpEmail = async (email, otp) => {
     await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: `"Your Service Name" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'Your OTP Code',
         text: `Your OTP is ${otp}`,
+        html: `<p>Your OTP is <b>${otp}</b></p>`,
+        headers: {
+            'X-Priority': '1 (Highest)',
+            'X-MSMail-Priority': 'High',
+            'Importance': 'High'
+        }
     });
 };
 
