@@ -21,7 +21,7 @@ const ScheduleMeeting = () => {
   const [dateTime, setDateTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [meetingId, setMeetingId] = useState('');
-
+  const [successPop, setSuccessPop] = useState(false);
   // Add new state variables
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
@@ -105,15 +105,15 @@ const ScheduleMeeting = () => {
           
           console.log('Mentor meetings:', meetingsHeld);
           // console.log('Meeting count:', meetingCount);
-          if(meetingsHeld.length == 4){
+          if(meetingsHeld.length >= 4){
             setMeetingId('You have already scheduled 4 meetings for this section')
             setCustomAlert('You have already scheduled 4 meetings for this section')
             setDisabled(true);
-          }
-          // Set meeting ID with proper count
+          }else{
           setMeetingId(`${mentorId}-M${selectedSection}${meetingsHeld.length + 1}`);
           setCustomAlert('')
           setDisabled(false);
+          }
         }
       } catch (error) {
         // console.error('Error fetching meetings:', error.response?.data || error.message);
@@ -172,9 +172,9 @@ const ScheduleMeeting = () => {
 
   const handleMeetingScheduled = () => {
     const scheduleMeeting = async () => {
+      setLoading(true);
       try {
         // Validate required fields
-        setLoading(true);
         if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
           throw new Error('Please fill all required fields');
         }
@@ -195,7 +195,10 @@ const ScheduleMeeting = () => {
         if (response.data) {
           if (response.status == 200) {
             // Meeting scheduled successfully
-            router.push('/pages/mentordashboard');
+            setSuccessPop(true);
+            setTimeout(() => {
+              router.push('/pages/mentordashboard');
+            }, 2000);
           } else {
             // Meeting scheduling failed
             // console.log(response.data)
@@ -418,6 +421,7 @@ const ScheduleMeeting = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
           <div className="absolute inset-0 backdrop-blur-3xl" />
         </div>
+        
 
         <Navbar />
 
@@ -635,18 +639,53 @@ const ScheduleMeeting = () => {
                       handleMeetingScheduled
                     }
                   >
-                    {loading ? 'Scheduling...' : 'Schedule Meeting'}
+                    {loading ? 
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500">
+                    </div>                    
+                    : 'Schedule Meeting'}
                   </button>
                   {
                     customAlert && (
                       <p className='text-md text-red-600 font-semibold w-[100%] flex justify-center'><span>{customAlert}</span></p>
                     )
-                  }
+                  }  
+                  {
+                    successPop && (
+                      <>
+                        <div
+                        className={`fixed inset-0 bg-black/40 z-110 transition-opacity`}
+                          ></div>
+                        <div className={`fixed inset-0 z-120 flex justify-center items-center`}>
+                          <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
+                            <p>Meeting scheduled successfully</p>
+                            <div className="flex justify-center mt-4 w-[100%]">
+                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500">
+                            </div>     
+                            </div>
+                          </div>
+                        </div>
+                      </>   
+                    )
+                  }                
                 </div>
               </form>
             </div>
           </motion.div>
         </div>
+        {
+  successPop && (
+    <>
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-50 w-[100vw] h-screen z-50 transition-opacity`}
+      ></div>
+      <div className={`fixed inset-0 z-60 flex justify-center items-center`}>
+        <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
+          {/* Add your success message content here */}
+        </div>
+      </div>
+    </>
+  )
+}
       </motion.div>
     </AnimatePresence>
   );

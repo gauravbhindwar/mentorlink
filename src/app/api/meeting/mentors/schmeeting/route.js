@@ -1,7 +1,7 @@
 import { connect } from "../../../../../lib/dbConfig";
 import { AcademicSession } from "../../../../../lib/db/academicSessionSchema";
 import { Mentor } from "../../../../../lib/db/mentorSchema";
-// import { Mentee } from "../../../../../lib/db/menteeSchema";
+import { Mentee } from "../../../../../lib/db/menteeSchema";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -155,6 +155,16 @@ export async function POST(request) {
       );
     }
 
+    const mentees = await Mentee.find({
+      mentorMujid: mentor_id,
+      semester: parseInt(semester),
+      academicSession: session,
+      academicYear: year,
+      section: section,
+    });
+
+    const mentee_ids = mentees.map((mentee) => mentee.MUJid);
+
     const [startYear, endYear] = year.split("-").map(Number);
 
     const academicSession = await AcademicSession.findOne({
@@ -213,6 +223,7 @@ export async function POST(request) {
       session,
       year,
       mentor_id,
+      mentee_ids,
     };
 
     // Add the meeting to the section
