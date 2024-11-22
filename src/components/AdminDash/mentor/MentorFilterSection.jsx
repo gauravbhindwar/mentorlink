@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Box, Button, FormControl, InputLabel, Select, MenuItem, TextField } from '@mui/material';
+import { display, flexbox, height, width } from '@mui/system';
 import SearchIcon from '@mui/icons-material/Search';
 import { createPortal } from 'react-dom';
 
@@ -321,10 +322,11 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
       padding: '24px',
       border: '1px solid rgba(255, 255, 255, 0.1)',
       boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+      height: '100%'
     },
     filterGrid: {
       display: 'grid',
-      gridTemplateColumns: {
+      gridTemplateRows: {
         xs: '1fr',
         sm: 'repeat(2, 1fr)',
       },
@@ -334,8 +336,9 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     buttonGroup: {
       display: 'flex',
       flexWrap: 'wrap',
+      flexDirection: 'column',
       gap: '12px',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       mt: 2,
     }
   };

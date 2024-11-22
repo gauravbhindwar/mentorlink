@@ -27,22 +27,17 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
-      width: 70,
+      width: 60,
       renderCell: (params) => {
         const index = mentors.findIndex(mentor => mentor.MUJid === params.row.MUJid);
         return index + 1;
       },
       sortable: false,
     },
-    { field: 'MUJid', headerName: 'MUJid', width: 150 },
-    { field: 'name', headerName: 'Name', width: 200 },
-    { field: 'email', headerName: 'Email', width: 250 },
+    { field: 'MUJid', headerName: 'MUJid', width: 130 },
+    { field: 'name', headerName: 'Name', width: 180 },
+    { field: 'email', headerName: 'Email', width: 235 },
     { field: 'phone_number', headerName: 'Phone', width: 150 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
-    { field: 'academicSession', headerName: 'Session', width: 200 },
-    { field: 'role', headerName: 'Role', width: 150,
-      renderCell: (params) => params.row.role.join(', ')
-    },
     {
       field: 'actions',
       headerName: 'Actions',
@@ -77,12 +72,18 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
         </Box>
       ),
     },
+    { field: 'academicSession', headerName: 'Session', width: 200 },
+    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
+    { field: 'role', headerName: 'Role', width: 150,
+      renderCell: (params) => params.row.role.join(', ')
+    },
+    ,
   ].map(col => ({
     ...col,
     headerAlign: 'center',
     align: 'center',
     flex: 1,
-    minWidth: col.minWidth || 150,
+    minWidth: col.width || 150,
   }));
 
   return (
@@ -106,6 +107,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
             borderRadius: 2,
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
             position: 'relative',
+            transition: 'all 200ms !important',
             zIndex: 1,
             '& .MuiDataGrid-main': {
               border: 'none',
@@ -141,30 +143,37 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
               maxHeight: 'unset !important',
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              backgroundColor: ' rgb(24, 27, 40)',
               color: '#f97316',
               color: '#1e293b',
-              borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
-              borderTop: '2px solid rgba(255, 255, 255, 0.1)',
+              borderBottom: '2px solid rgb(24, 27, 40)',
+              borderTop: '2px solid  rgb(24, 27, 40)',
               fontSize: '1rem',
               fontWeight: 600,
               padding: '8px',
               paddingRight: '16px',
               minHeight: '60px !important',
               maxHeight: 'unset !important',
-              zIndex: 1
+              zIndex: 1,
+              '&:hover': {
+                color: '#000'
+              }
             },
             '& .MuiDataGrid-columnHeader': {
+              backgroundColor: 'rgba(24, 27, 40, .5)',
+              transition: 'all 500ms',
               '&:focus': {
                 outline: 'none',
               },
               '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                backgroundColor: 'rgba(24, 27, 40, .4)',
+                
               },
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 700,
-              color: '#f97316',
+              color: 'rgb(24, 24, 27)',
+              
             },
             // ...existing DataGrid styles from MenteeTable...
             '& .MuiDataGrid-footerContainer': {
@@ -202,14 +211,14 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
               display: 'block',
               color: '#f97316',
               '& .MuiSvgIcon-root': {
-                color: '#f97316',
+                color: 'rgb(24, 24, 27)',
               },
               '&:hover': {
                 backgroundColor: 'rgba(249, 115, 22, 0.1)',
               },
             },
             '& .MuiDataGrid-sortIcon': {
-              color: '#f97316',
+              color: 'rgb(24, 24, 27)',
             },
             '& .MuiDataGrid-panel': {
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
