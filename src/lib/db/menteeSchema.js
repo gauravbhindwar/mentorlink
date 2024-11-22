@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { AcademicSession } from "./academicSessionSchema";
 
 const menteesSchema = new mongoose.Schema({
     name: { type: String, required: true }, // Full name of the mentee

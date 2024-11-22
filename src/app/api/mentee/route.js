@@ -1,5 +1,5 @@
-import { connect } from "@/lib/dbConfig";
-import Mentee from "@/lib/db/menteeSchema";
+import { connect } from "../../../lib/dbConfig";
+import {Mentee }from "../../../lib/dbModels";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {

@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, CircularProgress } from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions,  LinearProgress, MenuItem, CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -11,6 +11,7 @@ import { Toaster } from 'react-hot-toast';
 import { motion} from 'framer-motion';
 import axios from 'axios';
 import BulkUploadPreview from '../common/BulkUploadPreview';
+import toast from 'react-hot-toast';
 
 const calculateCurrentSemester = (yearOfRegistration) => {
   const currentDate = new Date();
@@ -73,6 +74,7 @@ const generateSemesterOptions = (academicSession) => {
   return [];
 };
 
+
 const MenteeManagement = () => {
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(false); // Set initial loading state to false
@@ -84,6 +86,7 @@ const MenteeManagement = () => {
   const [menteeMujid, setMenteeMujid] = useState(''); // Move this up
   const [mentorMujid, setMentorMujid] = useState(''); // Move this up
   const [isFilterSelected, setIsFilterSelected] = useState(false);
+  console.log(isFilterSelected)
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
     name: '',
@@ -122,10 +125,8 @@ const MenteeManagement = () => {
   
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentee, setSelectedMentee] = useState(null);
-  const [alert, setAlert] = useState({ open: false, message: '', severity: '' });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, mentee: null });
   const [uploadProgress, setUploadProgress] = useState(0);
-
   const [assignDialog, setAssignDialog] = useState(false);
   const [assignmentDetails, setAssignmentDetails] = useState({
     mentor_MUJid: '',
@@ -186,7 +187,7 @@ const MenteeManagement = () => {
   const handleConfirmUpload = async () => {
     setUploading(true);
     try {
-      const response = await axios.post('/api/admin/manageUsers/bulkUpload', {
+      await axios.post('/api/admin/manageUsers/bulkUpload', {
         data: previewData.data,
         type: 'mentee' // Explicitly set type for mentees
       });
@@ -221,17 +222,59 @@ const MenteeManagement = () => {
     setUploading(false);
   };
 
-  const handleBulkUploadClick = () => {
-    setBulkUploadDialog(true);
-  };
+  // const handleBulkUploadClick = () => {
+  //   setBulkUploadDialog(true);
+  // };
 
   const showAlert = (message, severity) => {
-    setAlert({ open: true, message, severity });
-    setTimeout(() => setAlert({ open: false, message: '', severity }), 3000);
+    switch (severity) {
+      case 'error':
+        toast.error(message);
+        break;
+      case 'success':
+        toast.success(message);
+        break;
+      case 'info':
+      case 'warning':
+        toast(message, {
+          icon: severity === 'warning' ? '⚠️' : 'ℹ️',
+          style: {
+            background: severity === 'warning' ? '#fff3cd' : '#cff4fc',
+            color: '#000'
+          }
+        });
+        break;
+      default:
+        toast(message);
+    }
   };
 
   const handleEditClick = (mentee) => {
-    setSelectedMentee(mentee);
+    // Transform the mentee data to match schema structure
+    const formattedMentee = {
+      ...mentee,
+      parents: {
+        father: {
+          name: mentee.fatherName || '',
+          email: mentee.fatherEmail || '',
+          phone: mentee.fatherPhone || '',
+          alternatePhone: mentee.fatherAlternatePhone || ''
+        },
+        mother: {
+          name: mentee.motherName || '',
+          email: mentee.motherEmail || '',
+          phone: mentee.motherPhone || '',
+          alternatePhone: mentee.motherAlternatePhone || ''
+        },
+        guardian: {
+          name: mentee.guardianName || '',
+          email: mentee.guardianEmail || '',
+          phone: mentee.guardianPhone || '',
+          relation: mentee.guardianRelation || ''
+        }
+      }
+    };
+    setSelectedMentee(formattedMentee);
     setEditDialog(true);
   };
 
@@ -240,8 +283,12 @@ const MenteeManagement = () => {
     setEditDialog(false);
   };
 
-  const handleUpdate = () => {
-    setConfirmDialog({ open: true, mentee: selectedMentee });
+  const handleUpdate = async () => {
+    // Show confirmation dialog instead of updating directly
+    setConfirmDialog({
+      open: true,
+      mentee: selectedMentee
+    });
   };
 
   const handleConfirmClose = () => {
@@ -249,38 +296,51 @@ const MenteeManagement = () => {
   };
 
   const handleConfirmUpdate = async () => {
-    const mentee = confirmDialog.mentee;
     try {
-      const response = await axios.patch('/api/admin/manageUsers/manageMentee', mentee);
+      const response = await axios.patch('/api/admin/manageUsers/manageMentee', selectedMentee);
       showAlert('Mentee updated successfully', 'success');
       setMentees(prevMentees => 
         prevMentees.map(mentee => 
-          mentee.mujid === selectedMentee.mujid ? response.data : mentee
+          mentee.MUJid === selectedMentee.MUJid ? response.data : mentee
         )
       );
       handleEditClose();
+      handleConfirmClose();
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error updating mentee', 'error');
-    } finally {
-      handleConfirmClose();
     }
   };
 
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setSelectedMentee(prev => ({
-      ...prev,
-      [name]: name === 'MUJid' ? value.toUpperCase() : value // Ensure MUJid is uppercase
-    }));
+  const handleEditInputChange = (e, category, subcategory) => {
+    if (category && subcategory) {
+      // Handle nested parent fields
+      setSelectedMentee(prev => ({
+        ...prev,
+        parents: {
+          ...prev.parents,
+          [category]: {
+            ...prev.parents[category],
+            [subcategory]: e.target.value
+          }
+        }
+      }));
+    } else {
+      // Handle top-level fields
+      const { name, value } = e.target;
+      setSelectedMentee(prev => ({
+        ...prev,
+        [name]: name === 'MUJid' ? value.toUpperCase() : value
+      }));
+    }
   };
 
-  const handleAssignClick = (mentee) => {
-    setAssignmentDetails({
-        ...assignmentDetails,
-        mentee_MUJid: mentee.mujid
-    });
-    setAssignDialog(true);
-  };
+  // const handleAssignClick = (mentee) => {
+  //   setAssignmentDetails({
+  //       ...assignmentDetails,
+  //       mentee_MUJid: mentee.mujid
+  //   });
+  //   setAssignDialog(true);
+  // };
 
   const handleAssignClose = () => {
     setAssignDialog(false);
@@ -303,11 +363,29 @@ const MenteeManagement = () => {
 
   const handleAssignSubmit = async () => {
     try {
-        const response = await axios.post('/api/admin/manageUsers/assignMentor', assignmentDetails);
+        await axios.post('/api/admin/manageUsers/assignMentor', assignmentDetails);
         showAlert('Mentor assigned successfully', 'success');
         handleAssignClose();
     } catch (error) {
         showAlert(error.response?.data?.error || 'Error assigning mentor', 'error');
+    }
+  };
+
+  const handleDelete = async (mujids) => {
+    try {
+      const response = await axios.delete('/api/admin/manageUsers/manageMentee', {
+        data: { MUJids: mujids }
+      });
+      
+      showAlert(`Successfully deleted ${response.data.deletedCount} mentee(s)`, 'success');
+      
+      // Refresh the table
+      if (mentees.length > 0) {
+        const updatedMentees = mentees.filter(m => !mujids.includes(m.MUJid));
+        setMentees(updatedMentees);
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error deleting mentees', 'error');
     }
   };
 
@@ -376,20 +454,32 @@ const MenteeManagement = () => {
     }
   };
 
-  const handleSearchAll = (data) => {
+  const handleSearchAll = async () => {
     setLoading(true);
     try {
-      if (Array.isArray(data) && data.length > 0) {
-        setMentees(data);
+      const params = {
+        academicYear,
+        academicSession,
+        semester
+      };
+      
+      const response = await axios.get('/api/admin/manageUsers/getAllMentees', { params });
+      
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setMentees(response.data);
         setTableVisible(true);
+        // Store data in session storage
+        sessionStorage.setItem('menteeData', JSON.stringify(response.data));
       } else {
         setMentees([]);
         setTableVisible(false);
+        sessionStorage.removeItem('menteeData');
       }
     } catch (error) {
       console.error('Error handling search all:', error);
       setMentees([]);
       setTableVisible(false);
+      showAlert(error.response?.data?.error || 'Error fetching mentees', 'error');
     } finally {
       setLoading(false);
     }
@@ -709,14 +799,96 @@ const MenteeManagement = () => {
 
   const [academicSessions, setAcademicSessions] = useState([]);
 
+  // Add this near other state declarations
+  const [yearSuggestions, setYearSuggestions] = useState([]);
+  const yearRef = useRef(null);
+  const sessionRef = useRef(null);
+  const [showYearOptions, setShowYearOptions] = useState(false);
+  const [showSessionOptions, setShowSessionOptions] = useState(false);
+
+  // Add these helper functions
+  const generateYearSuggestions = (input) => {
+    if (!input) return [];
+    const currentYear = new Date().getFullYear();
+    const suggestions = [];
+    
+    for (let i = 0; i < 5; i++) {
+      const year = currentYear - i;
+      const academicYear = `${year}-${year + 1}`;
+      if (academicYear.startsWith(input)) {
+        suggestions.push(academicYear);
+      }
+    }
+    return suggestions;
+  };
+
+  // Add this useEffect for handling clicks outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (yearRef.current && !yearRef.current.contains(event.target)) {
+        setShowYearOptions(false);
+      }
+      if (sessionRef.current && !sessionRef.current.contains(event.target)) {
+        setShowSessionOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Make sure to add the comboBoxStyles if not already present
+  const comboBoxStyles = {
+    position: 'relative',
+    width: '100%',
+    '& .MuiTextField-root': {
+      width: '100%',
+    },
+    '& .options-dropdown': {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      zIndex: 9999,
+      backgroundColor: '#1a1a1a',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '8px',
+      marginTop: '4px',
+      padding: '8px 0',
+      maxHeight: '200px',
+      overflowY: 'auto',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+      '& .option-item': {
+        padding: '8px 16px',
+        color: 'white',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        },
+      },
+    },
+  };
+
   if (!mounted) return null;
+
+  const handleDataUpdate = (updateFn) => {
+    setMentees(prevMentees => {
+      const updatedMentees = typeof updateFn === 'function' 
+        ? updateFn(prevMentees)
+        : updateFn;
+      
+      // Update session storage
+      sessionStorage.setItem('menteeData', JSON.stringify(updatedMentees));
+      return updatedMentees;
+    });
+  };
 
   return (
     <ThemeProvider theme={theme}>
-      {/* Toast/Alert Container - Moved outside main content */}
-      <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md max-h-screen">
-        <Toaster 
-          position="top-center"
+      <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
+        <Toaster
+          position="top-right"
           toastOptions={{
             duration: 3000,
             style: {
@@ -728,37 +900,7 @@ const MenteeManagement = () => {
             },
           }}
         />
-        <Snackbar
-          open={alert.open}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          TransitionComponent={(props) => <Slide {...props} direction="down" />}
-          sx={{
-            '& .MuiSnackbarContent-root': {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '0.75rem',
-            }
-          }}
-        >
-          <Alert 
-            severity={alert.severity} 
-            onClose={() => setAlert({ ...alert, open: false })}
-            sx={{
-              backgroundColor: 'transparent',
-              color: '#fff',
-              '& .MuiAlert-icon': {
-                color: '#fff'
-              }
-            }}
-          >
-            <AlertTitle>{alert.severity === 'error' ? 'Error' : 'Success'}</AlertTitle>
-            {alert.message}
-          </Alert>
-        </Snackbar>
-      </div>
-
-      <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
+        
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -797,6 +939,7 @@ const MenteeManagement = () => {
                 onAddNew={handleDialogOpen}
                 onReset={handleReset}
                 onBulkUpload={handleBulkUploadOpen}
+                onDelete={handleDelete}
                 mentees={mentees} // Pass mentees data to FilterSection
               />
             </motion.div>
@@ -835,7 +978,9 @@ const MenteeManagement = () => {
                   <MenteeTable 
                     mentees={mentees}
                     onEditClick={handleEditClick}
+                    onDeleteClick={handleDelete} // Changed from onDelete to onDeleteClick to match prop name
                     isSmallScreen={isSmallScreen}
+                    onDataUpdate={handleDataUpdate} // Add this prop
                   />
                 )}
               </Box>
@@ -1303,7 +1448,7 @@ const MenteeManagement = () => {
         <Dialog 
           open={editDialog} 
           onClose={handleEditClose}
-          maxWidth="sm"
+          maxWidth="md"
           fullWidth
           PaperProps={{ sx: dialogStyles.paper }}
         >
@@ -1312,363 +1457,306 @@ const MenteeManagement = () => {
               Edit Mentee Details
             </Typography>
             <IconButton
-              aria-label="close"
               onClick={handleEditClose}
               sx={{
                 position: 'absolute',
                 right: 8,
                 top: 8,
                 color: 'rgba(255, 255, 255, 0.7)',
-                '&:hover': {
-                  color: '#f97316',
-                },
+                '&:hover': { color: '#f97316' },
               }}
             >
               <CloseIcon />
             </IconButton>
           </DialogTitle>
           <DialogContent sx={dialogStyles.content}>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 2,
-              '& .MuiTextField-root': dialogStyles.textField,
-            }}>
-              {selectedMentee && (
-                <>
+            {selectedMentee && (
+              <Box sx={{ 
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                gap: 3,
+                py: 2
+              }}>
+                {/* Student Information */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Student Information
+                  </Typography>
                   <TextField
                     label="MUJid"
                     name="MUJid"
-                    value={selectedMentee.MUJid}
-                    onChange={handleEditInputChange}
-                    required
+                    value={selectedMentee.MUJid || ''}
                     disabled
-                    inputProps={{
-                      style: { textTransform: 'uppercase' }
-                    }}
-                    helperText="MUJid cannot be changed"
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
-                  />
-                  <TextField
-                    label="Year of Registration"
-                    name="yearOfRegistration"
-                    type="number"
-                    value={selectedMentee.yearOfRegistration}
-                    onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    sx={dialogStyles.textField}
                   />
                   <TextField
                     label="Name"
                     name="name"
-                    value={selectedMentee.name}
+                    value={selectedMentee.name || ''}
                     onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    required
+                    sx={dialogStyles.textField}
                   />
                   <TextField
                     label="Email"
                     name="email"
                     type="email"
-                    value={selectedMentee.email}
+                    value={selectedMentee.email || ''}
                     onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    required
+                    sx={dialogStyles.textField}
                   />
                   <TextField
                     label="Phone"
                     name="phone"
-                    value={selectedMentee.phone}
+                    value={selectedMentee.phone || ''}
                     onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    sx={dialogStyles.textField}
                   />
+                  <TextField
+                    label="Address"
+                    name="address"
+                    value={selectedMentee.address || ''}
+                    onChange={handleEditInputChange}
+                    multiline
+                    rows={2}
+                    sx={dialogStyles.textField}
+                  />
+                </Box>
+
+                {/* Academic Information */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Academic Information
+                  </Typography>
+                  {/* Academic Year with suggestions */}
+                  <Box ref={yearRef} sx={comboBoxStyles}>
+                    <TextField
+                      label="Academic Year"
+                      name="academicYear"
+                      value={selectedMentee?.academicYear || ''}
+                      onChange={(e) => {
+                        let value = e.target.value.toUpperCase();
+                        if (value.length === 4 && !value.includes('-')) {
+                          value = `${value}-${parseInt(value) + 1}`;
+                        }
+                        setYearSuggestions(generateYearSuggestions(value));
+                        setShowYearOptions(true);
+                        handleEditInputChange({ target: { name: 'academicYear', value } });
+                      }}
+                      onClick={() => setShowYearOptions(true)}
+                      placeholder="YYYY-YYYY"
+                      required
+                      sx={dialogStyles.textField}
+                    />
+                    {showYearOptions && (
+                      <Box className="options-dropdown">
+                        {(yearSuggestions.length > 0 ? yearSuggestions : 
+                          (() => {
+                            const currentYear = new Date().getFullYear();
+                            return [0, 1, 2, 3].map(offset => `${currentYear - offset}-${currentYear - offset + 1}`);
+                          })()
+                        ).map(year => (
+                          <Box
+                            key={year}
+                            className="option-item"
+                            onClick={() => {
+                              handleEditInputChange({ target: { name: 'academicYear', value: year } });
+                              setShowYearOptions(false);
+                              const sessions = generateAcademicSessions(year);
+                              if (sessions.length > 0) {
+                                handleEditInputChange({ target: { name: 'academicSession', value: sessions[0] } });
+                              }
+                            }}
+                          >
+                            {year}
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* Academic Session with suggestions */}
+                  <Box ref={sessionRef} sx={comboBoxStyles}>
+                    <TextField
+                      label="Academic Session"
+                      name="academicSession"
+                      value={selectedMentee?.academicSession || ''}
+                      onChange={(e) => {
+                        let value = e.target.value.toUpperCase();
+                        if (value.startsWith('JUL')) {
+                          value = `JULY-DECEMBER ${selectedMentee?.academicYear?.split('-')[0]}`;
+                        } else if (value.startsWith('JAN')) {
+                          value = `JANUARY-JUNE ${selectedMentee?.academicYear?.split('-')[1]}`;
+                        }
+                        handleEditInputChange({ target: { name: 'academicSession', value } });
+                        setShowSessionOptions(true);
+                      }}
+                      onClick={() => setShowSessionOptions(true)}
+                      placeholder="MONTH-MONTH YYYY"
+                      required
+                      disabled={!selectedMentee?.academicYear}
+                      sx={dialogStyles.textField}
+                    />
+                    {showSessionOptions && (
+                      <Box className="options-dropdown">
+                        {generateAcademicSessions(selectedMentee?.academicYear).map(session => (
+                          <Box
+                            key={session}
+                            className="option-item"
+                            onClick={() => {
+                              handleEditInputChange({ target: { name: 'academicSession', value: session } });
+                              setShowSessionOptions(false);
+                            }}
+                          >
+                            {session}
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* Rest of Academic Information fields */}
+                  <TextField
+                    label="Year of Registration"
+                    name="yearOfRegistration"
+                    type="number"
+                    value={selectedMentee.yearOfRegistration || ''}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Section"
+                    name="section"
+                    value={selectedMentee.section || ''}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Semester"
+                    name="semester"
+                    type="number"
+                    value={selectedMentee.semester || ''}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Box>
+
+                {/* Father's Information */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Father&apos;s Information
+                  </Typography>
                   <TextField
                     label="Father's Name"
-                    name="fatherName"
-                    value={selectedMentee.fatherName}
-                    onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    value={selectedMentee.parents?.father?.name || ''}
+                    onChange={(e) => handleEditInputChange(e, 'father', 'name')}
+                    sx={dialogStyles.textField}
                   />
+                  <TextField
+                    label="Father's Email"
+                    type="email"
+                    value={selectedMentee.parents?.father?.email || ''}
+                    onChange={(e) => handleEditInputChange(e, 'father', 'email')}
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Father's Phone"
+                    value={selectedMentee.parents?.father?.phone || ''}
+                    onChange={(e) => handleEditInputChange(e, 'father', 'phone')}
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Father's Alternate Phone"
+                    value={selectedMentee.parents?.father?.alternatePhone || ''}
+                    onChange={(e) => handleEditInputChange(e, 'father', 'alternatePhone')}
+                    sx={dialogStyles.textField}
+                  />
+                </Box>
+
+                {/* Mother's Information */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Mother&apos;s Information
+                  </Typography>
                   <TextField
                     label="Mother's Name"
-                    name="motherName"
-                    value={selectedMentee.motherName}
-                    onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    value={selectedMentee.parents?.mother?.name || ''}
+                    onChange={(e) => handleEditInputChange(e, 'mother', 'name')}
+                    sx={dialogStyles.textField}
                   />
                   <TextField
-                    label="Date of Birth"
-                    name="dateOfBirth"
-                    type="date"
-                    value={selectedMentee.dateOfBirth}
-                    onChange={handleEditInputChange}
-                    InputLabelProps={{ shrink: true }}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
-                  />
-                  <TextField
-                    label="Parents' Phone"
-                    name="parentsPhone"
-                    value={selectedMentee.parentsPhone}
-                    onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
-                  />
-                  <TextField
-                    label="Parents' Email"
-                    name="parentsEmail"
+                    label="Mother's Email"
                     type="email"
-                    value={selectedMentee.parentsEmail}
-                    onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    value={selectedMentee.parents?.mother?.email || ''}
+                    onChange={(e) => handleEditInputChange(e, 'mother', 'email')}
+                    sx={dialogStyles.textField}
                   />
                   <TextField
-                    label="Mentor Mujid"
-                    name="mentorMujid"
-                    value={selectedMentee.mentorMujid}
-                    onChange={handleEditInputChange}
-                    SelectProps={{
-                      MenuProps: {
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1a1a1a', // Solid dark background
-                            // Remove backdropFilter
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: '#2a2a2a', // Darker solid color for hover
-                              },
-                              '&.Mui-selected': {
-                                bgcolor: '#333333', // Even darker for selected
-                                '&:hover': {
-                                  bgcolor: '#404040',
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
+                    label="Mother's Phone"
+                    value={selectedMentee.parents?.mother?.phone || ''}
+                    onChange={(e) => handleEditInputChange(e, 'mother', 'phone')}
+                    sx={dialogStyles.textField}
                   />
-                </>
-              )}
-            </Box>
+                  <TextField
+                    label="Mother's Alternate Phone"
+                    value={selectedMentee.parents?.mother?.alternatePhone || ''}
+                    onChange={(e) => handleEditInputChange(e, 'mother', 'alternatePhone')}
+                    sx={dialogStyles.textField}
+                  />
+                </Box>
+
+                {/* Guardian Information */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Guardian Information
+                  </Typography>
+                  <TextField
+                    label="Guardian's Name"
+                    value={selectedMentee.parents?.guardian?.name || ''}
+                    onChange={(e) => handleEditInputChange(e, 'guardian', 'name')}
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Guardian's Email"
+                    type="email"
+                    value={selectedMentee.parents?.guardian?.email || ''}
+                    onChange={(e) => handleEditInputChange(e, 'guardian', 'email')}
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Guardian's Phone"
+                    value={selectedMentee.parents?.guardian?.phone || ''}
+                    onChange={(e) => handleEditInputChange(e, 'guardian', 'phone')}
+                    sx={dialogStyles.textField}
+                  />
+                  <TextField
+                    label="Guardian's Relation"
+                    value={selectedMentee.parents?.guardian?.relation || ''}
+                    onChange={(e) => handleEditInputChange(e, 'guardian', 'relation')}
+                    sx={dialogStyles.textField}
+                  />
+                </Box>
+
+                {/* Mentor Information */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Mentor Information
+                  </Typography>
+                  <TextField
+                    label="Mentor MUJid"
+                    name="mentorMujid"
+                    value={selectedMentee.mentorMujid || ''}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Box>
+              </Box>
+            )}
           </DialogContent>
           <DialogActions sx={dialogStyles.actions}>
             <Button 
@@ -1935,5 +2023,5 @@ const MenteeManagement = () => {
           </ThemeProvider>  
         );};
 
-          export default MenteeManagement;
+export default MenteeManagement;
 
