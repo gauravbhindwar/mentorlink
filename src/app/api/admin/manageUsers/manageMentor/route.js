@@ -103,139 +103,137 @@ export async function POST(req) {
   }
 }
 
-// GET request with improved filtering
+// Update GET request to include better filtering
 export async function GET(req) {
   try {
     await connect();
     const { searchParams } = new URL(req.url);
+    
+    // Build query object
     const query = {};
     
-    // Add filters only if they exist in searchParams
-    ['academicYear', 'academicSession'].forEach(param => {
+    // Add filters
+    ['academicYear', 'academicSession', 'role'].forEach(param => {
       const value = searchParams.get(param);
-      if (value) query[param] = value.toUpperCase();
+      if (value) {
+        if (param === 'role') {
+          query[param] = { $in: [value] };
+        } else {
+          query[param] = value;
+        }
+      }
     });
 
-    const mentors = await Mentor.find(query);
-    return NextResponse.json({ mentors, total: mentors.length }, { status: 200 });
+    // Handle MUJid search
+    const MUJid = searchParams.get('MUJid');
+    if (MUJid) {
+      query.MUJid = new RegExp(MUJid, 'i');
+    }
+
+    const mentors = await Mentor.find(query)
+      .select('-password -__v')
+      .sort({ createdAt: -1 });
+
+    return NextResponse.json({ 
+      mentors,
+      total: mentors.length,
+      filters: query
+    }, { status: 200 });
+
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return createErrorResponse(error.message || "Failed to fetch mentors", 500);
   }
 }
 
-// DELETE request to delete a mentor by MUJid
+// Update DELETE request handler to handle multiple MUJIDs
 export async function DELETE(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
-    });
-    const requestBody = await req.json().catch(() => null);
+    await connect();
+    const requestBody = await req.json();
 
     if (!requestBody) {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
-    const { MUJid } = requestBody;
+    // Check if MUJids is an array or single value
+    const MUJids = Array.isArray(requestBody.MUJid) 
+      ? requestBody.MUJid 
+      : [requestBody.MUJid];
 
-    if (!MUJid) {
-      return createErrorResponse("MUJid is required for deletion", 400);
+    if (!MUJids.length) {
+      return createErrorResponse("No MUJids provided for deletion", 400);
     }
 
-    const deletedMentor = await Mentor.findOneAndDelete({ MUJid });
-    if (!deletedMentor) {
-      return createErrorResponse("Mentor not found", 404);
+    // Delete multiple mentors
+    const deleteResult = await Mentor.deleteMany({ 
+      MUJid: { $in: MUJids } 
+    });
+
+    if (deleteResult.deletedCount === 0) {
+      return createErrorResponse("No mentors found with the provided MUJids", 404);
     }
 
-    return NextResponse.json(
-      { message: "Mentor deleted successfully", deletedMentor },
-      { status: 200 }
-    );
+    // Also remove from Admin collection if they were admins
+    await Admin.deleteMany({ 
+      MUJid: { $in: MUJids }
+    });
+
+    return NextResponse.json({
+      message: `Successfully deleted ${deleteResult.deletedCount} mentor(s)`,
+      deletedCount: deleteResult.deletedCount
+    }, { status: 200 });
+
   } catch (error) {
-    console.error("Error deleting mentor:", error);
-    return createErrorResponse(error.message || "Failed to delete mentor", 500);
+    console.error("Error deleting mentors:", error);
+    return createErrorResponse(error.message || "Failed to delete mentors", 500);
   }
 }
 
-// PUT request to update a mentor's details
+// Update PUT request to handle role changes
 export async function PUT(req) {
   try {
-    await connect().catch((err) => {
-      console.error("Database connection failed:", err);
-      throw new Error("Database connection failed");
-    });
-    const requestBody = await req.json().catch(() => null);
+    await connect();
+    const mentorData = await req.json();
 
-    if (!requestBody) {
-      return createErrorResponse("Invalid JSON input", 400);
+    if (!mentorData || !mentorData.MUJid) {
+      return createErrorResponse("Invalid mentor data or missing MUJid", 400);
     }
 
-    const { MUJid } = requestBody;
-
-    if (!MUJid) {
-      return createErrorResponse("MUJid is required for updating", 400);
-    }
-
-    const { error } = mentorSchema.validate(requestBody);
+    // Validate updated data
+    const { error } = mentorSchema.validate(mentorData);
     if (error) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid },
-      requestBody,
-      { new: true }
-    );
-
-    if (!updatedMentor) {
+    const oldMentor = await Mentor.findOne({ MUJid: mentorData.MUJid });
+    if (!oldMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
 
-    return NextResponse.json(
-      { message: "Mentor updated successfully", updatedMentor },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error updating mentor:", error);
-    return createErrorResponse(error.message || "Something went wrong on the server", 500);
-  }
-}
-
-// Update PATCH request handler
-export async function PATCH(req) {
-  try {
-    await connect();
-    const data = await req.json();
-    
-    if (!data || !data.MUJid) {
-      return NextResponse.json({
-        error: "Invalid update data or missing MUJid"
-      }, { status: 400 });
-    }
-
-    const { MUJid, ...updateData } = data;
-
-    // Remove any undefined, null, or empty values
-    const cleanedData = Object.fromEntries(
-      Object.entries(updateData).filter(([_, v]) => v != null && v !== '')
-    );
-
-    if (Object.keys(cleanedData).length === 0) {
-      return NextResponse.json({
-        error: "No valid update data provided"
-      }, { status: 400 });
-    }
-
+    // Update mentor
     const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid },
-      { $set: cleanedData },
+      { MUJid: mentorData.MUJid },
+      mentorData,
       { new: true }
     );
 
-    if (!updatedMentor) {
-      return NextResponse.json({
-        error: "Mentor not found"
-      }, { status: 404 });
+    // Handle role changes
+    const wasAdmin = oldMentor.role.includes('admin') || oldMentor.role.includes('superadmin');
+    const isNowAdmin = mentorData.role.includes('admin') || mentorData.role.includes('superadmin');
+
+    if (!wasAdmin && isNowAdmin) {
+      // Add to Admin collection
+      await Admin.create(mentorData);
+    } else if (wasAdmin && !isNowAdmin) {
+      // Remove from Admin collection
+      await Admin.deleteOne({ MUJid: mentorData.MUJid });
+    } else if (wasAdmin && isNowAdmin) {
+      // Update Admin collection
+      await Admin.findOneAndUpdate(
+        { MUJid: mentorData.MUJid },
+        mentorData,
+        { upsert: true }
+      );
     }
 
     return NextResponse.json({
@@ -244,9 +242,41 @@ export async function PATCH(req) {
     }, { status: 200 });
 
   } catch (error) {
-    console.error('Error in PATCH:', error);
-    return NextResponse.json({
-      error: "Failed to update mentor: " + (error.message || "Unknown error")
-    }, { status: 500 });
+    return createErrorResponse(error.message || "Failed to update mentor", 500);
+  }
+}
+
+// Update PATCH request handler
+export async function PATCH(request, { params }) {
+  try {
+    await connect();
+    const data = await request.json();
+    const mujid = request.url.split('/').pop(); // Get MUJid from URL
+
+    // Remove any MongoDB specific fields if they exist
+    const { _id, id, __v, ...updateData } = data;
+
+    const updatedMentor = await Mentor.findOneAndUpdate(
+      { MUJid: mujid },
+      { $set: updateData },
+      { 
+        new: true, // Return updated document
+        runValidators: true // Run schema validators
+      }
+    );
+
+    if (!updatedMentor) {
+      return NextResponse.json(
+        { error: "Mentor not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(updatedMentor);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }

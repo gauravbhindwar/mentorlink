@@ -1,27 +1,52 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button, IconButton, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'; // Add Dialog imports
-import DeleteIcon from '@mui/icons-material/Delete';
-import { useState } from 'react'; // Add useState import
+import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Typography, IconButton } from '@mui/material';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import { useMemo, useState } from 'react';
 
-const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => {
-  const [open, setOpen] = useState(false);
-  const [selectedMentorId, setSelectedMentorId] = useState(null);
+const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => {
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
+  const [loading, setLoading] = useState(false);
 
-  const handleClickOpen = (mentorId) => {
-    setSelectedMentorId(mentorId);
-    setOpen(true);
+  // Add this function to handle delete click
+  const handleDeleteClick = (mujid) => {
+    setDeleteDialog({ open: true, mujid });
   };
 
-  const handleClose = () => {
-    setOpen(false);
-    setSelectedMentorId(null);
+  // Update handleConfirmDelete to include loading state
+  const handleConfirmDelete = async () => {
+    if (deleteDialog.mujid) {
+      setLoading(true);
+      try {
+        await onDeleteClick(deleteDialog.mujid);
+        // Update local data
+        if (onDataUpdate) {
+          onDataUpdate(prevMentors => 
+            prevMentors.filter(m => m.MUJid !== deleteDialog.mujid)
+          );
+        }
+      } finally {
+        setLoading(false);
+        setDeleteDialog({ open: false, mujid: null });
+      }
+    }
   };
 
-  const handleDelete = () => {
-    onDeleteClick(selectedMentorId);
-    handleClose();
-  };
+  // Process mentors data - Update this to include all necessary fields
+  const processedMentors = useMemo(() => {
+    return mentors.map((mentor, index) => ({
+      id: mentor._id || mentor.id || `temp-${index}`,
+      MUJid: (mentor.MUJid || '').toUpperCase(),
+      name: mentor.name || '',
+      email: mentor.email || '',
+      phone_number: mentor.phone_number || '',
+      academicYear: mentor.academicYear || '',
+      academicSession: mentor.academicSession || '',
+      role: Array.isArray(mentor.role) ? mentor.role : [mentor.role] || ['mentor'],
+      gender: mentor.gender || '',
+    }));
+  }, [mentors]);
 
   const columns = [
     { 
@@ -29,7 +54,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
       headerName: 'S.No',
       width: 60,
       renderCell: (params) => {
-        const index = mentors.findIndex(mentor => mentor.MUJid === params.row.MUJid);
+        const index = processedMentors.findIndex(mentor => mentor.id === params.row.id);
         return index + 1;
       },
       sortable: false,
@@ -38,46 +63,54 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
     { field: 'name', headerName: 'Name', width: 180 },
     { field: 'email', headerName: 'Email', width: 235 },
     { field: 'phone_number', headerName: 'Phone', width: 150 },
+    { field: 'academicSession', headerName: 'Session', width: 200 },
+    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 150,
+      width: 120, // Reduced width since we're using icons
+      headerAlign: 'center',
+      align: 'center',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => onEditClick(params.row)}
+          <IconButton
+            onClick={() => {
+              const mentor = {
+                ...params.row,
+                role: Array.isArray(params.row.role) 
+                  ? params.row.role 
+                  : params.row.role.split(', ')
+              };
+              onEditClick(mentor);
+            }}
             sx={{ 
-              borderRadius: '12px', 
-              fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
-              textTransform: 'capitalize',
-              margin: 'auto',
               color: '#f97316',
-              borderColor: '#f97316',
               '&:hover': {
-                borderColor: '#ea580c',
-                backgroundColor: 'rgba(249, 115, 22, 0.1)'
-              }
+                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease'
             }}
           >
-            Edit
-          </Button>
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
           <IconButton
-            onClick={() => handleClickOpen(params.row.MUJid)}
-            sx={{ color: 'error.main' }}
+            onClick={() => handleDeleteClick(params.row.MUJid)}
+            sx={{ 
+              color: '#ef4444',
+              '&:hover': {
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease'
+            }}
           >
-            <DeleteIcon />
+            <DeleteOutlineIcon fontSize="small" />
           </IconButton>
         </Box>
       ),
     },
-    { field: 'academicSession', headerName: 'Session', width: 200 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
-    { field: 'role', headerName: 'Role', width: 150,
-      renderCell: (params) => params.row.role.join(', ')
-    },
-    ,
+    { field: 'role', headerName: 'Role', width: 150 }
   ].map(col => ({
     ...col,
     headerAlign: 'center',
@@ -86,199 +119,253 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, isSmallScreen }) => 
     minWidth: col.width || 150,
   }));
 
-  return (
-    <div style={{ 
-      width: '100%', 
-      padding: '0 16px', 
-      marginBottom: '16px',
-      position: 'relative',
-      zIndex: 1 // Lower z-index for table
+  const CustomHeader = () => (
+    <Box sx={{
+      p: 2,
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderBottom: '1px solid rgba(249, 115, 22, 0.3)',
+      background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
     }}>
-      <div style={{ height: '600px', width: '100%' }}>
-        <DataGrid
-          rows={mentors}
-          columns={columns}
-          getRowId={(row) => row.MUJid}
-          autoHeight
-          sx={{
-            border: 'none',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: 2,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            position: 'relative',
-            transition: 'all 200ms !important',
-            zIndex: 1,
-            '& .MuiDataGrid-main': {
-              border: 'none',
-              overflow: 'unset',
-              paddingRight: '16px',
+      <Typography variant="h6" sx={{ 
+        color: '#f97316', 
+        fontWeight: 600,
+        textShadow: '0 0 10px rgba(249, 115, 22, 0.3)'
+      }}>
+        Mentor Management
+      </Typography>
+      <Typography variant="body2" sx={{ 
+        color: 'rgba(249, 115, 22, 0.9)',
+        fontWeight: 500
+      }}>
+        Total Mentors: {processedMentors.length}
+      </Typography>
+    </Box>
+  );
+
+  const CustomFooter = () => (
+    <Box sx={{
+      p: 1.5,
+      display: 'flex',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      borderTop: '1px solid rgba(249, 115, 22, 0.3)',
+      background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
+    }}>
+      <Typography variant="body2" sx={{ 
+        color: 'rgba(249, 115, 22, 0.9)',
+        fontWeight: 500
+      }}>
+        Last updated: {new Date().toLocaleDateString()}
+      </Typography>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ 
+      height: 'calc(100% - 16px)', // Adjust height to leave space for pagination
+      width: '100%',
+      position: 'relative',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {loading && (
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1,
+          borderRadius: 2
+        }}>
+          <CircularProgress sx={{ color: '#f97316' }} />
+        </Box>
+      )}
+      
+      <DataGrid
+        rows={processedMentors}
+        columns={columns}
+        getRowId={(row) => row.id}
+        autoHeight={false} // Remove autoHeight to enable vertical scrolling
+        sx={{
+          // ...existing styles...
+          height: '100%',
+          width: '100%',
+          '& .MuiDataGrid-main': {
+            overflow: 'auto',
+            minHeight: '300px', // Increased from 200px
+            maxHeight: 'calc(100vh - 280px)', // Adjusted to accommodate pagination
+            height: '100%', // Ensure full height
+            flex: 1,
+          },
+          '& .MuiDataGrid-virtualScroller': {
+            overflow: 'auto !important',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              height: '8px',
             },
-            '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-              padding: '16px',
-              fontSize: '0.95rem',
-              color: 'rgba(255, 255, 255, 0.9)',
-              textAlign: 'center',
+            '&::-webkit-scrollbar-track': {
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(249, 115, 22, 0.5)',
+              borderRadius: '4px',
+              '&:hover': {
+                background: 'rgba(249, 115, 22, 0.7)',
+              },
+            },
+            height: '100% !important', // Force full height
+            minHeight: '300px', // Added minimum height
+            maxHeight: 'unset !important',
+          },
+          '& .MuiDataGrid-virtualScrollerContent': {
+            minWidth: 'fit-content', // Ensure horizontal scroll works
+            height: '100%',
+          },
+          '& .MuiDataGrid-virtualScrollerRenderZone': {
+            width: '100%',
+            height: '100%',
+          },
+          width: '100%',
+          height: '100%',
+          minHeight: '500px', // Increased from 400px
+          border: 'none',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 2,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          '& .MuiDataGrid-cell': {
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: '16px',
+            fontSize: '0.95rem',
+            color: 'rgba(255, 255, 255, 0.9)',
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60px !important',
+            maxHeight: 'unset !important',
+            whiteSpace: 'normal',
+            lineHeight: '1.5',
+            transition: 'all 0.2s ease',
+          },
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: 'rgba(249, 115, 22, 0.15)',
+            color: '#f97316',
+            fontSize: '1rem',
+            fontWeight: 600,
+            borderBottom: '2px solid #f97316',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            position: 'sticky',
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.2)',
+            borderTop: '2px solid rgba(249, 115, 22, 0.3)',
+            backdropFilter: 'blur(10px)',
+          },
+          '& .MuiTablePagination-root': {
+            color: 'rgba(249, 115, 22, 0.9)',
+          },
+          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+            color: 'rgba(249, 115, 22, 0.9)',
+          },
+          '& .MuiTablePagination-select': {
+            color: 'rgba(249, 115, 22, 0.9)',
+          },
+          flex: 1,
+          height: '100%',
+          maxHeight: '100%',
+          '& .MuiDataGrid-row': {
+            transition: 'all 0.2s ease',
+            cursor: 'pointer',
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.08)',
+              transform: 'translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            },
+          },
+        }}
+        disableSelectionOnClick
+        disableColumnMenu={false}
+        disableColumnFilter={false}
+        loading={!mentors.length}
+        components={{
+          LoadingOverlay: () => (
+            <Box sx={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              minHeight: '60px !important',
-              maxHeight: 'unset !important',
-              whiteSpace: 'normal',
-              lineHeight: '1.5',
-              '&:focus': {
-                outline: 'none',
-              },
-              zIndex: 1
-            },
-            '& .MuiDataGrid-row': {
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                transform: 'translateY(-1px)',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-              },
-              minHeight: '60px !important',
-              maxHeight: 'unset !important',
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: ' rgb(24, 27, 40)',
-              color: '#f97316',
-              color: '#1e293b',
-              borderBottom: '2px solid rgb(24, 27, 40)',
-              borderTop: '2px solid  rgb(24, 27, 40)',
-              fontSize: '1rem',
-              fontWeight: 600,
-              padding: '8px',
-              paddingRight: '16px',
-              minHeight: '60px !important',
-              maxHeight: 'unset !important',
-              zIndex: 1,
-              '&:hover': {
-                color: '#000'
-              }
-            },
-            '& .MuiDataGrid-columnHeader': {
-              backgroundColor: 'rgba(24, 27, 40, .5)',
-              transition: 'all 500ms',
-              '&:focus': {
-                outline: 'none',
-              },
-              '&:hover': {
-                backgroundColor: 'rgba(24, 27, 40, .4)',
-                
-              },
-            },
-            '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: 700,
-              color: 'rgb(24, 24, 27)',
-              
-            },
-            // ...existing DataGrid styles from MenteeTable...
-            '& .MuiDataGrid-footerContainer': {
-              borderTop: '2px solid rgba(255, 255, 255, 0.1)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              padding: '8px 16px',
-            },
-            '& .MuiTablePagination-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
-            },
-            '& .MuiDataGrid-virtualScroller': {
-              backgroundColor: 'transparent',
-              '&::-webkit-scrollbar': {
-                width: '12px',
-                height: '12px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '6px',
-                margin: '6px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: 'rgba(249, 115, 22, 0.5)',
-                borderRadius: '6px',
-                border: '3px solid rgba(255, 255, 255, 0.1)',
-                '&:hover': {
-                  background: 'rgba(249, 115, 22, 0.7)',
-                },
-              },
-            },
-            '& .MuiButtonBase-root': {
-              color: '#f97316',
-            },
-            '& .MuiDataGrid-menuIcon': {
-              display: 'block',
-              color: '#f97316',
-              '& .MuiSvgIcon-root': {
-                color: 'rgb(24, 24, 27)',
-              },
-              '&:hover': {
-                backgroundColor: 'rgba(249, 115, 22, 0.1)',
-              },
-            },
-            '& .MuiDataGrid-sortIcon': {
-              color: 'rgb(24, 24, 27)',
-            },
-            '& .MuiDataGrid-panel': {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              '& .MuiButtonBase-root': {
-                color: 'rgba(255, 255, 255, 0.9)',
-              },
-            },
-            '& .MuiDataGrid-toolbarContainer': {
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              padding: '8px 16px',
-            },
-            '& .MuiMenuItem-root': {
-              color: 'white',
-              '&:hover': {
-                backgroundColor: 'rgba(249, 115, 22, 0.1)',
-              },
-            },
-            '& .MuiDataGrid-menuList': {
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-            },
-          }}
-          disableSelectionOnClick
-          disableColumnMenu={false}
-          disableColumnFilter={false}
-          loading={!mentors.length}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 10, page: 0 },
-            },
-          }}
-          pageSizeOptions={[5, 10, 25, 50]}
-          getRowHeight={() => 'auto'}
-          headerHeight={60}
-        />
-      </div>
+              height: '100%'
+            }}>
+              <CircularProgress sx={{ color: '#f97316' }} />
+            </Box>
+          ),
+          Header: CustomHeader,
+          Footer: CustomFooter,
+        }}
+        columnBuffer={5}
+        rowBuffer={10}
+        rowHeight={60}
+        headerHeight={56}
+        pageSize={10}
+        rowsPerPageOptions={[10, 25, 50]}
+        pagination
+      />
+      
       <Dialog
-        open={open}
-        onClose={handleClose}
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, mujid: null })}
+        PaperProps={{
+          sx: {
+            backgroundColor: '#1a1a1a',
+            color: 'white',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }
+        }}
       >
-        <DialogTitle>{"Confirm Deletion"}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this mentor?
-          </DialogContentText>
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent sx={{ my: 2 }}>
+          Are you sure you want to delete this mentor? This action cannot be undone.
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+          <Button
+            onClick={() => setDeleteDialog({ open: false, mujid: null })}
+            variant="outlined"
+            sx={{
+              color: 'white',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              }
+            }}
+          >
             Cancel
           </Button>
-          <Button onClick={handleDelete} color="primary" autoFocus>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            sx={{
+              bgcolor: '#ef4444',
+              '&:hover': { bgcolor: '#dc2626' }
+            }}
+          >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </Box>
   );
 };
 
