@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,25 +11,83 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  LinearProgress,
   MenuItem,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
   CircularProgress,
   Grid,
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { useDropzone } from "react-dropzone";
+// import UploadFileIcon from "@mui/icons-material/UploadFile";
+// import { useDropzone } from "react-dropzone";
 import MentorTable from "./MentorTable";
 import FilterSection from "./MentorFilterSection";
-import { Toaster, toast } from "react-hot-toast";
+import { Toaster,toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
 import BulkUploadPreview from "../common/BulkUploadPreview";
+
+const dialogStyles = {
+  paper: {
+    background: 'rgba(17, 24, 39, 0.95)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(249, 115, 22, 0.15)',
+    borderRadius: '24px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+    color: 'white',
+    maxWidth: '90vw',
+    width: '800px',
+    maxHeight: '90vh',
+    overflow: 'hidden',
+  },
+  title: {
+    background: 'rgba(249, 115, 22, 0.05)',
+    borderBottom: '1px solid rgba(249, 115, 22, 0.15)',
+    padding: '20px 24px',
+  },
+  content: {
+    padding: '24px',
+  },
+  form: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '20px',
+    '& .full-width': {
+      gridColumn: '1 / -1',
+    },
+  },
+  textField: {
+    '& .MuiOutlinedInput-root': {
+      color: 'white',
+      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '12px',
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        transform: 'translateY(-2px)',
+      },
+      '&.Mui-focused': {
+        backgroundColor: 'rgba(249, 115, 22, 0.05)',
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#f97316',
+          borderWidth: '2px',
+        },
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: 'rgba(255, 255, 255, 0.7)',
+      '&.Mui-focused': {
+        color: '#f97316',
+      },
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+  },
+  section: {
+    marginBottom: '24px',
+  },
+};
 
 const MentorManagement = () => {
   const [mentors, setMentors] = useState([]);
@@ -49,19 +107,32 @@ const MentorManagement = () => {
   });
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState(null);
-  const [alert, setAlert] = useState({
-    open: false,
-    message: "",
-    severity: "",
-  });
-  const [uploadProgress, setUploadProgress] = useState(0);
+  // const [alert, setAlert] = useState({ // Unused state
+  //   open: false,
+  //   message: "",
+  //   severity: "",
+  // });
+  // const [uploadProgress, setUploadProgress] = useState(0); // Unused state
   const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
+  // const [bulkUploadDialog, setBulkUploadDialog] = useState(false); // Unused state
   const [previewData, setPreviewData] = useState({ data: [], errors: [] });
   const [showPreview, setShowPreview] = useState(false);
+  const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
+  const [existingMentorData, setExistingMentorData] = useState({});
+  const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
+  const [duplicateEditMode, setDuplicateEditMode] = useState(false);
+  // const [isUploading, setIsUploading] = useState(false); // Unused state
+  // const [uploading, setUploading] = useState(false);
+  
+  // const [yearSuggestions, setYearSuggestions] = useState([]); // Unused state
+  // const [sessionSuggestions, setSessionSuggestions] = useState([]); // Unused state
+  // const [showYearOptions, setShowYearOptions] = useState(false); // Unused state
+  // const [showSessionOptions, setShowSessionOptions] = useState(false); // Unused state
+  // const yearRef = useRef(null); // Unused ref
+  // const sessionRef = useRef(null); // Unused ref
 
   const theme = createTheme({
     palette: {
@@ -74,134 +145,67 @@ const MentorManagement = () => {
     },
   });
 
-  // Update dialogStyles object
-  const dialogStyles = {
-    paper: {
-      background: "linear-gradient(145deg, #1a1a1a 0%, #2d1a12 100%)",
-      backdropFilter: "blur(10px)",
-      border: "1px solid rgba(249, 115, 22, 0.2)",
-      borderRadius: "1.5rem",
-      boxShadow: "0 8px 32px rgba(249, 115, 22, 0.1)",
-      color: "white",
-      minWidth: "80vw",
-      maxWidth: "1200px",
-      maxHeight: "90vh",
-    },
-    title: {
-      borderBottom: "1px solid rgba(249, 115, 22, 0.2)",
-      background:
-        "linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, rgba(0, 0, 0, 0) 100%)",
-      px: 4,
-      py: 3,
-    },
-    content: {
-      px: 4,
-      py: 3,
-    },
-    textField: {
-      "& .MuiOutlinedInput-root": {
-        color: "white",
-        backgroundColor: "rgba(255, 255, 255, 0.05)",
-        backdropFilter: "blur(10px)",
-        borderRadius: "12px",
-        transition: "all 0.3s ease",
-        "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: "0 4px 20px rgba(249, 115, 22, 0.15)",
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: "#f97316",
-        },
-        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: "#f97316",
-          borderWidth: "2px",
-        },
-      },
-      "& .MuiOutlinedInput-notchedOutline": {
-        borderColor: "rgba(249, 115, 22, 0.3)",
-      },
-      "& .MuiInputLabel-root": {
-        color: "rgba(255, 255, 255, 0.7)",
-        "&.Mui-focused": {
-          color: "#f97316",
-        },
-      },
-      "& .MuiInputBase-input": {
-        "&::placeholder": {
-          color: "rgba(255, 255, 255, 0.5)",
-        },
-      },
-    },
-    actions: {
-      p: 4,
-      gap: 2,
-      borderTop: "1px solid rgba(249, 115, 22, 0.2)",
-      background:
-        "linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, rgba(0, 0, 0, 0) 100%)",
-    },
-  };
-
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Add these variables for dropzone
-  const [isUploading, setIsUploading] = useState(false);
+  // const [isUploading, setIsUploading] = useState(false);
   const [uploading, setUploading] = useState(false); // Changed from setUploading to uploading
 
-  const handleBulkUploadClose = () => {
-    setBulkUploadDialog(false);
-    setUploadProgress(0);
-    setUploading(false);
-  };
+  // const handleBulkUploadClose = () => {
+  //   setBulkUploadDialog(false);
+  //   setUploadProgress(0);
+  //   setUploading(false);
+  // };
 
-  const handleFileUpload = async (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+  // const handleFileUpload = async (acceptedFiles) => {
+  //   const file = acceptedFiles[0];
+  //   if (!file) return;
 
-    const validTypes = [
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ];
+  //   const validTypes = [
+  //     "application/vnd.ms-excel",
+  //     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  //   ];
 
-    if (!validTypes.includes(file.type)) {
-      showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
-      return;
-    }
+  //   if (!validTypes.includes(file.type)) {
+  //     showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
+  //     return;
+  //   }
 
-    setUploading(true);
-    setBulkUploadDialog(false); // Close the upload dialog
+  //   setUploading(true);
+  //   setBulkUploadDialog(false); // Close the upload dialog
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "mentor"); // Add the type parameter
+  //   const formData = new FormData();
+  //   formData.append("file", file);
+  //   formData.append("type", "mentor"); // Add the type parameter
 
-    try {
-      const previewResponse = await axios.post(
-        "/api/admin/manageUsers/previewUpload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            setUploadProgress(percentCompleted);
-          },
-        }
-      );
+  //   try {
+  //     const previewResponse = await axios.post(
+  //       "/api/admin/manageUsers/previewUpload",
+  //       formData,
+  //       {
+  //         headers: {
+  //           "Content-Type": "multipart/form-data",
+  //         },
+  //         onUploadProgress: (progressEvent) => {
+  //           const percentCompleted = Math.round(
+  //             (progressEvent.loaded * 100) / progressEvent.total
+  //           );
+  //           setUploadProgress(percentCompleted);
+  //         },
+  //       }
+  //     );
 
-      setPreviewData(previewResponse.data);
-      setShowPreview(true);
-    } catch (error) {
-      showAlert(
-        error.response?.data?.error || error.message || "Error processing file",
-        "error"
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
+  //     setPreviewData(previewResponse.data);
+  //     setShowPreview(true);
+  //   } catch (error) {
+  //     showAlert(
+  //       error.response?.data?.error || error.message || "Error processing file",
+  //       "error"
+  //     );
+  //   } finally {
+  //     setUploading(false);
+  //   }
+  // };
 
   const handleConfirmUpload = async () => {
     setUploading(true);
@@ -227,34 +231,34 @@ const MentorManagement = () => {
   };
 
   // Move useDropzone after handleFileUpload definition
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: handleFileUpload,
-    accept: {
-      "application/vnd.ms-excel": [".xls"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-        ".xlsx",
-      ],
-    },
-    multiple: false,
-  });
+  // const { getRootProps, getInputProps } = useDropzone({
+  //   onDrop: handleFileUpload,
+  //   accept: {
+  //     "application/vnd.ms-excel": [".xls"],
+  //     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+  //       ".xlsx",
+  //     ],
+  //   },
+  //   multiple: false,
+  // });
 
-  const handleSearch = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get("/api/admin/manageUsers/manageMentor");
-      setMentors(response.data.mentors);
-      setTableVisible(true);
-    } catch (error) {
-      showAlert(
-        error.response?.data?.error || "Error fetching mentors",
-        "error"
-      );
-      setMentors([]);
-      setTableVisible(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleSearch = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const response = await axios.get("/api/admin/manageUsers/manageMentor");
+  //     setMentors(response.data.mentors);
+  //     setTableVisible(true);
+  //   } catch (error) {
+  //     showAlert(
+  //       error.response?.data?.error || "Error fetching mentors",
+  //       "error"
+  //     );
+  //     setMentors([]);
+  //     setTableVisible(false);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const validateForm = () => {
     const errors = [];
@@ -271,15 +275,15 @@ const MentorManagement = () => {
   };
 
   // Add these new state variables after other state declarations
-  const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
-  const [existingMentorData, setExistingMentorData] = useState({});
-  const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
-  const [duplicateEditMode, setDuplicateEditMode] = useState(false);
+  // const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
+  // const [existingMentorData, setExistingMentorData] = useState({});
+  // const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
+  // const [duplicateEditMode, setDuplicateEditMode] = useState(false);
 
   // Add this new function to fetch mentor details
   const fetchMentorDetails = async (MUJid) => {
     if (!MUJid) {
-      console.error("MUJid is undefined");
+      // console.error("MUJid is undefined");
       toast.error("Invalid MUJid", {
         style: toastStyles.error.style,
         iconTheme: toastStyles.error.iconTheme,
@@ -408,15 +412,28 @@ const MentorManagement = () => {
 
   const handleEditMentor = async () => {
     try {
-      await axios.put("/api/admin/manageUsers/manageMentor", selectedMentor);
-      showAlert("Mentor updated successfully", "success");
-      setEditDialog(false);
-      fetchMentors();
-    } catch (error) {
-      showAlert(
-        error.response?.data?.error || "Error updating mentor",
-        "error"
+      // Remove _id and id from the request payload
+      const { _id, id, ...updateData } = selectedMentor;
+
+      // Use PATCH instead of PUT and send only the changed data
+      const response = await axios.patch(
+        `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
+        updateData
       );
+
+      if (response.data) {
+        toast.success("Mentor updated successfully", {
+          style: toastStyles.success.style,
+          iconTheme: toastStyles.success.iconTheme,
+        });
+        setEditDialog(false);
+        await fetchMentors(); // Refresh the table data
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Error updating mentor", {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
     }
   };
 
@@ -538,17 +555,17 @@ const MentorManagement = () => {
     }
   };
 
-  const handleBulkUploadOpen = () => {
-    setBulkUploadDialog(true);
-  };
+  // const handleBulkUploadOpen = () => {
+  //   setBulkUploadDialog(true);
+  // };
 
   // Add these new state variables
-  const [yearSuggestions, setYearSuggestions] = useState([]);
-  const [sessionSuggestions, setSessionSuggestions] = useState([]);
-  const [showYearOptions, setShowYearOptions] = useState(false);
-  const [showSessionOptions, setShowSessionOptions] = useState(false);
-  const yearRef = useRef(null);
-  const sessionRef = useRef(null);
+  // const [yearSuggestions, setYearSuggestions] = useState([]);
+  // const [sessionSuggestions, setSessionSuggestions] = useState([]);
+  // const [showYearOptions, setShowYearOptions] = useState(false);
+  // const [showSessionOptions, setShowSessionOptions] = useState(false);
+  // const yearRef = useRef(null);
+  // const sessionRef = useRef(null);
 
   // Add these new helper functions
   const generateYearSuggestions = (input) => {
@@ -636,7 +653,7 @@ const MentorManagement = () => {
         setMentors(response.data.mentors);
         setTableVisible(true);
       }
-    } catch (error) {
+    } catch {
       showAlert("Error fetching mentors", "error");
       setMentors([]);
       setTableVisible(false);
@@ -678,45 +695,36 @@ const MentorManagement = () => {
     }
   };
 
+  const handleEditClick = (mentor) => {
+    // Remove id and _id before setting selected mentor
+    const { id, _id, ...mentorData } = mentor;
+    setSelectedMentor({
+      ...mentorData,
+      role: Array.isArray(mentorData.role) ? mentorData.role : [mentorData.role],
+      academicYear: mentorData.academicYear || getCurrentAcademicYear(),
+      academicSession: mentorData.academicSession || generateAcademicSessions(getCurrentAcademicYear())[0],
+    });
+    setEditDialog(true);
+  };
+
   return (
     <ThemeProvider theme={theme}>
-      {/* Toast/Alert Container - Updated positioning and styling */}
-      <div className="fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md">
-        <Toaster
-          position="top-center"
-          reverseOrder={false}
-          gutter={8}
+      <div className="fixed inset-0 bg-gray-900 text-white">
+        <Toaster 
+          position="top-center" 
+          containerStyle={{
+            top: 100 // This will push the toast below the navbar
+          }}
           toastOptions={{
-            duration: 3000,
-            success: toastStyles.success,
-            error: toastStyles.error,
+            style: {
+              background: 'rgba(17, 24, 39, 0.9)',
+              color: '#fff',
+              backdropFilter: 'blur(8px)',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            },
           }}
         />
-      </div>
-
-      {/* Replace the Snackbar component with a simpler success/error message */}
-      {alert.open && (
-        <div
-          className={`fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md p-4 rounded-lg shadow-lg ${
-            alert.severity === "success" ? "bg-green-600" : "bg-red-600"
-          }`}
-          role="alert"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="text-white font-medium">{alert.message}</span>
-            </div>
-            <button
-              onClick={() => setAlert({ ...alert, open: false })}
-              className="text-white opacity-70 hover:opacity-100"
-            >
-              <CloseIcon fontSize="small" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -724,34 +732,29 @@ const MentorManagement = () => {
           <div className="absolute inset-0 backdrop-blur-3xl" />
         </div>
 
-        {/* Content */}
-        <div className="relative z-10 px-4 md:px-6 py-24 max-h-screen">
+        {/* Main Content Container */}
+        <div className="relative z-10 h-screen flex flex-col pt-[80px]">
           {/* Header */}
-          <motion.div
+          <motion.h1 
+            className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-10"
+            transition={{ delay: 0.2 }}
           >
-            <motion.h1
-              className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-5 !leading-snug"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+            Mentor Management
+          </motion.h1>
+
+          {/* Grid Layout - Adjusted for single page view */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-4 p-4 h-[calc(100vh-130px)]"> {/* Adjusted height */}
+            {/* Left Column - Filter Panel */}
+            <motion.div 
+              className="h-full"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
             >
-              Mentor Management
-            </motion.h1>
-            <motion.div className="flex md:flex-row flex-col justify-center gap-10 overflow-y-auto">
-              {/* Filter Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="bg-white/5 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/10 w-[100%] md:w-[35%]"
-              >
-                <FilterSection
-                  onSearch={handleSearch}
-                  onAddNew={() => setOpenDialog(true)}
-                  onBulkUpload={handleBulkUploadOpen}
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4 h-full">
+                <FilterSection 
                   filters={{
                     academicYear,
                     academicSession,
@@ -766,374 +769,188 @@ const MentorManagement = () => {
                         break;
                     }
                   }}
+                  onSearch={fetchMentors}
+                  onAddNew={() => setOpenDialog(true)}
+                  onDelete={handleDeleteMentor}
+                  mentors={mentors}
                 />
-              </motion.div>
-
-              {/* Table Section */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden mb-8 w-[100%] md:w-[65%] overflow-x-auto"
-                style={{ position: "relative", zIndex: 1 }} // Add this to ensure table stays below filters
-              >
-                <Box
-                  sx={{
-                    overflowX: "auto",
-                    minHeight: "150px",
-                    maxHeight: "calc(100vh - 200px)",
-                    overflowY: "auto",
-                    position: "relative",
-                    zIndex: 1,
-                  }}
-                >
-                  {!loading && mentors.length > 0 && (
-                    <MentorTable
-                      mentors={mentors}
-                      onEditClick={(mentor) => {
-                        setSelectedMentor(mentor);
-                        setEditDialog(true);
-                      }}
-                      onDeleteClick={handleDeleteMentor}
-                      isSmallScreen={isSmallScreen}
-                    />
-                  )}
-                </Box>
-              </motion.div>
+              </div>
             </motion.div>
-          </motion.div>
+
+            {/* Right Column - Table */}
+            <motion.div
+              className="h-full"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
+                <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}
+                  {loading ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <CircularProgress sx={{ color: "#f97316" }} />
+                    </div>
+                  ) : mentors.length > 0 ? (
+                    <div className="h-full"> {/* Removed overflow-hidden */}
+                      <MentorTable 
+                        mentors={mentors}
+                        onEditClick={handleEditClick}
+                        onDeleteClick={handleDeleteMentor}
+                        isSmallScreen={isSmallScreen}
+                        onDataUpdate={(updatedMentors) => setMentors(updatedMentors)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                        {tableVisible ? 'No mentors found' : 'Use the filters to search for mentors'}
+                      </Typography>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
 
-        {/* Add/Edit Dialog */}
+        {/* Keep existing dialogs */}
         <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
-          maxWidth="md"
-          fullWidth
           PaperProps={{ sx: dialogStyles.paper }}
         >
           <DialogTitle sx={dialogStyles.title}>
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ color: "#f97316", fontWeight: 600 }}
-            >
-              Add New Mentor
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM13 8V11H16V13H13V16H11V13H8V11H11V8H13Z" 
+                  fill="#f97316"/>
+              </svg>
+              <Typography variant="h6" sx={{ 
+                color: '#f97316',
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                fontSize: '1.25rem'
+              }}>
+                Add New Mentor
+              </Typography>
+            </Box>
             <IconButton
-              aria-label="close"
               onClick={() => setOpenDialog(false)}
               sx={{
-                position: "absolute",
-                right: 8,
-                top: 8,
-                color: "rgba(255, 255, 255, 0.7)",
-                "&:hover": {
-                  color: "#f97316",
-                },
+                position: 'absolute',
+                right: '16px',
+                top: '16px',
+                color: 'rgba(255, 255, 255, 0.5)',
+                '&:hover': { color: '#f97316' },
               }}
             >
               <CloseIcon />
             </IconButton>
           </DialogTitle>
-          <DialogContent sx={dialogStyles.content}>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "2fr 1px 1fr",
-                gap: 4,
-                minHeight: "60vh",
-              }}
-            >
-              {/* Left side - Form */}
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: 3,
-                  overflowY: "auto",
-                  pr: 2,
-                  "&::-webkit-scrollbar": {
-                    width: "8px",
-                  },
-                  "&::-webkit-scrollbar-track": {
-                    background: "rgba(249, 115, 22, 0.1)",
-                    borderRadius: "4px",
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    background: "rgba(249, 115, 22, 0.5)",
-                    borderRadius: "4px",
-                    "&:hover": {
-                      background: "#f97316",
-                    },
-                  },
-                  "& .MuiTextField-root": dialogStyles.textField,
-                }}
-              >
-                <TextField
-                  label="MUJid"
-                  name="MUJid"
-                  value={mentorDetails.MUJid}
-                  onChange={handleInputChange}
-                  required
-                  sx={{ gridColumn: "1 / -1" }}
-                />
-                <TextField
-                  label="Name"
-                  name="name"
-                  value={mentorDetails.name}
-                  onChange={handleInputChange}
-                  required
-                />
-                <TextField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={mentorDetails.email}
-                  onChange={handleInputChange}
-                  required
-                />
-                <TextField
-                  label="Phone Number"
-                  name="phone_number"
-                  value={mentorDetails.phone_number}
-                  onChange={handleInputChange}
-                  required
-                />
-                <TextField
-                  select
-                  label="Gender"
-                  name="gender"
-                  value={mentorDetails.gender}
-                  onChange={handleInputChange}
-                >
-                  <MenuItem value="male">Male</MenuItem>
-                  <MenuItem value="female">Female</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </TextField>
-                <TextField
-                  select
-                  label="Role"
-                  name="role"
-                  value={mentorDetails.role}
-                  onChange={handleInputChange}
-                  SelectProps={{ multiple: true }}
-                >
-                  <MenuItem value="mentor">Mentor</MenuItem>
-                  <MenuItem value="admin">Admin</MenuItem>
-                  <MenuItem value="superadmin">Super Admin</MenuItem>
-                </TextField>
-                <TextField
-                  label="Academic Year"
-                  name="academicYear"
-                  value={mentorDetails.academicYear}
-                  onChange={handleAcademicYearInput}
-                  required
-                  inputRef={yearRef}
-                  onFocus={() => setShowYearOptions(true)}
-                  onBlur={() =>
-                    setTimeout(() => setShowYearOptions(false), 100)
-                  }
-                />
-                {showYearOptions && yearSuggestions.length > 0 && (
-                  <List
-                    sx={{
-                      position: "absolute",
-                      zIndex: 10,
-                      width: "100%",
-                      bgcolor: "rgba(17, 17, 17, 0.95)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                      borderRadius: "0.5rem",
-                      mt: 1,
-                      maxHeight: "200px",
-                      overflowY: "auto",
-                      "& .MuiListItem-root": {
-                        color: "white",
-                        "&:hover": {
-                          bgcolor: "rgba(255, 255, 255, 0.1)",
-                        },
-                      },
-                    }}
-                  >
-                    {yearSuggestions.map((suggestion, index) => (
-                      <ListItem
-                        key={index}
-                        onClick={() => {
-                          setMentorDetails((prev) => ({
-                            ...prev,
-                            academicYear: suggestion,
-                          }));
-                          setShowYearOptions(false);
-                        }}
-                        sx={{
-                          cursor: "pointer",
-                          "&:hover": {
-                            bgcolor: "rgba(255, 255, 255, 0.1)",
-                          },
-                        }}
-                      >
-                        <ListItemText primary={suggestion} />
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-                <TextField
-                  label="Academic Session"
-                  name="academicSession"
-                  value={mentorDetails.academicSession}
-                  onChange={handleAcademicSessionInput}
-                  required
-                  inputRef={sessionRef}
-                  onFocus={() => setShowSessionOptions(true)}
-                  onBlur={() =>
-                    setTimeout(() => setShowSessionOptions(false), 100)
-                  }
-                />
-                {showSessionOptions && sessionSuggestions.length > 0 && (
-                  <List
-                    sx={{
-                      position: "absolute",
-                      zIndex: 10,
-                      width: "100%",
-                      bgcolor: "rgba(17, 17, 17, 0.95)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                      borderRadius: "0.5rem",
-                      mt: 1,
-                      maxHeight: "200px",
-                      overflowY: "auto",
-                      "& .MuiListItem-root": {
-                        color: "white",
-                        "&:hover": {
-                          bgcolor: "rgba(255, 255, 255, 0.1)",
-                        },
-                      },
-                    }}
-                  >
-                    {sessionSuggestions.map((suggestion, index) => (
-                      <ListItem
-                        key={index}
-                        onClick={() => {
-                          setMentorDetails((prev) => ({
-                            ...prev,
-                            academicSession: suggestion,
-                          }));
-                          setShowSessionOptions(false);
-                        }}
-                        sx={{
-                          cursor: "pointer",
-                          "&:hover": {
-                            bgcolor: "rgba(255, 255, 255, 0.1)",
-                          },
-                        }}
-                      >
-                        <ListItemText primary={suggestion} />
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-              </Box>
 
-              {/* Divider with gradient */}
-              <Divider
-                orientation="vertical"
-                flexItem
-                sx={{
-                  borderColor: "rgba(249, 115, 22, 0.2)",
-                  background:
-                    "linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%)",
-                  width: "1px",
-                }}
+          <DialogContent sx={dialogStyles.content}>
+            <Box sx={dialogStyles.form}>
+              <TextField
+                className="full-width"
+                label="MUJid"
+                name="MUJid"
+                value={mentorDetails.MUJid}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              
+              <TextField
+                label="Name"
+                name="name"
+                value={mentorDetails.name}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              
+              <TextField
+                label="Email"
+                name="email"
+                type="email"
+                value={mentorDetails.email}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
               />
 
-              {/* Right side - Upload */}
-              <Box
-                {...getRootProps()}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  padding: 4,
-                  border: "2px dashed",
-                  borderColor: "rgba(249, 115, 22, 0.3)",
-                  borderRadius: "1rem",
-                  background:
-                    "linear-gradient(145deg, rgba(249, 115, 22, 0.05) 0%, rgba(0, 0, 0, 0) 100%)",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-2px)",
-                    borderColor: "#f97316",
-                    boxShadow: "0 8px 32px rgba(249, 115, 22, 0.15)",
-                  },
-                }}
+              <TextField
+                label="Phone Number"
+                name="phone_number"
+                value={mentorDetails.phone_number}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+
+              <TextField
+                select
+                label="Gender"
+                name="gender"
+                value={mentorDetails.gender}
+                onChange={handleInputChange}
+                sx={dialogStyles.textField}
               >
-                <input {...getInputProps()} />
-                <UploadFileIcon
-                  sx={{
-                    fontSize: 60,
-                    color: "#f97316",
-                    mb: 2,
-                  }}
-                />
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  sx={{ color: "white", fontWeight: 600 }}
-                >
-                  Drag & Drop Excel File
-                </Typography>
-                <Typography sx={{ color: "rgba(255, 255, 255, 0.7)", mb: 2 }}>
-                  or click to select file
-                </Typography>
-                <Typography
-                  sx={{
-                    color: "#f97316",
-                    bgcolor: "rgba(249, 115, 22, 0.1)",
-                    px: 2,
-                    py: 0.5,
-                    borderRadius: 1,
-                  }}
-                >
-                  Supported formats: .xls, .xlsx
-                </Typography>
-                {isUploading && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      bgcolor: "rgba(0, 0, 0, 0.8)",
-                      p: 2,
-                    }}
-                  >
-                    <LinearProgress
-                      variant="determinate"
-                      value={uploadProgress}
-                      sx={{ height: 8, borderRadius: 4 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{ color: "white", mt: 1 }}
-                    >
-                      {uploadProgress}% uploaded
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
+                <MenuItem value="male">Male</MenuItem>
+                <MenuItem value="female">Female</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </TextField>
+
+              <TextField
+                select
+                label="Role"
+                name="role"
+                value={mentorDetails.role}
+                onChange={handleInputChange}
+                SelectProps={{ multiple: true }}
+                sx={dialogStyles.textField}
+              >
+                <MenuItem value="mentor">Mentor</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="superadmin">Super Admin</MenuItem>
+              </TextField>
+
+              <TextField
+                label="Academic Year"
+                name="academicYear"
+                value={mentorDetails.academicYear}
+                onChange={handleAcademicYearInput}
+                required
+                sx={dialogStyles.textField}
+              />
+
+              <TextField
+                label="Academic Session"
+                name="academicSession"
+                value={mentorDetails.academicSession}
+                onChange={handleAcademicSessionInput}
+                required
+                disabled={!mentorDetails.academicYear}
+                sx={dialogStyles.textField}
+              />
             </Box>
           </DialogContent>
-          <DialogActions sx={dialogStyles.actions}>
+
+          <DialogActions sx={{
+            padding: '16px 24px',
+            borderTop: '1px solid rgba(249, 115, 22, 0.15)',
+            background: 'rgba(249, 115, 22, 0.05)',
+            gap: '12px',
+          }}>
             <Button
               onClick={() => setOpenDialog(false)}
               variant="outlined"
               sx={{
-                borderColor: "rgba(255, 255, 255, 0.2)",
-                color: "white",
-                "&:hover": {
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 },
               }}
             >
@@ -1143,9 +960,14 @@ const MentorManagement = () => {
               onClick={handleAddMentor}
               variant="contained"
               sx={{
-                bgcolor: "#f97316",
-                "&:hover": {
-                  bgcolor: "#ea580c",
+                background: 'linear-gradient(45deg, #f97316 30%, #fb923c 90%)',
+                color: 'white',
+                fontWeight: 600,
+                padding: '8px 24px',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #ea580c 30%, #f97316 90%)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 6px 20px rgba(249, 115, 22, 0.25)',
                 },
               }}
             >

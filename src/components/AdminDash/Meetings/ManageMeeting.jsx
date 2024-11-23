@@ -62,23 +62,29 @@ const ManageMeeting = () => {
 
   const fetchMentorMeetings = async () => {
     setLoading(true);
-    if (!academicYear || !academicSession || !semester) {
-      alert('Please select an academic year, session, and semester.');
+    if (!academicYear || !academicSession) {
+      alert('Please select an academic year and session.');
       setLoading(false);
       return;
     }
     try {
-      const response = await axios.get(`/api/admin/manageMeeting`, {
-        params: {
-          year: academicYear,
-          session: academicSession,
-          semester: semester
-        }
-      });
+      const params = {
+        year: academicYear.split('-')[0], // Take only the start year
+        session: academicSession
+      };
+      
+      // Add optional parameters
+      if (semester) {
+        params.semester = semester;
+      }
+      if (section) {
+        params.section = section;
+      }
+
+      const response = await axios.get(`/api/admin/manageMeeting`, { params });
       setMentorMeetings(response.data);
       sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data));
     } catch (error) {
-      console.error('Error fetching mentor meetings:', error);
       alert(error.response?.data?.error || 'Failed to fetch mentor meetings');
     } finally {
       setLoading(false);
@@ -130,18 +136,37 @@ const ManageMeeting = () => {
 
   const generateReport = async (mentorMUJid) => {
     try {
-        const queryParams = new URLSearchParams({
-            year: academicYear.split('-')[0], // Take only the start year
-            session: academicSession,
-            semester: semester,
-            section: section,
-            mentorMUJid: mentorMUJid.toUpperCase() // Changed from mentorId
-        }).toString();
+        // First, fetch the meetings data for this mentor and save to sessionStorage
+        const response = await axios.get('/api/meetings/mentor', {
+            params: {
+                year: academicYear.split('-')[0],
+                session: academicSession,
+                semester,
+                section,
+                mentorMUJid
+            }
+        });
+
+        // Store the fetched data in sessionStorage
+        const reportData = {
+            meetings: response.data,
+            academicYear,
+            academicSession,
+            semester,
+            section,
+            mentorMUJid // Include mentorMUJid in reportData
+        };
+        sessionStorage.setItem('mentorMeetingsData', JSON.stringify(reportData));
         
-        // Use Next.js router or window.location to navigate
-        window.location.href = `/pages/meetings/mreport?${queryParams}`;
+        // Navigate to report page with state and include mentorMUJid
+        const queryParams = {
+            data: JSON.stringify(reportData),
+            mentorMUJid // Add mentorMUJid as a separate query parameter
+        };
+        
+        window.location.href = `/pages/meetings/mreport?${new URLSearchParams(queryParams)}`;
     } catch (error) {
-        console.error('Error navigating to report:', error);
+        console.error('Error generating report:', error);
         alert('Failed to generate report');
     }
   };

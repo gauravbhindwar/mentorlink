@@ -1,11 +1,84 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Box, Button, FormControl, InputLabel, Select, MenuItem, TextField } from '@mui/material';
-import { display, flexbox, height, width } from '@mui/system';
+import { Box, Button, FormControl, InputLabel, Select, MenuItem, TextField, Typography, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+// import { display, flexbox, height, width } from '@mui/system';
 import SearchIcon from '@mui/icons-material/Search';
 import { createPortal } from 'react-dom';
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { useDropzone } from "react-dropzone";
 
-const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBulkUpload }) => {
+const filterSectionStyles = {
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    color: '#FFFFFF',
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    padding: '20px',
+    backgroundColor: 'rgba(31, 41, 55, 0.7)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+  },
+  field: {
+    '& .MuiOutlinedInput-root': {
+      backgroundColor: 'rgba(17, 24, 39, 0.8)',
+      backdropFilter: 'blur(12px)',
+      borderRadius: '12px',
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 4px 20px rgba(249, 115, 22, 0.2)',
+      },
+    },
+  },
+  buttonGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2.5,
+    marginTop: 4,
+  },
+};
+
+const buttonStyles = {
+  standard: (color) => ({
+    borderRadius: '50px',
+    px: { xs: 2, sm: 3 },
+    py: { xs: 0.5, sm: 1 },
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+    background: color === 'primary' ? '#f97316' : 
+               color === 'secondary' ? '#ea580c' : 
+               'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    color: 'white',
+    '&:hover': {
+      transform: 'scale(1.05)',
+      transition: 'transform 0.2s',
+      background: color === 'primary' ? '#ea580c' : 
+                 color === 'secondary' ? '#c2410c' : 
+                 'rgba(255, 255, 255, 0.2)',
+    },
+    '&:disabled': {
+      background: 'rgba(255, 255, 255, 0.05)',
+      color: 'rgba(255, 255, 255, 0.3)',
+    }
+  }),
+  outlined: {
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    color: 'white',
+    '&:hover': {
+      borderColor: '#f97316',
+      bgcolor: 'rgba(249, 115, 22, 0.1)'
+    }
+  }
+};
+
+const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBulkUpload, onDelete, mentors }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [academicSessions, setAcademicSessions] = useState([]);
@@ -13,6 +86,12 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
   const dropdownRoot = document.getElementById('dropdown-root');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadDialog, setUploadDialog] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [mujidsToDelete, setMujidsToDelete] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -116,49 +195,34 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
 
   const textFieldStyles = {
     '& .MuiOutlinedInput-root': {
-      color: 'white',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(10px)',
+      color: '#FFFFFF',
+      backgroundColor: 'rgba(17, 24, 39, 0.8)',
+      backdropFilter: 'blur(12px)',
       borderRadius: '12px',
       '&:hover .MuiOutlinedInput-notchedOutline': {
-        borderColor: '#f97316',
+        borderColor: '#fb923c',
       },
       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
         borderColor: '#f97316',
+        borderWidth: '2px',
       },
     },
     '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: 'rgba(255, 255, 255, 0.2)',
+      borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     '& .MuiInputLabel-root': {
-      color: 'rgba(255, 255, 255, 0.7)',
+      color: 'rgba(255, 255, 255, 0.9)',
+      fontWeight: 500,
       '&.Mui-focused': {
-        color: '#f97316',
+        color: '#fb923c',
       },
     },
-  };
-
-  const buttonStyles = (color) => ({
-    borderRadius: '50px',
-    px: { xs: 2, sm: 3 },
-    py: { xs: 0.5, sm: 1 },
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-    background: color === 'primary' ? '#f97316' : 
-               color === 'secondary' ? '#ea580c' : 
-               'rgba(255, 255, 255, 0.1)',
-    color: 'white',
-    '&:hover': {
-      background: color === 'primary' ? '#ea580c' : 
-                 color === 'secondary' ? '#c2410c' : 
-                 'rgba(255, 255, 255, 0.2)',
-      transform: 'scale(1.05)',
-      transition: 'all 0.2s ease',
+    '& .MuiFormHelperText-root': {
+      color: '#6ee7b7',
+      fontSize: '0.8rem',
+      marginTop: '4px',
     },
-    '&:disabled': {
-      background: 'rgba(255, 255, 255, 0.05)',
-      color: 'rgba(255, 255, 255, 0.3)',
-    }
-  });
+  };
 
   const comboBoxStyles = {
     position: 'relative',
@@ -193,15 +257,15 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
       left: 0,
       right: 0,
       zIndex: 9999,
-      backgroundColor: '#1a1a1a',
+      backgroundColor: 'rgba(17, 24, 39, 0.95)',
       border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '8px',
+      borderRadius: '12px',
       marginTop: '4px',
       padding: '8px 0',
       maxHeight: '200px',
       overflowY: 'auto',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-      backdropFilter: 'blur(10px)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+      backdropFilter: 'blur(12px)',
       '&::-webkit-scrollbar': {
         width: '8px',
       },
@@ -217,13 +281,41 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
         },
       },
       '& .option-item': {
-        padding: '8px 16px',
-        color: 'white',
+        padding: '10px 16px',
+        color: '#FFFFFF',
+        fontSize: '0.9rem',
+        fontWeight: 500,
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         '&:hover': {
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          backgroundColor: 'rgba(249, 115, 22, 0.15)',
         },
+      },
+    },
+  };
+
+  const dialogStyles = {
+    paper: {
+      background: 'rgba(17, 24, 39, 0.95)',
+      backdropFilter: 'blur(20px)',
+      border: '1px solid rgba(249, 115, 22, 0.15)',
+      borderRadius: '24px',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+      color: 'white',
+      maxWidth: '500px',
+      width: '90vw',
+    },
+    dropZone: {
+      border: '2px dashed rgba(249, 115, 22, 0.3)',
+      borderRadius: '16px',
+      padding: '32px',
+      textAlign: 'center',
+      backgroundColor: 'rgba(249, 115, 22, 0.05)',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.1)',
       },
     },
   };
@@ -314,32 +406,84 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     console.warn(message);
   };
 
-  const filterSectionStyles = {
-    wrapper: {
-      background: 'rgba(17, 25, 40, 0.75)',
-      backdropFilter: 'blur(16px)',
-      borderRadius: '24px',
-      padding: '24px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-      height: '100%'
+  const handleFileUpload = async (acceptedFiles) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    const validTypes = [
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", "mentor");
+
+    try {
+      await onBulkUpload(formData, (progress) => {
+        setUploadProgress(progress);
+      });
+      setUploadDialog(false); // Close dialog on success
+    } catch (error) {
+      showAlert("Error uploading file", "error");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
     },
-    filterGrid: {
-      display: 'grid',
-      gridTemplateRows: {
-        xs: '1fr',
-        sm: 'repeat(2, 1fr)',
-      },
-      gap: '16px',
-      mb: 3,
+    multiple: false,
+  });
+
+  const uploadButtonStyle = {
+    ...buttonStyles.standard('secondary'),
+    position: 'relative',
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    background: isDragActive ? 'rgba(249, 115, 22, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+    '&:hover': {
+      background: 'rgba(249, 115, 22, 0.1)',
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
     },
-    buttonGroup: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      flexDirection: 'column',
-      gap: '12px',
-      justifyContent: 'flex-start',
-      mt: 2,
+  };
+
+  const handleBulkDelete = async () => {
+    if (!mujidsToDelete.trim()) {
+      showAlert('Please enter at least one MUJID', 'warning');
+      return;
+    }
+
+    const mujids = mujidsToDelete.split(',').map(id => id.trim()).filter(Boolean);
+    if (mujids.length === 0) {
+      showAlert('Please enter valid MUJIDs', 'warning');
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await onDelete(mujids);
+      setDeleteDialog(false);
+      setMujidsToDelete('');
+      showAlert('Mentors deleted successfully', 'success');
+    } catch (error) {
+      showAlert(error.response?.data?.error || 'Error deleting mentors', 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -349,7 +493,19 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
 
   return (
     <Box sx={filterSectionStyles.wrapper}>
-      <Box sx={filterSectionStyles.filterGrid}>
+      <Box sx={filterSectionStyles.section}>
+        <Typography 
+          variant="subtitle2" 
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.9)',
+            fontWeight: 600,
+            mb: 1,
+            letterSpacing: '0.5px'
+          }}
+        >
+          Academic Year
+        </Typography>
+        {/* Year TextField */}
         <Box ref={yearRef} sx={comboBoxStyles}>
           <TextField
             label="Academic Year"
@@ -406,6 +562,10 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
           )}
         </Box>
 
+        <Typography variant="subtitle2" sx={{ color: 'white/80', mb: 1, mt: 2 }}>
+          Academic Session
+        </Typography>
+        {/* Session TextField */}
         <Box ref={sessionRef} sx={comboBoxStyles}>
           <TextField
             label="Academic Session"
@@ -446,41 +606,170 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
           variant="contained"
           onClick={handleSearch}
           startIcon={<SearchIcon />}
-          sx={{ 
-            ...buttonStyles('primary'),
-            minWidth: '120px',
-            height: '40px',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 4px 20px rgba(249, 115, 22, 0.2)',
-            },
-          }}
+          sx={buttonStyles.standard('primary')}
         >
           Search
         </Button>
         <Button
           variant="contained"
           onClick={onAddNew}
-          sx={buttonStyles('secondary')}
+          sx={buttonStyles.standard('secondary')}
         >
           Add New Mentor
         </Button>
-        {/* <Button
+        <Button
           variant="contained"
-          onClick={onBulkUpload}
-          sx={buttonStyles('secondary')}
+          onClick={() => setUploadDialog(true)}
+          sx={buttonStyles.standard('secondary')}
         >
-          Upload File
-        </Button> */}
+          <UploadFileIcon sx={{ fontSize: 20, mr: 1 }} />
+          Upload Mentors File
+        </Button>
         <Button
           variant="contained"
           onClick={handleReset}
-          sx={buttonStyles('secondary')}
+          sx={buttonStyles.standard('default')}
         >
           Reset
         </Button>
+        <Button
+          variant="contained"
+          onClick={() => setDeleteDialog(true)}
+          sx={{
+            ...buttonStyles.standard('default'),
+            color: '#ef4444',
+            '&:hover': {
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            }
+          }}
+        >
+          Delete Mentors
+        </Button>
       </Box>
+
+      <Dialog
+        open={uploadDialog}
+        onClose={() => setUploadDialog(false)}
+        PaperProps={{ sx: dialogStyles.paper }}
+      >
+        <DialogTitle sx={{
+          color: '#f97316',
+          borderBottom: '1px solid rgba(249, 115, 22, 0.15)',
+          padding: '20px 24px',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <UploadFileIcon />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Upload Mentors File
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ padding: '24px' }}>
+          <div {...getRootProps()}>
+            <input {...getInputProps()} />
+            <Box sx={dialogStyles.dropZone}>
+              <UploadFileIcon sx={{ fontSize: 48, color: '#f97316', mb: 2 }} />
+              <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
+                Drag & Drop Excel File Here
+              </Typography>
+              <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                or click to select file
+              </Typography>
+              {isUploading && (
+                <Box sx={{ mt: 2, width: '100%' }}>
+                  <Typography variant="caption" sx={{ color: '#f97316' }}>
+                    Uploading: {uploadProgress}%
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: '100%',
+                      height: '2px',
+                      bgcolor: 'rgba(249, 115, 22, 0.2)',
+                      mt: 1,
+                      borderRadius: '1px',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: `${uploadProgress}%`,
+                        height: '100%',
+                        bgcolor: '#f97316',
+                        transition: 'width 0.3s ease',
+                      }}
+                    />
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </div>
+          <Typography sx={{ 
+            mt: 2, 
+            color: '#f97316',
+            bgcolor: 'rgba(249, 115, 22, 0.1)',
+            p: 1,
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            textAlign: 'center'
+          }}>
+            Supported formats: .xls, .xlsx
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{
+          padding: '16px 24px',
+          borderTop: '1px solid rgba(249, 115, 22, 0.15)',
+          gap: '12px',
+        }}>
+          <Button
+            onClick={() => setUploadDialog(false)}
+            variant="outlined"
+            sx={buttonStyles.outlined}
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog 
+        open={deleteDialog} 
+        onClose={() => setDeleteDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: dialogStyles.paper }}
+      >
+        <DialogTitle sx={dialogStyles.title}>Delete Mentors</DialogTitle>
+        <DialogContent sx={dialogStyles.content}>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            value={mujidsToDelete}
+            onChange={(e) => setMujidsToDelete(e.target.value)}
+            placeholder="Enter MUJIDs separated by commas"
+            sx={textFieldStyles}
+          />
+        </DialogContent>
+        <DialogActions sx={dialogStyles.actions}>
+          <Button 
+            onClick={() => setDeleteDialog(false)}
+            variant="outlined"
+            sx={buttonStyles.outlined}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBulkDelete}
+            variant="contained"
+            disabled={deleteLoading}
+            sx={buttonStyles.standard('primary')}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 };
