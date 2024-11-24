@@ -15,6 +15,7 @@ const ScheduleMeeting = () => {
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
   const [mentorId, setMentorId] = useState('');
+  const [mentees, setMentees] = useState([]);
   const [availableSemesters, setAvailableSemesters] = useState([]);
   // const [meetingNumber, setMeetingNumber] = useState('1');
   const [meetingTopic, setMeetingTopic] = useState('');
@@ -125,6 +126,7 @@ const ScheduleMeeting = () => {
 
     if (mentorId && currentSemester && selectedSection && academicSession && academicYear) {
       generateMeetingId();
+      getMentees(mentorId, currentSemester, selectedSection);
     }
   }, [mentorId, currentSemester, selectedSection, academicSession, academicYear]); // Add proper dependencies
 
@@ -169,7 +171,6 @@ const ScheduleMeeting = () => {
     const file = e.target.files[0];
     setSelectedFile(file);
   };
-
   const handleMeetingScheduled = () => {
     const scheduleMeeting = async () => {
       setLoading(true);
@@ -222,10 +223,20 @@ const ScheduleMeeting = () => {
   const getMentees = async (mentorId, semester, section) => {
     try {
       const response = await fetch(`/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}`);
-      if (!response.ok) throw new Error('Failed to fetch mentees');
-      return await response.json();
+      if (!response.ok){
+        console.log('Failed to fetch mentees');
+        setDisabled(true);
+      }
+      else{
+        const menteesData = await response.json();
+        setMentees(menteesData);
+        setDisabled(menteesData.length === 0);
+      }
+      console.log(mentees, 'mentees');
+
     } catch (error) {
-      console.error('Error fetching mentees:', error);
+      console.log('Error fetching mentees:', error);
+      setDisabled(true);
       throw error;
     }
   };
@@ -335,74 +346,6 @@ const ScheduleMeeting = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Update form submission handler
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-
-  //   try {
-  //     // Validate required fields
-  //     if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
-  //       throw new Error('Please fill all required fields');
-  //     }
-
-  //     if (!academicYear || !academicSession) {
-  //       throw new Error('Please select Academic Year and Session');
-  //     }
-
-  //     // First get all mentees
-  //     const mentees = await getMentees(mentorId, currentSemester, selectedSection);
-
-  //     // Convert file to base64 if exists
-  //     let fileData = null;
-  //     if (selectedFile) {
-  //       fileData = await storeFile(selectedFile);
-  //     }
-      
-  //     // Prepare email data
-  //     const emailData = {
-  //       academicYear,
-  //       academicSession,
-  //       mentorId,
-  //       branch: fixedBranch,
-  //       semester: currentSemester,
-  //       section: selectedSection,
-  //       meetingTitle: getMeetingTitle(meetingNumber),
-  //       dateTime: formatDateTime(dateTime),
-  //       mentees: mentees, // Array of mentee email addresses
-  //       hasAttachment: !!selectedFile,
-  //       attachment: fileData, // Send base64 data
-  //       attachmentName: selectedFile?.name,
-  //     };
-
-  //     // Schedule meeting and send emails
-  //     const response = await fetch('/api/meeting', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify(emailData),
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error('Failed to schedule meeting');
-  //     }
-
-  //     // Show success message
-  //     alert('Meeting scheduled and emails sent successfully!');
-      
-  //     // Reset form
-  //     setSelectedFile(null);
-  //     setDateTime('');
-      
-  //   } catch (error) {
-  //     console.error('Error:', error);
-  //     alert(error.message || 'Failed to schedule meeting');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -666,7 +609,28 @@ const ScheduleMeeting = () => {
                         </div>
                       </>   
                     )
-                  }                
+                  }  
+                  {
+                    mentees.length > 0 ? (
+                      <div className="mt-4">
+                        <h3 className="text-lg font-semibold text-white mb-2">Mentees:</h3>
+                        <ul className="list-disc list-inside text-white space-y-2">
+                          {mentees.map((mentee, index) => (
+                            <li key={index} className="bg-black/20 flex border border-white/10 rounded-lg p-2">
+                              <div className="flex items-center space-x-2">
+                                <div>
+                                  <p className="text-sm font-medium">{mentee.name}</p>
+                                  <p className="text-xs text-gray-400">{mentee.email}</p>
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="text-md text-red-600 font-semibold w-[100%] flex justify-center mt-4">No mentees found</p>
+                    )
+                  }              
                 </div>
               </form>
             </div>
