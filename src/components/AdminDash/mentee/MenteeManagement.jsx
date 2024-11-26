@@ -925,12 +925,12 @@ const MenteeManagement = () => {
               Mentee Management
             </motion.h1>
 
-            <motion.div className='flex flex-row flex-nowrap justify-between gap-10'>
+            <motion.div className='flex flex-col md:flex-row flex-nowrap justify-between gap-10'>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 max-w-[26%] overflow-y-auto max-h-[70vh]"
+              className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 md:max-w-[26%] overflow-y-auto md:max-h-[70vh] max-h-[20vh]"
             >
               
               <FilterSection 
@@ -954,9 +954,8 @@ const MenteeManagement = () => {
               style={{ 
                 display: tableVisible ? 'block' : 'none',
                 // marginTop: '20px',
-                width: '70%', 
-                height: '100%'
-              }}
+              }} 
+              className='md:max-h-full max-h-[30%] md:w-[70%] overflow-auto'
             >
               <Box sx={{ 
                 overflowX: 'auto', 
