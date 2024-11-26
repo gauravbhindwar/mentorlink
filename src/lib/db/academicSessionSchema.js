@@ -200,6 +200,54 @@ academicSessionsSchema.methods.getMentorDetails = async function (mentorMUJid) {
   }
 };
 
+academicSessionsSchema.methods.getMentorsWithMeetings = async function (filters) {
+  const { session, semester, section } = filters;
+
+  const matchStage = {
+    'sessions.name': session
+  };
+
+  if (semester) {
+    matchStage['sessions.semesters.semester_number'] = parseInt(semester);
+  }
+
+  if (section) {
+    matchStage['sessions.semesters.sections.name'] = section.toUpperCase();
+  }
+
+  const meetings = await this.model("AcademicSession").aggregate([
+    { $unwind: '$sessions' },
+    { $unwind: '$sessions.semesters' },
+    { $unwind: '$sessions.semesters.sections' },
+    { $unwind: '$sessions.semesters.sections.meetings' },
+    { $match: matchStage },
+    {
+      $group: {
+        _id: '$sessions.semesters.sections.meetings.mentor_id',
+        meetingCount: { $sum: 1 }
+      }
+    }
+  ]);
+
+  // Fetch mentor details
+  const mentorDetails = await Promise.all(
+    meetings.map(async (meeting) => {
+      const mentor = await Mentor.findOne({ MUJid: meeting._id })
+        .select('MUJid name email phone_number')
+        .lean();
+      return {
+        MUJid: mentor?.MUJid || meeting._id,
+        mentorName: mentor?.name || 'Unknown',
+        mentorEmail: mentor?.email || 'N/A',
+        mentorPhone: mentor?.phone_number || 'N/A',
+        meetingCount: meeting.meetingCount
+      };
+    })
+  );
+
+  return mentorDetails;
+};
+
 const AcademicSession =
   mongoose.models.AcademicSession ||
   mongoose.model("AcademicSession", academicSessionsSchema);

@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog } from '@headlessui/react';
 import axios from 'axios';
 import { generateMOMPdf, generateConsolidatedPdf } from './PDFGenerator';
-import { PDFViewer } from '@react-pdf/renderer';
 import { PDFDownloadComponent } from './PDFGenerator';
+import FilterListIcon from '@mui/icons-material/FilterList'; // Add this import at the top
 
 const MeetingReportGenerator = () => {
   const [academicYear, setAcademicYear] = useState('');
@@ -32,11 +32,10 @@ const MeetingReportGenerator = () => {
     selectedMOM: ''
   });
   const [mentorMUJid, setMentorMUJid] = useState('');
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [isMOMDetailDialogOpen, setIsMOMDetailDialogOpen] = useState(false);
-  const [pdfContent, setPdfContent] = useState(null);
   const [mentorName, setMentorName] = useState('');
+  const [showFilters, setShowFilters] = useState(false); // Add this state
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -57,17 +56,43 @@ const MeetingReportGenerator = () => {
   };
 
   useEffect(() => {
-    const currentAcadYear = getCurrentAcademicYear();
-    const sessions = generateAcademicSessions(currentAcadYear);
-    setAcademicYear(currentAcadYear);
-    setAcademicSession(sessions[0]);
+    // Try to get stored filter data
+    const storedFilters = sessionStorage.getItem('reportFilters');
+    
+    if (storedFilters) {
+        try {
+            const filters = JSON.parse(storedFilters);
+            
+            // Set filter values from stored data
+            setAcademicYear(filters.academicYear);
+            setAcademicSession(filters.academicSession);
+            setSemester(filters.semester);
+            setSection(filters.section);
+            setMentorMUJid(filters.mentorMUJid);
+
+            // Automatically fetch meetings after setting filters
+            setTimeout(() => {
+                fetchMeetings();
+            }, 0);
+
+            // Clear the stored filters after using them
+            sessionStorage.removeItem('reportFilters');
+        } catch (error) {
+            console.error('Error parsing stored filters:', error);
+        }
+    } else {
+        // If no stored filters, set default academic year and session
+        const currentAcadYear = getCurrentAcademicYear();
+        const sessions = generateAcademicSessions(currentAcadYear);
+        setAcademicYear(currentAcadYear);
+        setAcademicSession(sessions[0]);
+    }
+    
+    // Set academic years list
     setAcademicYears([
-      currentAcadYear,
-      `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
-      `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
+        // ...existing academic years logic...
     ]);
-    setAcademicSessions(sessions);
-  }, []);
+}, []);
 
   const handleAcademicYearChange = (e) => {
     const value = e.target.value;
@@ -200,7 +225,6 @@ const MeetingReportGenerator = () => {
     if (encodedData) {
       try {
         const decodedData = JSON.parse(decodeURIComponent(encodedData));
-        setReportData(decodedData);
         setInitialStates(decodedData, mentorId);
         
         // Store in sessionStorage
@@ -213,12 +237,11 @@ const MeetingReportGenerator = () => {
       }
     } else {
       // Try to get from sessionStorage if URL params aren't available
-      const storedData = sessionStorage.getItem('mentorMeeting');
+      const storedData = sessionStorage.getItem('mentorMeetingsData');
       const storedMentorId = sessionStorage.getItem('mentorMUJid');
       if (storedData) {
         try {
           const parsedData = JSON.parse(storedData);
-          setReportData(parsedData);
           setInitialStates(parsedData, storedMentorId);
         } catch (error) {
           console.error('Error parsing stored data:', error);
@@ -265,18 +288,22 @@ const MeetingReportGenerator = () => {
   };
 
   const renderFilterControls = () => (
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 lg:p-6 h-full">
-      <h2 className="text-xl font-semibold text-white mb-4 lg:mb-6">Filters</h2>
-      <form onSubmit={(e) => { e.preventDefault(); fetchMeetings(); }} className="space-y-4 lg:space-y-6">
+    <div  className="bg-gray/50 backdrop-blur-md rounded-2xl p-4 h-[90%] overflow-y-[auto] border border-orange-500"
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}>
+      <h2 className="text-lg font-semibold text-white mb-3">Filters</h2> {/* Reduced text size and margin */}
+      <form onSubmit={(e) => { e.preventDefault(); fetchMeetings(); }} className="space-y-3"> {/* Reduced spacing */}
+        {/* Update input containers */}
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Academic Year</label>
+          <label className="block text-xs font-medium text-white mb-1">Academic Year</label> {/* Smaller text and margin */}
           <input
             type="text"
             list="academicYears"
             placeholder="YYYY-YYYY"
             value={academicYear}
             onChange={handleAcademicYearChange}
-            className="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
           />
           <datalist id="academicYears">
             {academicYears.map((year, index) => (
@@ -284,16 +311,16 @@ const MeetingReportGenerator = () => {
             ))}
           </datalist>
         </div>
-
+        {/* Apply same changes to other input groups */}
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Academic Session</label>
+          <label className="block text-xs font-medium text-white mb-1">Academic Session</label>
           <input
             type="text"
             list="academicSessions"
             placeholder="MONTH-MONTH YYYY"
             value={academicSession}
             onChange={handleAcademicSessionChange}
-            className="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
           />
           <datalist id="academicSessions">
             {academicSessions.map((session, index) => (
@@ -303,35 +330,35 @@ const MeetingReportGenerator = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Semester</label>
+          <label className="block text-xs font-medium text-white mb-1">Semester</label>
           <input
             type="text"
             placeholder="Enter Semester"
             value={semester}
             onChange={handleSemesterChange}
-            className="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Section</label>
+          <label className="block text-xs font-medium text-white mb-1">Section</label>
           <input
             type="text"
             placeholder="Enter Section"
             value={section}
             onChange={handleSectionChange}
-            className="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Mentor MUJ ID</label>
+          <label className="block text-xs font-medium text-white mb-1">Mentor MUJ ID</label>
           <input
             type="text"
             placeholder="Enter Mentor MUJ ID"
             value={mentorMUJid}
             onChange={handleMentorMUJidChange}
-            className="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
           />
         </div>
 
@@ -423,10 +450,10 @@ const MeetingReportGenerator = () => {
 
   const renderMeetingsContent = () => (
     <div className="h-full flex flex-col bg-white/10 backdrop-blur-md rounded-2xl">
-      <div className="p-4 lg:p-6 border-b border-white/10">
-        <h2 className="text-xl font-semibold text-white">Meeting Reports</h2>
+      <div className="p-3 border-b border-white/10"> {/* Reduced padding */}
+        <h2 className="text-lg font-semibold text-white">Meeting Reports</h2>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 lg:p-6 pr-2 lg:pr-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 pr-2 custom-scrollbar"> {/* Reduced padding */}
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-white/70">Loading...</div>
@@ -436,73 +463,74 @@ const MeetingReportGenerator = () => {
             <div className="text-white/70">No meetings found</div>
           </div>
         ) : (
-          <div className="space-y-4 lg:space-y-6">  {/* Removed pb-16 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3 lg:gap-4">
+          <div className="space-y-3">  {/* Reduced spacing */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3"> {/* Changed to 4 columns and reduced gap */}
               {meetings.map((meeting, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-white/10 backdrop-blur-md rounded-xl p-4 hover:bg-white/15 transition-all flex flex-col"
-                >
+                  className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg p-4 hover:bg-gradient-to-br hover:from-primary/30 hover:to-secondary/30 transition-all flex flex-col shadow-lg"
+                > {/* Reduced padding and border radius */}
                   {/* Meeting Card Header */}
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
-                    <div className="flex gap-3 items-center">
-                      <span className="text-sm font-medium text-white">#{index + 1}</span>
-                      <span className="text-sm text-white/90">
-                        {new Date(meeting.meeting_date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
-                      <span className="text-sm text-white/90 bg-white/5 px-3 py-1 rounded-full">
-                        {meeting.meeting_time}
-                      </span>
+                  <div className="flex items-center justify-between mb-2"> {/* Removed border and padding */}
+                    <div className="flex items-center gap-2"> {/* Reduced gap */}
+                      <span className="text-sm font-semibold text-white">#{index + 1}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-white/70">
+                          {new Date(meeting.meeting_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
     
                   {/* Meeting Info */}
-                  <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div className="grid grid-cols-2 gap-2 mb-2 text-xs"> {/* Reduced gap and text size */}
                     <div>
-                      <span className="text-sm font-medium text-white/90">Meeting ID</span>
-                      <p className="text-sm text-white bg-white/5 p-2 rounded mt-1 truncate">
+                      <span className="text-xs font-medium text-white/90">Meeting ID</span>
+                      <p className="text-xs text-white bg-white/5 p-1.5 rounded mt-1 truncate">
                         {meeting.meeting_id || 'N/A'}
                       </p>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-white/90">Mentor ID</span>
-                      <p className="text-sm text-white bg-white/5 p-2 rounded mt-1 truncate">
+                      <span className="text-xs font-medium text-white/90">Mentor ID</span>
+                      <p className="text-xs text-white bg-white/5 p-1.5 rounded mt-1 truncate">
                         {meeting.mentor_id || mentorMUJid || 'N/A'}
                       </p>
                     </div>
                   </div>
     
                   {/* Topic and Attendees */}
-                  <div className="flex justify-between items-start gap-4 mb-4">
+                  <div className="flex justify-between items-start gap-2 mb-2"> {/* Reduced gap */}
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-white/90">Topic</span>
-                      <p className="text-sm text-white bg-white/5 p-2 rounded mt-1 line-clamp-2">
+                      <span className="text-xs font-medium text-white/90">Topic</span>
+                      <p className="text-xs text-white bg-white/5 p-1.5 rounded mt-1 line-clamp-2">
                         {meeting.meeting_notes.TopicOfDiscussion || 'N/A'}
                       </p>
                     </div>
-                    <div className="text-center min-w-[80px]">
-                      <span className="text-sm font-medium text-white/90">Attendees</span>
-                      <p className="text-sm text-white bg-white/5 px-3 py-2 rounded mt-1">
+                    <div className="text-center min-w-[60px]"> {/* Reduced min-width */}
+                      <span className="text-xs font-medium text-white/90">Attendees</span>
+                      <p className="text-xs text-white bg-white/5 px-2 py-1 rounded mt-1">
                         {meeting.mentee_ids?.length || 0}
                       </p>
                     </div>
                   </div>
     
-                  {/* Dynamic MOM Button */}
-                  <div className="flex gap-3 mt-auto pt-3 border-t border-white/10">
+                  {/* MOM Button */}
+                  <div className="mt-10 pt-4 border-t border-white/10"> {/* Reduced padding */}
                     <button
                       onClick={() => handleMOMButtonClick({
                         ...meeting,
                         mentorMUJid: mentorMUJid || sessionStorage.getItem('mentorMUJid')
                       })}
-                      className="w-full px-3 py-1.5 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium"
+                      className="w-full px-2 py-1 text-xs font-medium bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-lg"
                     >
                       {getMOMButtonLabel(index)}
                     </button>
@@ -534,107 +562,6 @@ const MeetingReportGenerator = () => {
   );
 
   // Removed unused handleMOMClick function
-
-  const renderMeetingPreviewDialog = () => (
-    <Dialog 
-      as="div" 
-      className="fixed inset-0 z-50 overflow-y-auto" 
-      open={isPreviewOpen} 
-      onClose={() => setIsPreviewOpen(false)}
-    >
-      <div className="min-h-screen px-4 text-center">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          className="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl"
-        >
-          {previewData && (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <Dialog.Title as="h3" className="text-xl font-semibold text-gray-900">
-                  {previewData.momType} Details
-                </Dialog.Title>
-                <button
-                  onClick={() => setIsPreviewOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Meeting Basic Info */}
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Meeting Date</h4>
-                    <p className="mt-1 text-sm text-gray-900">{previewData.displayDate}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Meeting Time</h4>
-                    <p className="mt-1 text-sm text-gray-900">{previewData.meeting_time}</p>
-                  </div>
-                </div>
-
-                {/* Meeting Details */}
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Meeting ID</h4>
-                    <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                      {previewData.meeting_id}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Topic of Discussion</h4>
-                    <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                      {previewData.meeting_notes?.TopicOfDiscussion || 'N/A'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Attendees</h4>
-                    <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                      {previewData.mentee_ids?.length || 0} students
-                    </p>
-                  </div>
-
-                  {previewData.meeting_notes?.Agenda && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Agenda</h4>
-                      <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                        {previewData.meeting_notes.Agenda}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="pt-4 flex justify-end gap-3 border-t">
-                  <button
-                    onClick={() => {
-                      setIsPreviewOpen(false);
-                      setMomDetails({
-                        ...momDetails,
-                        meetingId: previewData.meeting_id,
-                        date: previewData.meeting_date
-                      });
-                      setIsMOMDialogOpen(true);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Generate MOM
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </motion.div>
-      </div>
-    </Dialog>
-  );
 
   const renderMOMDetailDialog = () => (
     <AnimatePresence>
@@ -791,12 +718,6 @@ const MeetingReportGenerator = () => {
           {/* Fixed Footer */}
           <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200">
             <div className="flex justify-end gap-3 px-6 py-4">
-              <button
-                onClick={() => handlePreviewPdf('mom', selectedMeeting)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
-              >
-                Preview Report
-              </button>
               {handleExportPdf('mom', selectedMeeting)}
             </div>
           </div>
@@ -806,18 +727,6 @@ const MeetingReportGenerator = () => {
       )}
     </AnimatePresence>
   );
-
-  const handlePreviewPdf = (type, meeting = null) => {
-    let PdfDocument;
-    if (type === 'mom') {
-      PdfDocument = generateMOMPdf(meeting, mentorName); // Pass mentorName here
-    } else {
-      PdfDocument = generateConsolidatedPdf(meetings, academicYear, semester, section, mentorName); // Pass mentorName here
-    }
-    
-    setPdfContent(PdfDocument);
-    setIsPreviewOpen(true);
-  };
 
   const handleExportPdf = (type, meeting = null) => {
     try {
@@ -853,42 +762,9 @@ const MeetingReportGenerator = () => {
     }
   };
 
-  const renderPdfPreviewDialog = () => (
-    <Dialog
-      as="div"
-      className="fixed inset-0 z-50 overflow-y-auto"
-      open={isPreviewOpen}
-      onClose={() => setIsPreviewOpen(false)}
-    >
-      <div className="min-h-screen px-4 text-center">
-        <Dialog.Overlay className="fixed inset-0 bg-black/30" />
-        <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
-        
-        <motion.div className="inline-block w-full max-w-5xl p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-          <div className="flex justify-between items-center mb-4">
-            <Dialog.Title className="text-lg font-medium text-gray-900">
-              Meeting Report Preview
-            </Dialog.Title>
-            <button
-              onClick={() => setIsPreviewOpen(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ×
-            </button>
-          </div>
-          
-          <div className="h-[80vh] w-full">
-            <PDFViewer width="100%" height="100%">
-              {pdfContent}
-            </PDFViewer>
-          </div>
-        </motion.div>
-      </div>
-    </Dialog>
-  );
-
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pt-20 overflow-x-hidden">
+    // Update the main container to account for navbar height
+    <div className="fixed inset-0 pt-16 bg-[#0a0a0a] text-white overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -896,52 +772,84 @@ const MeetingReportGenerator = () => {
         <div className="absolute inset-0 backdrop-blur-3xl" />
       </div>
 
-      {/* Main content */}
-      <div className="relative z-10 container mx-auto px-4 min-h-screen">
-        {/* Header */}
-        <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4">
-          Meeting Report Generator
-        </h1>
+      {/* Main content - Update height calculation */}
+      <div className="relative z-10 h-[calc(100vh-64px)] overflow-hidden px-2 sm:px-4 lg:px-6">
+        {/* Header section with filter toggle */}
+        <div className="flex items-center justify-center px-4 py-2 lg:px-6 relative">
+          <motion.h1 
+            className="text-xl sm:text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            Meeting Report Generator
+          </motion.h1>
+          
+          {/* Add Filter Toggle Button */}
+          <motion.button
+            className="lg:hidden absolute right-4 p-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20"
+            onClick={() => setShowFilters(!showFilters)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <FilterListIcon sx={{ color: '#f97316' }} />
+          </motion.button>
+        </div>
 
-        {/* Content Grid - Modified for mobile scrolling */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 mb-20 lg:mb-0 lg:h-[calc(100vh-9rem)]">
-          {/* Filters - Left Side */}
-          <div className="lg:col-span-3 h-auto lg:h-full">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 lg:p-6 h-full overflow-y-auto">
+        {/* Update grid layout container for responsive filters */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-2 sm:gap-3 ">
+          {/* Filter Panel - Updated for responsive behavior */}
+          <motion.div 
+            className={`
+              lg:relative fixed top-[84px] left-0 z-[100] lg:z-auto
+              ${showFilters ? 'flex' : 'lg:flex hidden'}
+              transition-all duration-300 ease-in-out
+              h-[calc(100vh-100px)] lg:h-[calc(100vh-140px)]
+              w-full lg:w-auto
+            `}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            {/* Overlay for mobile */}
+            {showFilters && (
+              <motion.div
+                className="lg:hidden fixed inset-0 top-[80px] bg-black/50 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowFilters(false)}
+              />
+            )}
+            
+            {/* Filter Content */}
+            <div className={`
+              relative lg:w-full w-[280px]
+              h-full
+              ${showFilters ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+              transition-transform duration-300 ease-in-out
+              overflow-hidden
+            `}>
               {renderFilterControls()}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Meeting Cards - Right Side */}
-          <div className="lg:col-span-9 h-auto lg:h-full">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl flex flex-col h-full">
+          {/* Right Column - Meeting Cards */}
+          <div className="h-full overflow-hidden">
+            <div  className="bg-gray/50 backdrop-blur-md rounded-2xl p-4 h-[98%] overflow-y-[auto] border border-orange-500"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}>
               {renderMeetingsContent()}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modified Consolidated Report Button Container for mobile */}
-      {meetings.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0a] to-transparent lg:hidden">
-          <div className="max-w-3xl mx-auto">
-            {meetings.length >= 3 ? (
-              <button className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all text-sm font-medium shadow-lg backdrop-blur-md">
-                Generate Consolidated Report
-              </button>
-            ) : (
-              <div className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-center">
-                <span className="text-sm text-white/70">
-                  Complete {3 - meetings.length} more {3 - meetings.length === 1 ? 'meeting' : 'meetings'} to generate consolidated report
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Dialogs with modified mobile styles */}
-      <AnimatePresence mode="wait">
+      {/* Update dialogs and other content */}
+      <AnimatePresence>
         {isMOMDetailDialogOpen && renderMOMDetailDialog()}
         {isMOMDialogOpen && (
           <Dialog as="div" className="fixed inset-0 z-50 overflow-y-auto" open={isMOMDialogOpen} onClose={() => setIsMOMDialogOpen(false)}>
@@ -1046,11 +954,7 @@ const MeetingReportGenerator = () => {
             </div>
           </Dialog>
         )}
-        {isPreviewOpen && renderMeetingPreviewDialog()}
       </AnimatePresence>
-
-      {/* Add PDF Preview Dialog */}
-      {isPreviewOpen && renderPdfPreviewDialog()}
 
       {/* Action Menu */}
       {actionMenu.isOpen && (
@@ -1063,13 +967,13 @@ const MeetingReportGenerator = () => {
             onClick={() => setActionMenu(prev => ({ ...prev, isOpen: false }))}
           />
           <motion.div
-            className="fixed inset-0 flex items-center justify-center z-50"
+            className="fixed inset-0 flex items-center justify-center z-50 px-4 sm:px-0"
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5 }} 
             transition={{ type: "spring", duration: 0.5 }}
           >
-            <div className="bg-white rounded-xl shadow-2xl overflow-hidden max-w-md w-full mx-4">
+            <div className="bg-white rounded-xl shadow-2xl overflow-hidden w-full max-w-[320px] sm:max-w-md">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Report Options</h2>
