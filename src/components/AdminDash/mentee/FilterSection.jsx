@@ -657,7 +657,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     <>
       <Box sx={{ 
         display: 'flex',
-        flexDirection: { xs: 'row', md: 'column' },
+        flexDirection: { xs: 'column', md: 'column' },
         gap: 2,
         mb: 3,
         alignItems: { xs: 'stretch', md: 'center' },
