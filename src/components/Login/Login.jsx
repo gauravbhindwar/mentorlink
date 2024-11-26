@@ -46,7 +46,6 @@ const Login = ({ role }) => {
   const [email, setEmail] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
-  const [showEmail, setShowEmail] = useState(false);
   const [resendEnabled, setResendEnabled] = useState(false);
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false); // Add loading state
@@ -296,7 +295,7 @@ const Login = ({ role }) => {
                           <Input
                             {...field}
                             placeholder="Enter your email address"
-                            type={showEmail ? "text" : "email"}
+                            type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             name="email"
@@ -376,7 +375,7 @@ const Login = ({ role }) => {
                                       key={index}
                                       index={index}
                                       className={`
-                                        w-10 h-10  // Reduced from w-14 h-14 to w-10 h-10
+                                        w-10 h-10 
                                         text-center text-xl font-bold  // Reduced text size from 2xl to xl
                                         rounded-lg
                                         border-2 border-orange-200

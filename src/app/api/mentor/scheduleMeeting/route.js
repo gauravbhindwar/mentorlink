@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
     try {
-        const data = await request.json();
+        await request.json();
         
         // TODO: Implement your database logic here
         // Example: Save meeting details to database

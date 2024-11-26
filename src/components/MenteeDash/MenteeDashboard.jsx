@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Container, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Snackbar, Slide, Alert, AlertTitle, LinearProgress, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Typography, Snackbar, Slide, Alert, AlertTitle,CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import CloseIcon from '@mui/icons-material/Close';
+// import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion} from 'framer-motion';
 
 const MenteeDashboard = () => {
   const [menteeDetails, setMenteeDetails] = useState(null);
@@ -22,7 +22,7 @@ const MenteeDashboard = () => {
       try {
         const response = await axios.get('/api/mentee/details');
         setMenteeDetails(response.data);
-      } catch (error) {
+      } catch  {
         showAlert('Error fetching mentee details', 'error');
       } finally {
         setLoading(false);
@@ -50,8 +50,6 @@ const MenteeDashboard = () => {
       },
     },
   });
-
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   if (loading) {
     return (

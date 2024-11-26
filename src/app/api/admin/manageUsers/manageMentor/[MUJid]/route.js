@@ -22,7 +22,7 @@ export async function PATCH(req, { params }) {
 
     // Clean the update data
     const cleanedData = Object.fromEntries(
-      Object.entries(updateData).filter(([_, v]) => v != null && v !== '')
+      Object.entries(updateData).filter(([v]) => v != null && v !== '')
     );
 
     const updatedMentor = await Mentor.findOneAndUpdate(

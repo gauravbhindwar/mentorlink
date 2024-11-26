@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog } from '@headlessui/react';
 import axios from 'axios';
 import { generateMOMPdf, generateConsolidatedPdf } from './PDFGenerator';
-import { PDFViewer, pdf } from '@react-pdf/renderer';
+import { PDFViewer } from '@react-pdf/renderer';
 import { PDFDownloadComponent } from './PDFGenerator';
 
 const MeetingReportGenerator = () => {
@@ -31,13 +31,10 @@ const MeetingReportGenerator = () => {
     reportType: '',
     selectedMOM: ''
   });
-  const [reportData, setReportData] = useState(null);
   const [mentorMUJid, setMentorMUJid] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [isMOMDetailDialogOpen, setIsMOMDetailDialogOpen] = useState(false);
-  const [menteeDetails, setMenteeDetails] = useState([]);
-  // const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfContent, setPdfContent] = useState(null);
   const [mentorName, setMentorName] = useState('');
 

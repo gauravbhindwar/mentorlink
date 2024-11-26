@@ -23,7 +23,7 @@ export async function GET(request: Request) {
         await mongoose.connect(process.env.MONGODB_URI as string);
 
         // Base match conditions
-        const matchStage: any = {
+        const matchStage: mongoose.FilterQuery<mongoose.Document> = {
             'sessions.name': session,
             'sessions.semesters.semester_number': parseInt(semester)
         };

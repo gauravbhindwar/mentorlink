@@ -7,14 +7,14 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
 // Dynamically import MUI components
-const Dialog = dynamic(() => import('@mui/material/Dialog'), { ssr: false });
-const DialogTitle = dynamic(() => import('@mui/material/DialogTitle'), { ssr: false });
-const DialogContent = dynamic(() => import('@mui/material/DialogContent'), { ssr: false });
-const DialogActions = dynamic(() => import('@mui/material/DialogActions'), { ssr: false });
-const TextField = dynamic(() => import('@mui/material/TextField'), { ssr: false });
-const Button = dynamic(() => import('@mui/material/Button'), { ssr: false });
-const IconButton = dynamic(() => import('@mui/material/IconButton'), { ssr: false });
-const CloseIcon = dynamic(() => import('@mui/icons-material/Close'), { ssr: false });
+// const Dialog = dynamic(() => import('@mui/material/Dialog'), { ssr: false });
+// const DialogTitle = dynamic(() => import('@mui/material/DialogTitle'), { ssr: false });
+// const DialogContent = dynamic(() => import('@mui/material/DialogContent'), { ssr: false });
+// const DialogActions = dynamic(() => import('@mui/material/DialogActions'), { ssr: false });
+// const TextField = dynamic(() => import('@mui/material/TextField'), { ssr: false });
+// const Button = dynamic(() => import('@mui/material/Button'), { ssr: false });
+// const IconButton = dynamic(() => import('@mui/material/IconButton'), { ssr: false });
+// const CloseIcon = dynamic(() => import('@mui/icons-material/Close'), { ssr: false });
 
 const ReportMeetings = () => {
   const [mentorId, setMentorId] = useState('');
@@ -23,10 +23,8 @@ const ReportMeetings = () => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [yearSuggestions, setYearSuggestions] = useState([]);
-  const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
-  const [reportedMeetings, setReportedMeetings] = useState([]);
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
   const [reportDialog, setReportDialog] = useState(false);
@@ -87,18 +85,6 @@ const ReportMeetings = () => {
     return suggestions;
   };
 
-  const generateSessionSuggestions = (input) => {
-    if (!academicYear || !input) return [];
-    const [startYear, endYear] = academicYear.split('-');
-    const possibleSessions = [
-      `JULY-DECEMBER ${startYear}`,
-      `JANUARY-JUNE ${endYear}`
-    ];
-    return possibleSessions.filter(session => 
-      session.toLowerCase().includes(input.toLowerCase())
-    );
-  };
-
   const handleAcademicYearInput = (e) => {
     let value = e.target.value.toUpperCase();
     if (value.length === 4 && !value.includes('-')) {
@@ -128,10 +114,8 @@ const ReportMeetings = () => {
       value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
     }
     if (value.length > 0) {
-      setSessionSuggestions(generateSessionSuggestions(value));
       setShowSessionOptions(true);
     } else {
-      setSessionSuggestions([]);
       setShowSessionOptions(false);
     }
     setAcademicSession(value);

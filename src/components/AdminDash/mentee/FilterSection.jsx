@@ -8,7 +8,6 @@ import {
   InputLabel, 
   Select, 
   MenuItem,
-  Slide,
   CircularProgress,
   TextField,
 } from '@mui/material';
@@ -21,17 +20,18 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 
-const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload, onDelete, mentees }) => {
+const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload, onDelete }) => {
   const [isLoading, setIsLoading] = useState({
     search: false,
     searchAll: false,
     add: false,
     bulkAdd: false
   });
-  const [academicYear, setAcademicYear] = useState('');  const [academicSessions, setAcademicSessions] = useState([]);
-  const [currentAcademicYear, setCurrentAcademicYear] = useState('');
-  const [currentAcademicSession, setCurrentAcademicSession] = useState('');
-  const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
+  const [academicYear, setAcademicYear] = useState('');  
+  // const [academicSessions, setAcademicSessions] = useState([]);
+  // const [currentAcademicYear, setCurrentAcademicYear] = useState('');
+  // const [currentAcademicSession, setCurrentAcademicSession] = useState('');
+  // const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
@@ -85,11 +85,11 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     handleFilterChange('academicYear', currentYear);
     
     // Don't set initial academic session
-    setCurrentAcademicSession('');
+    // setCurrentAcademicSession('');
     handleFilterChange('academicSession', '');
     
     // Generate available sessions but don't select one
-    setAcademicSessions(generateAcademicSessions(currentYear));
+    // setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
 
   useEffect(() => {
@@ -101,14 +101,14 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
 
   useEffect(() => {
     if (filters.startYear && filters.endYear) {
-      const newSessions = generateAcademicSessions(filters.startYear, filters.endYear);
-      setAcademicSessions(newSessions);
+      generateAcademicSessions(filters.startYear, filters.endYear);
+      // setAcademicSessions(newSessions);
     }
   }, [filters.startYear, filters.endYear]);
 
-  useEffect(() => {
-    setIsSearchAllEnabled(Object.values(filters).some(x => x !== ''));
-  }, [filters]);
+  // useEffect(() => {
+  //   setIsSearchAllEnabled(Object.values(filters).some(x => x !== ''));
+  // }, [filters]);
 
   const showAlert = (message, severity) => {
     switch (severity) {
@@ -181,53 +181,53 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     }
   };
 
-  const handleSearchAll = async () => {
-    setIsLoading(prev => ({ ...prev, searchAll: true }));
-    try {
-      // Validate minimum required fields for Search All
-      if (!filters.academicYear || !filters.academicSession || !filters.semester) {
-        showAlert('Please select Academic Year, Session, and Semester', 'warning');
-        onSearchAll([]);
-        return;
-      }
+  // const handleSearchAll = async () => {
+  //   setIsLoading(prev => ({ ...prev, searchAll: true }));
+  //   try {
+  //     // Validate minimum required fields for Search All
+  //     if (!filters.academicYear || !filters.academicSession || !filters.semester) {
+  //       showAlert('Please select Academic Year, Session, and Semester', 'warning');
+  //       onSearchAll([]);
+  //       return;
+  //     }
 
-      // Build query filters
-      const queryFilters = {
-        academicYear: filters.academicYear,
-        academicSession: filters.academicSession
-      };
+  //     // Build query filters
+  //     const queryFilters = {
+  //       academicYear: filters.academicYear,
+  //       academicSession: filters.academicSession
+  //     };
 
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', { 
-        params: queryFilters 
-      });
+  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', { 
+  //       params: queryFilters 
+  //     });
 
-      if (response.data && response.data.length > 0) {
-        // Apply local filter for mentor MUJID if provided
-        let filteredData = response.data;
+  //     if (response.data && response.data.length > 0) {
+  //       // Apply local filter for mentor MUJID if provided
+  //       let filteredData = response.data;
         
-        if (filters.mentorMujid) {
-          filteredData = filteredData.filter(mentee => 
-            mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase())
-          );
-        }
+  //       if (filters.mentorMujid) {
+  //         filteredData = filteredData.filter(mentee => 
+  //           mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase())
+  //         );
+  //       }
 
-        sessionStorage.setItem('menteeData', JSON.stringify(filteredData));
-        onSearchAll(filteredData);
+  //       sessionStorage.setItem('menteeData', JSON.stringify(filteredData));
+  //       onSearchAll(filteredData);
         
-        if (filteredData.length === 0) {
-          showAlert('No mentees found matching all filters', 'info');
-        }
-      } else {
-        onSearchAll([]);
-        showAlert('No mentees found matching the filters', 'info');
-      }
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
-      onSearchAll([]);
-    } finally {
-      setIsLoading(prev => ({ ...prev, searchAll: false }));
-    }
-  };
+  //       if (filteredData.length === 0) {
+  //         showAlert('No mentees found matching all filters', 'info');
+  //       }
+  //     } else {
+  //       onSearchAll([]);
+  //       showAlert('No mentees found matching the filters', 'info');
+  //     }
+  //   } catch (error) {
+  //     showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
+  //     onSearchAll([]);
+  //   } finally {
+  //     setIsLoading(prev => ({ ...prev, searchAll: false }));
+  //   }
+  // };
 
   const handleAddMentee = async (menteeData) => {
     setIsLoading(prev => ({ ...prev, add: true }));
@@ -270,11 +270,11 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     onReset();
   };
 
-  const handleBulkUploadClick = () => {
-    if (onBulkUpload) {
-      onBulkUpload();
-    }
-  };
+  // const handleBulkUploadClick = () => {
+  //   if (onBulkUpload) {
+  //     onBulkUpload();
+  //   }
+  // };
 
   const handleFilterChange = (name, value) => {
     sessionStorage.removeItem('menteeData');
@@ -283,19 +283,19 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
       const sessions = generateAcademicSessions(value);
       onFilterChange(name, value);
       onFilterChange('academicSession', sessions[0]);
-      setAcademicSessions(sessions);
+      // setAcademicSessions(sessions);
     } else {
       onFilterChange(name, value);
     }
   };
 
-  const handleSectionChange = (e) => {
-    let value = e.target.value;
-    value = value.toUpperCase().slice(0, 1);
-    if (value && !/^[A-Z]$/.test(value)) return;
+  // const handleSectionChange = (e) => {
+  //   let value = e.target.value;
+  //   value = value.toUpperCase().slice(0, 1);
+  //   if (value && !/^[A-Z]$/.test(value)) return;
     
-    handleFilterChange('section', value);
-  };
+  //   handleFilterChange('section', value);
+  // };
 
   useEffect(() => {
     if (!filters.academicYear || !filters.academicSession) {
@@ -887,12 +887,12 @@ const buttonStyles = {
   }
 };
 
-const alertStyles = {
-  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  backdropFilter: 'blur(10px)',
-  color: 'white',
-  border: '1px solid rgba(255, 255, 255, 0.1)'
-};
+// const alertStyles = {
+//   backgroundColor: 'rgba(0, 0, 0, 0.8)',
+//   backdropFilter: 'blur(10px)',
+//   color: 'white',
+//   border: '1px solid rgba(255, 255, 255, 0.1)'
+// };
 
 const comboBoxStyles = {
   position: 'relative',
