@@ -1,12 +1,15 @@
+"use client";
 import React from 'react'
-import MentorManagement from '../../../../components/AdminDash/mentor/MentorManagement'
+import dynamic from 'next/dynamic';
+
+const MentorManagement = dynamic(() => import('../../../../components/AdminDash/mentor/MentorManagement'), { ssr: false });
 
 const page = () => {
   return (
     <>
-    <MentorManagement />
+      <MentorManagement />
     </>
-  )
-}
+  );
+};
 
-export default page
+export default page;

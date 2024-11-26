@@ -4,9 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUpload } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
-import { storeFile } from '@/utils/browserStorage';
 import axios from 'axios';
-import { set } from 'mongoose';
 
 const ScheduleMeeting = () => {
   const router = useRouter();

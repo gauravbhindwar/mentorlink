@@ -247,14 +247,14 @@ export async function PUT(req) {
 }
 
 // Update PATCH request handler
-export async function PATCH(request, { params }) {
+export async function PATCH(request) {
   try {
     await connect();
     const data = await request.json();
     const mujid = request.url.split('/').pop(); // Get MUJid from URL
 
     // Remove any MongoDB specific fields if they exist
-    const { _id, id, __v, ...updateData } = data;
+    const { ...updateData } = data;
 
     const updatedMentor = await Mentor.findOneAndUpdate(
       { MUJid: mujid },

@@ -35,7 +35,14 @@ export async function GET(request: Request) {
     // Format the response
     const response = {
       meeting: result.meeting,
-      mentee_details: result.mentee_details.map(mentee => ({
+      mentee_details: result.mentee_details.map((mentee: {
+        MUJid: string;
+        name: string;
+        email: string;
+        section: string;
+        semester: number;
+        academicYear: number;
+      }) => ({
         mujId: mentee.MUJid,
         name: mentee.name,
         email: mentee.email,

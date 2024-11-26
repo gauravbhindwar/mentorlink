@@ -9,7 +9,6 @@ const Navbar = () => {
     const [dropdownVisible, setDropdownVisible] = useState(false)
     const [email, setEmail] = useState('')
     const [role, setRole] = useState('')
-    const [localRole, setLocalRole] = useState('')
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const router = useRouter()
     let hideDropdownTimeout;
@@ -32,7 +31,6 @@ const Navbar = () => {
         
         if (storedEmail) setEmail(storedEmail);
         if (storedRole) {
-            setLocalRole(storedRole);
             setRole(storedRole);
         }
     }, [])
@@ -40,7 +38,6 @@ const Navbar = () => {
     const handleLogout = () => {
         sessionStorage.clear();
         setRole('');
-        setLocalRole('');
         setEmail('');
         router.push('/');
     }

@@ -1,11 +1,12 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Box, Button, FormControl, InputLabel, Select, MenuItem, TextField, Typography, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Button, TextField, Typography, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 // import { display, flexbox, height, width } from '@mui/system';
 import SearchIcon from '@mui/icons-material/Search';
 import { createPortal } from 'react-dom';
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useDropzone } from "react-dropzone";
+import PropTypes from 'prop-types';
 
 const filterSectionStyles = {
   wrapper: {
@@ -78,7 +79,12 @@ const buttonStyles = {
   }
 };
 
-const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBulkUpload, onDelete, mentors }) => {
+const MentorFilterSection = ({ 
+  onSearch, 
+  onAddNew = () => {}, 
+  onBulkUpload = null, 
+  onDelete = () => {} 
+}) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [academicSessions, setAcademicSessions] = useState([]);
@@ -145,12 +151,12 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
 
-  const handleAcademicYearChange = (event) => {
-    const year = event.target.value;
-    setAcademicYear(year);
-    setAcademicSessions(generateAcademicSessions(year));
-    setAcademicSession('');
-  };
+  // const handleAcademicYearChange = (event) => {
+  //   const year = event.target.value;
+  //   setAcademicYear(year);
+  //   setAcademicSessions(generateAcademicSessions(year));
+  //   setAcademicSession('');
+  // };
 
   const handleSearch = () => {
     onSearch({ academicYear, academicSession, mentorStatus });
@@ -162,36 +168,36 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     setMentorStatus('');
   };
 
-  const filterControlStyles = {
-    minWidth: 120,
-    '& .MuiOutlinedInput-root': {
-      color: 'white',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(10px)',
-      borderRadius: '12px',
-      '&:hover .MuiOutlinedInput-notchedOutline': {
-        borderColor: '#f97316',
-      },
-      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-        borderColor: '#f97316',
-      },
-    },
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-    },
-    '& .MuiInputLabel-root': {
-      color: 'rgba(255, 255, 255, 0.7)',
-      '&.Mui-focused': {
-        color: '#f97316',
-      },
-    },
-    '& .MuiSelect-icon': {
-      color: '#f97316',
-    },
-    '& .MuiMenuItem-root': {
-      color: 'white',
-    }
-  };
+  // const filterControlStyles = {
+  //   minWidth: 120,
+  //   '& .MuiOutlinedInput-root': {
+  //     color: 'white',
+  //     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  //     backdropFilter: 'blur(10px)',
+  //     borderRadius: '12px',
+  //     '&:hover .MuiOutlinedInput-notchedOutline': {
+  //       borderColor: '#f97316',
+  //     },
+  //     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+  //       borderColor: '#f97316',
+  //     },
+  //   },
+  //   '& .MuiOutlinedInput-notchedOutline': {
+  //     borderColor: 'rgba(255, 255, 255, 0.2)',
+  //   },
+  //   '& .MuiInputLabel-root': {
+  //     color: 'rgba(255, 255, 255, 0.7)',
+  //     '&.Mui-focused': {
+  //       color: '#f97316',
+  //     },
+  //   },
+  //   '& .MuiSelect-icon': {
+  //     color: '#f97316',
+  //   },
+  //   '& .MuiMenuItem-root': {
+  //     color: 'white',
+  //   }
+  // };
 
   const textFieldStyles = {
     '& .MuiOutlinedInput-root': {
@@ -348,14 +354,14 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     return endYear === startYear + 1;
   };
 
-  const validateAcademicSession = (value) => {
-    const regex = /^(JANUARY|JULY)-(JUNE|DECEMBER)\s(\d{4})$/;
-    if (!regex.test(value)) return false;
+  // const validateAcademicSession = (value) => {
+  //   const regex = /^(JANUARY|JULY)-(JUNE|DECEMBER)\s(\d{4})$/;
+  //   if (!regex.test(value)) return false;
 
-    const [, month, ] = value.match(regex);
-    const validMonths = ['JANUARY', 'JULY'];
-    return validMonths.includes(month);
-  };
+  //   const [, month, ] = value.match(regex);
+  //   const validMonths = ['JANUARY', 'JULY'];
+  //   return validMonths.includes(month);
+  // };
 
   const handleAcademicYearInput = (e) => {
     let value = e.target.value.toUpperCase();
@@ -402,69 +408,57 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     setAcademicSession(value);
   };
 
-  const showAlert = (message) => {
-    console.warn(message);
+  const showAlert = (message, type = 'info') => {
+    console.warn(`${type}: ${message}`);
+    // You can replace this with your preferred alert system
   };
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
-    if (!file) return;
-
-    const validTypes = [
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ];
-
-    if (!validTypes.includes(file.type)) {
-      showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
+    if (!file) {
+      showAlert("No file selected", "error");
       return;
     }
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "mentor");
-
+  
     try {
-      await onBulkUpload(formData, (progress) => {
-        setUploadProgress(progress);
-      });
-      setUploadDialog(false); // Close dialog on success
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "mentor");
+  
+      // Use the existing bulkUpload endpoint
+      if (typeof onBulkUpload === 'function') {
+        await onBulkUpload(formData, (progress) => {
+          setUploadProgress(Math.round(progress));
+        });
+      }
+      
+      showAlert("File uploaded successfully", "success");
+      setUploadDialog(false);
     } catch (error) {
-      showAlert("Error uploading file", "error");
+      console.error('Upload error:', error);
+      showAlert(error?.message || "Error uploading file", "error");
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
+  
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFileUpload,
     accept: {
-      "application/vnd.ms-excel": [".xls"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
     },
     multiple: false,
+    maxSize: 5242880, // 5MB
   });
-
-  const uploadButtonStyle = {
-    ...buttonStyles.standard('secondary'),
-    position: 'relative',
-    overflow: 'hidden',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 1,
-    background: isDragActive ? 'rgba(249, 115, 22, 0.15)' : 'rgba(255, 255, 255, 0.1)',
-    '&:hover': {
-      background: 'rgba(249, 115, 22, 0.1)',
-      transform: 'translateY(-2px)',
-      boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
-    },
-  };
 
   const handleBulkDelete = async () => {
     if (!mujidsToDelete.trim()) {
       showAlert('Please enter at least one MUJID', 'warning');
+      return;
       return;
     }
 
@@ -487,9 +481,9 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
     }
   };
 
-  useEffect(() => {
-    // Handle any document-dependent code here
-  }, []);
+  // useEffect(() => {
+  //   // Handle any document-dependent code here
+  // }, []);
 
   return (
     <Box sx={filterSectionStyles.wrapper}>
@@ -668,7 +662,11 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
         <DialogContent sx={{ padding: '24px' }}>
           <div {...getRootProps()}>
             <input {...getInputProps()} />
-            <Box sx={dialogStyles.dropZone}>
+            <Box sx={{
+              ...dialogStyles.dropZone,
+              borderColor: isDragActive ? '#f97316' : 'rgba(249, 115, 22, 0.3)',
+              backgroundColor: isDragActive ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.05)',
+            }}>
               <UploadFileIcon sx={{ fontSize: 48, color: '#f97316', mb: 2 }} />
               <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
                 Drag & Drop Excel File Here
@@ -772,6 +770,13 @@ const MentorFilterSection = ({ filters, onFilterChange, onSearch, onAddNew, onBu
 
     </Box>
   );
+};
+
+MentorFilterSection.propTypes = {
+  onSearch: PropTypes.func.isRequired,
+  onAddNew: PropTypes.func,
+  onBulkUpload: PropTypes.func,
+  onDelete: PropTypes.func
 };
 
 export default MentorFilterSection;

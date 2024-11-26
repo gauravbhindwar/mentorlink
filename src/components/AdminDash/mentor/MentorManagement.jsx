@@ -116,13 +116,12 @@ const MentorManagement = () => {
   const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
-  const [academicSessions, setAcademicSessions] = useState([]);
+  // const [academicSessions, setAcademicSessions] = useState([]);
   // const [bulkUploadDialog, setBulkUploadDialog] = useState(false); // Unused state
   const [previewData, setPreviewData] = useState({ data: [], errors: [] });
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
   const [existingMentorData, setExistingMentorData] = useState({});
-  const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
   // const [isUploading, setIsUploading] = useState(false); // Unused state
   // const [uploading, setUploading] = useState(false);
@@ -207,6 +206,12 @@ const MentorManagement = () => {
   //   }
   // };
 
+  useEffect(() => {
+    console.log("Preview Data:", previewData);
+  }, [previewData]);
+
+
+
   const handleConfirmUpload = async () => {
     setUploading(true);
     try {
@@ -281,51 +286,51 @@ const MentorManagement = () => {
   // const [duplicateEditMode, setDuplicateEditMode] = useState(false);
 
   // Add this new function to fetch mentor details
-  const fetchMentorDetails = async (MUJid) => {
-    if (!MUJid) {
-      // console.error("MUJid is undefined");
-      toast.error("Invalid MUJid", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
-      return;
-    }
+  // const fetchMentorDetails = async (MUJid) => {
+  //   if (!MUJid) {
+  //     // console.error("MUJid is undefined");
+  //     toast.error("Invalid MUJid", {
+  //       style: toastStyles.error.style,
+  //       iconTheme: toastStyles.error.iconTheme,
+  //     });
+  //     return;
+  //   }
 
-    setFetchingMentorDetails(true);
-    try {
-      const response = await axios.get(
-        `/api/admin/manageUsers/manageMentor/${MUJid}`
-      );
-      if (response.data && response.data.mentor) {
-        setExistingMentorData(response.data.mentor);
-        // Pre-fill the mentorDetails with existing data for editing
-        setMentorDetails({
-          ...response.data.mentor,
-          // Ensure all required fields are present
-          role: response.data.mentor.role || ["mentor"],
-          academicYear:
-            response.data.mentor.academicYear || getCurrentAcademicYear(),
-          academicSession:
-            response.data.mentor.academicSession ||
-            generateAcademicSessions(getCurrentAcademicYear())[0],
-        });
-      } else {
-        throw new Error("No mentor data received");
-      }
-    } catch (error) {
-      console.error("Error fetching mentor:", error);
-      toast.error(
-        error.response?.data?.error || "Error fetching mentor details",
-        {
-          style: toastStyles.error.style,
-          iconTheme: toastStyles.error.iconTheme,
-        }
-      );
-      setDuplicateMentorDialog(false); // Close dialog on error
-    } finally {
-      setFetchingMentorDetails(false);
-    }
-  };
+  //   setFetchingMentorDetails(true);
+  //   try {
+  //     const response = await axios.get(
+  //       `/api/admin/manageUsers/manageMentor/${MUJid}`
+  //     );
+  //     if (response.data && response.data.mentor) {
+  //       setExistingMentorData(response.data.mentor);
+  //       // Pre-fill the mentorDetails with existing data for editing
+  //       setMentorDetails({
+  //         ...response.data.mentor,
+  //         // Ensure all required fields are present
+  //         role: response.data.mentor.role || ["mentor"],
+  //         academicYear:
+  //           response.data.mentor.academicYear || getCurrentAcademicYear(),
+  //         academicSession:
+  //           response.data.mentor.academicSession ||
+  //           generateAcademicSessions(getCurrentAcademicYear())[0],
+  //       });
+  //     } else {
+  //       throw new Error("No mentor data received");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching mentor:", error);
+  //     toast.error(
+  //       error.response?.data?.error || "Error fetching mentor details",
+  //       {
+  //         style: toastStyles.error.style,
+  //         iconTheme: toastStyles.error.iconTheme,
+  //       }
+  //     );
+  //     setDuplicateMentorDialog(false); // Close dialog on error
+  //   } finally {
+  //     setFetchingMentorDetails(false);
+  //   }
+  // };
 
   // Replace the handleAddMentor function
   const handleAddMentor = async () => {
@@ -397,23 +402,23 @@ const MentorManagement = () => {
   };
 
   // Add this new function to handle using existing data
-  const handleUseExistingData = () => {
-    if (existingMentorData && Object.keys(existingMentorData).length > 0) {
-      setSelectedMentor(existingMentorData);
-      setEditDialog(true);
-      setDuplicateMentorDialog(false);
-    } else {
-      toast.error("No existing mentor data available", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
-    }
-  };
+  // const handleUseExistingData = () => {
+  //   if (existingMentorData && Object.keys(existingMentorData).length > 0) {
+  //     setSelectedMentor(existingMentorData);
+  //     setEditDialog(true);
+  //     setDuplicateMentorDialog(false);
+  //   } else {
+  //     toast.error("No existing mentor data available", {
+  //       style: toastStyles.error.style,
+  //       iconTheme: toastStyles.error.iconTheme,
+  //     });
+  //   }
+  // };
 
   const handleEditMentor = async () => {
     try {
       // Remove _id and id from the request payload
-      const { _id, id, ...updateData } = selectedMentor;
+      const {...updateData } = selectedMentor;
 
       // Use PATCH instead of PUT and send only the changed data
       const response = await axios.patch(
@@ -470,7 +475,7 @@ const MentorManagement = () => {
   useEffect(() => {
     const currentAcadYear = getCurrentAcademicYear();
     const sessions = generateAcademicSessions(currentAcadYear);
-    setAcademicSessions(sessions);
+    // setAcademicSessions(sessions);
     setMentorDetails((prev) => ({
       ...prev,
       academicYear: currentAcadYear,
@@ -489,7 +494,7 @@ const MentorManagement = () => {
       }));
     } else if (name === "academicYear") {
       const sessions = generateAcademicSessions(value);
-      setAcademicSessions(sessions);
+      // setAcademicSessions(sessions);
       setMentorDetails((prev) => ({
         ...prev,
         [name]: value,
@@ -604,7 +609,7 @@ const MentorManagement = () => {
 
     if (validateAcademicYear(value)) {
       const sessions = generateAcademicSessions(value);
-      setAcademicSessions(sessions);
+      // setAcademicSessions(sessions);
       setMentorDetails((prev) => ({
         ...prev,
         academicSession: sessions[0],
@@ -697,7 +702,7 @@ const MentorManagement = () => {
 
   const handleEditClick = (mentor) => {
     // Remove id and _id before setting selected mentor
-    const { id, _id, ...mentorData } = mentor;
+    const {...mentorData } = mentor;
     setSelectedMentor({
       ...mentorData,
       role: Array.isArray(mentorData.role) ? mentorData.role : [mentorData.role],
@@ -705,6 +710,39 @@ const MentorManagement = () => {
       academicSession: mentorData.academicSession || generateAcademicSessions(getCurrentAcademicYear())[0],
     });
     setEditDialog(true);
+  };
+
+  const handleBulkUpload = async (formData, onProgress) => {
+    try {
+      const previewResponse = await axios.post(
+        "/api/admin/manageUsers/previewUpload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            if (onProgress) onProgress(percentCompleted);
+          },
+        }
+      );
+
+      setPreviewData(previewResponse.data);
+      setShowPreview(true);
+      return previewResponse;
+    } catch (error) {
+      toast.error(
+        error.response?.data?.error || "Error processing file",
+        {
+          style: toastStyles.error.style,
+          iconTheme: toastStyles.error.iconTheme,
+        }
+      );
+      throw error;
+    }
   };
 
   return (
@@ -773,6 +811,7 @@ const MentorManagement = () => {
                   onAddNew={() => setOpenDialog(true)}
                   onDelete={handleDeleteMentor}
                   mentors={mentors}
+                  onBulkUpload={handleBulkUpload}
                 />
               </div>
             </motion.div>
@@ -1185,11 +1224,7 @@ const MentorManagement = () => {
               my: 2,
             }}
           >
-            {fetchingMentorDetails ? (
-              <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
-                <CircularProgress sx={{ color: "#f97316" }} />
-              </Box>
-            ) : duplicateEditMode ? (
+            {duplicateEditMode ? (
               // Edit form for duplicate mentor
               <Box sx={{ color: "white" }}>
                 <Grid container spacing={2}>
