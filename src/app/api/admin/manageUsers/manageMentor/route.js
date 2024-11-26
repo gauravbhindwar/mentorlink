@@ -109,39 +109,43 @@ export async function GET(req) {
     await connect();
     const { searchParams } = new URL(req.url);
     
-    // Build query object
+    // Build query object with pagination
     const query = {};
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = parseInt(searchParams.get('limit')) || 10;
+    const skip = (page - 1) * limit;
+
+    // Add academic filters
+    const academicYear = searchParams.get('academicYear');
+    const academicSession = searchParams.get('academicSession');
+
+    if (academicYear) query.academicYear = academicYear;
+    if (academicSession) query.academicSession = academicSession;
     
-    // Add filters
-    ['academicYear', 'academicSession', 'role'].forEach(param => {
-      const value = searchParams.get(param);
-      if (value) {
-        if (param === 'role') {
-          query[param] = { $in: [value] };
-        } else {
-          query[param] = value;
-        }
+    // Get total count for pagination
+    const total = await Mentor.countDocuments(query);
+    
+    // Execute query with pagination
+    const mentors = await Mentor.find(query)
+      .select('MUJid name email phone_number academicYear academicSession role gender')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return NextResponse.json({
+      mentors,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit)
       }
     });
 
-    // Handle MUJid search
-    const MUJid = searchParams.get('MUJid');
-    if (MUJid) {
-      query.MUJid = new RegExp(MUJid, 'i');
-    }
-
-    const mentors = await Mentor.find(query)
-      .select('-password -__v')
-      .sort({ createdAt: -1 });
-
-    return NextResponse.json({ 
-      mentors,
-      total: mentors.length,
-      filters: query
-    }, { status: 200 });
-
   } catch (error) {
-    return createErrorResponse(error.message || "Failed to fetch mentors", 500);
+    console.error('GET Mentors Error:', error);
+    return NextResponse.json({
+      error: error.message || "Failed to fetch mentors"
+    }, { status: 500 });
   }
 }
 
@@ -253,22 +257,42 @@ export async function PATCH(request) {
     const data = await request.json();
     const mujid = request.url.split('/').pop(); // Get MUJid from URL
 
-    // Remove any MongoDB specific fields if they exist
-    const { ...updateData } = data;
+    // First find current mentor to check role changes
+    const currentMentor = await Mentor.findOne({ MUJid: mujid });
+    if (!currentMentor) {
+      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+    }
 
+    // Check role changes
+    const currentIsAdmin = currentMentor.role.some(r => ['admin', 'superadmin'].includes(r));
+    const newIsAdmin = data.role?.some(r => ['admin', 'superadmin'].includes(r));
+
+    // Update mentor
     const updatedMentor = await Mentor.findOneAndUpdate(
       { MUJid: mujid },
-      { $set: updateData },
+      { $set: data },
       { 
         new: true, // Return updated document
         runValidators: true // Run schema validators
       }
     );
 
-    if (!updatedMentor) {
-      return NextResponse.json(
-        { error: "Mentor not found" },
-        { status: 404 }
+    // Handle admin collection updates
+    if (!currentIsAdmin && newIsAdmin) {
+      // Add to Admin collection
+      await Admin.create({
+        ...data,
+        MUJid: mujid
+      });
+    } else if (currentIsAdmin && !newIsAdmin) {
+      // Remove from Admin collection
+      await Admin.deleteOne({ MUJid: mujid });
+    } else if (currentIsAdmin && newIsAdmin) {
+      // Update Admin collection
+      await Admin.findOneAndUpdate(
+        { MUJid: mujid },
+        { $set: data },
+        { upsert: true }
       );
     }
 

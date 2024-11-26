@@ -1,10 +1,11 @@
-import { connect } from "@/lib/dbConfig";
-import { Mentor } from "@/lib/db/mentorSchema";
+import { connect } from "../../../../../../lib/dbConfig";
+import { Mentor, Admin } from "../../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 
 // Add PATCH method
-export async function PATCH(req, { params }) {
+export async function PATCH(req, context) {
   try {
+    const params = await context.params;
     if (!params?.MUJid) {
       return NextResponse.json({
         error: "MUJid parameter is required"
@@ -22,36 +23,65 @@ export async function PATCH(req, { params }) {
 
     // Clean the update data
     const cleanedData = Object.fromEntries(
-      Object.entries(updateData).filter(([v]) => v != null && v !== '')
+      Object.entries(updateData).filter(([_, v]) => v != null && v !== '')
     );
 
-    const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid: params.MUJid },
-      { $set: cleanedData },
-      { new: true }
-    );
+    const existingMentor = await Mentor.findOne({ MUJid: params.MUJid });
+    const existingAdmin = await Admin.findOne({ MUJid: params.MUJid });
 
-    if (!updatedMentor) {
+    let updatedUser;
+    const isAdminRole = cleanedData.role?.includes('admin') || cleanedData.role?.includes('superadmin');
+    const isMentorRole = cleanedData.role?.includes('mentor');
+
+    // Handle role transition
+    if (isAdminRole) {
+      // Update or create in Admin collection
+      updatedUser = await Admin.findOneAndUpdate(
+        { MUJid: params.MUJid },
+        { $set: cleanedData },
+        { new: true, upsert: true }
+      );
+    }
+
+    if (isMentorRole) {
+      // Update or create in Mentor collection
+      updatedUser = await Mentor.findOneAndUpdate(
+        { MUJid: params.MUJid },
+        { $set: cleanedData },
+        { new: true, upsert: true }
+      );
+    }
+
+    // Remove from collections if roles are not present
+    if (!isMentorRole && existingMentor) {
+      await Mentor.deleteOne({ MUJid: params.MUJid });
+    }
+    if (!isAdminRole && existingAdmin) {
+      await Admin.deleteOne({ MUJid: params.MUJid });
+    }
+
+    if (!updatedUser) {
       return NextResponse.json({
-        error: "Mentor not found"
+        error: "User not found and no role specified for creation"
       }, { status: 404 });
     }
 
     return NextResponse.json({
-      message: "Mentor updated successfully",
-      mentor: updatedMentor
+      message: "User updated successfully",
+      user: updatedUser
     }, { status: 200 });
 
   } catch (error) {
-    console.error("Error updating mentor:", error);
+    console.error("Error updating user:", error);
     return NextResponse.json({
-      error: "Error updating mentor: " + (error.message || "Unknown error")
+      error: "Error updating user: " + (error.message || "Unknown error")
     }, { status: 500 });
   }
 }
 
-export async function GET(req, { params }) {
+export async function GET(req, context) {
   try {
+    const params = await context.params;
     if (!params || !params.MUJid) {
       return NextResponse.json(
         { error: "MUJid parameter is required" },

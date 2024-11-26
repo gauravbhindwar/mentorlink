@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
+import FilterListIcon from '@mui/icons-material/FilterList';
 // import UploadFileIcon from "@mui/icons-material/UploadFile";
 // import { useDropzone } from "react-dropzone";
 import MentorTable from "./MentorTable";
@@ -123,6 +124,7 @@ const MentorManagement = () => {
   const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
   const [existingMentorData, setExistingMentorData] = useState({});
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   // const [isUploading, setIsUploading] = useState(false); // Unused state
   // const [uploading, setUploading] = useState(false);
   
@@ -417,28 +419,24 @@ const MentorManagement = () => {
 
   const handleEditMentor = async () => {
     try {
-      // Remove _id and id from the request payload
-      const {...updateData } = selectedMentor;
-
-      // Use PATCH instead of PUT and send only the changed data
+      const { ...updateData } = selectedMentor;
+      
       const response = await axios.patch(
         `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
         updateData
       );
 
       if (response.data) {
-        toast.success("Mentor updated successfully", {
-          style: toastStyles.success.style,
-          iconTheme: toastStyles.success.iconTheme,
-        });
+        toast.success("Mentor updated successfully");
         setEditDialog(false);
-        await fetchMentors(); // Refresh the table data
+        // Refresh data based on current filters
+        await fetchMentors({
+          academicYear,
+          academicSession
+        });
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Error updating mentor", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
+      toast.error(error.response?.data?.error || "Error updating mentor");
     }
   };
 
@@ -650,21 +648,53 @@ const MentorManagement = () => {
     return endYear === startYear + 1;
   };
 
-  const fetchMentors = async () => {
+  const fetchMentors = async (filters = {}, page = 1, limit = 10) => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/admin/manageUsers/manageMentor");
-      if (response.data && response.data.mentors) {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(filters.academicYear && { academicYear: filters.academicYear }),
+        ...(filters.academicSession && { academicSession: filters.academicSession })
+      });
+      
+      const url = `/api/admin/manageUsers/manageMentor?${queryParams}`;
+      const response = await axios.get(url);
+      
+      if (response.data) {
         setMentors(response.data.mentors);
         setTableVisible(true);
       }
-    } catch {
+    } catch  {
       showAlert("Error fetching mentors", "error");
       setMentors([]);
       setTableVisible(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add handler for filter changes
+  const handleFilterChange = (name, value) => {
+    switch (name) {
+      case "academicYear":
+        setAcademicYear(value);
+        break;
+      case "academicSession":
+        setAcademicSession(value);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Update the search handler
+  const handleSearch = () => {
+    const filters = {
+      academicYear,
+      academicSession
+    };
+    fetchMentors(filters);
   };
 
   // Add this new function to handle patch update
@@ -683,22 +713,26 @@ const MentorManagement = () => {
         mentorDetails
       );
 
-      if (response.data) {
-        toast.success("Mentor updated successfully", {
-          style: toastStyles.success.style,
-          iconTheme: toastStyles.success.iconTheme,
-        });
-        setDuplicateMentorDialog(false);
-        setDuplicateEditMode(false);
-        await fetchMentors();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || "Error updating mentor", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
+    if (response.data) {
+      toast.success("Mentor updated successfully", {
+        style: toastStyles.success.style,
+        iconTheme: toastStyles.success.iconTheme,
+      });
+      setDuplicateMentorDialog(false);
+      setDuplicateEditMode(false);
+      // Refresh data based on current filters
+      await fetchMentors({
+        academicYear,
+        academicSession
       });
     }
-  };
+  } catch (error) {
+    toast.error(error.response?.data?.error || "Error updating mentor", {
+      style: toastStyles.error.style,
+      iconTheme: toastStyles.error.iconTheme,
+    });
+  }
+};
 
   const handleEditClick = (mentor) => {
     // Remove id and _id before setting selected mentor
@@ -747,11 +781,12 @@ const MentorManagement = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="fixed inset-0 bg-gray-900 text-white">
+      {/* Update the main container to account for navbar height */}
+      <div className="fixed inset-0 pt-16 bg-gray-900 text-white overflow-hidden"> {/* Added pt-16 for navbar */}
         <Toaster 
           position="top-center" 
           containerStyle={{
-            top: 100 // This will push the toast below the navbar
+            top: 80 // Reduced from 100
           }}
           toastOptions={{
             style: {
@@ -770,45 +805,75 @@ const MentorManagement = () => {
           <div className="absolute inset-0 backdrop-blur-3xl" />
         </div>
 
-        {/* Main Content Container */}
-        <div className="relative z-10 h-screen flex flex-col pt-[80px]">
-          {/* Header */}
-          <motion.h1 
-            className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Mentor Management
-          </motion.h1>
+        {/* Update main content container height calculation */}
+        <div className="relative z-10 h-[calc(100vh-64px)] overflow-hidden"> {/* Reduced from h-screen */}
+          {/* Center header text */}
+          <div className="flex items-center justify-center px-4 py-2 lg:px-6">
+            <motion.h1 
+              className="text-2xl md:text-3xl lg:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              Mentor Management
+            </motion.h1>
+            
+            <motion.button
+              className="lg:hidden absolute right-4 p-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20"
+              onClick={() => setShowFilters(!showFilters)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <FilterListIcon sx={{ color: '#f97316' }} />
+            </motion.button>
+          </div>
 
-          {/* Grid Layout - Adjusted for single page view */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-4 p-4 h-[calc(100vh-130px)]"> {/* Adjusted height */}
-            {/* Left Column - Filter Panel */}
+          {/* Update grid layout container height */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-6 p-4 h-full">
+            {/* Filter Panel - Updated height and overflow */}
             <motion.div 
-              className="h-full"
+              className={`
+                lg:relative fixed top-[84px] left-0 z-[100] lg:z-auto
+                ${showFilters ? 'flex' : 'lg:flex hidden'}
+                transition-all duration-300 ease-in-out
+                h-[calc(100vh-100px)] lg:h-[calc(100vh-140px)]
+              `}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4 h-full">
+              {/* Overlay for small screens */}
+              {showFilters && (
+                <motion.div
+                  className="lg:hidden fixed inset-0 top-[80px] bg-black/50 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowFilters(false)}
+                />
+              )}
+              
+              {/* Filter Content - Updated height and overflow */}
+              <div className={`
+                relative lg:w-full w-[280px]
+                h-full
+                ${showFilters ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                transition-transform duration-300 ease-in-out
+                overflow-hidden
+              `}>
                 <FilterSection 
                   filters={{
                     academicYear,
                     academicSession,
                   }}
-                  onFilterChange={(name, value) => {
-                    switch (name) {
-                      case "academicYear":
-                        setAcademicYear(value);
-                        break;
-                      case "academicSession":
-                        setAcademicSession(value);
-                        break;
-                    }
+                  onFilterChange={handleFilterChange}
+                  onSearch={handleSearch}
+                  onAddNew={() => {
+                    setOpenDialog(true);
+                    if (isSmallScreen) setShowFilters(false);
                   }}
-                  onSearch={fetchMentors}
-                  onAddNew={() => setOpenDialog(true)}
                   onDelete={handleDeleteMentor}
                   mentors={mentors}
                   onBulkUpload={handleBulkUpload}
@@ -816,15 +881,15 @@ const MentorManagement = () => {
               </div>
             </motion.div>
 
-            {/* Right Column - Table */}
+            {/* Right Column - Table - Updated height */}
             <motion.div
-              className="h-full"
+              className="h-[calc(100vh-140px)] overflow-hidden"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6 }}
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
-                <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}
+                <div className="h-full flex flex-col p-2 pb-1"> {/* Reduced padding */}
                   {loading ? (
                     <div className="flex-1 flex items-center justify-center">
                       <CircularProgress sx={{ color: "#f97316" }} />

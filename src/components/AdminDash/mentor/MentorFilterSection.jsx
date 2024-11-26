@@ -12,44 +12,68 @@ const filterSectionStyles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
-    color: '#FFFFFF',
+    gap: '8px',
+    // height: '100%',
+    backgroundColor: 'rgba(17, 24, 39, 0.4)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '24px',
+    border: '1px solid rgba(249, 115, 22, 0.2)',
+    padding: '7px',
+    overflow: 'hidden',
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 3,
-    padding: '20px',
-    backgroundColor: 'rgba(31, 41, 55, 0.7)',
+    gap: '12px',
+    padding: {
+      xs: '8px',
+      sm: '12px',
+    },
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.1)',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-  },
-  field: {
-    '& .MuiOutlinedInput-root': {
-      backgroundColor: 'rgba(17, 24, 39, 0.8)',
-      backdropFilter: 'blur(12px)',
-      borderRadius: '12px',
-      transition: 'all 0.3s ease',
-      '&:hover': {
-        transform: 'translateY(-2px)',
-        boxShadow: '0 4px 20px rgba(249, 115, 22, 0.2)',
-      },
-    },
+    minHeight: 'fit-content',
   },
   buttonGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2.5,
-    marginTop: 4,
+    gap: '8x',
+    // marginTop: 'auto',
+    padding: {
+      xs: '8px',
+      sm: '12px',
+    },
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
   },
 };
 
 const buttonStyles = {
   standard: (color) => ({
     borderRadius: '50px',
-    px: { xs: 2, sm: 3 },
-    py: { xs: 0.5, sm: 1 },
+    px: { 
+      xs: 1,
+      sm: 1.5,
+      md: 2 
+    },
+    py: { 
+      xs: 0.25,
+      sm: 0.5 
+    },
+    minHeight: {
+      xs: '28px',
+      sm: '32px',
+    },
+    fontSize: {
+      xs: '0.65rem',
+      sm: '0.7rem',
+      md: '0.75rem',
+    },
+    width: '100%',
+    '@media (max-width: 640px)': {
+      padding: '6px 12px',
+    },
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
     background: color === 'primary' ? '#f97316' : 
                color === 'secondary' ? '#ea580c' : 
@@ -57,6 +81,10 @@ const buttonStyles = {
     backdropFilter: 'blur(10px)',
     border: '1px solid rgba(255, 255, 255, 0.1)',
     color: 'white',
+    marginBottom: 1, // Add spacing between buttons
+    '&:last-child': {
+      marginBottom: 0,
+    },
     '&:hover': {
       transform: 'scale(1.05)',
       transition: 'transform 0.2s',
@@ -80,15 +108,14 @@ const buttonStyles = {
 };
 
 const MentorFilterSection = ({ 
+  filters,
+  onFilterChange,
   onSearch, 
   onAddNew = () => {}, 
   onBulkUpload = null, 
   onDelete = () => {} 
 }) => {
-  const [academicYear, setAcademicYear] = useState('');
-  const [academicSession, setAcademicSession] = useState('');
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [mentorStatus, setMentorStatus] = useState('');
   const dropdownRoot = document.getElementById('dropdown-root');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
@@ -134,8 +161,8 @@ const MentorFilterSection = ({
   };
 
   const generateSessionSuggestions = (input) => {
-    if (!academicYear || !input) return [];
-    const [startYear, endYear] = academicYear.split('-');
+    if (!filters.academicYear || !input) return [];
+    const [startYear, endYear] = filters.academicYear.split('-');
     const possibleSessions = [
       `JULY-DECEMBER ${startYear}`,
       `JANUARY-JUNE ${endYear}`
@@ -147,64 +174,26 @@ const MentorFilterSection = ({
   };
   useEffect(() => {
     const currentYear = getCurrentAcademicYear();
-    setAcademicYear(currentYear);
+    onFilterChange('academicYear', currentYear);
     setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
 
-  // const handleAcademicYearChange = (event) => {
-  //   const year = event.target.value;
-  //   setAcademicYear(year);
-  //   setAcademicSessions(generateAcademicSessions(year));
-  //   setAcademicSession('');
-  // };
-
   const handleSearch = () => {
-    onSearch({ academicYear, academicSession, mentorStatus });
+    onSearch({ academicYear: filters.academicYear, academicSession: filters.academicSession, mentorStatus: filters.mentorStatus });
   };
 
   const handleReset = () => {
-    setAcademicYear('');
-    setAcademicSession('');
-    setMentorStatus('');
+    onFilterChange('academicYear', '');
+    onFilterChange('academicSession', '');
+    onFilterChange('mentorStatus', '');
   };
-
-  // const filterControlStyles = {
-  //   minWidth: 120,
-  //   '& .MuiOutlinedInput-root': {
-  //     color: 'white',
-  //     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  //     backdropFilter: 'blur(10px)',
-  //     borderRadius: '12px',
-  //     '&:hover .MuiOutlinedInput-notchedOutline': {
-  //       borderColor: '#f97316',
-  //     },
-  //     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-  //       borderColor: '#f97316',
-  //     },
-  //   },
-  //   '& .MuiOutlinedInput-notchedOutline': {
-  //     borderColor: 'rgba(255, 255, 255, 0.2)',
-  //   },
-  //   '& .MuiInputLabel-root': {
-  //     color: 'rgba(255, 255, 255, 0.7)',
-  //     '&.Mui-focused': {
-  //       color: '#f97316',
-  //     },
-  //   },
-  //   '& .MuiSelect-icon': {
-  //     color: '#f97316',
-  //   },
-  //   '& .MuiMenuItem-root': {
-  //     color: 'white',
-  //   }
-  // };
 
   const textFieldStyles = {
     '& .MuiOutlinedInput-root': {
       color: '#FFFFFF',
       backgroundColor: 'rgba(17, 24, 39, 0.8)',
       backdropFilter: 'blur(12px)',
-      borderRadius: '12px',
+      borderRadius: '8px', // Reduced from 12px
       '&:hover .MuiOutlinedInput-notchedOutline': {
         borderColor: '#fb923c',
       },
@@ -232,7 +221,7 @@ const MentorFilterSection = ({
 
   const comboBoxStyles = {
     position: 'relative',
-    minWidth: 200,
+    minWidth: 180, // Reduced from 200
     '& .MuiTextField-root': {
       width: '100%',
       '& .MuiOutlinedInput-root': {
@@ -354,15 +343,6 @@ const MentorFilterSection = ({
     return endYear === startYear + 1;
   };
 
-  // const validateAcademicSession = (value) => {
-  //   const regex = /^(JANUARY|JULY)-(JUNE|DECEMBER)\s(\d{4})$/;
-  //   if (!regex.test(value)) return false;
-
-  //   const [, month, ] = value.match(regex);
-  //   const validMonths = ['JANUARY', 'JULY'];
-  //   return validMonths.includes(month);
-  // };
-
   const handleAcademicYearInput = (e) => {
     let value = e.target.value.toUpperCase();
     
@@ -380,9 +360,13 @@ const MentorFilterSection = ({
       setShowYearOptions(false);
     }
 
-    setAcademicYear(value);
+    onFilterChange('academicYear', value);
     if (validateAcademicYear(value)) {
-      setAcademicSessions(generateAcademicSessions(value));
+      const sessions = generateAcademicSessions(value);
+      setAcademicSessions(sessions);
+      if (sessions.length > 0) {
+        onFilterChange('academicSession', sessions[0]);
+      }
     }
   };
 
@@ -391,9 +375,9 @@ const MentorFilterSection = ({
     
     // Auto-format while typing
     if (value.startsWith('JUL')) {
-      value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
+      value = `JULY-DECEMBER ${filters.academicYear?.split('-')[0]}`;
     } else if (value.startsWith('JAN')) {
-      value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
+      value = `JANUARY-JUNE ${filters.academicYear?.split('-')[1]}`;
     }
     
     // Update suggestions
@@ -405,7 +389,7 @@ const MentorFilterSection = ({
       setShowSessionOptions(false);
     }
     
-    setAcademicSession(value);
+    onFilterChange('academicSession', value);
   };
 
   const showAlert = (message, type = 'info') => {
@@ -455,22 +439,22 @@ const MentorFilterSection = ({
     maxSize: 5242880, // 5MB
   });
 
+  // Fix the parameter naming conflict
   const handleBulkDelete = async () => {
     if (!mujidsToDelete.trim()) {
       showAlert('Please enter at least one MUJID', 'warning');
       return;
-      return;
     }
 
-    const mujids = mujidsToDelete.split(',').map(id => id.trim()).filter(Boolean);
-    if (mujids.length === 0) {
+    const mujidList = mujidsToDelete.split(',').map(id => id.trim()).filter(Boolean);
+    if (mujidList.length === 0) {
       showAlert('Please enter valid MUJIDs', 'warning');
       return;
     }
 
     setDeleteLoading(true);
     try {
-      await onDelete(mujids);
+      await onDelete(mujidList);
       setDeleteDialog(false);
       setMujidsToDelete('');
       showAlert('Mentors deleted successfully', 'success');
@@ -481,10 +465,6 @@ const MentorFilterSection = ({
     }
   };
 
-  // useEffect(() => {
-  //   // Handle any document-dependent code here
-  // }, []);
-
   return (
     <Box sx={filterSectionStyles.wrapper}>
       <Box sx={filterSectionStyles.section}>
@@ -493,8 +473,13 @@ const MentorFilterSection = ({
           sx={{ 
             color: 'rgba(255, 255, 255, 0.9)',
             fontWeight: 600,
-            mb: 1,
-            letterSpacing: '0.5px'
+            mb: 0.5, // Reduced from 1
+            letterSpacing: '0.5px',
+            fontSize: {
+              xs: '0.75rem',
+              sm: '0.8rem',
+              md: '0.875rem',
+            },
           }}
         >
           Academic Year
@@ -503,7 +488,7 @@ const MentorFilterSection = ({
         <Box ref={yearRef} sx={comboBoxStyles}>
           <TextField
             label="Academic Year"
-            value={academicYear}
+            value={filters.academicYear}
             onChange={handleAcademicYearInput}
             onClick={() => setShowYearOptions(true)}
             size="small"
@@ -538,13 +523,13 @@ const MentorFilterSection = ({
                   key={year}
                   className="option-item"
                   onClick={() => {
-                    setAcademicYear(year);
+                    onFilterChange('academicYear', year);
                     setShowYearOptions(false);
                     setAcademicSessions(generateAcademicSessions(year));
                     // Auto-select first session when year changes
                     const sessions = generateAcademicSessions(year);
                     if (sessions.length > 0) {
-                      setAcademicSession(sessions[0]);
+                      onFilterChange('academicSession', sessions[0]);
                     }
                   }}
                 >
@@ -563,7 +548,7 @@ const MentorFilterSection = ({
         <Box ref={sessionRef} sx={comboBoxStyles}>
           <TextField
             label="Academic Session"
-            value={academicSession}
+            value={filters.academicSession}
             onChange={handleAcademicSessionInput}
             onClick={() => setShowSessionOptions(true)}
             size="small"
@@ -573,7 +558,7 @@ const MentorFilterSection = ({
               Type &apos;jul&apos; or &apos;jan&apos; for quick selection
               </Box>
             }
-            disabled={!academicYear}
+            disabled={!filters.academicYear}
           />
           {showSessionOptions && dropdownRoot && createPortal(
             <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
@@ -582,7 +567,7 @@ const MentorFilterSection = ({
                   key={session}
                   className="option-item"
                   onClick={() => {
-                    setAcademicSession(session);
+                    onFilterChange('academicSession', session);
                     setShowSessionOptions(false);
                   }}
                 >
@@ -600,29 +585,41 @@ const MentorFilterSection = ({
           variant="contained"
           onClick={handleSearch}
           startIcon={<SearchIcon />}
-          sx={buttonStyles.standard('primary')}
+          sx={{
+            ...buttonStyles.standard('primary'),
+            mb: 1
+          }}
         >
           Search
         </Button>
         <Button
           variant="contained"
           onClick={onAddNew}
-          sx={buttonStyles.standard('secondary')}
+          sx={{
+            ...buttonStyles.standard('secondary'),
+            mb: 1
+          }}
         >
           Add New Mentor
         </Button>
         <Button
           variant="contained"
           onClick={() => setUploadDialog(true)}
-          sx={buttonStyles.standard('secondary')}
+          sx={{
+            ...buttonStyles.standard('secondary'),
+            mb: 1
+          }}
         >
-          <UploadFileIcon sx={{ fontSize: 20, mr: 1 }} />
+          <UploadFileIcon sx={{ fontSize: 18, mr: 1 }} />
           Upload Mentors File
         </Button>
         <Button
           variant="contained"
           onClick={handleReset}
-          sx={buttonStyles.standard('default')}
+          sx={{
+            ...buttonStyles.standard('default'),
+            mb: 1
+          }}
         >
           Reset
         </Button>
@@ -632,6 +629,7 @@ const MentorFilterSection = ({
           sx={{
             ...buttonStyles.standard('default'),
             color: '#ef4444',
+            mb: 0, // Last button doesn't need margin
             '&:hover': {
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
             }
@@ -773,6 +771,11 @@ const MentorFilterSection = ({
 };
 
 MentorFilterSection.propTypes = {
+  filters: PropTypes.shape({
+    academicYear: PropTypes.string,
+    academicSession: PropTypes.string,
+  }).isRequired,
+  onFilterChange: PropTypes.func.isRequired,
   onSearch: PropTypes.func.isRequired,
   onAddNew: PropTypes.func,
   onBulkUpload: PropTypes.func,

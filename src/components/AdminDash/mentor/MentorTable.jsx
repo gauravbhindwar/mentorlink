@@ -52,23 +52,23 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
-      width: 60,
+      width: 45, // Reduced from 50
       renderCell: (params) => {
         const index = processedMentors.findIndex(mentor => mentor.id === params.row.id);
         return index + 1;
       },
       sortable: false,
     },
-    { field: 'MUJid', headerName: 'MUJid', width: 130 },
-    { field: 'name', headerName: 'Name', width: 180 },
-    { field: 'email', headerName: 'Email', width: 235 },
-    { field: 'phone_number', headerName: 'Phone', width: 150 },
-    { field: 'academicSession', headerName: 'Session', width: 200 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
+    { field: 'MUJid', headerName: 'MUJid', width: 100 }, // Reduced from 110
+    { field: 'name', headerName: 'Name', width: 140 }, // Reduced from 160
+    { field: 'email', headerName: 'Email', width: 180 }, // Reduced from 200
+    { field: 'phone_number', headerName: 'Phone', width: 120 }, // Reduced from 130
+    { field: 'academicSession', headerName: 'Session', width: 160 }, // Reduced from 180
+    { field: 'academicYear', headerName: 'Academic Year', width: 120 }, // Reduced from 130
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 120, // Reduced width since we're using icons
+      width: 90, // Reduced from 100
       headerAlign: 'center',
       align: 'center',
       renderCell: (params) => (
@@ -110,18 +110,21 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
         </Box>
       ),
     },
-    { field: 'role', headerName: 'Role', width: 150 }
+    { field: 'role', headerName: 'Role', width: 120 } // Reduced from 130
   ].map(col => ({
     ...col,
     headerAlign: 'center',
     align: 'center',
     flex: 1,
-    minWidth: col.width || 150,
+    minWidth: col.width || 120, // Reduced from 130
+    // Add responsive width
+    hide: col.field === 'role' ? 'smDown' : 
+          col.field === 'academicSession' ? 'mdDown' : false,
   }));
 
   const CustomHeader = () => (
     <Box sx={{
-      p: 2,
+      p: 1.5, // Reduced from 2
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -146,7 +149,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
 
   const CustomFooter = () => (
     <Box sx={{
-      p: 1.5,
+      p: 1, // Reduced from 1.5
       display: 'flex',
       justifyContent: 'flex-end',
       alignItems: 'center',
@@ -164,7 +167,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
 
   return (
     <Box sx={{ 
-      height: 'calc(100% - 16px)', // Adjust height to leave space for pagination
+      height: '100%',
       width: '100%',
       position: 'relative',
       overflow: 'hidden',
@@ -200,8 +203,16 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
           width: '100%',
           '& .MuiDataGrid-main': {
             overflow: 'auto',
-            minHeight: '300px', // Increased from 200px
-            maxHeight: 'calc(100vh - 280px)', // Adjusted to accommodate pagination
+            minHeight: {
+              xs: '150px',
+              sm: '200px',
+              md: '250px',
+            },
+            maxHeight: {
+              xs: 'calc(100vh-320px)',
+              sm: 'calc(100vh-280px)',
+              md: 'calc(100vh-240px)',
+            },
             height: '100%', // Ensure full height
             flex: 1,
           },
@@ -236,7 +247,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
           },
           width: '100%',
           height: '100%',
-          minHeight: '500px', // Increased from 400px
+          minHeight: '400px', // Reduced from 500px
           border: 'none',
           backgroundColor: 'rgba(0, 0, 0, 0.2)',
           backdropFilter: 'blur(10px)',
@@ -244,14 +255,22 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
           '& .MuiDataGrid-cell': {
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            padding: '16px',
-            fontSize: '0.95rem',
+            padding: {
+              xs: '2px',
+              sm: '4px',
+              md: '6px',
+            },
+            fontSize: {
+              xs: '0.7rem',
+              sm: '0.75rem',
+              md: '0.8rem',
+            },
             color: 'rgba(255, 255, 255, 0.9)',
             textAlign: 'center',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '60px !important',
+            minHeight: '40px !important', // Reduced from 45px
             maxHeight: 'unset !important',
             whiteSpace: 'normal',
             lineHeight: '1.5',
@@ -260,7 +279,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: 'rgba(249, 115, 22, 0.15)',
             color: '#f97316',
-            fontSize: '1rem',
+            fontSize: {
+              xs: '0.75rem',
+              sm: '0.8rem',
+              md: '0.85rem',
+            },
             fontWeight: 600,
             borderBottom: '2px solid #f97316',
           },
@@ -310,11 +333,25 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
           ),
           Header: CustomHeader,
           Footer: CustomFooter,
+          NoRowsOverlay: () => (
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              p: 2,
+              textAlign: 'center',
+            }}>
+              <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                No mentors found
+              </Typography>
+            </Box>
+          ),
         }}
         columnBuffer={5}
         rowBuffer={10}
-        rowHeight={60}
-        headerHeight={56}
+        rowHeight={32} // Further reduced from 35
+        headerHeight={32} // Further reduced from 35
         pageSize={10}
         rowsPerPageOptions={[10, 25, 50]}
         pagination
