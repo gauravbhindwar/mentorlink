@@ -657,17 +657,18 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     <>
       <Box sx={{ 
         display: 'flex',
-        flexDirection: { xs: 'column', md: 'row' },
+        flexDirection: { xs: 'row', md: 'column' },
         gap: 2,
         mb: 3,
         alignItems: { xs: 'stretch', md: 'center' },
-        justifyContent: 'space-between'
+        justifyContent: 'flex-end',
       }}>
         <Box sx={{ 
           display: 'flex', 
           gap: 2, 
-          flexDirection: { xs: 'column', sm: 'row' },
-          flexWrap: 'wrap'
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-start',
         }}>
           {filterControls.map((control) => (
             <Box key={control.name}>
@@ -845,6 +846,8 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
 
 const textFieldStyles = {
   minWidth: 120,
+  // maxWidth: 170,
+  width: 150,
   '& .MuiOutlinedInput-root': {
     color: 'white',
     backgroundColor: '#1a1a1a', // Solid dark background

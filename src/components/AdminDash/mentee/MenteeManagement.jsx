@@ -924,11 +924,13 @@ const MenteeManagement = () => {
             >
               Mentee Management
             </motion.h1>
+
+            <motion.div className='flex flex-row flex-nowrap justify-between gap-10'>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="bg-white/5 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/10"
+              className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 max-w-[26%] overflow-y-auto max-h-[70vh]"
             >
               
               <FilterSection 
@@ -951,13 +953,15 @@ const MenteeManagement = () => {
               transition={{ duration: 0.3 }}
               style={{ 
                 display: tableVisible ? 'block' : 'none',
-                marginTop: '20px'
+                // marginTop: '20px',
+                width: '70%', 
+                height: '100%'
               }}
             >
               <Box sx={{ 
                 overflowX: 'auto', 
                 minHeight: '150px',
-                maxHeight: 'calc(100vh - 400px)', // Limit maximum height
+                // maxHeight: 'calc(100vh - 400px)', // Limit maximum height
                 overflowY: 'auto',
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
                 borderRadius: '16px',
@@ -984,6 +988,7 @@ const MenteeManagement = () => {
                   />
                 )}
               </Box>
+            </motion.div>
             </motion.div>
 
             {/* Show "No data" message when table is not visible */}
