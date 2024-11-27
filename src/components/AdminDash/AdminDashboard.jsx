@@ -62,7 +62,7 @@ const AdminDashboard = () => {
             description: 'Access historical records',
             gradient: 'from-slate-500 via-gray-500 to-zinc-500',
             shadowColor: 'rgba(71, 85, 105, 0.4)',
-            onClick: () => router.push('/archives')  // Updated path
+            onClick: () => router.push('/pages/archives')  // Updated path
         },
     ];
 
