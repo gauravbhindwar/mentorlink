@@ -57,8 +57,8 @@ const academicSessionsSchema = new mongoose.Schema({
                       name: String,
                       phone: String,
                       email: String,
-                      relation: String
-                    }
+                      relation: String,
+                    },
                   },
                   assigned_at: { type: Date, default: Date.now },
                 },
@@ -228,47 +228,49 @@ academicSessionsSchema.methods.getMentorDetails = async function (mentorMUJid) {
   }
 };
 
-academicSessionsSchema.methods.getMentorsWithMeetings = async function (filters) {
+academicSessionsSchema.methods.getMentorsWithMeetings = async function (
+  filters
+) {
   const { session, semester, section } = filters;
 
   const matchStage = {
-    'sessions.name': session
+    "sessions.name": session,
   };
 
   if (semester) {
-    matchStage['sessions.semesters.semester_number'] = parseInt(semester);
+    matchStage["sessions.semesters.semester_number"] = parseInt(semester);
   }
 
   if (section) {
-    matchStage['sessions.semesters.sections.name'] = section.toUpperCase();
+    matchStage["sessions.semesters.sections.name"] = section.toUpperCase();
   }
 
   const meetings = await this.model("AcademicSession").aggregate([
-    { $unwind: '$sessions' },
-    { $unwind: '$sessions.semesters' },
-    { $unwind: '$sessions.semesters.sections' },
-    { $unwind: '$sessions.semesters.sections.meetings' },
+    { $unwind: "$sessions" },
+    { $unwind: "$sessions.semesters" },
+    { $unwind: "$sessions.semesters.sections" },
+    { $unwind: "$sessions.semesters.sections.meetings" },
     { $match: matchStage },
     {
       $group: {
-        _id: '$sessions.semesters.sections.meetings.mentor_id',
-        meetingCount: { $sum: 1 }
-      }
-    }
+        _id: "$sessions.semesters.sections.meetings.mentor_id",
+        meetingCount: { $sum: 1 },
+      },
+    },
   ]);
 
   // Fetch mentor details
   const mentorDetails = await Promise.all(
     meetings.map(async (meeting) => {
       const mentor = await Mentor.findOne({ MUJid: meeting._id })
-        .select('MUJid name email phone_number')
+        .select("MUJid name email phone_number")
         .lean();
       return {
         MUJid: mentor?.MUJid || meeting._id,
-        mentorName: mentor?.name || 'Unknown',
-        mentorEmail: mentor?.email || 'N/A',
-        mentorPhone: mentor?.phone_number || 'N/A',
-        meetingCount: meeting.meetingCount
+        mentorName: mentor?.name || "Unknown",
+        mentorEmail: mentor?.email || "N/A",
+        mentorPhone: mentor?.phone_number || "N/A",
+        meetingCount: meeting.meetingCount,
       };
     })
   );
@@ -276,17 +278,21 @@ academicSessionsSchema.methods.getMentorsWithMeetings = async function (filters)
   return mentorDetails;
 };
 
-academicSessionsSchema.methods.assignAndFetchMentees = async function(sessionName, semesterNumber, sectionName) {
+academicSessionsSchema.methods.assignAndFetchMentees = async function (
+  sessionName,
+  semesterNumber,
+  sectionName
+) {
   try {
     const mentees = await Mentee.find({
       academicSession: sessionName,
       semester: semesterNumber,
-      section: sectionName
-    }).select('MUJid name email phone mentorMujid parents');
+      section: sectionName,
+    }).select("MUJid name email phone mentorMujid parents");
 
-    if (!mentees.length) return { success: false, message: 'No mentees found' };
+    if (!mentees.length) return { success: false, message: "No mentees found" };
 
-    const menteesWithDetails = mentees.map(mentee => ({
+    const menteesWithDetails = mentees.map((mentee) => ({
       mentee_id: mentee.MUJid,
       name: mentee.name,
       email: mentee.email,
@@ -294,88 +300,104 @@ academicSessionsSchema.methods.assignAndFetchMentees = async function(sessionNam
       mentor_id: mentee.mentorMujid,
       parents: {
         father: {
-          name: mentee.parents?.father?.name || '',
-          phone: mentee.parents?.father?.phone || '',
-          email: mentee.parents?.father?.email || ''
+          name: mentee.parents?.father?.name || "",
+          phone: mentee.parents?.father?.phone || "",
+          email: mentee.parents?.father?.email || "",
         },
         mother: {
-          name: mentee.parents?.mother?.name || '',
-          phone: mentee.parents?.mother?.phone || '',
-          email: mentee.parents?.mother?.email || ''
+          name: mentee.parents?.mother?.name || "",
+          phone: mentee.parents?.mother?.phone || "",
+          email: mentee.parents?.mother?.email || "",
         },
-        guardian: mentee.parents?.guardian ? {
-          name: mentee.parents.guardian.name || '',
-          phone: mentee.parents.guardian.phone || '',
-          email: mentee.parents.guardian.email || '',
-          relation: mentee.parents.guardian.relation || ''
-        } : null
+        guardian: mentee.parents?.guardian
+          ? {
+              name: mentee.parents.guardian.name || "",
+              phone: mentee.parents.guardian.phone || "",
+              email: mentee.parents.guardian.email || "",
+              relation: mentee.parents.guardian.relation || "",
+            }
+          : null,
       },
-      assigned_at: new Date()
+      assigned_at: new Date(),
     }));
 
     return { success: true, mentees: menteesWithDetails };
   } catch (error) {
-    console.error('Error assigning mentees:', error);
+    console.error("Error assigning mentees:", error);
     return { success: false, message: error.message };
   }
 };
 
-academicSessionsSchema.methods.archivePreviousSession = async function(currentSession) {
+academicSessionsSchema.methods.archivePreviousSession = async function (
+  currentSession
+) {
   try {
-    console.log('Starting archive process for:', currentSession);
-    
-    const [currentMonth, currentYear] = currentSession.split(' ');
-    const isJanuaryJune = currentMonth === 'JANUARY-JUNE';
-    
-    const previousSession = isJanuaryJune ? 
-      `JULY-DECEMBER ${parseInt(currentYear) - 1}` : 
-      `JANUARY-JUNE ${currentYear}`;
+    console.log("Starting archive process for:", currentSession);
 
-    console.log('Looking for previous session:', previousSession);
+    const [currentMonth, currentYear] = currentSession.split(" ");
+    const isJanuaryJune = currentMonth === "JANUARY-JUNE";
+
+    const previousSession = isJanuaryJune
+      ? `JULY-DECEMBER ${parseInt(currentYear) - 1}`
+      : `JANUARY-JUNE ${currentYear}`;
+
+    console.log("Looking for previous session:", previousSession);
 
     // Debug: Check mentees in previous session
-    const menteeCount = await Mentee.countDocuments({ academicSession: previousSession });
+    const menteeCount = await Mentee.countDocuments({
+      academicSession: previousSession,
+    });
     console.log(`Found ${menteeCount} mentees in previous session`);
 
     const mentees = await Mentee.find({
-      academicSession: previousSession
-    }).select('MUJid name email phone mentorMujid semester section parents').lean();
+      academicSession: previousSession,
+    })
+      .select("MUJid name email phone mentorMujid semester section parents")
+      .lean();
 
-    console.log('Mentee sample:', mentees.slice(0, 2));
+    console.log("Mentee sample:", mentees.slice(0, 2));
 
     if (!mentees.length) {
-      console.log('No mentees found in previous session');
-      return { success: false, message: 'No mentees found in previous session' };
+      console.log("No mentees found in previous session");
+      return {
+        success: false,
+        message: "No mentees found in previous session",
+      };
     }
 
     // Debug: Group mentees by mentor
     const mentorGroups = {};
-    mentees.forEach(mentee => {
+    mentees.forEach((mentee) => {
       if (!mentorGroups[mentee.mentorMujid]) {
         mentorGroups[mentee.mentorMujid] = [];
       }
       mentorGroups[mentee.mentorMujid].push(mentee);
     });
 
-    console.log('Mentor distribution:', Object.keys(mentorGroups).map(mentorId => ({
-      mentorId,
-      menteeCount: mentorGroups[mentorId].length
-    })));
+    console.log(
+      "Mentor distribution:",
+      Object.keys(mentorGroups).map((mentorId) => ({
+        mentorId,
+        menteeCount: mentorGroups[mentorId].length,
+      }))
+    );
 
     // Process mentor assignments with detailed logging
     const mentorAssignments = await Promise.all(
       Object.entries(mentorGroups).map(async ([mentorId, mentorMentees]) => {
-        console.log(`Processing mentor ${mentorId} with ${mentorMentees.length} mentees`);
-        
+        console.log(
+          `Processing mentor ${mentorId} with ${mentorMentees.length} mentees`
+        );
+
         const semesterGroups = {};
-        mentorMentees.forEach(mentee => {
+        mentorMentees.forEach((mentee) => {
           if (!semesterGroups[mentee.semester]) {
             semesterGroups[mentee.semester] = {};
           }
           if (!semesterGroups[mentee.semester][mentee.section]) {
             semesterGroups[mentee.semester][mentee.section] = [];
           }
-          
+
           semesterGroups[mentee.semester][mentee.section].push({
             mentee_id: mentee.MUJid,
             name: mentee.name,
@@ -385,33 +407,36 @@ academicSessionsSchema.methods.archivePreviousSession = async function(currentSe
             parents: {
               father: mentee.parents?.father || {},
               mother: mentee.parents?.mother || {},
-              guardian: mentee.parents?.guardian || null
+              guardian: mentee.parents?.guardian || null,
             },
-            assigned_at: new Date()
+            assigned_at: new Date(),
           });
         });
 
-        console.log(`Mentor ${mentorId} semester distribution:`, 
-          Object.keys(semesterGroups).map(sem => ({
+        console.log(
+          `Mentor ${mentorId} semester distribution:`,
+          Object.keys(semesterGroups).map((sem) => ({
             semester: sem,
-            sections: Object.keys(semesterGroups[sem]).length
+            sections: Object.keys(semesterGroups[sem]).length,
           }))
         );
 
         return {
           mentor_id: mentorId,
-          assignments: Object.entries(semesterGroups).map(([semester, sections]) => ({
-            semester_number: parseInt(semester),
-            sections: Object.entries(sections).map(([section, mentees]) => ({
-              name: section,
-              mentees_assigned: mentees
-            }))
-          }))
+          assignments: Object.entries(semesterGroups).map(
+            ([semester, sections]) => ({
+              semester_number: parseInt(semester),
+              sections: Object.entries(sections).map(([section, mentees]) => ({
+                name: section,
+                mentees_assigned: mentees,
+              })),
+            })
+          ),
         };
       })
     );
 
-    console.log('Archive process completed successfully');
+    console.log("Archive process completed successfully");
     return {
       success: true,
       previousSession,
@@ -421,20 +446,19 @@ academicSessionsSchema.methods.archivePreviousSession = async function(currentSe
       debug: {
         menteeCount,
         mentorCount: Object.keys(mentorGroups).length,
-        sampleMentee: mentees[0]
-      }
+        sampleMentee: mentees[0],
+      },
     };
-
   } catch (error) {
-    console.error('Archive process failed:', error);
-    console.error('Stack trace:', error.stack);
-    return { 
-      success: false, 
+    console.error("Archive process failed:", error);
+    console.error("Stack trace:", error.stack);
+    return {
+      success: false,
       message: error.message,
       error: {
         stack: error.stack,
-        details: error
-      }
+        details: error,
+      },
     };
   }
 };
