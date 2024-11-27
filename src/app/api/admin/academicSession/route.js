@@ -65,6 +65,7 @@ async function getLastSessionData() {
     console.log("Last session found:", lastSession.name);
 
     return {
+      sessionId: lastAcademicSession._id, // Add this line to return the document ID
       sessionName: lastSession.name,
       semesters: lastSession.semesters.map((sem) => ({
         semester_number: sem.semester_number,
@@ -257,6 +258,10 @@ export async function POST(request) {
       );
     }
 
+    // Get last session data for mentee assignment
+    const lastSessionData = await getLastSessionData();
+    console.log("Last session data:", lastSessionData);
+
     // Create new session
     const academicSession = await AcademicSession.create({
       start_year: data.start_year,
@@ -278,10 +283,6 @@ export async function POST(request) {
       ],
     });
 
-    // Get last session data for mentee assignment
-    const lastSessionData = await getLastSessionData();
-    console.log("Last session data:", lastSessionData);
-
     if (lastSessionData) {
       // Assign mentees from last session data
       for (const semester of lastSessionData.semesters) {
@@ -300,11 +301,22 @@ export async function POST(request) {
           );
 
           if (menteesToAssign.length > 0) {
-            await AcademicSession.findOneAndUpdate(
-              { _id: academicSession._id },
+            console.log("Attempting to update last session with mentees:", {
+              lastSessionId: lastSessionData.sessionId,
+              sessionName: lastSessionData.sessionName,
+              semesterNumber: semester.semester_number,
+              sectionName: sectionName,
+              menteeCount: menteesToAssign.length,
+            });
+
+            const result = await AcademicSession.findOneAndUpdate(
+              {
+                _id: lastSessionData.sessionId,
+                "sessions.name": lastSessionData.sessionName,
+              },
               {
                 $addToSet: {
-                  "sessions.$[session].semesters.$[semester].sections.$[section].mentees_assigned":
+                  "sessions.$[session].semesters.$[sem].sections.$[sec].mentees_assigned":
                     {
                       $each: menteesToAssign,
                     },
@@ -312,15 +324,21 @@ export async function POST(request) {
               },
               {
                 arrayFilters: [
-                  { "session.name": data.sessions[0].name },
-                  { "semester.semester_number": semester.semester_number },
-                  { "section.name": sectionName },
+                  { "session.name": lastSessionData.sessionName },
+                  { "sem.semester_number": semester.semester_number },
+                  { "sec.name": sectionName },
                 ],
+                new: true,
               }
             );
-            console.log(
-              `Updated section ${sectionName} with ${menteesToAssign.length} mentees`
-            );
+
+            console.log("Last session update result:", {
+              success: !!result,
+              updatedId: result?._id,
+              matchedSession: result?.sessions?.find(
+                (s) => s.name === lastSessionData.sessionName
+              )?.name,
+            });
           }
         }
       }
