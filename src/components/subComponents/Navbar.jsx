@@ -6,7 +6,7 @@ import { CgMenuRound, CgCloseO } from 'react-icons/cg'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const Navbar = () => {
-    const [dropdownVisible, setDropdownVisible] = useState(false)
+    // const [dropdownVisible, setDropdownVisible] = useState(false)
     const [email, setEmail] = useState('')
     const [role, setRole] = useState('')
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -73,11 +73,11 @@ const Navbar = () => {
 
     const showDropdown = () => {
         clearTimeout(hideDropdownTimeout);
-        setDropdownVisible(true);
+        // setDropdownVisible(true);
     }
     const hideDropdown = () => {
         hideDropdownTimeout = setTimeout(() => {
-            setDropdownVisible(false);
+            // setDropdownVisible(false);
         }, 300); // Adjust the delay as needed
     }
 
