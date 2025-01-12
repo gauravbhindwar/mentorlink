@@ -35,6 +35,23 @@ const Navbar = () => {
         }
     }, [])
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // Close mobile menu when clicking outside
+            if (isMobileMenuOpen) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
+        // Add click event listener to document
+        document.addEventListener('click', handleClickOutside);
+
+        // Cleanup function
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [isMobileMenuOpen]); // Dependencies array
+
     const handleLogout = () => {
         sessionStorage.clear();
         setRole('');
@@ -64,12 +81,13 @@ const Navbar = () => {
         }, 300); // Adjust the delay as needed
     }
 
-    const toggleMobileMenu = () => {
-        setIsMobileMenuOpen(!isMobileMenuOpen)
+    const toggleMobileMenu = (e) => {
+        e.stopPropagation(); // Prevent the click from bubbling up
+        setIsMobileMenuOpen(!isMobileMenuOpen);
     }
 
     const handleAboutUs = () => {
-        router.push('/pages/about');
+        router.push('/about');
     }
 
     return (
@@ -158,40 +176,19 @@ const Navbar = () => {
                                     Profile
                                 </motion.button>
                                 
-                                {dropdownVisible && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 5 }}
-                                        className="absolute right-0 mt-1 w-48 rounded-lg
-                                                 bg-gradient-to-b from-orange-500/10 to-pink-500/10
-                                                 border border-orange-200/20 backdrop-blur-lg
-                                                 shadow-lg overflow-hidden"
-                                    >
-                                        {/* Existing dropdown content with updated styles */}
-                                        <div className="p-1">
-                                            {/* Update the classes for each dropdown item */}
-                                            {/* Example for one item: */}
-                                            <button
-                                                className="w-full px-4 py-2.5 text-left text-white/90
-                                                         hover:bg-gradient-to-r hover:from-orange-500/20 hover:to-pink-500/20
-                                                         rounded-lg transition-all duration-300"
-                                                onClick={() => router.push('/pages/settings')}
-                                            >
-                                                Settings
-                                            </button>
-                                            {/* <button
-                                                className="w-full px-4 py-2.5 text-left text-white/90
-                                                         hover:bg-gradient-to-r hover:from-orange-500/20 hover:to-pink-500/20 lg:hidden truncate
-                                                         rounded-lg transition-all duration-300"
-                                                // onClick={() => router.push('/pages/settings')}
-                                            >
-                                                {email}
-                                            </button> */}
-                                            {/* ...other dropdown items... */}
-                                        </div>
-                                    </motion.div>
-                                )}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="absolute right-0 mt-1 w-48 rounded-lg
+                                             bg-gradient-to-b from-orange-500/10 to-pink-500/10
+                                             border border-orange-200/20 backdrop-blur-lg
+                                             shadow-lg overflow-hidden"
+                                >
+                                    {/* Dropdown now empty - you may want to add other items here */}
+                                    <div className="p-1">
+                                    </div>
+                                </motion.div>
                             </div>
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
@@ -258,14 +255,48 @@ const Navbar = () => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden bg-gradient-to-b from-orange-500/10 to-pink-500/10
-                                 border-t border-orange-200/20 backdrop-blur-md"
+                        className="md:hidden absolute top-full left-0 right-0 
+                                 bg-gradient-to-b from-gray-900/95 to-gray-800/95
+                                 border-t border-orange-200/20 backdrop-blur-md
+                                 shadow-xl"
                     >
-                        <div className="p-2 space-y-1">
+                        <div className="p-4 space-y-3">
                             {email && role && (
-                                <div className="px-4 py-3 rounded-lg bg-white/5 text-white/70">
-                                    {email}
-                                </div>
+                                <>
+                                    <div className="px-4 py-3 rounded-lg bg-gray-800/80 
+                                                  border border-orange-200/20">
+                                        <p className="text-xs text-orange-200/70">Signed in as:</p>
+                                        <p className="truncate text-white font-medium">{email}</p>
+                                    </div>
+                                    <button
+                                        className="w-full px-4 py-3 rounded-lg
+                                                 bg-gradient-to-r from-orange-500/20 to-pink-500/20
+                                                 hover:from-orange-500/30 hover:to-pink-500/30
+                                                 border border-orange-200/30
+                                                 transition-all duration-300
+                                                 text-left group"
+                                        onClick={handleDashboard}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-white font-medium">Dashboard</span>
+                                            <span className="text-orange-300 transform group-hover:translate-x-1 transition-transform">→</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        className="w-full px-4 py-3 rounded-lg
+                                                 bg-gradient-to-r from-red-500/20 to-red-600/20
+                                                 hover:from-red-500/30 hover:to-red-600/30
+                                                 border border-red-200/30
+                                                 transition-all duration-300
+                                                 text-left group"
+                                        onClick={handleLogout}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-white font-medium">Logout</span>
+                                            <span className="text-red-300 transform group-hover:translate-x-1 transition-transform">→</span>
+                                        </div>
+                                    </button>
+                                </>
                             )}
                             {!email && !role && (
                                 <motion.button
@@ -273,42 +304,21 @@ const Navbar = () => {
                                     initial="idle"
                                     whileHover="hover"
                                     whileTap={{ scale: 0.95 }}
-                                    className="w-full px-4 py-2 rounded-lg text-sm text-emerald-50
-                                             bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-teal-500/20
-                                             hover:from-green-500/30 hover:via-emerald-500/30 hover:to-teal-500/30
-                                             border border-green-400/30
+                                    className="w-full px-4 py-3 rounded-lg
+                                             bg-gradient-to-r from-emerald-500/20 to-teal-500/20
+                                             hover:from-emerald-500/30 hover:to-teal-500/30
+                                             border border-emerald-400/30
                                              transition-all duration-300
                                              relative overflow-hidden
                                              group text-left"
                                     onClick={handleAboutUs}
                                 >
-                                    <span className="relative z-10">About Us</span>
-                                    <motion.div
-                                        className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 opacity-0 group-hover:opacity-20
-                                                 transition-opacity duration-300"
-                                        animate={{
-                                            backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                                        }}
-                                        transition={{
-                                            duration: 5,
-                                            repeat: Infinity,
-                                            ease: 'linear'
-                                        }}
-                                    />
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-white font-medium relative z-10">About Us</span>
+                                        <span className="text-emerald-300 relative z-10 transform group-hover:translate-x-1 transition-transform">→</span>
+                                    </div>
                                 </motion.button>
                             )}
-                            {/* Mobile menu items with consistent styling */}
-                            <button
-                                className="w-full px-4 py-3 rounded-lg text-white
-                                         bg-gradient-to-r from-orange-500/10 to-pink-500/10
-                                         hover:from-orange-500/20 hover:to-pink-500/20
-                                         border border-white/10
-                                         transition-all duration-300 text-left"
-                                onClick={handleDashboard}
-                            >
-                                Dashboard
-                            </button>
-                            {/* ...other mobile menu items... */}
                         </div>
                     </motion.div>
                 )}
