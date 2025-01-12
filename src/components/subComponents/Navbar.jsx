@@ -36,7 +36,7 @@ const Navbar = () => {
     }, [])
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
+        const handleClickOutside = () => {
             // Close mobile menu when clicking outside
             if (isMobileMenuOpen) {
                 setIsMobileMenuOpen(false);
@@ -185,9 +185,6 @@ const Navbar = () => {
                                              border border-orange-200/20 backdrop-blur-lg
                                              shadow-lg overflow-hidden"
                                 >
-                                    {/* Dropdown now empty - you may want to add other items here */}
-                                    <div className="p-1">
-                                    </div>
                                 </motion.div>
                             </div>
                             <motion.button

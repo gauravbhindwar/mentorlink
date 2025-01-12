@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, TextField, Snackbar, Alert, AlertTitle, Slide, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Avatar } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -63,28 +63,28 @@ const AdminManagement = () => {
   };
 
   // Modify fetchAdmins to use dummy data temporarily
-  const fetchAdmins = async () => {
-    try {
-      setLoading(true);
-      // Comment out the actual API call and use dummy data instead
-      // const response = await axios.get('/api/admin/manageAdmin');
-      setAdmins(dummyAdmins);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch admins');
-      showAlert(err.response?.data?.message || 'Failed to fetch admins', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const fetchAdmins = async () => {
+  //   try {
+  //     setLoading(true);
+  //     // Comment out the actual API call and use dummy data instead
+  //     // const response = await axios.get('/api/admin/manageAdmin');
+  //     setAdmins(dummyAdmins);
+  //   } catch (err) {
+  //     setError(err.response?.data?.message || 'Failed to fetch admins');
+  //     showAlert(err.response?.data?.message || 'Failed to fetch admins', 'error');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const showAlert = (message, severity) => {
     setAlert({ open: true, message, severity });
     setTimeout(() => setAlert({ open: false, message: '', severity: '' }), 3000);
   };
 
-  useEffect(() => {
-    fetchAdmins();
-  }, []);
+  // useEffect(() => {
+  //   fetchAdmins();
+  // }, []);
 
   return (
     <ThemeProvider theme={theme}>

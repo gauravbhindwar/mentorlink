@@ -3,7 +3,7 @@ import { Mentee } from "../../../../../lib/db/menteeSchema";
 import { Mentor } from "../../../../../lib/db/mentorSchema";
 import { NextResponse } from "next/server";
 import multer from 'multer';
-import xlsx from 'xlsx';
+import * as xlsx from 'xlsx';
 
 // Configure multer
 const upload = multer({
