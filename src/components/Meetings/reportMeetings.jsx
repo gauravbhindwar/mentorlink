@@ -27,7 +27,7 @@ const ReportMeetings = () => {
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
-  const [reportDialog, setReportDialog] = useState(false);
+  const [reportDialog, setReportDialog] = useState(true);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [reportData, setReportData] = useState({
     TopicOfDiscussion: '',
@@ -37,6 +37,7 @@ const ReportMeetings = () => {
     outcome: '',
     closureRemarks: ''
   });
+  const [reportedMeetings, setReportedMeetings] = useState({});
 
   const fixedBranch = 'CSE CORE';
 
