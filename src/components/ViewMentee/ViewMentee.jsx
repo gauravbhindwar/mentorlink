@@ -1,10 +1,11 @@
 "use client";
 import React, { useState } from 'react';
 import Navbar from '../subComponents/Navbar';
+import "@/app/styles.css";
 
 const Page = () => {
-    const academicYears = ["2023-2024", "2022-2023", "2021-2022"];
-    const academicSessions = ["DEC-JUNE(EVEN SEM)", "JUL-NOV(ODD SEM)"];
+    const academicYears = ["2023-24", "2022-23", "2021-22"];
+    const academicSessions = ["DEC-JUNE (EVEN SEM)", "JUL-NOV (ODD SEM)"];
     const oddSem = ["III", "IV", "VII"];
     const evenSem = ["IV", "VI", "VIII"];
 
@@ -147,8 +148,8 @@ const Page = () => {
 
                 <div>
                     {showButtons && (
-                        <div className="mt-6 flex flex-col gap-4">
-                            <div className="flex gap-4">
+                        <div className="mt-6 container mx-auto">
+                            <div className="flex gap-4 justify-center">
                                 <button
                                     className="px-4 py-2 bg-green-500 text-white rounded-md"
                                     onClick={handleGetReportClick}
@@ -160,18 +161,18 @@ const Page = () => {
                             </div>
 
                             <div className="mt-6">
-                                <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Assigned Mentees</h3>
+                                {/* <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Assigned Mentees</h3> */}
                                 <div className="mt-4 overflow-x-auto">
                                     <table className="min-w-full table-auto border-collapse">
                                         <thead>
-                                            <tr className="bg-gray-200 dark:bg-gray-800">
-                                                <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-200 border-b border-gray-300 dark:border-gray-600">Name</th>
-                                                <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-200 border-b border-gray-300 dark:border-gray-600">Email</th>
+                                            <tr className="bg-gray-200 dark:bg-gray-800 ">
+                                                <th className="px-4 py-2 dark:text-gray-200 border-b border-gray-300 dark:border-gray-600">Name</th>
+                                                <th className="px-4 py-2 dark:text-gray-200 border-b border-gray-300 dark:border-gray-600">Email</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {mentees.map((mentee) => (
-                                                <tr key={mentee.id} className="bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            {mentees.map((mentee, index) => (
+                                                <tr key={mentee.id} className={(index % 2 == 0 ? " bg-white " : " bg-gray-200 ") + " hover:bg-gray-600 hover:text-white "}>
                                                     <td className="px-4 py-2 border-b border-gray-300 dark:border-gray-600">{mentee.name}</td>
                                                     <td className="px-4 py-2 border-b border-gray-300 dark:border-gray-600">{mentee.email}</td>
                                                 </tr>
@@ -207,16 +208,16 @@ const Page = () => {
                                 {/* Conditional Sub-Options */}
                                 {selectedReport === 'MOM' && (
                                     <div className="flex flex-col gap-1">
-                                        <label className="font-medium text-gray-700">MOM Report</label>
+                                        <label className="font-medium text-gray-700">Minutes of the Meeting Report</label>
                                         <select
                                             className="select p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
                                             value={selectedSubOption}
                                             onChange={handleSubOptionChange}
                                         >
-                                            <option value="">Select MOM</option>
-                                            <option value="MOMOption1">MOM 1</option>
-                                            <option value="MOMOption2">MOM 2</option>
-                                            <option value="MOMOption3">MOM 3</option>
+                                            <option value="">Select Meeting</option>
+                                            <option value="MOMOption1">Meeting 1</option>
+                                            <option value="MOMOption2">Meeting 2</option>
+                                            <option value="MOMOption3">Meeting 3</option>
                                         </select>
                                     </div>
                                 )}
@@ -229,7 +230,7 @@ const Page = () => {
                                             value={selectedSubOption}
                                             onChange={handleSubOptionChange}
                                         >
-                                            <option value="">Select CONSOLIDATE</option>
+                                            <option value="">Consolidate</option>
                                         </select>
                                     </div>
                                 )}

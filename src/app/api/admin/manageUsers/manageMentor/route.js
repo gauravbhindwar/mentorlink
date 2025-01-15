@@ -107,85 +107,81 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     await connect();
+
+    // Get search parameters from URL
     const { searchParams } = new URL(req.url);
-    
+    const academicYear = searchParams.get('academicYear');
+    const academicSession = searchParams.get('academicSession');
+    const MUJid = searchParams.get('MUJid');
+
     // Build query object
     const query = {};
-    
-    // Add filters
-    ['academicYear', 'academicSession', 'role'].forEach(param => {
-      const value = searchParams.get(param);
-      if (value) {
-        if (param === 'role') {
-          query[param] = { $in: [value] };
-        } else {
-          query[param] = value;
-        }
-      }
-    });
+    if (academicYear) query.academicYear = academicYear;
+    if (academicSession) query.academicSession = academicSession;
+    if (MUJid) query.MUJid = new RegExp(MUJid, 'i'); // Case-insensitive search for MUJid
 
-    // Handle MUJid search
-    const MUJid = searchParams.get('MUJid');
-    if (MUJid) {
-      query.MUJid = new RegExp(MUJid, 'i');
-    }
+    // Fetch mentors based on query
+    const mentors = await Mentor.find(query).sort({ created_at: -1 });
 
-    const mentors = await Mentor.find(query)
-      .select('-password -__v')
-      .sort({ createdAt: -1 });
-
-    return NextResponse.json({ 
-      mentors,
-      total: mentors.length,
-      filters: query
-    }, { status: 200 });
-
+    return NextResponse.json({ mentors }, { status: 200 });
   } catch (error) {
-    return createErrorResponse(error.message || "Failed to fetch mentors", 500);
+    console.error("Error fetching mentors:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch mentors" },
+      { status: 500 }
+    );
   }
 }
 
-// Update DELETE request handler to handle multiple MUJIDs
+// Update the DELETE handler
 export async function DELETE(req) {
   try {
     await connect();
-    const requestBody = await req.json();
+    const { MUJid, roles } = await req.json();
 
-    if (!requestBody) {
-      return createErrorResponse("Invalid JSON input", 400);
+    if (!MUJid || !roles || roles.length === 0) {
+      return createErrorResponse("Invalid input", 400);
     }
 
-    // Check if MUJids is an array or single value
-    const MUJids = Array.isArray(requestBody.MUJid) 
-      ? requestBody.MUJid 
-      : [requestBody.MUJid];
-
-    if (!MUJids.length) {
-      return createErrorResponse("No MUJids provided for deletion", 400);
+    // Find the mentor first
+    const mentor = await Mentor.findOne({ MUJid });
+    if (!mentor) {
+      return createErrorResponse("Mentor not found", 404);
     }
 
-    // Delete multiple mentors
-    const deleteResult = await Mentor.deleteMany({ 
-      MUJid: { $in: MUJids } 
-    });
-
-    if (deleteResult.deletedCount === 0) {
-      return createErrorResponse("No mentors found with the provided MUJids", 404);
+    // If deleting all roles or only mentor role remains, remove completely
+    const remainingRoles = mentor.role.filter(role => !roles.includes(role));
+    if (remainingRoles.length === 0 || (roles.includes('mentor') && remainingRoles.length === 0)) {
+      await Mentor.deleteOne({ MUJid });
+      await Admin.deleteOne({ MUJid });
+      return NextResponse.json({ message: "Mentor deleted successfully" });
     }
 
-    // Also remove from Admin collection if they were admins
-    await Admin.deleteMany({ 
-      MUJid: { $in: MUJids }
-    });
+    // If only removing admin/superadmin roles
+    if (roles.includes('admin') || roles.includes('superadmin')) {
+      // Remove from Admin collection
+      await Admin.deleteOne({ MUJid });
+      
+      // Update roles in Mentor collection
+      await Mentor.updateOne(
+        { MUJid },
+        { 
+          $pull: { role: { $in: roles } },
+          $set: { role: remainingRoles }
+        }
+      );
 
-    return NextResponse.json({
-      message: `Successfully deleted ${deleteResult.deletedCount} mentor(s)`,
-      deletedCount: deleteResult.deletedCount
-    }, { status: 200 });
+      return NextResponse.json({ 
+        message: "Roles deleted successfully",
+        remainingRoles
+      });
+    }
+
+    return NextResponse.json({ message: "No changes made" });
 
   } catch (error) {
-    console.error("Error deleting mentors:", error);
-    return createErrorResponse(error.message || "Failed to delete mentors", 500);
+    console.error("Error deleting:", error);
+    return createErrorResponse(error.message || "Failed to delete", 500);
   }
 }
 
@@ -199,47 +195,55 @@ export async function PUT(req) {
       return createErrorResponse("Invalid mentor data or missing MUJid", 400);
     }
 
-    // Validate updated data
-    const { error } = mentorSchema.validate(mentorData);
-    if (error) {
-      return createErrorResponse(error.details[0].message, 400);
-    }
-
+    // First find old mentor to check roles
     const oldMentor = await Mentor.findOne({ MUJid: mentorData.MUJid });
     if (!oldMentor) {
       return createErrorResponse("Mentor not found", 404);
     }
 
-    // Update mentor
+    // Update mentor in Mentor collection
     const updatedMentor = await Mentor.findOneAndUpdate(
       { MUJid: mentorData.MUJid },
       mentorData,
       { new: true }
     );
 
-    // Handle role changes
-    const wasAdmin = oldMentor.role.includes('admin') || oldMentor.role.includes('superadmin');
-    const isNowAdmin = mentorData.role.includes('admin') || mentorData.role.includes('superadmin');
+    // Handle admin roles
+    const wasAdmin = oldMentor.role.some(r => ['admin', 'superadmin'].includes(r));
+    const isNowAdmin = mentorData.role.some(r => ['admin', 'superadmin'].includes(r));
+    const adminRoles = mentorData.role.filter(r => ['admin', 'superadmin'].includes(r));
 
-    if (!wasAdmin && isNowAdmin) {
-      // Add to Admin collection
-      await Admin.create(mentorData);
+    if (isNowAdmin) {
+      // Check if admin record exists
+      const existingAdmin = await Admin.findOne({ MUJid: mentorData.MUJid });
+      
+      if (existingAdmin) {
+        // Update existing admin record with filtered admin roles
+        await Admin.findOneAndUpdate(
+          { MUJid: mentorData.MUJid },
+          { 
+            ...mentorData,
+            role: adminRoles 
+          },
+          { new: true }
+        );
+      } else {
+        // Create new admin record
+        await Admin.create({
+          ...mentorData,
+          role: adminRoles
+        });
+      }
     } else if (wasAdmin && !isNowAdmin) {
-      // Remove from Admin collection
+      // Remove from Admin collection if admin roles were removed
       await Admin.deleteOne({ MUJid: mentorData.MUJid });
-    } else if (wasAdmin && isNowAdmin) {
-      // Update Admin collection
-      await Admin.findOneAndUpdate(
-        { MUJid: mentorData.MUJid },
-        mentorData,
-        { upsert: true }
-      );
     }
 
     return NextResponse.json({
       message: "Mentor updated successfully",
-      mentor: updatedMentor
-    }, { status: 200 });
+      mentor: updatedMentor,
+      roleChanges: { wasAdmin, isNowAdmin, adminRolesUpdated: wasAdmin !== isNowAdmin }
+    });
 
   } catch (error) {
     return createErrorResponse(error.message || "Failed to update mentor", 500);
@@ -251,25 +255,41 @@ export async function PATCH(request) {
   try {
     await connect();
     const data = await request.json();
-    const mujid = request.url.split('/').pop(); // Get MUJid from URL
+    const mujid = request.url.split('/').pop();
 
-    // Remove any MongoDB specific fields if they exist
-    const { ...updateData } = data;
+    // Get current mentor data
+    const currentMentor = await Mentor.findOne({ MUJid: mujid });
+    if (!currentMentor) {
+      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+    }
 
+    // Update mentor in Mentor collection
     const updatedMentor = await Mentor.findOneAndUpdate(
       { MUJid: mujid },
-      { $set: updateData },
-      { 
-        new: true, // Return updated document
-        runValidators: true // Run schema validators
-      }
+      { $set: data },
+      { new: true, runValidators: true }
     );
 
-    if (!updatedMentor) {
-      return NextResponse.json(
-        { error: "Mentor not found" },
-        { status: 404 }
-      );
+    // Handle admin roles if they changed
+    if (data.role) {
+      const wasAdmin = currentMentor.role.some(r => ['admin', 'superadmin'].includes(r));
+      const isNowAdmin = data.role.some(r => ['admin', 'superadmin'].includes(r));
+      const adminRoles = data.role.filter(r => ['admin', 'superadmin'].includes(r));
+
+      if (isNowAdmin) {
+        // Update or create admin record
+        await Admin.findOneAndUpdate(
+          { MUJid: mujid },
+          { 
+            ...data,
+            role: adminRoles 
+          },
+          { upsert: true, new: true }
+        );
+      } else if (wasAdmin && !isNowAdmin) {
+        // Remove from Admin collection
+        await Admin.deleteOne({ MUJid: mujid });
+      }
     }
 
     return NextResponse.json(updatedMentor);

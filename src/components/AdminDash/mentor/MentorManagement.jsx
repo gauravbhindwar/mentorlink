@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -14,17 +14,17 @@ import {
   MenuItem,
   CircularProgress,
   Grid,
+  Checkbox, // Add this import
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
-// import UploadFileIcon from "@mui/icons-material/UploadFile";
-// import { useDropzone } from "react-dropzone";
 import MentorTable from "./MentorTable";
 import FilterSection from "./MentorFilterSection";
 import { Toaster,toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
 import BulkUploadPreview from "../common/BulkUploadPreview";
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 const dialogStyles = {
   paper: {
@@ -34,8 +34,8 @@ const dialogStyles = {
     borderRadius: '24px',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
     color: 'white',
-    maxWidth: '90vw',
-    width: '800px',
+    maxWidth: '80vw', // Reduced from 90vw
+    width: '700px', // Reduced from 800px
     maxHeight: '90vh',
     overflow: 'hidden',
   },
@@ -107,31 +107,21 @@ const MentorManagement = () => {
   });
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState(null);
-  // const [alert, setAlert] = useState({ // Unused state
-  //   open: false,
-  //   message: "",
-  //   severity: "",
-  // });
-  // const [uploadProgress, setUploadProgress] = useState(0); // Unused state
   const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
-  // const [academicSessions, setAcademicSessions] = useState([]);
-  // const [bulkUploadDialog, setBulkUploadDialog] = useState(false); // Unused state
   const [previewData, setPreviewData] = useState({ data: [], errors: [] });
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
   const [existingMentorData, setExistingMentorData] = useState({});
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
-  // const [isUploading, setIsUploading] = useState(false); // Unused state
-  // const [uploading, setUploading] = useState(false);
-  
-  // const [yearSuggestions, setYearSuggestions] = useState([]); // Unused state
-  // const [sessionSuggestions, setSessionSuggestions] = useState([]); // Unused state
-  // const [showYearOptions, setShowYearOptions] = useState(false); // Unused state
-  // const [showSessionOptions, setShowSessionOptions] = useState(false); // Unused state
-  // const yearRef = useRef(null); // Unused ref
-  // const sessionRef = useRef(null); // Unused ref
+  const [showFilters, setShowFilters] = useState(true);
+  const [yearSuggestions, setYearSuggestions] = useState([]);
+  const [showYearOptions, setShowYearOptions] = useState(false);
+  const [deleteRoleDialog, setDeleteRoleDialog] = useState({ open: false, mentor: null });
+  const [selectedRoles, setSelectedRoles] = useState([]);
+ 
+  const yearRef = useRef(null);
 
   const theme = createTheme({
     palette: {
@@ -144,73 +134,24 @@ const MentorManagement = () => {
     },
   });
 
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
 
-  // Add these variables for dropzone
-  // const [isUploading, setIsUploading] = useState(false);
-  const [uploading, setUploading] = useState(false); // Changed from setUploading to uploading
-
-  // const handleBulkUploadClose = () => {
-  //   setBulkUploadDialog(false);
-  //   setUploadProgress(0);
-  //   setUploading(false);
-  // };
-
-  // const handleFileUpload = async (acceptedFiles) => {
-  //   const file = acceptedFiles[0];
-  //   if (!file) return;
-
-  //   const validTypes = [
-  //     "application/vnd.ms-excel",
-  //     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  //   ];
-
-  //   if (!validTypes.includes(file.type)) {
-  //     showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
-  //     return;
-  //   }
-
-  //   setUploading(true);
-  //   setBulkUploadDialog(false); // Close the upload dialog
-
-  //   const formData = new FormData();
-  //   formData.append("file", file);
-  //   formData.append("type", "mentor"); // Add the type parameter
-
-  //   try {
-  //     const previewResponse = await axios.post(
-  //       "/api/admin/manageUsers/previewUpload",
-  //       formData,
-  //       {
-  //         headers: {
-  //           "Content-Type": "multipart/form-data",
-  //         },
-  //         onUploadProgress: (progressEvent) => {
-  //           const percentCompleted = Math.round(
-  //             (progressEvent.loaded * 100) / progressEvent.total
-  //           );
-  //           setUploadProgress(percentCompleted);
-  //         },
-  //       }
-  //     );
-
-  //     setPreviewData(previewResponse.data);
-  //     setShowPreview(true);
-  //   } catch (error) {
-  //     showAlert(
-  //       error.response?.data?.error || error.message || "Error processing file",
-  //       "error"
-  //     );
-  //   } finally {
-  //     setUploading(false);
-  //   }
-  // };
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     console.log("Preview Data:", previewData);
   }, [previewData]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (yearRef.current && !yearRef.current.contains(event.target)) {
+        setShowYearOptions(false);
+      }
+    };
 
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleConfirmUpload = async () => {
     setUploading(true);
@@ -224,7 +165,7 @@ const MentorManagement = () => {
         showAlert("Mentors uploaded successfully!", "success");
         setShowPreview(false);
         handleBulkUploadClose();
-        await fetchMentors(); // Await the fetch
+        await fetchMentors(); 
       }
     } catch (error) {
       const errorMessage =
@@ -234,36 +175,6 @@ const MentorManagement = () => {
       setUploading(false);
     }
   };
-
-  // Move useDropzone after handleFileUpload definition
-  // const { getRootProps, getInputProps } = useDropzone({
-  //   onDrop: handleFileUpload,
-  //   accept: {
-  //     "application/vnd.ms-excel": [".xls"],
-  //     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-  //       ".xlsx",
-  //     ],
-  //   },
-  //   multiple: false,
-  // });
-
-  // const handleSearch = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const response = await axios.get("/api/admin/manageUsers/manageMentor");
-  //     setMentors(response.data.mentors);
-  //     setTableVisible(true);
-  //   } catch (error) {
-  //     showAlert(
-  //       error.response?.data?.error || "Error fetching mentors",
-  //       "error"
-  //     );
-  //     setMentors([]);
-  //     setTableVisible(false);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const validateForm = () => {
     const errors = [];
@@ -278,61 +189,7 @@ const MentorManagement = () => {
       errors.push("Academic session is required");
     return errors;
   };
-
-  // Add these new state variables after other state declarations
-  // const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
-  // const [existingMentorData, setExistingMentorData] = useState({});
-  // const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
-  // const [duplicateEditMode, setDuplicateEditMode] = useState(false);
-
-  // Add this new function to fetch mentor details
-  // const fetchMentorDetails = async (MUJid) => {
-  //   if (!MUJid) {
-  //     // console.error("MUJid is undefined");
-  //     toast.error("Invalid MUJid", {
-  //       style: toastStyles.error.style,
-  //       iconTheme: toastStyles.error.iconTheme,
-  //     });
-  //     return;
-  //   }
-
-  //   setFetchingMentorDetails(true);
-  //   try {
-  //     const response = await axios.get(
-  //       `/api/admin/manageUsers/manageMentor/${MUJid}`
-  //     );
-  //     if (response.data && response.data.mentor) {
-  //       setExistingMentorData(response.data.mentor);
-  //       // Pre-fill the mentorDetails with existing data for editing
-  //       setMentorDetails({
-  //         ...response.data.mentor,
-  //         // Ensure all required fields are present
-  //         role: response.data.mentor.role || ["mentor"],
-  //         academicYear:
-  //           response.data.mentor.academicYear || getCurrentAcademicYear(),
-  //         academicSession:
-  //           response.data.mentor.academicSession ||
-  //           generateAcademicSessions(getCurrentAcademicYear())[0],
-  //       });
-  //     } else {
-  //       throw new Error("No mentor data received");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching mentor:", error);
-  //     toast.error(
-  //       error.response?.data?.error || "Error fetching mentor details",
-  //       {
-  //         style: toastStyles.error.style,
-  //         iconTheme: toastStyles.error.iconTheme,
-  //       }
-  //     );
-  //     setDuplicateMentorDialog(false); // Close dialog on error
-  //   } finally {
-  //     setFetchingMentorDetails(false);
-  //   }
-  // };
-
-  // Replace the handleAddMentor function
+  
   const handleAddMentor = async () => {
     const errors = validateForm();
     if (errors.length > 0) {
@@ -401,26 +258,11 @@ const MentorManagement = () => {
     });
   };
 
-  // Add this new function to handle using existing data
-  // const handleUseExistingData = () => {
-  //   if (existingMentorData && Object.keys(existingMentorData).length > 0) {
-  //     setSelectedMentor(existingMentorData);
-  //     setEditDialog(true);
-  //     setDuplicateMentorDialog(false);
-  //   } else {
-  //     toast.error("No existing mentor data available", {
-  //       style: toastStyles.error.style,
-  //       iconTheme: toastStyles.error.iconTheme,
-  //     });
-  //   }
-  // };
 
   const handleEditMentor = async () => {
     try {
-      // Remove _id and id from the request payload
       const {...updateData } = selectedMentor;
 
-      // Use PATCH instead of PUT and send only the changed data
       const response = await axios.patch(
         `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
         updateData
@@ -444,16 +286,44 @@ const MentorManagement = () => {
 
   const handleDeleteMentor = async (MUJid) => {
     try {
+      // First fetch the mentor's details to check roles
+      const mentor = mentors.find(m => m.MUJid === MUJid);
+      
+      if (mentor && (mentor.role.includes('admin') || mentor.role.includes('superadmin'))) {
+        // Show role selection dialog if mentor has admin roles
+        setSelectedRoles(mentor.role);
+        setDeleteRoleDialog({ open: true, mentor });
+      } else {
+        // Regular delete for non-admin mentors
+        await axios.delete("/api/admin/manageUsers/manageMentor", {
+          data: { MUJid, roles: ['mentor'] }
+        });
+        showAlert("Mentor deleted successfully", "success");
+        fetchMentors();
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.error || "Error deleting mentor", "error");
+    }
+  };
+
+  // Add this new function to handle role-based deletion
+  const handleRoleBasedDelete = async () => {
+    try {
+      if (!deleteRoleDialog.mentor) return;
+  
       await axios.delete("/api/admin/manageUsers/manageMentor", {
-        data: { MUJid },
+        data: { 
+          MUJid: deleteRoleDialog.mentor.MUJid,
+          roles: selectedRoles
+        }
       });
-      showAlert("Mentor deleted successfully", "success");
+      
+      showAlert("Roles deleted successfully", "success");
+      setDeleteRoleDialog({ open: false, mentor: null });
+      setSelectedRoles([]);
       fetchMentors();
     } catch (error) {
-      showAlert(
-        error.response?.data?.error || "Error deleting mentor",
-        "error"
-      );
+      showAlert(error.response?.data?.error || "Error deleting roles", "error");
     }
   };
 
@@ -485,27 +355,26 @@ const MentorManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
     if (name === "MUJid") {
-      // Ensure MUJid is capital letters and numbers only
+      // Only update if the value is valid
       const formattedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      setMentorDetails((prev) => ({
+      if (formattedValue !== value) {
+        e.preventDefault();
+        return;
+      }
+      setMentorDetails(prev => ({
         ...prev,
         [name]: formattedValue,
       }));
-    } else if (name === "academicYear") {
-      const sessions = generateAcademicSessions(value);
-      // setAcademicSessions(sessions);
-      setMentorDetails((prev) => ({
-        ...prev,
-        [name]: value,
-        academicSession: sessions[0],
-      }));
-    } else {
-      setMentorDetails((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      return;
     }
+  
+    // Handle other inputs normally
+    setMentorDetails(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleEditInputChange = (e) => {
@@ -560,18 +429,6 @@ const MentorManagement = () => {
     }
   };
 
-  // const handleBulkUploadOpen = () => {
-  //   setBulkUploadDialog(true);
-  // };
-
-  // Add these new state variables
-  // const [yearSuggestions, setYearSuggestions] = useState([]);
-  // const [sessionSuggestions, setSessionSuggestions] = useState([]);
-  // const [showYearOptions, setShowYearOptions] = useState(false);
-  // const [showSessionOptions, setShowSessionOptions] = useState(false);
-  // const yearRef = useRef(null);
-  // const sessionRef = useRef(null);
-
   // Add these new helper functions
   const generateYearSuggestions = (input) => {
     if (!input) return [];
@@ -588,78 +445,67 @@ const MentorManagement = () => {
   };
 
   const handleAcademicYearInput = (e) => {
-    let value = e.target.value.toUpperCase();
-
-    if (value.length === 4 && !value.includes("-")) {
-      value = `${value}-${parseInt(value) + 1}`;
-    }
-
-    if (value.length > 0) {
-      setYearSuggestions(generateYearSuggestions(value));
-      setShowYearOptions(true);
-    } else {
-      setYearSuggestions([]);
-      setShowYearOptions(false);
-    }
-
-    setMentorDetails((prev) => ({
-      ...prev,
-      academicYear: value,
-    }));
-
-    if (validateAcademicYear(value)) {
-      const sessions = generateAcademicSessions(value);
-      // setAcademicSessions(sessions);
-      setMentorDetails((prev) => ({
+    const value = e?.target?.value || '';
+    const upperValue = value.toUpperCase();
+  
+    // Don't update state during render, use useEffect instead
+    setMentorDetails(prev => {
+      const updates = {
         ...prev,
-        academicSession: sessions[0],
-      }));
-    }
+        academicYear: upperValue,
+      };
+  
+      // Only update academicSession if we have a valid year
+      if (validateAcademicYear(upperValue)) {
+        const sessions = generateAcademicSessions(upperValue);
+        updates.academicSession = sessions[0];
+      } else if (!upperValue) {
+        // Clear session if year is empty
+        updates.academicSession = '';
+      }
+  
+      return updates;
+    });
+  
+    // Update suggestions outside of render
+    setTimeout(() => {
+      if (upperValue) {
+        const suggestions = generateYearSuggestions(upperValue);
+        setYearSuggestions(suggestions);
+        setShowYearOptions(suggestions.length > 0);
+      } else {
+        setYearSuggestions([]);
+        setShowYearOptions(false);
+      }
+    }, 0);
   };
-
-  const handleAcademicSessionInput = (e) => {
-    let value = e.target.value.toUpperCase();
-
-    if (value.startsWith("JUL")) {
-      value = `JULY-DECEMBER ${mentorDetails.academicYear?.split("-")[0]}`;
-    } else if (value.startsWith("JAN")) {
-      value = `JANUARY-JUNE ${mentorDetails.academicYear?.split("-")[1]}`;
-    }
-
-    if (value.length > 0) {
-      setSessionSuggestions(
-        generateAcademicSessions(mentorDetails.academicYear)
-      );
-      setShowSessionOptions(true);
-    } else {
-      setSessionSuggestions([]);
-      setShowSessionOptions(false);
-    }
-
-    setMentorDetails((prev) => ({
-      ...prev,
-      academicSession: value,
-    }));
-  };
-
+  
+  // Also update the validateAcademicYear function to be more defensive:
   const validateAcademicYear = (value) => {
-    if (!value) return false;
+    if (!value || typeof value !== 'string') return false;
     const regex = /^(\d{4})-(\d{4})$/;
     if (!regex.test(value)) return false;
-    const [startYear, endYear] = value.split("-").map(Number);
-    return endYear === startYear + 1;
+    const [startYear, endYear] = value.split('-').map(Number);
+    return !isNaN(startYear) && !isNaN(endYear) && endYear === startYear + 1;
   };
+  
 
-  const fetchMentors = async () => {
+    const fetchMentors = async ({ academicYear = '', academicSession = '', MUJid = '' } = {}) => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/admin/manageUsers/manageMentor");
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (academicYear) params.append('academicYear', academicYear);
+      if (academicSession) params.append('academicSession', academicSession);
+      if (MUJid) params.append('MUJid', MUJid);
+
+      const response = await axios.get(`/api/admin/manageUsers/manageMentor?${params}`);
       if (response.data && response.data.mentors) {
         setMentors(response.data.mentors);
         setTableVisible(true);
       }
-    } catch {
-      showAlert("Error fetching mentors", "error");
+    } catch (error) {
+      showAlert(error.response?.data?.error || "Error fetching mentors", "error");
       setMentors([]);
       setTableVisible(false);
     } finally {
@@ -701,7 +547,6 @@ const MentorManagement = () => {
   };
 
   const handleEditClick = (mentor) => {
-    // Remove id and _id before setting selected mentor
     const {...mentorData } = mentor;
     setSelectedMentor({
       ...mentorData,
@@ -711,7 +556,7 @@ const MentorManagement = () => {
     });
     setEditDialog(true);
   };
-
+  // use to upload mentor data
   const handleBulkUpload = async (formData, onProgress) => {
     try {
       const previewResponse = await axios.post(
@@ -745,9 +590,34 @@ const MentorManagement = () => {
     }
   };
 
+  useEffect(() => {
+    let mounted = true;
+  
+    const handleYearChange = (value) => {
+      if (!mounted) return;
+      
+      if (value) {
+        const suggestions = generateYearSuggestions(value);
+        setYearSuggestions(suggestions);
+        setShowYearOptions(suggestions.length > 0);
+      } else {
+        setYearSuggestions([]);
+        setShowYearOptions(false);
+      }
+    };
+  
+    // If mentorDetails.academicYear changes, update suggestions
+    handleYearChange(mentorDetails.academicYear);
+  
+    return () => {
+      mounted = false;
+    };
+  }, [mentorDetails.academicYear]);
+  
+
   return (
     <ThemeProvider theme={theme}>
-      <div className="fixed inset-0 bg-gray-900 text-white">
+      <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
         <Toaster 
           position="top-center" 
           containerStyle={{
@@ -771,25 +641,54 @@ const MentorManagement = () => {
         </div>
 
         {/* Main Content Container */}
-        <div className="relative z-10 h-screen flex flex-col pt-[80px]">
-          {/* Header */}
-          <motion.h1 
-            className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Mentor Management
-          </motion.h1>
+        <div className="relative z-10 h-screen flex flex-col pt-[60px]">
+          <div className="flex items-center justify-between px-4 lg:justify-center"> {/* Added lg:justify-center */}
+            <motion.h1 
+              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              Mentor Management
+            </motion.h1>
 
-          {/* Grid Layout - Adjusted for single page view */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-4 p-4 h-[calc(100vh-130px)]"> {/* Adjusted height */}
-            {/* Left Column - Filter Panel */}
+
+            {isSmallScreen && (
+              <IconButton
+                onClick={() => setShowFilters(!showFilters)}
+                sx={{
+                  color: '#f97316',
+                  bgcolor: 'rgba(249, 115, 22, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(249, 115, 22, 0.2)',
+                  },
+                }}
+              >
+                <FilterListIcon />
+              </IconButton>
+            )}
+          </div>
+
+          {/* Main Grid Layout */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[250px,1fr] gap-3 p-3 h-[calc(100vh-100px)] lg:overflow-hidden overflow-auto">
+            {/* Filter Panel */}
             <motion.div 
-              className="h-full"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
+              className="lg:h-full max-w-full lg:max-w-[250px]"
+              initial={false} // Add this to prevent initial animation
+              animate={{
+                height: showFilters ? 'auto' : 0,
+                opacity: showFilters ? 1 : 0,
+                marginBottom: showFilters ? '12px' : 0
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
+              style={{
+                overflow: showFilters ? 'visible' : 'hidden', // Change to visible when shown
+                display: showFilters ? 'block' : 'none'
+              }}
             >
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4 h-full">
                 <FilterSection 
@@ -807,7 +706,9 @@ const MentorManagement = () => {
                         break;
                     }
                   }}
-                  onSearch={fetchMentors}
+                  onSearch={({ academicYear, academicSession, MUJid }) => {
+                    fetchMentors({ academicYear, academicSession, MUJid });
+                  }}
                   onAddNew={() => setOpenDialog(true)}
                   onDelete={handleDeleteMentor}
                   mentors={mentors}
@@ -818,10 +719,15 @@ const MentorManagement = () => {
 
             {/* Right Column - Table */}
             <motion.div
-              className="h-full"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
+              className="h-auto lg:h-full min-w-0" // Updated height
+              animate={{
+                gridColumn: (!showFilters && isSmallScreen) ? 'span 2' : 'auto'
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                 <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}
@@ -856,7 +762,14 @@ const MentorManagement = () => {
         <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
-          PaperProps={{ sx: dialogStyles.paper }}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{ 
+            sx: {
+              ...dialogStyles.paper,
+              maxHeight: '90vh', // Ensure dialog doesn't exceed viewport height
+            }
+          }}
         >
           <DialogTitle sx={dialogStyles.title}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -887,91 +800,214 @@ const MentorManagement = () => {
             </IconButton>
           </DialogTitle>
 
-          <DialogContent sx={dialogStyles.content}>
-            <Box sx={dialogStyles.form}>
-              <TextField
-                className="full-width"
-                label="MUJid"
-                name="MUJid"
-                value={mentorDetails.MUJid}
-                onChange={handleInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              
-              <TextField
-                label="Name"
-                name="name"
-                value={mentorDetails.name}
-                onChange={handleInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              
-              <TextField
-                label="Email"
-                name="email"
-                type="email"
-                value={mentorDetails.email}
-                onChange={handleInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
+          <DialogContent 
+            sx={{
+              ...dialogStyles.content,
+              padding: '24px',
+              overflowY: 'auto',
+              marginTop: 2,
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(249, 115, 22, 0.5)',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: 'rgba(249, 115, 22, 0.7)',
+                },
+              },
+            }}
+          >
+            <Box 
+              sx={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                width: '100%',
+                mt: 1,
+              }}
+            >
+              <Grid container spacing={3}>
+                {/* Academic Year */}
+                <Grid item xs={12} md={6}>
+                  <Box ref={yearRef} sx={{ position: 'relative', width: '100%' }}>
+                    <TextField
+                      fullWidth
+                      label="Academic Year"
+                      name="academicYear"
+                      value={mentorDetails.academicYear}
+                      onChange={handleAcademicYearInput}
+                      onClick={() => setShowYearOptions(true)}
+                      required
+                      sx={dialogStyles.textField}
+                      inputProps={{
+                        pattern: "\\d{4}-\\d{4}",
+                        title: "Format: YYYY-YYYY (e.g., 2023-2024)"
+                      }}
+                    />
+                    {showYearOptions && yearSuggestions.length > 0 && (
+                      <Box sx={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        zIndex: 1000,
+                        mt: 1,
+                        bgcolor: 'rgba(17, 24, 39, 0.95)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(249, 115, 22, 0.15)',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                        maxHeight: '200px',
+                        overflowY: 'auto'
+                      }}>
+                        {yearSuggestions.map((year) => (
+                          <Box
+                            key={year}
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              cursor: 'pointer',
+                              '&:hover': {
+                                bgcolor: 'rgba(249, 115, 22, 0.1)',
+                              }
+                            }}
+                            onClick={() => {
+                              setMentorDetails(prev => ({
+                                ...prev,
+                                academicYear: year,
+                                academicSession: generateAcademicSessions(year)[0]
+                              }));
+                              setShowYearOptions(false);
+                            }}
+                          >
+                            {year}
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
 
-              <TextField
-                label="Phone Number"
-                name="phone_number"
-                value={mentorDetails.phone_number}
-                onChange={handleInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
+                {/* Academic Session */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Academic Session"
+                    name="academicSession"
+                    value={mentorDetails.academicSession}
+                    onChange={handleInputChange}
+                    required
+                    disabled={!mentorDetails.academicYear}
+                    sx={dialogStyles.textField}
+                  >
+                    {mentorDetails.academicYear ? 
+                      generateAcademicSessions(mentorDetails.academicYear).map((session) => (
+                        <MenuItem key={session} value={session}>
+                          {session}
+                        </MenuItem>
+                      )) : 
+                      <MenuItem value="">Select year first</MenuItem>
+                    }
+                  </TextField>
+                </Grid>
 
-              <TextField
-                select
-                label="Gender"
-                name="gender"
-                value={mentorDetails.gender}
-                onChange={handleInputChange}
-                sx={dialogStyles.textField}
-              >
-                <MenuItem value="male">Male</MenuItem>
-                <MenuItem value="female">Female</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
-              </TextField>
+                {/* MUJid */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="MUJid"
+                    name="MUJid"
+                    value={mentorDetails.MUJid}
+                    onChange={handleInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                    inputProps={{
+                      style: { textTransform: 'uppercase' }
+                    }}
+                    placeholder="Enter MUJid"
+                  />
+                </Grid>
 
-              <TextField
-                select
-                label="Role"
-                name="role"
-                value={mentorDetails.role}
-                onChange={handleInputChange}
-                SelectProps={{ multiple: true }}
-                sx={dialogStyles.textField}
-              >
-                <MenuItem value="mentor">Mentor</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="superadmin">Super Admin</MenuItem>
-              </TextField>
+                {/* Name */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Name"
+                    name="name"
+                    value={mentorDetails.name}
+                    onChange={handleInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
 
-              <TextField
-                label="Academic Year"
-                name="academicYear"
-                value={mentorDetails.academicYear}
-                onChange={handleAcademicYearInput}
-                required
-                sx={dialogStyles.textField}
-              />
+                {/* Email */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    type="email"
+                    value={mentorDetails.email}
+                    onChange={handleInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
 
-              <TextField
-                label="Academic Session"
-                name="academicSession"
-                value={mentorDetails.academicSession}
-                onChange={handleAcademicSessionInput}
-                required
-                disabled={!mentorDetails.academicYear}
-                sx={dialogStyles.textField}
-              />
+                {/* Phone Number */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    name="phone_number"
+                    value={mentorDetails.phone_number}
+                    onChange={handleInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
+
+                {/* Gender */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Gender"
+                    name="gender"
+                    value={mentorDetails.gender}
+                    onChange={handleInputChange}
+                    sx={dialogStyles.textField}
+                  >
+                    <MenuItem value="male">Male</MenuItem>
+                    <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </TextField>
+                </Grid>
+
+                {/* Role */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Role"
+                    name="role"
+                    value={mentorDetails.role}
+                    onChange={handleInputChange}
+                    SelectProps={{ multiple: true }}
+                    sx={dialogStyles.textField}
+                  >
+                    <MenuItem value="mentor">Mentor</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                    <MenuItem value="superadmin">Super Admin</MenuItem>
+                  </TextField>
+                </Grid>
+              </Grid>
             </Box>
           </DialogContent>
 
@@ -1021,7 +1057,12 @@ const MentorManagement = () => {
           onClose={() => setEditDialog(false)}
           maxWidth="md"
           fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
+          PaperProps={{ 
+            sx: {
+              ...dialogStyles.paper,
+              maxHeight: '90vh', // Ensure dialog doesn't exceed viewport height
+            }
+          }}
         >
           <DialogTitle sx={dialogStyles.title}>
             <Typography
@@ -1047,96 +1088,164 @@ const MentorManagement = () => {
               <CloseIcon />
             </IconButton>
           </DialogTitle>
-          <DialogContent sx={dialogStyles.content}>
-            <Box
-              sx={{
-                display: "flex",
-                gap: 4,
-                minHeight: "60vh",
+          <DialogContent 
+            sx={{
+              ...dialogStyles.content,
+              padding: '24px',
+              overflowY: 'auto', // Enable vertical scrolling
+              marginTop: 2, // Add margin top to the content
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(249, 115, 22, 0.5)',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: 'rgba(249, 115, 22, 0.7)',
+                },
+              },
+            }}
+          >
+            <Box 
+              sx={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                width: '100%',
+                mt: 1, // Add margin top to the Box container
               }}
             >
-              {/* Left side - Form */}
-              <Box
-                sx={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  overflowY: "auto",
-                  pr: 2,
-                  "&::-webkit-scrollbar": {
-                    width: "8px",
-                  },
-                  "&::-webkit-scrollbar-track": {
-                    background: "rgba(255, 255, 255, 0.1)",
-                    borderRadius: "4px",
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    background: "rgba(249, 115, 22, 0.5)",
-                    borderRadius: "4px",
-                    "&:hover": {
-                      background: "rgba(249, 115, 22, 0.7)",
-                    },
-                  },
-                  "& .MuiTextField-root": dialogStyles.textField,
-                }}
-              >
-                <TextField
-                  label="MUJid"
-                  name="MUJid"
-                  value={selectedMentor?.MUJid || ""}
-                  onChange={handleEditInputChange}
-                  required
-                />
-                <TextField
-                  label="Name"
-                  name="name"
-                  value={selectedMentor?.name || ""}
-                  onChange={handleEditInputChange}
-                  required
-                />
-                <TextField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={selectedMentor?.email || ""}
-                  onChange={handleEditInputChange}
-                  required
-                />
-                <TextField
-                  label="Phone Number"
-                  name="phone"
-                  value={selectedMentor?.phone_number || ""}
-                  onChange={handleEditInputChange}
-                  required
-                />
-                <TextField
-                  select
-                  label="Gender"
-                  name="gender"
-                  value={selectedMentor?.gender || ""}
-                  onChange={handleEditInputChange}
-                >
-                  <MenuItem value="male">Male</MenuItem>
-                  <MenuItem value="female">Female</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </TextField>
-                <TextField
-                  select
-                  label="Role"
-                  name="role"
-                  value={selectedMentor?.role || []}
-                  onChange={handleEditInputChange}
-                  SelectProps={{ multiple: true }}
-                >
-                  <MenuItem value="mentor">Mentor</MenuItem>
-                  <MenuItem value="admin">Admin</MenuItem>
-                  <MenuItem value="superadmin">Super Admin</MenuItem>
-                </TextField>
-              </Box>
+              {/* Replace the nested Box structure with a simple Grid */}
+              <Grid container spacing={3}> {/* Increased spacing between grid items */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="MUJid"
+                    name="MUJid"
+                    value={selectedMentor?.MUJid || ""}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Name"
+                    name="name"
+                    value={selectedMentor?.name || ""}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    type="email"
+                    value={selectedMentor?.email || ""}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    name="phone_number"
+                    value={selectedMentor?.phone_number || ""}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Gender"
+                    name="gender"
+                    value={selectedMentor?.gender || ""}
+                    onChange={handleEditInputChange}
+                    sx={dialogStyles.textField}
+                  >
+                    <MenuItem value="male">Male</MenuItem>
+                    <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Role"
+                    name="role"
+                    value={selectedMentor?.role || []}
+                    onChange={handleEditInputChange}
+                    SelectProps={{ multiple: true }}
+                    sx={dialogStyles.textField}
+                  >
+                    <MenuItem value="mentor">Mentor</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                    <MenuItem value="superadmin">Super Admin</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Academic Year"
+                    name="academicYear"
+                    value={selectedMentor?.academicYear || ""}
+                    onChange={handleEditInputChange}
+                    required
+                    sx={dialogStyles.textField}
+                    inputProps={{
+                      pattern: "\\d{4}-\\d{4}",
+                      title: "Format: YYYY-YYYY (e.g., 2023-2024)"
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Academic Session"
+                    name="academicSession"
+                    value={selectedMentor?.academicSession || ""}
+                    onChange={handleEditInputChange}
+                    required
+                    disabled={!selectedMentor?.academicYear}
+                    sx={dialogStyles.textField}
+                  >
+                    {selectedMentor?.academicYear ? 
+                      [
+                        `JULY-DECEMBER ${selectedMentor.academicYear.split('-')[0]}`,
+                        `JANUARY-JUNE ${selectedMentor.academicYear.split('-')[1]}`
+                      ].map((session) => (
+                        <MenuItem key={session} value={session}>
+                          {session}
+                        </MenuItem>
+                      )) :
+                      <MenuItem value="">Select year first</MenuItem>
+                    }
+                  </TextField>
+                </Grid>
+              </Grid>
             </Box>
           </DialogContent>
-          <DialogActions sx={dialogStyles.actions}>
+          <DialogActions sx={{
+            ...dialogStyles.actions,
+            padding: '16px 24px',
+            borderTop: '1px solid rgba(249, 115, 22, 0.15)',
+            background: 'rgba(249, 115, 22, 0.05)',
+          }}>
             <Button
               onClick={() => setEditDialog(false)}
               variant="outlined"
@@ -1358,6 +1467,111 @@ const MentorManagement = () => {
                 Edit Details
               </Button>
             )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Role Deletion Dialog */}
+        <Dialog
+          open={deleteRoleDialog.open}
+          onClose={() => setDeleteRoleDialog({ open: false, mentor: null })}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: dialogStyles.paper }}
+        >
+          <DialogTitle
+            sx={{
+              ...dialogStyles.title,
+              borderBottom: "1px solid rgba(249, 115, 22, 0.2)",
+            }}
+          >
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ color: "#f97316", fontWeight: 600 }}
+            >
+              Confirm Role Deletion
+            </Typography>
+            <IconButton
+              aria-label="close"
+              onClick={() => setDeleteRoleDialog({ open: false, mentor: null })}
+              sx={{
+                position: "absolute",
+                right: 8,
+                top: 8,
+                color: "rgba(255, 255, 255, 0.7)",
+                "&:hover": { color: "#f97316" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent
+            sx={{
+              ...dialogStyles.content,
+              my: 2,
+            }}
+          >
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              The mentor has the following roles. Please select the roles you want to delete:
+            </Typography>
+            <Box sx={{ color: "white" }}>
+              {deleteRoleDialog.mentor?.role.map((role) => (
+                <Box key={role} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox
+                    checked={selectedRoles.includes(role)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRoles((prev) => [...prev, role]);
+                      } else {
+                        setSelectedRoles((prev) => prev.filter((r) => r !== role));
+                      }
+                    }}
+                    sx={{
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      '&.Mui-checked': {
+                        color: '#f97316',
+                      },
+                    }}
+                  />
+                  <Typography variant="body2">{role}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </DialogContent>
+          <DialogActions
+            sx={{
+              ...dialogStyles.actions,
+              justifyContent: "space-between",
+              px: 3,
+              py: 2,
+            }}
+          >
+            <Button
+              onClick={() => setDeleteRoleDialog({ open: false, mentor: null })}
+              variant="outlined"
+              sx={{
+                borderColor: "rgba(255, 255, 255, 0.2)",
+                color: "white",
+                "&:hover": {
+                  borderColor: "rgba(255, 255, 255, 0.5)",
+                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRoleBasedDelete}
+              variant="contained"
+              sx={{
+                bgcolor: "#f97316",
+                "&:hover": {
+                  bgcolor: "#ea580c",
+                },
+              }}
+            >
+              Delete Selected Roles
+            </Button>
           </DialogActions>
         </Dialog>
       </div>
