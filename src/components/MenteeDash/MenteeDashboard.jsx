@@ -1,34 +1,4 @@
 "use client";
-<<<<<<< HEAD
-import { useState, useEffect } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Container,
-  useMediaQuery,
-  IconButton,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Divider,
-  Snackbar,
-  Slide,
-  Alert,
-  AlertTitle,
-  LinearProgress,
-  MenuItem,
-  CircularProgress,
-} from "@mui/material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-import CloseIcon from "@mui/icons-material/Close";
-import axios from "axios";
-import { Toaster } from "react-hot-toast";
-import { motion, AnimatePresence } from "framer-motion";
-=======
 import { useState, useEffect } from 'react';
 import { Box, Typography, Snackbar, Slide, Alert, AlertTitle,CircularProgress } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
@@ -36,10 +6,10 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import { motion} from 'framer-motion';
->>>>>>> d5688eb6041bd96b06743c8c658ccd0ab21c4a9b
 
 const MenteeDashboard = () => {
   const [menteeDetails, setMenteeDetails] = useState(null);
+  console.log(menteeDetails);
   const [loading, setLoading] = useState(true);
   const [alert, setAlert] = useState({
     open: false,
@@ -57,13 +27,8 @@ const MenteeDashboard = () => {
       try {
         const response = await axios.get("/api/mentee/details");
         setMenteeDetails(response.data);
-<<<<<<< HEAD
-      } catch (error) {
-        showAlert("Error fetching mentee details", "error");
-=======
       } catch  {
         showAlert('Error fetching mentee details', 'error');
->>>>>>> d5688eb6041bd96b06743c8c658ccd0ab21c4a9b
       } finally {
         setLoading(false);
       }
@@ -91,11 +56,6 @@ const MenteeDashboard = () => {
     },
   });
 
-<<<<<<< HEAD
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-
-=======
->>>>>>> d5688eb6041bd96b06743c8c658ccd0ab21c4a9b
   if (loading) {
     return (
       <ThemeProvider theme={theme}>
