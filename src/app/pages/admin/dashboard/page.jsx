@@ -15,7 +15,7 @@ export default function Page() {
   );
 }
 
-function AdminOption({text, link, clickEvent}) {
+function AdminOption({text, link}) {
     return (
         <div className="border-y w-1/3 text-center adminOption py-4 hover:underline underline-offset-4 text-xl" >
             <Link href={link}>{text}</Link>

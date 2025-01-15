@@ -5,7 +5,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useMemo, useState } from 'react';
 
-const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, isExpanded }) => {
+const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
 
