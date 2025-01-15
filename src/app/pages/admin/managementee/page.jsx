@@ -1,5 +1,5 @@
 import React from 'react'
-import MenteeManagement from '../../../../components/AdminDash/MenteeManagement'
+import MenteeManagement from '../../../../components/AdminDash/mentee/MenteeManagement'
 const page = () => {
   return (
     <>

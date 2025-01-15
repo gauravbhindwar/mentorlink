@@ -59,7 +59,7 @@ const AboutUs = () => {
               className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
             >
               <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-4">
-                <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
+                {/* <img src={member.image} alt={member.name} className="w-full h-full object-cover" /> */}
               </div>
               <h3 className="text-xl font-semibold text-white text-center mb-2">{member.name}</h3>
               <p className="text-white/60 text-center mb-2">{member.role}</p>

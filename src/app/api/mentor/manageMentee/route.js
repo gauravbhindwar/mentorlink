@@ -1,5 +1,5 @@
-import { connect } from "../../../lib/dbConfig";
-import { Mentee, Mentor } from "../../../lib/dbModels";
+import { connect } from "../../../../lib/dbConfig";
+import { Mentee, Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 

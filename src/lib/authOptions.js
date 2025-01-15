@@ -10,7 +10,7 @@ export const authOptions = {
                 otp: { label: "OTP", type: "text" },
                 role: { label: "Role", type: "text" },
             },
-            async authorize(credentials, req) {
+            async authorize(credentials) {
                 try {
                     if (!credentials?.email || !credentials?.otp || !credentials?.role) {
                         throw new Error("Missing credentials");

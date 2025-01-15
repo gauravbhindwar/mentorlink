@@ -25,12 +25,12 @@ const MentorDashBoard = () => {
             onClick: () => router.push('/pages/meetings/schmeeting') // Updated path
         },
         {
-            title: 'Meeting Reports',
+            title: 'Report Meetings',
             icon: '📊',
             description: 'Generate and manage meeting reports',
             gradient: 'from-purple-500 via-violet-500 to-indigo-500',
             shadowColor: 'rgba(147, 51, 234, 0.4)',
-            onClick: () => router.push('/pages/meetings/mreport')
+            onClick: () => router.push('/pages/meetings/reportmeetings') // Updated path
         },
         {
             title: 'Meeting Outcomes',
