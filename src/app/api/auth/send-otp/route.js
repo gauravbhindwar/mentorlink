@@ -27,101 +27,73 @@ const sendOtpEmail = async (email, otp) => {
     await transporter.sendMail({
         from: `"MentorLink" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Your Verification Code',
+        subject: 'Your MentorLink Verification Code',
         text: `Your verification code is ${otp}`,
         html: `
             <div style="
-                font-family: 'Inter', Arial, sans-serif;
-                max-width: 500px;
+                font-family: 'Arial', sans-serif;
+                max-width: 600px;
                 margin: 0 auto;
-                padding: 32px;
-                background: linear-gradient(145deg, #ffffff, #f5f7fa);
-                border: 1px solid #e1e4e8;
-                border-radius: 20px;
+                padding: 30px;
+                background: #fff5eb;
             ">
-                <div style="text-align: center;">
-                    <div style="
-                        font-size: 32px;
-                        font-weight: 800;
-                        background: linear-gradient(90deg, #667eea, #764ba2);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        margin: 24px 0;
-                        animation: fadeIn 2s ease-in-out;
-                    ">
-                        MENTOR<span style="
-                            color: #764ba2;
-                            -webkit-text-fill-color: #764ba2;
-                        ">LINK</span>
-                    </div>
-                    
+                <div style="
+                    background: #ffffff;
+                    border-radius: 16px;
+                    box-shadow: 0 4px 20px rgba(234, 88, 12, 0.1);
+                    padding: 32px;
+                    text-align: center;
+                ">
                     <h1 style="
-                        color: #1a1f36;
-                        font-size: 24px;
-                        font-weight: 600;
-                        margin: 0 0 16px;
-                    ">Email Verification</h1>
-                    
-                    <p style="
-                        color: #4f566b;
-                        font-size: 15px;
-                        line-height: 1.5;
+                        color: #ea580c;
+                        font-size: 32px;
                         margin: 0 0 24px;
-                    ">Use this verification code to complete your sign-in process:</p>
-                    
+                    ">MentorLink</h1>
+
+                    <h2 style="
+                        color: #431407;
+                        font-size: 24px;
+                        margin: 0 0 16px;
+                    ">Verification Required</h2>
+
+                    <p style="color: #9a3412; margin: 0 0 24px;">
+                        Please use the following code to verify your email:
+                    </p>
+
                     <div style="
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: #ea580c;
+                        color: white;
                         padding: 20px;
                         border-radius: 12px;
                         margin: 24px 0;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                    ">
-                        <p style="
-                            font-size: 32px;
-                            letter-spacing: 8px;
-                            font-weight: 700;
-                            color: #ffffff;
-                            margin: 0;
-                            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-                        ">${otp}</p>
-                    </div>
-                    
+                        font-size: 32px;
+                        font-weight: bold;
+                        letter-spacing: 8px;
+                    ">${otp}</div>
+
                     <p style="
-                        color: #4f566b;
-                        font-size: 13px;
+                        color: #9a3412;
+                        font-size: 14px;
                         margin: 24px 0;
                         padding: 12px;
-                        background-color: #f7fafc;
+                        background: #ffedd5;
                         border-radius: 8px;
-                    ">⚠️ This code will expire in 10 minutes</p>
-                    
+                    ">This code will expire in 10 minutes</p>
+
                     <div style="
-                        margin-top: 32px;
+                        margin-top: 24px;
                         padding: 16px;
-                        background-color: #fafbfc;
+                        background: #fff7ed;
                         border-radius: 8px;
-                        border: 1px solid #edf2f7;
+                        font-size: 13px;
+                        color: #c2410c;
                     ">
-                        <p style="
-                            font-size: 13px;
-                            color: #64748b;
-                            margin: 0;
-                        ">If you didn't request this code, please ignore this email.</p>
+                        If you didn't request this code, please ignore this email.
                     </div>
                 </div>
             </div>
-            <style>
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(-20px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-            </style>
         `,
-        headers: {
-            'X-Priority': '1 (Highest)',
-            'X-MSMail-Priority': 'High',
-            'Importance': 'High'
-        }
+        priority: 'high'
     });
 };
 

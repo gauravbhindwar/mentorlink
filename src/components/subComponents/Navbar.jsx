@@ -175,17 +175,6 @@ const Navbar = () => {
                                 >
                                     Profile
                                 </motion.button>
-                                
-                                <motion.div
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 5 }}
-                                    className="absolute right-0 mt-1 w-48 rounded-lg
-                                             bg-gradient-to-b from-orange-500/10 to-pink-500/10
-                                             border border-orange-200/20 backdrop-blur-lg
-                                             shadow-lg overflow-hidden"
-                                >
-                                </motion.div>
                             </div>
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
@@ -245,7 +234,7 @@ const Navbar = () => {
                 </motion.button>
             </div>
 
-            {/* Mobile Menu - Revamped */}
+            {/* Mobile Menu */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div

@@ -17,14 +17,13 @@ import {
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
-// import UploadFileIcon from "@mui/icons-material/UploadFile";
-// import { useDropzone } from "react-dropzone";
 import MentorTable from "./MentorTable";
 import FilterSection from "./MentorFilterSection";
 import { Toaster,toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
 import BulkUploadPreview from "../common/BulkUploadPreview";
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 const dialogStyles = {
   paper: {
@@ -34,8 +33,8 @@ const dialogStyles = {
     borderRadius: '24px',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
     color: 'white',
-    maxWidth: '90vw',
-    width: '800px',
+    maxWidth: '80vw', // Reduced from 90vw
+    width: '700px', // Reduced from 800px
     maxHeight: '90vh',
     overflow: 'hidden',
   },
@@ -107,31 +106,15 @@ const MentorManagement = () => {
   });
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentor, setSelectedMentor] = useState(null);
-  // const [alert, setAlert] = useState({ // Unused state
-  //   open: false,
-  //   message: "",
-  //   severity: "",
-  // });
-  // const [uploadProgress, setUploadProgress] = useState(0); // Unused state
   const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
-  // const [academicSessions, setAcademicSessions] = useState([]);
-  // const [bulkUploadDialog, setBulkUploadDialog] = useState(false); // Unused state
   const [previewData, setPreviewData] = useState({ data: [], errors: [] });
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
   const [existingMentorData, setExistingMentorData] = useState({});
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
-  // const [isUploading, setIsUploading] = useState(false); // Unused state
-  // const [uploading, setUploading] = useState(false);
-  
-  // const [yearSuggestions, setYearSuggestions] = useState([]); // Unused state
-  // const [sessionSuggestions, setSessionSuggestions] = useState([]); // Unused state
-  // const [showYearOptions, setShowYearOptions] = useState(false); // Unused state
-  // const [showSessionOptions, setShowSessionOptions] = useState(false); // Unused state
-  // const yearRef = useRef(null); // Unused ref
-  // const sessionRef = useRef(null); // Unused ref
+  const [showFilters, setShowFilters] = useState(true);
 
   const theme = createTheme({
     palette: {
@@ -144,67 +127,9 @@ const MentorManagement = () => {
     },
   });
 
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
 
-  // Add these variables for dropzone
-  // const [isUploading, setIsUploading] = useState(false);
-  const [uploading, setUploading] = useState(false); // Changed from setUploading to uploading
-
-  // const handleBulkUploadClose = () => {
-  //   setBulkUploadDialog(false);
-  //   setUploadProgress(0);
-  //   setUploading(false);
-  // };
-
-  // const handleFileUpload = async (acceptedFiles) => {
-  //   const file = acceptedFiles[0];
-  //   if (!file) return;
-
-  //   const validTypes = [
-  //     "application/vnd.ms-excel",
-  //     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  //   ];
-
-  //   if (!validTypes.includes(file.type)) {
-  //     showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
-  //     return;
-  //   }
-
-  //   setUploading(true);
-  //   setBulkUploadDialog(false); // Close the upload dialog
-
-  //   const formData = new FormData();
-  //   formData.append("file", file);
-  //   formData.append("type", "mentor"); // Add the type parameter
-
-  //   try {
-  //     const previewResponse = await axios.post(
-  //       "/api/admin/manageUsers/previewUpload",
-  //       formData,
-  //       {
-  //         headers: {
-  //           "Content-Type": "multipart/form-data",
-  //         },
-  //         onUploadProgress: (progressEvent) => {
-  //           const percentCompleted = Math.round(
-  //             (progressEvent.loaded * 100) / progressEvent.total
-  //           );
-  //           setUploadProgress(percentCompleted);
-  //         },
-  //       }
-  //     );
-
-  //     setPreviewData(previewResponse.data);
-  //     setShowPreview(true);
-  //   } catch (error) {
-  //     showAlert(
-  //       error.response?.data?.error || error.message || "Error processing file",
-  //       "error"
-  //     );
-  //   } finally {
-  //     setUploading(false);
-  //   }
-  // };
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     console.log("Preview Data:", previewData);
@@ -224,7 +149,7 @@ const MentorManagement = () => {
         showAlert("Mentors uploaded successfully!", "success");
         setShowPreview(false);
         handleBulkUploadClose();
-        await fetchMentors(); // Await the fetch
+        await fetchMentors(); 
       }
     } catch (error) {
       const errorMessage =
@@ -234,36 +159,6 @@ const MentorManagement = () => {
       setUploading(false);
     }
   };
-
-  // Move useDropzone after handleFileUpload definition
-  // const { getRootProps, getInputProps } = useDropzone({
-  //   onDrop: handleFileUpload,
-  //   accept: {
-  //     "application/vnd.ms-excel": [".xls"],
-  //     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-  //       ".xlsx",
-  //     ],
-  //   },
-  //   multiple: false,
-  // });
-
-  // const handleSearch = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const response = await axios.get("/api/admin/manageUsers/manageMentor");
-  //     setMentors(response.data.mentors);
-  //     setTableVisible(true);
-  //   } catch (error) {
-  //     showAlert(
-  //       error.response?.data?.error || "Error fetching mentors",
-  //       "error"
-  //     );
-  //     setMentors([]);
-  //     setTableVisible(false);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const validateForm = () => {
     const errors = [];
@@ -278,61 +173,7 @@ const MentorManagement = () => {
       errors.push("Academic session is required");
     return errors;
   };
-
-  // Add these new state variables after other state declarations
-  // const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
-  // const [existingMentorData, setExistingMentorData] = useState({});
-  // const [fetchingMentorDetails, setFetchingMentorDetails] = useState(false);
-  // const [duplicateEditMode, setDuplicateEditMode] = useState(false);
-
-  // Add this new function to fetch mentor details
-  // const fetchMentorDetails = async (MUJid) => {
-  //   if (!MUJid) {
-  //     // console.error("MUJid is undefined");
-  //     toast.error("Invalid MUJid", {
-  //       style: toastStyles.error.style,
-  //       iconTheme: toastStyles.error.iconTheme,
-  //     });
-  //     return;
-  //   }
-
-  //   setFetchingMentorDetails(true);
-  //   try {
-  //     const response = await axios.get(
-  //       `/api/admin/manageUsers/manageMentor/${MUJid}`
-  //     );
-  //     if (response.data && response.data.mentor) {
-  //       setExistingMentorData(response.data.mentor);
-  //       // Pre-fill the mentorDetails with existing data for editing
-  //       setMentorDetails({
-  //         ...response.data.mentor,
-  //         // Ensure all required fields are present
-  //         role: response.data.mentor.role || ["mentor"],
-  //         academicYear:
-  //           response.data.mentor.academicYear || getCurrentAcademicYear(),
-  //         academicSession:
-  //           response.data.mentor.academicSession ||
-  //           generateAcademicSessions(getCurrentAcademicYear())[0],
-  //       });
-  //     } else {
-  //       throw new Error("No mentor data received");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching mentor:", error);
-  //     toast.error(
-  //       error.response?.data?.error || "Error fetching mentor details",
-  //       {
-  //         style: toastStyles.error.style,
-  //         iconTheme: toastStyles.error.iconTheme,
-  //       }
-  //     );
-  //     setDuplicateMentorDialog(false); // Close dialog on error
-  //   } finally {
-  //     setFetchingMentorDetails(false);
-  //   }
-  // };
-
-  // Replace the handleAddMentor function
+  
   const handleAddMentor = async () => {
     const errors = validateForm();
     if (errors.length > 0) {
@@ -401,26 +242,11 @@ const MentorManagement = () => {
     });
   };
 
-  // Add this new function to handle using existing data
-  // const handleUseExistingData = () => {
-  //   if (existingMentorData && Object.keys(existingMentorData).length > 0) {
-  //     setSelectedMentor(existingMentorData);
-  //     setEditDialog(true);
-  //     setDuplicateMentorDialog(false);
-  //   } else {
-  //     toast.error("No existing mentor data available", {
-  //       style: toastStyles.error.style,
-  //       iconTheme: toastStyles.error.iconTheme,
-  //     });
-  //   }
-  // };
 
   const handleEditMentor = async () => {
     try {
-      // Remove _id and id from the request payload
       const {...updateData } = selectedMentor;
 
-      // Use PATCH instead of PUT and send only the changed data
       const response = await axios.patch(
         `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
         updateData
@@ -560,18 +386,6 @@ const MentorManagement = () => {
     }
   };
 
-  // const handleBulkUploadOpen = () => {
-  //   setBulkUploadDialog(true);
-  // };
-
-  // Add these new state variables
-  // const [yearSuggestions, setYearSuggestions] = useState([]);
-  // const [sessionSuggestions, setSessionSuggestions] = useState([]);
-  // const [showYearOptions, setShowYearOptions] = useState(false);
-  // const [showSessionOptions, setShowSessionOptions] = useState(false);
-  // const yearRef = useRef(null);
-  // const sessionRef = useRef(null);
-
   // Add these new helper functions
   const generateYearSuggestions = (input) => {
     if (!input) return [];
@@ -664,6 +478,7 @@ const MentorManagement = () => {
       setTableVisible(false);
     } finally {
       setLoading(false);
+      // Remove any automatic filter hiding here
     }
   };
 
@@ -701,7 +516,6 @@ const MentorManagement = () => {
   };
 
   const handleEditClick = (mentor) => {
-    // Remove id and _id before setting selected mentor
     const {...mentorData } = mentor;
     setSelectedMentor({
       ...mentorData,
@@ -711,7 +525,7 @@ const MentorManagement = () => {
     });
     setEditDialog(true);
   };
-
+  // use to upload mentor data
   const handleBulkUpload = async (formData, onProgress) => {
     try {
       const previewResponse = await axios.post(
@@ -747,7 +561,7 @@ const MentorManagement = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="fixed inset-0 bg-gray-900 text-white">
+      <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
         <Toaster 
           position="top-center" 
           containerStyle={{
@@ -771,25 +585,53 @@ const MentorManagement = () => {
         </div>
 
         {/* Main Content Container */}
-        <div className="relative z-10 h-screen flex flex-col pt-[80px]">
-          {/* Header */}
-          <motion.h1 
-            className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Mentor Management
-          </motion.h1>
+        <div className="relative z-10 h-screen flex flex-col pt-[60px] overflow-auto"> {/* Added overflow-auto */}
+          <div className="flex items-center justify-between px-4">
+            <motion.h1 
+              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              Mentor Management
+            </motion.h1>
 
-          {/* Grid Layout - Adjusted for single page view */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-4 p-4 h-[calc(100vh-130px)]"> {/* Adjusted height */}
-            {/* Left Column - Filter Panel */}
+            {isSmallScreen && (
+              <IconButton
+                onClick={() => setShowFilters(!showFilters)}
+                sx={{
+                  color: '#f97316',
+                  bgcolor: 'rgba(249, 115, 22, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(249, 115, 22, 0.2)',
+                  },
+                }}
+              >
+                <FilterListIcon />
+              </IconButton>
+            )}
+          </div>
+
+          {/* Main Grid Layout */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[250px,1fr] gap-3 p-3 h-[calc(100vh-100px)] lg:overflow-hidden overflow-auto">
+            {/* Filter Panel */}
             <motion.div 
-              className="h-full"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
+              className="lg:h-full max-w-full lg:max-w-[250px]"
+              initial={false} // Add this to prevent initial animation
+              animate={{
+                height: showFilters ? 'auto' : 0,
+                opacity: showFilters ? 1 : 0,
+                marginBottom: showFilters ? '12px' : 0
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
+              style={{
+                overflow: showFilters ? 'visible' : 'hidden', // Change to visible when shown
+                display: showFilters ? 'block' : 'none'
+              }}
             >
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4 h-full">
                 <FilterSection 
@@ -818,10 +660,15 @@ const MentorManagement = () => {
 
             {/* Right Column - Table */}
             <motion.div
-              className="h-full"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
+              className="h-auto lg:h-full min-w-0" // Updated height
+              animate={{
+                gridColumn: (!showFilters && isSmallScreen) ? 'span 2' : 'auto'
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                 <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}

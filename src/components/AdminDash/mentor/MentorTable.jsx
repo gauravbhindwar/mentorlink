@@ -5,7 +5,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useMemo, useState } from 'react';
 
-const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => {
+const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, isExpanded }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
 
@@ -52,23 +52,23 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
-      width: 60,
+      width: 50, // Reduced from 60
       renderCell: (params) => {
         const index = processedMentors.findIndex(mentor => mentor.id === params.row.id);
         return index + 1;
       },
       sortable: false,
     },
-    { field: 'MUJid', headerName: 'MUJid', width: 130 },
-    { field: 'name', headerName: 'Name', width: 180 },
-    { field: 'email', headerName: 'Email', width: 235 },
-    { field: 'phone_number', headerName: 'Phone', width: 150 },
-    { field: 'academicSession', headerName: 'Session', width: 200 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
+    { field: 'MUJid', headerName: 'MUJid', width: 100 }, // Reduced from 130
+    { field: 'name', headerName: 'Name', width: 150 }, // Reduced from 180
+    { field: 'email', headerName: 'Email', width: 200 }, // Reduced from 235
+    { field: 'phone_number', headerName: 'Phone', width: 120 }, // Reduced from 150
+    { field: 'academicSession', headerName: 'Session', width: 170 }, // Reduced from 200
+    { field: 'academicYear', headerName: 'Academic Year', width: 120 }, // Reduced from 150
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 120, // Reduced width since we're using icons
+      width: 100, // Reduced from 120
       headerAlign: 'center',
       align: 'center',
       renderCell: (params) => (
@@ -110,13 +110,13 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
         </Box>
       ),
     },
-    { field: 'role', headerName: 'Role', width: 150 }
+    { field: 'role', headerName: 'Role', width: 120 } // Reduced from 150
   ].map(col => ({
     ...col,
     headerAlign: 'center',
     align: 'center',
-    flex: 1,
-    minWidth: col.width || 150,
+    flex: 0, // Changed from 1 to disable flex growth
+    minWidth: col.width || 100, // Reduced default minWidth
   }));
 
   const CustomHeader = () => (
@@ -164,12 +164,13 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
 
   return (
     <Box sx={{ 
-      height: 'calc(100% - 16px)', // Adjust height to leave space for pagination
+      height: { xs: 'auto', lg: 'calc(100vh - 200px)' }, // Responsive height
       width: '100%',
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
+      transition: 'all 0.3s ease',
     }}>
       {loading && (
         <Box sx={{
@@ -196,12 +197,12 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
         autoHeight={false} // Remove autoHeight to enable vertical scrolling
         sx={{
           // ...existing styles...
-          height: '100%',
+          height: { xs: '500px', lg: '100%' }, // Responsive height
           width: '100%',
           '& .MuiDataGrid-main': {
             overflow: 'auto',
-            minHeight: '300px', // Increased from 200px
-            maxHeight: 'calc(100vh - 280px)', // Adjusted to accommodate pagination
+            minHeight: { xs: '300px', lg: '200px' }, // Responsive minHeight
+            maxHeight: { xs: '500px', lg: 'calc(100vh - 300px)' }, // Responsive maxHeight
             height: '100%', // Ensure full height
             flex: 1,
           },
@@ -223,8 +224,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
               },
             },
             height: '100% !important', // Force full height
-            minHeight: '300px', // Added minimum height
-            maxHeight: 'unset !important',
+            minHeight: { xs: '300px', lg: '200px' }, // Responsive minHeight
+            maxHeight: { xs: '500px', lg: 'unset !important' }, // Responsive maxHeight
           },
           '& .MuiDataGrid-virtualScrollerContent': {
             minWidth: 'fit-content', // Ensure horizontal scroll works
@@ -236,7 +237,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
           },
           width: '100%',
           height: '100%',
-          minHeight: '500px', // Increased from 400px
+          minHeight: '400px', // Reduced from 500px
           border: 'none',
           backgroundColor: 'rgba(0, 0, 0, 0.2)',
           backdropFilter: 'blur(10px)',
@@ -292,6 +293,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick,  onDataUpdate }) => 
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             },
           },
+          transition: 'all 0.3s ease',
         }}
         disableSelectionOnClick
         disableColumnMenu={false}

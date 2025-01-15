@@ -12,14 +12,17 @@ const filterSectionStyles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
+    gap: 3, // Reduced from 4
     color: '#FFFFFF',
+    height: { xs: 'auto', lg: '100%' }, // Responsive height
+    overflow: { xs: 'visible', lg: 'auto' }, // Responsive overflow
+    transition: 'all 0.3s ease',
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 3,
-    padding: '20px',
+    gap: 2, // Reduced from 3
+    padding: { xs: '12px', sm: '16px' }, // Responsive padding
     backgroundColor: 'rgba(31, 41, 55, 0.7)',
     borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -40,16 +43,16 @@ const filterSectionStyles = {
   buttonGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2.5,
-    marginTop: 4,
+    gap: 2, // Reduced from 2.5
+    marginTop: 1, // Reduced from 4
   },
 };
 
 const buttonStyles = {
   standard: (color) => ({
     borderRadius: '50px',
-    px: { xs: 2, sm: 3 },
-    py: { xs: 0.5, sm: 1 },
+    px: { xs: 1.5, sm: 2 }, // Reduced padding
+    py: { xs: 0.5, sm: 0.75 }, // Reduced padding
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
     background: color === 'primary' ? '#f97316' : 
                color === 'secondary' ? '#ea580c' : 
@@ -151,15 +154,12 @@ const MentorFilterSection = ({
     setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
 
-  // const handleAcademicYearChange = (event) => {
-  //   const year = event.target.value;
-  //   setAcademicYear(year);
-  //   setAcademicSessions(generateAcademicSessions(year));
-  //   setAcademicSession('');
-  // };
-
   const handleSearch = () => {
-    onSearch({ academicYear, academicSession, mentorStatus });
+    if (academicYear || academicSession || mentorStatus) {
+      onSearch({ academicYear, academicSession, mentorStatus });
+    } else {
+      showAlert('Please select at least one filter', 'warning');
+    }
   };
 
   const handleReset = () => {
@@ -168,36 +168,6 @@ const MentorFilterSection = ({
     setMentorStatus('');
   };
 
-  // const filterControlStyles = {
-  //   minWidth: 120,
-  //   '& .MuiOutlinedInput-root': {
-  //     color: 'white',
-  //     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  //     backdropFilter: 'blur(10px)',
-  //     borderRadius: '12px',
-  //     '&:hover .MuiOutlinedInput-notchedOutline': {
-  //       borderColor: '#f97316',
-  //     },
-  //     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-  //       borderColor: '#f97316',
-  //     },
-  //   },
-  //   '& .MuiOutlinedInput-notchedOutline': {
-  //     borderColor: 'rgba(255, 255, 255, 0.2)',
-  //   },
-  //   '& .MuiInputLabel-root': {
-  //     color: 'rgba(255, 255, 255, 0.7)',
-  //     '&.Mui-focused': {
-  //       color: '#f97316',
-  //     },
-  //   },
-  //   '& .MuiSelect-icon': {
-  //     color: '#f97316',
-  //   },
-  //   '& .MuiMenuItem-root': {
-  //     color: 'white',
-  //   }
-  // };
 
   const textFieldStyles = {
     '& .MuiOutlinedInput-root': {
@@ -232,7 +202,8 @@ const MentorFilterSection = ({
 
   const comboBoxStyles = {
     position: 'relative',
-    minWidth: 200,
+    minWidth: 180, // Reduced from 200
+    maxWidth: '100%', // Added maxWidth
     '& .MuiTextField-root': {
       width: '100%',
       '& .MuiOutlinedInput-root': {
@@ -308,8 +279,8 @@ const MentorFilterSection = ({
       borderRadius: '24px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
       color: 'white',
-      maxWidth: '500px',
-      width: '90vw',
+      maxWidth: '400px', // Reduced from 500px
+      width: '80vw', // Reduced from 90vw
     },
     dropZone: {
       border: '2px dashed rgba(249, 115, 22, 0.3)',
@@ -354,14 +325,6 @@ const MentorFilterSection = ({
     return endYear === startYear + 1;
   };
 
-  // const validateAcademicSession = (value) => {
-  //   const regex = /^(JANUARY|JULY)-(JUNE|DECEMBER)\s(\d{4})$/;
-  //   if (!regex.test(value)) return false;
-
-  //   const [, month, ] = value.match(regex);
-  //   const validMonths = ['JANUARY', 'JULY'];
-  //   return validMonths.includes(month);
-  // };
 
   const handleAcademicYearInput = (e) => {
     let value = e.target.value.toUpperCase();
@@ -486,7 +449,14 @@ const MentorFilterSection = ({
   // }, []);
 
   return (
-    <Box sx={filterSectionStyles.wrapper}>
+    <Box 
+      sx={{
+        ...filterSectionStyles.wrapper,
+        animation: 'none', // Remove animation to prevent visibility issues
+        position: 'relative', // Add this to ensure proper stacking
+        zIndex: 2 // Add this to ensure filters stay above table
+      }}
+    >
       <Box sx={filterSectionStyles.section}>
         <Typography 
           variant="subtitle2" 
@@ -523,8 +493,10 @@ const MentorFilterSection = ({
                   transform: 'translateY(-2px)',
                   boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
                 },
+                height: '40px', // Added fixed height
               },
             }}
+            fullWidth
           />
           {showYearOptions && dropdownRoot && createPortal(
             <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
@@ -574,6 +546,14 @@ const MentorFilterSection = ({
               </Box>
             }
             disabled={!academicYear}
+            fullWidth
+            sx={{
+              ...textFieldStyles,
+              '& .MuiOutlinedInput-root': {
+                ...textFieldStyles['& .MuiOutlinedInput-root'],
+                height: '40px', // Added fixed height
+              },
+            }}
           />
           {showSessionOptions && dropdownRoot && createPortal(
             <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
@@ -616,7 +596,7 @@ const MentorFilterSection = ({
           onClick={() => setUploadDialog(true)}
           sx={buttonStyles.standard('secondary')}
         >
-          <UploadFileIcon sx={{ fontSize: 20, mr: 1 }} />
+          <UploadFileIcon sx={{ fontSize: 20}} />
           Upload Mentors File
         </Button>
         <Button
