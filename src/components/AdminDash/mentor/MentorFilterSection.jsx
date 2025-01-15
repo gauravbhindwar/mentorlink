@@ -7,22 +7,38 @@ import { createPortal } from 'react-dom';
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useDropzone } from "react-dropzone";
 import PropTypes from 'prop-types';
+import { toast } from 'react-toastify';
 
 const filterSectionStyles = {
   wrapper: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 3, // Reduced from 4
+    gap: 2, // Reduced from 3
     color: '#FFFFFF',
     height: { xs: 'auto', lg: '100%' }, // Responsive height
     overflow: { xs: 'visible', lg: 'auto' }, // Responsive overflow
     transition: 'all 0.3s ease',
+    // Add these properties for scrollbar
+    '&::-webkit-scrollbar': {
+      width: '8px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'rgba(255, 255, 255, 0.1)',
+      borderRadius: '4px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: 'rgba(249, 115, 22, 0.5)',
+      borderRadius: '4px',
+      '&:hover': {
+        background: 'rgba(249, 115, 22, 0.7)',
+      },
+    },
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2, // Reduced from 3
-    padding: { xs: '12px', sm: '16px' }, // Responsive padding
+    gap: 1.5, // Reduced from 2
+    padding: { xs: '10px', sm: '12px' }, // Reduced padding
     backgroundColor: 'rgba(31, 41, 55, 0.7)',
     borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -43,7 +59,7 @@ const filterSectionStyles = {
   buttonGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 2, // Reduced from 2.5
+    gap: 1, // Reduced from 2
     marginTop: 1, // Reduced from 4
   },
 };
@@ -51,8 +67,8 @@ const filterSectionStyles = {
 const buttonStyles = {
   standard: (color) => ({
     borderRadius: '50px',
-    px: { xs: 1.5, sm: 2 }, // Reduced padding
-    py: { xs: 0.5, sm: 0.75 }, // Reduced padding
+    px: { xs: 2, sm: 3 }, // Increased padding
+    py: { xs: 1, sm: 1.5 }, // Increased padding
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
     background: color === 'primary' ? '#f97316' : 
                color === 'secondary' ? '#ea580c' : 
@@ -60,6 +76,11 @@ const buttonStyles = {
     backdropFilter: 'blur(10px)',
     border: '1px solid rgba(255, 255, 255, 0.1)',
     color: 'white',
+    whiteSpace:'wrap',
+    minWidth: 'fit-content', // Allow button to grow with content
+    width: '100%', // Take full width
+    height: 'auto', // Allow height to adjust with content
+    minHeight: '40px', // Minimum height
     '&:hover': {
       transform: 'scale(1.05)',
       transition: 'transform 0.2s',
@@ -83,15 +104,14 @@ const buttonStyles = {
 };
 
 const MentorFilterSection = ({ 
-  onSearch, 
+  onSearch=() => {}, 
   onAddNew = () => {}, 
-  onBulkUpload = null, 
+  onBulkUpload = () => {}, 
   onDelete = () => {} 
 }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [mentorStatus, setMentorStatus] = useState('');
   const dropdownRoot = document.getElementById('dropdown-root');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
@@ -101,6 +121,7 @@ const MentorFilterSection = ({
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [mujidSearch, setMujidSearch] = useState('');
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -155,17 +176,17 @@ const MentorFilterSection = ({
   }, []);
 
   const handleSearch = () => {
-    if (academicYear || academicSession || mentorStatus) {
-      onSearch({ academicYear, academicSession, mentorStatus });
+    if (academicYear || academicSession || mujidSearch) {
+      onSearch({ academicYear, academicSession, MUJid: mujidSearch });
     } else {
-      showAlert('Please select at least one filter', 'warning');
+      toast.error('Please enter at least one filter value');
     }
   };
 
   const handleReset = () => {
     setAcademicYear('');
     setAcademicSession('');
-    setMentorStatus('');
+    setMujidSearch('');
   };
 
 
@@ -444,17 +465,15 @@ const MentorFilterSection = ({
     }
   };
 
-  // useEffect(() => {
-  //   // Handle any document-dependent code here
-  // }, []);
-
   return (
     <Box 
       sx={{
         ...filterSectionStyles.wrapper,
         animation: 'none', // Remove animation to prevent visibility issues
         position: 'relative', // Add this to ensure proper stacking
-        zIndex: 2 // Add this to ensure filters stay above table
+        zIndex: 2, // Add this to ensure filters stay above table
+        maxHeight: { lg: 'calc(100vh - 120px)' }, // Add max height for desktop
+        overflowY: { lg: 'auto' }, // Enable vertical scroll on desktop
       }}
     >
       <Box sx={filterSectionStyles.section}>
@@ -463,7 +482,40 @@ const MentorFilterSection = ({
           sx={{ 
             color: 'rgba(255, 255, 255, 0.9)',
             fontWeight: 600,
-            mb: 1,
+            mb: 0.5, // Reduced from 1
+            letterSpacing: '0.5px'
+          }}
+        >
+          Search by MUJid
+        </Typography>
+        <TextField
+          label="MUJid"
+          value={mujidSearch}
+          onChange={(e) => setMujidSearch(e.target.value.toUpperCase())}
+          size="small"
+          placeholder="Enter MUJid"
+          sx={{
+            ...textFieldStyles,
+            mb: 2, // Reduced from 3
+            '& .MuiOutlinedInput-root': {
+              ...textFieldStyles['& .MuiOutlinedInput-root'],
+              background: 'rgba(255, 255, 255, 0.05)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
+              },
+              height: '36px', // Reduced from 40px
+            },
+          }}
+          fullWidth
+        />
+        <Typography 
+          variant="subtitle2" 
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.9)',
+            fontWeight: 600,
+            mb: 0.5, // Reduced from 1
             letterSpacing: '0.5px'
           }}
         >
@@ -528,7 +580,7 @@ const MentorFilterSection = ({
           )}
         </Box>
 
-        <Typography variant="subtitle2" sx={{ color: 'white/80', mb: 1, mt: 2 }}>
+        <Typography variant="subtitle2" sx={{ color: 'white/80', mb: 0.5, mt: 1.5 }}>
           Academic Session
         </Typography>
         {/* Session TextField */}
@@ -580,21 +632,33 @@ const MentorFilterSection = ({
           variant="contained"
           onClick={handleSearch}
           startIcon={<SearchIcon />}
-          sx={buttonStyles.standard('primary')}
+          sx={{
+            ...buttonStyles.standard('primary'),
+            py: { xs: 0.5, sm: 0.5 }, // Reduced padding
+            height: '32px' // Add fixed height
+          }}
         >
           Search
         </Button>
         <Button
           variant="contained"
           onClick={onAddNew}
-          sx={buttonStyles.standard('secondary')}
+          sx={{
+            ...buttonStyles.standard('secondary'),
+            py: { xs: 0.5, sm: 0.5 }, // Reduced padding
+            height: '32px' // Add fixed height
+          }}
         >
           Add New Mentor
         </Button>
         <Button
           variant="contained"
           onClick={() => setUploadDialog(true)}
-          sx={buttonStyles.standard('secondary')}
+          sx={{
+            ...buttonStyles.standard('secondary'),
+            py: { xs: 0.5, sm: 0.5 }, // Reduced padding
+            height: '32px' // Add fixed height
+          }}
         >
           <UploadFileIcon sx={{ fontSize: 20}} />
           Upload Mentors File
@@ -602,7 +666,11 @@ const MentorFilterSection = ({
         <Button
           variant="contained"
           onClick={handleReset}
-          sx={buttonStyles.standard('default')}
+          sx={{
+            ...buttonStyles.standard('default'),
+            py: { xs: 0.5, sm: 0.5 }, // Reduced padding
+            height: '32px' // Add fixed height
+          }}
         >
           Reset
         </Button>
@@ -614,7 +682,9 @@ const MentorFilterSection = ({
             color: '#ef4444',
             '&:hover': {
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            }
+            },
+            py: { xs: 0.5, sm: 0.5 }, // Reduced padding
+            height: '32px' // Add fixed height
           }}
         >
           Delete Mentors

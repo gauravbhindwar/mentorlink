@@ -63,8 +63,18 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, isExpa
     { field: 'name', headerName: 'Name', width: 150 }, // Reduced from 180
     { field: 'email', headerName: 'Email', width: 200 }, // Reduced from 235
     { field: 'phone_number', headerName: 'Phone', width: 120 }, // Reduced from 150
-    { field: 'academicSession', headerName: 'Session', width: 170 }, // Reduced from 200
-    { field: 'academicYear', headerName: 'Academic Year', width: 120 }, // Reduced from 150
+    { 
+      field: 'academicSession', 
+      headerName: 'Session', 
+      width: 170,
+      editable: true 
+    },
+    { 
+      field: 'academicYear', 
+      headerName: 'Academic Year', 
+      width: 120,
+      editable: true 
+    },
     {
       field: 'actions',
       headerName: 'Actions',
@@ -79,7 +89,9 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, isExpa
                 ...params.row,
                 role: Array.isArray(params.row.role) 
                   ? params.row.role 
-                  : params.row.role.split(', ')
+                  : params.row.role.split(', '),
+                academicYear: params.row.academicYear,
+                academicSession: params.row.academicSession
               };
               onEditClick(mentor);
             }}
@@ -196,7 +208,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, isExpa
         getRowId={(row) => row.id}
         autoHeight={false} // Remove autoHeight to enable vertical scrolling
         sx={{
-          // ...existing styles...
           height: { xs: '500px', lg: '100%' }, // Responsive height
           width: '100%',
           '& .MuiDataGrid-main': {

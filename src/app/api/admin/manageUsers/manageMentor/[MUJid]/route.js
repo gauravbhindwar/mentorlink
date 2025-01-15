@@ -5,7 +5,10 @@ import { NextResponse } from "next/server";
 // Add PATCH method
 export async function PATCH(req, { params }) {
   try {
-    if (!params?.MUJid) {
+    // Extract and await MUJid from params
+    const mujid = await params.MUJid;
+    
+    if (!mujid) {
       return NextResponse.json({
         error: "MUJid parameter is required"
       }, { status: 400 });
@@ -26,7 +29,7 @@ export async function PATCH(req, { params }) {
     );
 
     const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid: params.MUJid },
+      { MUJid: mujid },
       { $set: cleanedData },
       { new: true }
     );
@@ -52,7 +55,9 @@ export async function PATCH(req, { params }) {
 
 export async function GET(req, { params }) {
   try {
-    if (!params || !params.MUJid) {
+    const mujid = await params.MUJid;
+    
+    if (!mujid) {
       return NextResponse.json(
         { error: "MUJid parameter is required" },
         { status: 400 }
@@ -60,9 +65,8 @@ export async function GET(req, { params }) {
     }
 
     await connect();
-    const { MUJid } = params;
 
-    const mentor = await Mentor.findOne({ MUJid });
+    const mentor = await Mentor.findOne({ MUJid: mujid });
     if (!mentor) {
       return NextResponse.json(
         { error: "Mentor not found" },
