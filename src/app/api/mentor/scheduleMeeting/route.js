@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AcademicSession } from "@/lib/db/academicSessionSchema";
+// import { AcademicSession } from "@/lib/db/academicSessionSchema";
 import { MongoClient } from "mongodb";
 
 const uri = process.env.MONGODB_URI;
