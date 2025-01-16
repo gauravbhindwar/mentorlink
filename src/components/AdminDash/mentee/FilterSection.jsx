@@ -16,7 +16,6 @@ import {
   DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -607,35 +606,35 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
         filters.academicSession && 
         ((filters.semester && filters.section) || filters.menteeMujid || filters.mentorMujid)
       ),
-      icon: true 
+      icon: <SearchIcon /> // Changed from ManageSearchIcon to SearchIcon
     },
     { 
       label: isLoading.add ? 'Adding...' : 'Add New Mentee',
       onClick: () => onAddNew(handleAddMentee),
       color: 'primary',
       disabled: isLoading.add,
-      icon: false 
+      icon: <AddIcon />
     },
     { 
       label: 'Reset',
       onClick: handleReset,
       color: 'default',
       disabled: false,
-      icon: false 
+      icon: <RefreshIcon />
     },
     { 
       label: isLoading.bulkAdd ? 'Uploading...' : 'File Upload',
       onClick: () => onBulkUpload(handleBulkAddMentees),
       color: 'secondary',
       disabled: isLoading.bulkAdd,
-      icon: false 
+      icon: <UploadFileIcon />
     },
     { 
       label: deleteLoading ? 'Deleting...' : 'Delete Mentees',
       onClick: () => setDeleteDialog(true),
       color: 'error',
       disabled: deleteLoading,
-      icon: false 
+      icon: <DeleteIcon />
     }
   ];
 
@@ -748,7 +747,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
               color={button.color}
               onClick={button.onClick}
               disabled={button.disabled}
-              startIcon={button.icon ? <SearchIcon /> : null}
+              startIcon={button.icon}  // Changed this line to use the icon prop
               sx={{ 
                 borderRadius: '50px',
                 px: { xs: 2, sm: 3 },
