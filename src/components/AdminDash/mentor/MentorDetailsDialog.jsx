@@ -77,6 +77,13 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     setSelectedSemester(sem);
     setSelectedSection(null); // Reset section when semester changes
     setMentees([]); // Clear mentees list
+    // Reset bulk assignment states
+    setAvailableMentees([]);
+    setSelectedMentees([]);
+    setBulkAssignDetails({
+      semester: '',
+      section: '',
+    });
   };
 
   const handleSectionInput = (event) => {
@@ -84,6 +91,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     // Allow any single uppercase letter A-Z
     if (/^[A-Z]?$/.test(value)) {
       setSelectedSection(value);
+      setMentees([]); // Clear mentees list before fetching new data
       if (value && selectedSemester) {
         fetchMentees(selectedSemester, value);
       }
@@ -310,9 +318,27 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
         ...prev,
         section: value
       }));
+      // Reset available mentees and selected mentees
+      setAvailableMentees([]);
+      setSelectedMentees([]);
       if (value && bulkAssignDetails.semester) {
         fetchAvailableMentees(bulkAssignDetails.semester, value);
       }
+    }
+  };
+
+  // Modify bulk assignment semester change handler
+  const handleBulkSemesterChange = (e) => {
+    const value = e.target.value;
+    setBulkAssignDetails(prev => ({
+      ...prev,
+      semester: value
+    }));
+    // Reset available mentees and selected mentees
+    setAvailableMentees([]);
+    setSelectedMentees([]);
+    if (value && bulkAssignDetails.section) {
+      fetchAvailableMentees(value, bulkAssignDetails.section);
     }
   };
 
@@ -1037,15 +1063,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                 select
                 label="Semester"
                 value={bulkAssignDetails.semester}
-                onChange={(e) => {
-                  setBulkAssignDetails(prev => ({
-                    ...prev,
-                    semester: e.target.value
-                  }));
-                  if (e.target.value && bulkAssignDetails.section) {
-                    fetchAvailableMentees(e.target.value, bulkAssignDetails.section);
-                  }
-                }}
+                onChange={handleBulkSemesterChange}  // Use the new handler
                 sx={{
                   width: '200px',
                   '& .MuiInputLabel-root': {
