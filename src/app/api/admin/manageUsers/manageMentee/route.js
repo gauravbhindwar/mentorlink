@@ -4,7 +4,7 @@ import { Mentor } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
-// Update the schema validation
+// Update the schema validation to enforce consistent casing
 const menteeSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
@@ -17,8 +17,31 @@ const menteeSchema = Joi.object({
   yearOfRegistration: Joi.number().required(),
   section: Joi.string().required(),
   semester: Joi.number().min(1).max(8).required(),
-  academicYear: Joi.string().required(),
-  academicSession: Joi.string().required(),
+  academicYear: Joi.string()
+    .custom((value, helpers) => {
+      // Normalize academic year format (e.g., "2023-2024")
+      if (!/^\d{4}-\d{4}$/.test(value)) {
+        return helpers.error('string.academicYear');
+      }
+      return value;
+    })
+    .required()
+    .messages({
+      'string.academicYear': 'Academic year must be in format YYYY-YYYY'
+    }),
+  academicSession: Joi.string()
+    .custom((value, helpers) => {
+      // Normalize academic session format (e.g., "JULY-DECEMBER 2023" or "JANUARY-JUNE 2024")
+      const normalized = value.toUpperCase();
+      if (!/^(JULY-DECEMBER \d{4}|JANUARY-JUNE \d{4})$/.test(normalized)) {
+        return helpers.error('string.academicSession');
+      }
+      return normalized;
+    })
+    .required()
+    .messages({
+      'string.academicSession': 'Academic session must be in format "JULY-DECEMBER YYYY" or "JANUARY-JUNE YYYY"'
+    }),
   mentorMujid: Joi.string().required(),
   parents: Joi.object({
     father: Joi.object({
@@ -63,6 +86,12 @@ export async function POST(req) {
         guardian: menteeData.parents?.guardian || {},
       },
     };
+
+    // Normalize academic session casing
+    if (menteeData.academicSession) {
+      menteeData.academicSession = menteeData.academicSession.toUpperCase();
+    }
+
     console.log("API Request:", menteeData?.mentorMujid);
     let mentorMUJid = menteeData.mentorMujid;
     if (!mentorMUJid) {
@@ -110,7 +139,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Server error:", error);
+    console.log("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
@@ -121,85 +150,72 @@ export async function GET(req) {
     await connect();
     const { searchParams } = new URL(req.url);
 
-    // Required filters
-    const academicYear = searchParams.get("academicYear");
-    const academicSession = searchParams.get("academicSession");
-    const semester = searchParams.get("semester");
+    // Debug logs
+    // console.log("Received search params:", Object.fromEntries(searchParams.entries()));
 
-    // Optional filters
-    const section = searchParams.get("section");
+    let filters = {};
 
-    if (section) {
-      // This regex matches a section format with a single uppercase letter followed by an optional digit
-      const sectionRegex = /^[A-Z][0-9]?$/;
-      if (!sectionRegex.test(section)) {
-        return createErrorResponse("Invalid section format", 400);
+    // Required filters with normalized casing
+    if (!searchParams.get("academicYear") || !searchParams.get("academicSession")) {
+      return createErrorResponse("Academic Year and Session are required", 400);
+    }
+
+    filters.academicYear = searchParams.get("academicYear").trim();
+    filters.academicSession = searchParams.get("academicSession").trim().toUpperCase();
+
+    // Handle MUJid search for both mentee MUJid and mentorMujid
+    if (searchParams.get("MUJid")) {
+      const searchMujid = searchParams.get("MUJid").trim();
+      filters.$or = [
+        { MUJid: new RegExp(`^${searchMujid}$`, 'i') },
+        { mentorMujid: new RegExp(`^${searchMujid}$`, 'i') }
+      ];
+      
+      // Remove other filters when fetching by MUJid for editing
+      if (searchParams.get("forEdit") === 'true') {
+        filters = { MUJid: filters.MUJid };
       }
     }
 
-    if (!academicYear || !academicSession || !semester || !section) {
-      return createErrorResponse(
-        "Academic year, session, semester and section are required",
-        400
-      );
+    // Optional filters with proper casing
+    if (searchParams.get("semester")) {
+      filters.semester = parseInt(searchParams.get("semester"), 10);
+    }
+    if (searchParams.get("section")) {
+      filters.section = searchParams.get("section").trim().toUpperCase();
+    }
+    if (searchParams.get("mentorMujid")) {
+      filters.mentorMujid = searchParams.get("mentorMujid").trim().toUpperCase();
     }
 
-    const filters = {
-      academicYear,
-      academicSession,
-      semester: parseInt(semester, 10),
-      section,
-    };
+    // console.log("Final filters:", filters);
 
-    console.log("API Filters:", filters);
+    // Try finding with less restrictive filters first
+    // const allMentees = await Mentee.find({});
+    // console.log("Total mentees in database:", allMentees.length);
 
-    const mentees = await Mentee.find(filters);
+    const mentees = await Mentee.find(filters).lean();
+    // console.log("Found mentees with filters:", mentees);
 
-    // Transform the data before sending
-    const transformedMentees = mentees.map((mentee) => ({
-      // _id: mentee._id.toString(),
-      MUJid: mentee.MUJid?.toUpperCase() || "",
-      mentorMujid: mentee.mentorMujid?.toUpperCase() || "",
-      name: mentee.name || "",
-      email: mentee.email || "",
-      phone: mentee.phone || "",
-      semester: mentee.semester || "",
-      section: mentee.section || "",
-      yearOfRegistration: mentee.yearOfRegistration || "",
-      phone: mentee.phone || "",
-      email: mentee.email || "",
-      alternatePhone: mentee.alternatePhone || "",
-      parents: {
-        father: {
-          name: mentee.parents?.father?.name || "",
-          email: mentee.parents?.father?.email || "",
-          phone: mentee.parents?.father?.phone || "",
-          alternatePhone: mentee.parents?.father?.alternatePhone || "",
-        },
-        mother: {
-          name: mentee.parents?.mother?.name || "",
-          email: mentee.parents?.mother?.email || "",
-          phone: mentee.parents?.mother?.phone || "",
-          alternatePhone: mentee.parents?.mother?.alternatePhone || "",
-        },
-        guardian: {
-          name: mentee.parents?.guardian?.name || "",
-          email: mentee.parents?.guardian?.email || "",
-          phone: mentee.parents?.guardian?.phone || "",
-          relation: mentee.parents?.guardian?.relation || "",
-        },
-      },
+    if (!mentees || mentees.length === 0) {
+      return createErrorResponse("No mentees found matching the criteria", 404);
+    }
+
+    const transformedMentees = mentees.map(mentee => ({
+      ...mentee,
+      _id: mentee._id.toString(),
+      MUJid: mentee.MUJid?.toUpperCase() || '',
+      mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
     }));
 
-    console.log("API Response:", transformedMentees);
+    return NextResponse.json(transformedMentees, { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-    if (!transformedMentees.length) {
-      return createErrorResponse("No mentees found", 404);
-    }
-
-    return NextResponse.json(transformedMentees, { status: 200 });
   } catch (error) {
     console.error("Server error:", error);
+    console.error("Error details:", error.stack);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
@@ -216,6 +232,11 @@ export async function PUT(req) {
     }
 
     const { MUJid, ...updateFields } = requestBody;
+
+    // Normalize academic session casing
+    if (requestBody.academicSession) {
+      requestBody.academicSession = requestBody.academicSession.toUpperCase();
+    }
 
     if (!MUJid) {
       return createErrorResponse("MUJid is required", 400);
@@ -259,6 +280,11 @@ export async function PATCH(req) {
 
     const { MUJid, ...updateFields } = requestBody;
 
+    // Normalize academic session casing
+    if (requestBody.academicSession) {
+      requestBody.academicSession = requestBody.academicSession.toUpperCase();
+    }
+
     if (!MUJid) {
       return createErrorResponse("MUJid is required", 400);
     }
@@ -297,7 +323,7 @@ export async function PATCH(req) {
         }),
         guardian: Joi.object({
           name: Joi.string().allow("", null),
-          email: Joi.string().allow("", null),
+          email: Joi.string().email().allow("", null),
           phone: Joi.string().allow("", null),
           relation: Joi.string().allow("", null),
         }),
@@ -337,7 +363,7 @@ export async function PATCH(req) {
 
     return NextResponse.json(updatedMentee, { status: 200 });
   } catch (error) {
-    console.error("Server error:", error);
+    console.log("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }
@@ -379,7 +405,7 @@ export async function DELETE(req) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Server error:", error);
+    console.log("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }

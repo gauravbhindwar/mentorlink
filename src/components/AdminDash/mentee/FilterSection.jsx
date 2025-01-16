@@ -10,28 +10,68 @@ import {
   MenuItem,
   CircularProgress,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 
-const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, onReset, onAddNew, onBulkUpload, onDelete }) => {
+const buttonStyles = {
+  actionButton: {
+    width: '100%',
+    borderRadius: '12px',
+    padding: '10px 16px',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    textTransform: 'none',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.2s ease',
+    marginBottom: '8px',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+    }
+  },
+  primary: {
+    background: 'linear-gradient(45deg, #f97316 30%, #fb923c 90%)',
+    color: 'white',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #ea580c 30%, #f97316 90%)',
+    }
+  },
+  secondary: {
+    background: 'rgba(255, 255, 255, 0.05)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    color: 'white',
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.1)',
+    }
+  },
+  danger: {
+    background: 'linear-gradient(45deg, #ef4444 30%, #f87171 90%)',
+    color: 'white',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #dc2626 30%, #ef4444 90%)',
+    }
+  }
+};
+
+const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddNew, onBulkUpload, onDelete }) => {
   const [isLoading, setIsLoading] = useState({
     search: false,
-    searchAll: false,
     add: false,
     bulkAdd: false
   });
   const [academicYear, setAcademicYear] = useState('');  
-  // const [academicSessions, setAcademicSessions] = useState([]);
-  // const [currentAcademicYear, setCurrentAcademicYear] = useState('');
-  // const [currentAcademicSession, setCurrentAcademicSession] = useState('');
-  // const [isSearchAllEnabled, setIsSearchAllEnabled] = useState(false);
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
@@ -64,8 +104,8 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     }
   
     return [
-      `July-December ${startYear}`,
-      `January-June ${endYear}`
+      `JULY-DECEMBER ${startYear}`,
+      `JANUARY-JUNE ${endYear}`
     ];
   };
 
@@ -84,12 +124,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     setAcademicYear(currentYear);
     handleFilterChange('academicYear', currentYear);
     
-    // Don't set initial academic session
-    // setCurrentAcademicSession('');
     handleFilterChange('academicSession', '');
-    
-    // Generate available sessions but don't select one
-    // setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
 
   useEffect(() => {
@@ -102,28 +137,40 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
   useEffect(() => {
     if (filters.startYear && filters.endYear) {
       generateAcademicSessions(filters.startYear, filters.endYear);
-      // setAcademicSessions(newSessions);
     }
   }, [filters.startYear, filters.endYear]);
-
-  // useEffect(() => {
-  //   setIsSearchAllEnabled(Object.values(filters).some(x => x !== ''));
-  // }, [filters]);
 
   const showAlert = (message, severity) => {
     switch (severity) {
       case 'error':
-        toast.error(message);
+        toast.error(message, {
+          duration: 5000,
+          style: {
+            maxWidth: '500px',
+            wordBreak: 'break-word'
+          }
+        });
+        break;
+      case 'warning':
+        toast(message, {
+          icon: '⚠️',
+          duration: 5000,
+          style: {
+            background: '#fff3cd',
+            color: '#000',
+            maxWidth: '500px',
+            whiteSpace: 'pre-line'
+          }
+        });
         break;
       case 'success':
         toast.success(message);
         break;
       case 'info':
-      case 'warning':
         toast(message, {
-          icon: severity === 'warning' ? '⚠️' : 'ℹ️',
+          icon: 'ℹ️',
           style: {
-            background: severity === 'warning' ? '#fff3cd' : '#cff4fc',
+            background: '#cff4fc',
             color: '#000'
           }
         });
@@ -134,100 +181,62 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
   };
 
   const handleSearch = async () => {
+    // Validate search conditions
+    const hasBasicFilters = filters.academicYear && filters.academicSession;
+    const hasSemesterSection = filters.semester && filters.section;
+    const hasIdFilters = filters.menteeMujid || filters.mentorMujid;
+
+    if (!hasBasicFilters) {
+      showAlert('Academic Year and Session are required', 'warning');
+      return;
+    }
+
+    if (!hasSemesterSection && !hasIdFilters) {
+      showAlert('Either (Semester and Section) or (Mentee/Mentor MUJID) are required', 'warning');
+      return;
+    }
+
     setIsLoading(prev => ({ ...prev, search: true }));
+    
     try {
-      // Validate required fields
-      const requiredFields = ['academicYear', 'academicSession', 'semester', 'section'];
-      const missingFields = requiredFields.filter(field => !filters[field]);
-      
-      if (missingFields.length > 0) {
-        showAlert(`Please select ${missingFields.join(', ')}`, 'warning');
-        onSearch([]); // Pass empty array to parent
-        return;
-      }
+      // Build query parameters
+      const params = {
+        academicYear: filters.academicYear,
+        academicSession: filters.academicSession?.toUpperCase(),
+      };
 
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-        params: {
-          academicYear: filters.academicYear,
-          academicSession: filters.academicSession,
-          semester: parseInt(filters.semester),
-          section: filters.section
-        }
-      });
+      // Add optional filters if they exist
+      if (filters.semester) params.semester = parseInt(filters.semester);
+      if (filters.section) params.section = filters.section?.toUpperCase();
+      if (filters.menteeMujid) params.MUJid = filters.menteeMujid?.toUpperCase();
+      if (filters.mentorMujid) params.mentorMujid = filters.mentorMujid?.toUpperCase();
 
-      if (response.data) {
-        const normalizedData = Array.isArray(response.data) ? response.data.map(mentee => ({
+      // console.log('Search params:', params); // Debug log
+
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
+
+      if (response.status === 200) {
+        const normalizedData = response.data.map(mentee => ({
           ...mentee,
-          id: mentee._id || mentee.id, // Ensure id field exists
+          id: mentee._id || mentee.id,
           MUJid: mentee.MUJid?.toUpperCase() || '',
           mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-        })) : [];
-
-        // Store in session storage
+        }));
+        
         sessionStorage.setItem('menteeData', JSON.stringify(normalizedData));
-        onSearch(normalizedData); // Pass normalized data to parent
-      } else {
-        sessionStorage.removeItem('menteeData');
-        onSearch([]); // Pass empty array if no data
-        showAlert('No mentees found', 'info');
+        onSearch(normalizedData);
       }
     } catch (error) {
-      // console.error('Search error:', error);
-      sessionStorage.removeItem('menteeData');
-      showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
-      onSearch([]); // Pass empty array on error
+      if (error.response?.status === 404) {
+        showAlert('No mentees found matching the criteria', 'info');
+      } else {
+        showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
+      }
+      onSearch([]);
     } finally {
       setIsLoading(prev => ({ ...prev, search: false }));
     }
   };
-
-  // const handleSearchAll = async () => {
-  //   setIsLoading(prev => ({ ...prev, searchAll: true }));
-  //   try {
-  //     // Validate minimum required fields for Search All
-  //     if (!filters.academicYear || !filters.academicSession || !filters.semester) {
-  //       showAlert('Please select Academic Year, Session, and Semester', 'warning');
-  //       onSearchAll([]);
-  //       return;
-  //     }
-
-  //     // Build query filters
-  //     const queryFilters = {
-  //       academicYear: filters.academicYear,
-  //       academicSession: filters.academicSession
-  //     };
-
-  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', { 
-  //       params: queryFilters 
-  //     });
-
-  //     if (response.data && response.data.length > 0) {
-  //       // Apply local filter for mentor MUJID if provided
-  //       let filteredData = response.data;
-        
-  //       if (filters.mentorMujid) {
-  //         filteredData = filteredData.filter(mentee => 
-  //           mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase())
-  //         );
-  //       }
-
-  //       sessionStorage.setItem('menteeData', JSON.stringify(filteredData));
-  //       onSearchAll(filteredData);
-        
-  //       if (filteredData.length === 0) {
-  //         showAlert('No mentees found matching all filters', 'info');
-  //       }
-  //     } else {
-  //       onSearchAll([]);
-  //       showAlert('No mentees found matching the filters', 'info');
-  //     }
-  //   } catch (error) {
-  //     showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
-  //     onSearchAll([]);
-  //   } finally {
-  //     setIsLoading(prev => ({ ...prev, searchAll: false }));
-  //   }
-  // };
 
   const handleAddMentee = async (menteeData) => {
     setIsLoading(prev => ({ ...prev, add: true }));
@@ -270,12 +279,6 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     onReset();
   };
 
-  // const handleBulkUploadClick = () => {
-  //   if (onBulkUpload) {
-  //     onBulkUpload();
-  //   }
-  // };
-
   const handleFilterChange = (name, value) => {
     sessionStorage.removeItem('menteeData');
     
@@ -283,19 +286,10 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
       const sessions = generateAcademicSessions(value);
       onFilterChange(name, value);
       onFilterChange('academicSession', sessions[0]);
-      // setAcademicSessions(sessions);
     } else {
       onFilterChange(name, value);
     }
   };
-
-  // const handleSectionChange = (e) => {
-  //   let value = e.target.value;
-  //   value = value.toUpperCase().slice(0, 1);
-  //   if (value && !/^[A-Z]$/.test(value)) return;
-    
-  //   handleFilterChange('section', value);
-  // };
 
   useEffect(() => {
     if (!filters.academicYear || !filters.academicSession) {
@@ -426,10 +420,6 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
     }
     
     handleFilterChange('academicSession', value);
-  };
-
-  const handleSearchAllClick = () => {
-    onSearchAll(); // Just call the function directly
   };
 
   const handleBulkDelete = async () => {
@@ -611,45 +601,40 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
       label: isLoading.search ? 'Searching...' : 'Search',
       onClick: handleSearch,
       color: 'primary',
-      // Require all fields for Search button
-      disabled: !filters.academicYear || !filters.academicSession || !filters.semester || !filters.section,
-      icon: true 
-    },
-    { 
-      label: isLoading.searchAll ? 'Loading...' : 'Search All',
-      onClick: handleSearchAllClick,
-      color: 'secondary',
-      // Only require academicYear, academicSession, and semester for Search All
-      disabled: !filters.academicYear || !filters.academicSession || !filters.semester,
-      icon: true 
+      disabled: !(
+        filters.academicYear && 
+        filters.academicSession && 
+        ((filters.semester && filters.section) || filters.menteeMujid || filters.mentorMujid)
+      ),
+      icon: <SearchIcon /> // Changed from ManageSearchIcon to SearchIcon
     },
     { 
       label: isLoading.add ? 'Adding...' : 'Add New Mentee',
       onClick: () => onAddNew(handleAddMentee),
       color: 'primary',
       disabled: isLoading.add,
-      icon: false 
+      icon: <AddIcon />
     },
     { 
       label: 'Reset',
       onClick: handleReset,
       color: 'default',
       disabled: false,
-      icon: false 
+      icon: <RefreshIcon />
     },
     { 
       label: isLoading.bulkAdd ? 'Uploading...' : 'File Upload',
       onClick: () => onBulkUpload(handleBulkAddMentees),
       color: 'secondary',
       disabled: isLoading.bulkAdd,
-      icon: false 
+      icon: <UploadFileIcon />
     },
     { 
       label: deleteLoading ? 'Deleting...' : 'Delete Mentees',
       onClick: () => setDeleteDialog(true),
       color: 'error',
       disabled: deleteLoading,
-      icon: false 
+      icon: <DeleteIcon />
     }
   ];
 
@@ -762,7 +747,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
               color={button.color}
               onClick={button.onClick}
               disabled={button.disabled}
-              startIcon={button.icon ? <SearchIcon /> : null}
+              startIcon={button.icon}  // Changed this line to use the icon prop
               sx={{ 
                 borderRadius: '50px',
                 px: { xs: 2, sm: 3 },
@@ -792,7 +777,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onSearchAll, on
           ))}
         </Box>
 
-        {isLoading.search || isLoading.searchAll ? (
+        {isLoading.search ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
             <CircularProgress sx={{ color: '#f97316' }} />
           </Box>
@@ -867,32 +852,6 @@ const textFieldStyles = {
     },
   }
 };
-
-const buttonStyles = {
-  primary: {
-    bgcolor: '#f97316',
-    '&:hover': { bgcolor: '#ea580c' }
-  },
-  secondary: {
-    bgcolor: '#ea580c',
-    '&:hover': { bgcolor: '#c2410c' }
-  },
-  outlined: {
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    color: 'white',
-    '&:hover': {
-      borderColor: '#f97316',
-      bgcolor: 'rgba(249, 115, 22, 0.1)'
-    }
-  }
-};
-
-// const alertStyles = {
-//   backgroundColor: 'rgba(0, 0, 0, 0.8)',
-//   backdropFilter: 'blur(10px)',
-//   color: 'white',
-//   border: '1px solid rgba(255, 255, 255, 0.1)'
-// };
 
 const comboBoxStyles = {
   position: 'relative',

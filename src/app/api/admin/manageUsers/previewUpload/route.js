@@ -7,10 +7,10 @@ export async function POST(req) {
     const file = formData.get('file');
     const type = formData.get('type'); // Get the type (mentor or mentee)
 
-    console.log('Received type:', type); // Debugging statement
+    // console.log('Received type:', type); // Debugging statement
 
     if (!file) {
-      console.error('No file provided');
+      // console.error('No file provided');
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
@@ -32,7 +32,7 @@ export async function POST(req) {
     const headers = filteredData[0];
     const rows = filteredData.slice(1);
 
-    console.log('Headers:', headers); // Debugging statement
+    // console.log('Headers:', headers); // Debugging statement
 
     // Define required columns based on type
     const requiredColumns = type === 'mentee' ? [
@@ -44,7 +44,7 @@ export async function POST(req) {
       'gender', 'role', 'academicYear', 'academicSession'
     ];
 
-    console.log('Required columns:', requiredColumns); // Debugging statement
+    // console.log('Required columns:', requiredColumns); // Debugging statement
 
     const missingColumns = requiredColumns.filter(col => 
       !headers.map(h => h.toLowerCase()).includes(col.toLowerCase())
@@ -96,7 +96,7 @@ export async function POST(req) {
       }
     });
 
-    console.log('Sending preview response:', { data: validData, errors, totalRows: transformedData.length });
+    // console.log('Sending preview response:', { data: validData, errors, totalRows: transformedData.length });
 
     return NextResponse.json({
       data: validData,
@@ -105,7 +105,7 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error('Preview upload error:', error);
+    // console.error('Preview upload error:', error);
     return NextResponse.json(
       { error: error.message || 'Error processing file' },
       { status: 500 }
