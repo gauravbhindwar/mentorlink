@@ -75,6 +75,13 @@ export async function GET(request: Request) {
             };
         });
 
+        if (mentorMeetings.length === 0) {
+            return NextResponse.json(
+                { message: 'No meetings found for the selected criteria' },
+                { status: 404 }
+            );
+        }
+
         return NextResponse.json(mentorMeetings);
 
     } catch (error) {

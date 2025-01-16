@@ -5,6 +5,7 @@ import axios from 'axios';
 import LoadingComponent from '@/components/LoadingComponent';
 import { DataGrid } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { toast } from 'react-hot-toast';
 
 const darkTheme = createTheme({
   palette: {
@@ -63,29 +64,32 @@ const ManageMeeting = () => {
   const fetchMentorMeetings = async () => {
     setLoading(true);
     if (!academicYear || !academicSession) {
-      alert('Please select an academic year and session.');
+      toast.error('Please select an academic year and session.');
       setLoading(false);
       return;
     }
     try {
       const params = {
-        year: academicYear.split('-')[0], // Take only the start year
+        year: academicYear.split('-')[0],
         session: academicSession
       };
       
-      // Add optional parameters
-      if (semester) {
-        params.semester = semester;
-      }
-      if (section) {
-        params.section = section;
-      }
+      if (semester) params.semester = semester;
+      if (section) params.section = section;
 
       const response = await axios.get(`/api/admin/manageMeeting`, { params });
+      
+      if (response.status === 404) {
+        toast.error(response.data.message);
+        setMentorMeetings([]);
+        return;
+      }
+
       setMentorMeetings(response.data);
       sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data));
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to fetch mentor meetings');
+      toast.error(error.response?.data?.message || 'Failed to fetch mentor meetings');
+      setMentorMeetings([]);
     } finally {
       setLoading(false);
     }
