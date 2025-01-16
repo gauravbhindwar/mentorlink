@@ -1,16 +1,24 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
 import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material'; // Add Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress import
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 // Update the component props to include onDeleteClick and onDataUpdate
-const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDataUpdate }) => {
+const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEditClick }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Add this function to handle delete click
   const handleDeleteClick = (mujid) => {
     setDeleteDialog({ open: true, mujid });
+  };
+ 
+  // Add handleEditClick function
+  const handleEditClick = (menteeData) => {
+    if (onEditClick) {
+      onEditClick(menteeData);
+    }
   };
 
   // Update handleConfirmDelete to include loading state
@@ -33,39 +41,98 @@ const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDat
   };
 
   // Debug logs
-  console.log('Raw mentees received:', mentees);
+  // console.log('Raw mentees received:', mentees);
 
-  // Try to get data from session storage if no mentees provided
+  // Modified effectiveMentees memo
   const effectiveMentees = useMemo(() => {
-    if ((!mentees || mentees.length === 0) && typeof window !== 'undefined') {
+    if (!mentees || mentees.length === 0) {
       try {
         const storedData = sessionStorage.getItem('menteeData');
-        return storedData ? JSON.parse(storedData) : [];
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          console.log('Using stored data:', parsedData);
+          return parsedData;
+        }
+        // If no stored data, return empty array immediately
+        setIsLoading(false);
+        return [];
       } catch (error) {
         console.error('Error parsing stored data:', error);
+        setIsLoading(false);
         return [];
       }
     }
     return mentees;
   }, [mentees]);
 
-  // New function to check which columns have data
-  const getColumnsWithData = (data) => {
-    if (!Array.isArray(data) || data.length === 0) return [];
-    
-    const columnsWithData = new Set();
-    data.forEach(mentee => {
-      Object.entries(mentee).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          columnsWithData.add(key);
-        }
-      });
-    });
-    return Array.from(columnsWithData);
-  };
+  // Update loading effect
+  useEffect(() => {
+    // Set loading to false when we have data or definitely know we don't
+    if (effectiveMentees && effectiveMentees.length > 0) {
+      setIsLoading(false);
+    } else if (!sessionStorage.getItem('menteeData')) {
+      setIsLoading(false);
+    }
+  }, [effectiveMentees]);
 
-  // Guard clause for invalid/empty data
-  if (!Array.isArray(effectiveMentees) || effectiveMentees.length === 0) {
+  // Process mentees data with error handling
+  const processedMentees = useMemo(() => {
+    if (!Array.isArray(effectiveMentees)) {
+      console.error('effectiveMentees is not an array:', effectiveMentees);
+      return [];
+    }
+
+    return effectiveMentees.map((mentee, index) => {
+      try {
+        return {
+          id: mentee._id || mentee.id || `temp-${index}`,
+          MUJid: (mentee.MUJid || '').toUpperCase(),
+          name: mentee.name || '',
+          email: mentee.email || '',
+          phone: mentee.phone || '',
+          yearOfRegistration: mentee.yearOfRegistration || '',
+          section: (mentee.section || '').toUpperCase(),
+          semester: mentee.semester || '',
+          academicYear: mentee.academicYear || '',
+          academicSession: mentee.academicSession || '',
+          mentorMujid: (mentee.mentorMujid || '').toUpperCase(),
+          // Add parent information
+          parents: mentee.parents || {},
+          // For table display
+          fatherName: mentee.parents?.father?.name || '',
+          fatherEmail: mentee.parents?.father?.email || '',
+          fatherPhone: mentee.parents?.father?.phone || '',
+          fatherAlternatePhone: mentee.parents?.father?.alternatePhone || '',
+          motherName: mentee.parents?.mother?.name || '',
+          motherEmail: mentee.parents?.mother?.email || '',
+          motherPhone: mentee.parents?.mother?.phone || '',
+          motherAlternatePhone: mentee.parents?.mother?.alternatePhone || '',
+          guardianName: mentee.parents?.guardian?.name || '',
+          guardianEmail: mentee.parents?.guardian?.email || '',
+          guardianPhone: mentee.parents?.guardian?.phone || '',
+          guardianRelation: mentee.parents?.guardian?.relation || ''
+        };
+      } catch (error) {
+        console.log('Error processing mentee:', error);
+        return null;
+      }
+    }).filter(Boolean); // Remove any null entries
+  }, [effectiveMentees]);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        height: '200px'
+      }}>
+        <CircularProgress sx={{ color: '#f97316' }} />
+      </Box>
+    );
+  }
+
+  if (!processedMentees.length) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -79,81 +146,24 @@ const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDat
     );
   }
 
-  // Process mentees data
-  const processedMentees = effectiveMentees.map((mentee, index) => ({
-    id: mentee._id || mentee.id || `temp-${index}`, // Ensure unique ID
-    MUJid: (mentee.MUJid || mentee.mujid || '').toUpperCase(),
-    name: mentee.name || '',
-    email: mentee.email || '',
-    phone: mentee.phone || '',
-    address: mentee.address || '',
-    yearOfRegistration: mentee.yearOfRegistration || '',
-    section: mentee.section || '',
-    semester: mentee.semester || '',
-    academicYear: mentee.academicYear || '',
-    academicSession: mentee.academicSession || '',
-    fatherName: mentee.parents?.father?.name || '',
-    fatherEmail: mentee.parents?.father?.email || '',
-    fatherPhone: mentee.parents?.father?.phone || '',
-    fatherAlternatePhone: mentee.parents?.father?.alternatePhone || '',
-    motherName: mentee.parents?.mother?.name || '',
-    motherEmail: mentee.parents?.mother?.email || '',
-    motherPhone: mentee.parents?.mother?.phone || '',
-    motherAlternatePhone: mentee.parents?.mother?.alternatePhone || '',
-    guardianName: mentee.parents?.guardian?.name || '',
-    guardianEmail: mentee.parents?.guardian?.email || '',
-    guardianPhone: mentee.parents?.guardian?.phone || '',
-    guardianRelation: mentee.parents?.guardian?.relation || '',
-    mentorMujid: (mentee.mentorMujid || mentee.mentor_mujid || '').toUpperCase(),
-  }));
-
-  // Get list of columns that have data
-  const columnsWithData = getColumnsWithData(processedMentees);
-
-  // Filter the columns array to only include columns with data
-  const baseColumns = [
+  // Define minimum columns that should always be visible
+  const minimumColumns = [
     {
       field: 'serialNumber',
       headerName: 'S.No',
       width: 70,
-      renderCell: (params) => {
-        const index = processedMentees.findIndex(m => m.id === params.row.id);
-        return index + 1;
-      },
+      renderCell: (params) => processedMentees.findIndex(m => m.id === params.row.id) + 1,
       sortable: false,
     },
     { field: 'MUJid', headerName: 'MUJid', width: 150 },
     { field: 'name', headerName: 'Name', width: 200 },
     { field: 'email', headerName: 'Email', width: 250 },
-    { field: 'phone', headerName: 'Phone', width: 150 },
-    { field: 'address', headerName: 'Address', width: 250 },
-    { field: 'yearOfRegistration', headerName: 'Year of Registration', width: 180 },
     { field: 'section', headerName: 'Section', width: 100 },
     { field: 'semester', headerName: 'Semester', width: 100 },
     { field: 'academicYear', headerName: 'Academic Year', width: 150 },
-    { field: 'academicSession', headerName: 'Academic Session', width: 150 },
-    { field: 'fatherName', headerName: "Father's Name", width: 200 },
-    { field: 'fatherEmail', headerName: "Father's Email", width: 250 },
-    { field: 'fatherPhone', headerName: "Father's Phone", width: 150 },
-    { field: 'fatherAlternatePhone', headerName: "Father's Alternate Phone", width: 150 },
-    { field: 'motherName', headerName: "Mother's Name", width: 200 },
-    { field: 'motherEmail', headerName: "Mother's Email", width: 250 },
-    { field: 'motherPhone', headerName: "Mother's Phone", width: 150 },
-    { field: 'motherAlternatePhone', headerName: "Mother's Alternate Phone", width: 150 },
-    { field: 'guardianName', headerName: "Guardian's Name", width: 200 },
-    { field: 'guardianEmail', headerName: "Guardian's Email", width: 250 },
-    { field: 'guardianPhone', headerName: "Guardian's Phone", width: 150 },
-    { field: 'guardianRelation', headerName: "Guardian's Relation", width: 150 },
+    { field: 'academicSession', headerName: 'Academic Session', width: 200 },
     { field: 'mentorMujid', headerName: 'Mentor MUJID', width: 150 },
-  ];
-
-  // Filter columns to only include those with data and the actions column
-  const columns = [
-    ...baseColumns.filter(col => 
-      col.field === 'serialNumber' || // Always include serial number
-      col.field === 'MUJid' || // Always include MUJid
-      columnsWithData.includes(col.field)
-    ),
+    // Actions column
     {
       field: 'actions',
       headerName: 'Actions',
@@ -165,7 +175,7 @@ const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDat
           <Button
             size={isSmallScreen ? "small" : "medium"}
             variant="outlined"
-            onClick={() => onEditClick(params.row)}
+            onClick={() => handleEditClick(params.row)} // Changed to handleEditClick
             sx={{ 
               borderRadius: '12px', 
               fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
@@ -203,10 +213,6 @@ const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDat
     }
   ];
 
-  // Console log to debug which columns are being displayed
-  console.log('Columns with data:', columnsWithData);
-  console.log('Final columns being displayed:', columns);
-
   return (
     <>
       <Box sx={{ 
@@ -234,7 +240,7 @@ const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDat
         
         <DataGrid
           rows={processedMentees}
-          columns={columns}
+          columns={minimumColumns}
           getRowId={(row) => row.id}
           autoHeight
           sx={{
@@ -446,7 +452,7 @@ const MenteeTable = ({ mentees, onEditClick, onDeleteClick, isSmallScreen, onDat
               '&:hover': {
                 borderColor: 'rgba(255, 255, 255, 0.5)',
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              }
+              } 
             }}
           >
             Cancel
