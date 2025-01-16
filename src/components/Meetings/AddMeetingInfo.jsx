@@ -1,13 +1,11 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
 
 const AddMeetingInfo = () => {
-  const router = useRouter();
   const [mentorId, setMentorId] = useState('');
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
@@ -17,6 +15,7 @@ const AddMeetingInfo = () => {
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [semesterSuggestions, setSemesterSuggestions] = useState([]);
+  console.log(semesterSuggestions);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const [showSemesterOptions, setShowSemesterOptions] = useState(false);

@@ -35,6 +35,7 @@ const ScheduleMeeting = () => {
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
   const [semesterSuggestions, setSemesterSuggestions] = useState([]);
+  console.log(semesterSuggestions);
   const semesterRef = useRef(null);
 
   const fixedBranch = 'CSE CORE';
