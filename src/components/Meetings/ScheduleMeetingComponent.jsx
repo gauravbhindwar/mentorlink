@@ -25,6 +25,7 @@ const ScheduleMeeting = () => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [yearSuggestions, setYearSuggestions] = useState([]);
+  const [showSemesterOptions, setShowSemesterOptions] = useState(false);
   const [ setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
@@ -33,6 +34,8 @@ const ScheduleMeeting = () => {
   const [formattedTime, setFormattedTime] = useState('');
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
+  const [semesterSuggestions, setSemesterSuggestions] = useState([]);
+  const semesterRef = useRef(null);
 
   const fixedBranch = 'CSE CORE';
 
@@ -115,16 +118,20 @@ const ScheduleMeeting = () => {
           }
         }
       } catch (error) {
-        // console.error('Error fetching meetings:', error.response?.data || error.message);
+        // console.log('Error fetching meetings:', error.response?.data || error.message);
         setMeetingId(error.response?.data.error);
         setCustomAlert(error.response?.data.error)
         setDisabled(true);
       }
     };
 
-    if (mentorId && currentSemester && selectedSection && academicSession && academicYear) {
-      generateMeetingId();
-      getMentees(mentorId, currentSemester, selectedSection);
+    try {
+      if (mentorId && currentSemester && selectedSection && academicSession && academicYear) {
+        generateMeetingId();
+        getMentees(mentorId, currentSemester, selectedSection);
+      }
+    } catch (error) {
+      console.log('Error in useEffect:', error);
     }
   }, [mentorId, currentSemester, selectedSection, academicSession, academicYear]); // Add proper dependencies
 
@@ -140,30 +147,21 @@ const ScheduleMeeting = () => {
 
   // Calculate current semester based on date
   useEffect(() => {
-    const calculateSemester = () => {
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear();
-      const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
-      
-      // Determine if it's odd term (July-Nov) or even term (Dec-June)
-      const isOddTerm = currentMonth >= 7 && currentMonth <= 11;
-      
-      // Calculate year of study (1 to 4)
-      const batchStartYear = 2021; // Example: for batch 2021-2025
-      const yearOfStudy = currentYear - batchStartYear;
-      if (yearOfStudy < 0 || yearOfStudy > 3) return 1; // Default to 1st semester if calculation fails
-      
-      // Calculate semester (1 to 8)
-      const semester = (yearOfStudy * 2) + (isOddTerm ? 1 : 2);
-      setCurrentSemester(semester);
-
+    const calculateSemester = () => {          
       // Set available semesters based on the current term
-      const semesters = isOddTerm ? [1, 3, 5, 7] : [2, 4, 6, 8];
+      if (!academicYear) return [];
+      const [startYear] = academicYear.split('-');
+        
+      const semesters = academicSession === `JULY-DECEMBER ${startYear}` ? [1, 3, 5, 7] : [2, 4, 6, 8];
+      // console.log('Current semesters:', semesters);
       setAvailableSemesters(semesters);
+      const semester = '';
+      setCurrentSemester(semester);
     };
 
     calculateSemester();
-  }, []);
+    // console.log('Current semester:', currentSemester);
+  }, [academicSession]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -213,7 +211,11 @@ const ScheduleMeeting = () => {
       }
     }
 
-    scheduleMeeting();
+    try {
+      scheduleMeeting();
+    } catch (error) {
+      console.log('Error in handleMeetingScheduled:', error);
+    }
     setLoading(false);
   }
 
@@ -330,14 +332,42 @@ const ScheduleMeeting = () => {
     setAcademicSession(value);
   };
 
+  const generateSemesterSuggestions = (input) => {
+    if (!input) return [];
+    return availableSemesters.filter(sem => 
+      `${sem}`.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  const handleSemesterInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    if (value.length > 0) {
+      setSemesterSuggestions(generateSemesterSuggestions(value));
+      setShowSemesterOptions(true);
+    } else {
+      setSemesterSuggestions([]);
+      setShowSemesterOptions(false);
+    }
+
+    setCurrentSemester(value);
+  };
+
   // Add useEffect for click outside handling
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (yearRef.current && !yearRef.current.contains(event.target)) {
-        setShowYearOptions(false);
-      }
-      if (sessionRef.current && !sessionRef.current.contains(event.target)) {
-        setShowSessionOptions(false);
+      try {
+        if (yearRef.current && !yearRef.current.contains(event.target)) {
+          setShowYearOptions(false);
+        }
+        if (sessionRef.current && !sessionRef.current.contains(event.target)) {
+          setShowSessionOptions(false);
+        }
+        if (semesterRef.current && !semesterRef.current.contains(event.target)) {
+          setShowSemesterOptions(false);
+        }
+      } catch (error) {
+        console.log('Error in handleClickOutside:', error);
       }
     };
 
@@ -348,7 +378,11 @@ const ScheduleMeeting = () => {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    try {
+      setIsMounted(true);
+    } catch (error) {
+      console.log('Error during hydration:', error);
+    }
   }, []);
 
   if (!isMounted) {
@@ -449,7 +483,7 @@ const ScheduleMeeting = () => {
                     <label className="block text-sm font-medium text-gray-300 mb-1">Academic Session</label>
                     <input
                       type="text"
-                      placeholder="MONTH-MONTH YYYY"
+                      placeholder={!academicYear ? 'Add academic year first' : 'MONTH-MONTH YYYY'}
                       value={academicSession}
                       onChange={handleAcademicSessionInput}
                       onClick={() => setShowSessionOptions(true)}
@@ -474,17 +508,38 @@ const ScheduleMeeting = () => {
                     )}
                   </div>
 
-                  <div>
+                  <div ref={semesterRef} className="relative">
                     <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
-                    <select 
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
-                      value={currentSemester}
-                      onChange={(e) => setCurrentSemester(Number(e.target.value))}
-                    >
-                      {availableSemesters.map(sem => (
-                        <option key={sem} value={sem} className="bg-black text-white">Semester {sem}</option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      placeholder={!academicYear ? 'Add academic year first' : availableSemesters[0] == 2 ? 'Select even semester' : 'Select odd semester'}
+                      value={academicYear && currentSemester}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (availableSemesters.includes(parseInt(value))) {
+                          handleSemesterInput(e);
+                        }
+                      }}
+                      onClick={() => setShowSemesterOptions(true)}
+                      disabled={!academicYear}
+                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50"
+                    />
+                    {showSemesterOptions && (
+                      <div className="absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg">
+                        {availableSemesters.map(sem => (
+                          <div
+                            key={sem}
+                            className="px-4 py-2 hover:bg-white/10 cursor-pointer text-white"
+                            onClick={() => {
+                              setCurrentSemester(sem);
+                              setShowSemesterOptions(false);
+                            }}
+                          >
+                            {sem}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
