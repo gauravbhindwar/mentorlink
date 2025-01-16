@@ -698,11 +698,11 @@ const handleEditMentor = async () => {
             )}
           </div>
 
-          {/* Main Grid Layout */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[250px,1fr] gap-3 p-3 h-[calc(100vh-100px)] lg:overflow-hidden overflow-auto">
-            {/* Filter Panel */}
+          {/* Main Grid Layout - Update the grid template columns here */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-4 p-4 h-[calc(100vh-100px)] lg:overflow-hidden overflow-auto">
+            {/* Filter Panel - Update max-width */}
             <motion.div 
-              className="lg:h-full max-w-full lg:max-w-[250px]"
+              className="lg:h-full max-w-full lg:max-w-[300px]"
               initial={false} // Add this to prevent initial animation
               animate={{
                 height: showFilters ? 'auto' : 0,

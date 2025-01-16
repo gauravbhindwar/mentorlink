@@ -427,7 +427,7 @@ const MenteeManagement = () => {
         const parsedData = JSON.parse(storedData);
         setMentees(parsedData);
       } catch (error) {
-        console.error('Error parsing stored data:', error);
+        console.log('Error parsing stored data:', error);
         sessionStorage.removeItem('menteeData');
       }
     }
@@ -446,7 +446,7 @@ const MenteeManagement = () => {
         setTableVisible(false); // Hide table when no data
       }
     } catch (error) {
-      console.error('Error handling search:', error);
+      console.log('Error handling search:', error);
       setMentees([]);
       setTableVisible(false);
     } finally {
@@ -476,7 +476,7 @@ const MenteeManagement = () => {
         sessionStorage.removeItem('menteeData');
       }
     } catch (error) {
-      console.error('Error handling search all:', error);
+      console.log('Error handling search all:', error);
       setMentees([]);
       setTableVisible(false);
       showAlert(error.response?.data?.error || 'Error fetching mentees', 'error');
@@ -705,7 +705,7 @@ const MenteeManagement = () => {
     if (typeof setters[name] === 'function') {
       setters[name](value);
     } else {
-      console.error(`No setter function found for filter: ${name}`);
+      console.log(`No setter function found for filter: ${name}`);
     }
     
     setMentees([]); // Clear data when filter options change

@@ -3,11 +3,14 @@ import { DataGrid } from '@mui/x-data-grid';
 import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Typography, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import InfoIcon from '@mui/icons-material/Info';
+import MentorDetailsDialog from './MentorDetailsDialog';
 import { useMemo, useState } from 'react';
 
 const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
+  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentor: null });
 
   // Add this function to handle delete click
   const handleDeleteClick = (mujid) => {
@@ -63,26 +66,27 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
     { field: 'name', headerName: 'Name', width: 150 }, // Reduced from 180
     { field: 'email', headerName: 'Email', width: 200 }, // Reduced from 235
     { field: 'phone_number', headerName: 'Phone', width: 120 }, // Reduced from 150
-    { 
-      field: 'academicSession', 
-      headerName: 'Session', 
-      width: 170,
-      editable: true 
-    },
-    { 
-      field: 'academicYear', 
-      headerName: 'Academic Year', 
-      width: 120,
-      editable: true 
-    },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 100, // Reduced from 120
+      width: 150, // Increased width to accommodate new button
       headerAlign: 'center',
       align: 'center',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            onClick={() => setDetailsDialog({ open: true, mentor: params.row })}
+            sx={{ 
+              color: '#3b82f6', // Blue color for info button
+              '&:hover': {
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <InfoIcon fontSize="small" />
+          </IconButton>
           <IconButton
             onClick={() => {
               const mentor = {
@@ -121,8 +125,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
           </IconButton>
         </Box>
       ),
-    },
-    { field: 'role', headerName: 'Role', width: 120 } // Reduced from 150
+    }
   ].map(col => ({
     ...col,
     headerAlign: 'center',
@@ -333,6 +336,12 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
         pagination
       />
       
+      <MentorDetailsDialog
+        open={detailsDialog.open}
+        onClose={() => setDetailsDialog({ open: false, mentor: null })}
+        mentor={detailsDialog.mentor}
+      />
+
       <Dialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, mujid: null })}
