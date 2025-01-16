@@ -69,6 +69,62 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     }
   };
 
+  // Add custom styles for the assignment dialog
+  const assignmentDialogStyles = {
+    paper: {
+      backgroundColor: 'rgba(17, 24, 39, 0.95)',
+      backdropFilter: 'blur(20px)',
+      borderRadius: '16px',
+      border: '1px solid rgba(249, 115, 22, 0.2)',
+      maxWidth: '500px',
+      width: '100%',
+    },
+    title: {
+      borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
+      padding: '20px 24px',
+      '& .MuiTypography-root': {
+        color: '#f97316',
+        fontWeight: 600,
+        fontSize: '1.25rem',
+      },
+    },
+    content: {
+      padding: '24px',
+    },
+    textField: {
+      '& .MuiOutlinedInput-root': {
+        color: 'white',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: '12px',
+        '&:hover': {
+          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        },
+        '&.Mui-focused': {
+          backgroundColor: 'rgba(249, 115, 22, 0.05)',
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#f97316',
+            borderWidth: '2px',
+          },
+        },
+      },
+      '& .MuiInputLabel-root': {
+        color: 'rgba(255, 255, 255, 0.7)',
+        '&.Mui-focused': {
+          color: '#f97316',
+        },
+      },
+      '& .MuiMenuItem-root': {
+        color: 'white',
+      },
+    },
+    helperText: {
+      mt: 1,
+      color: 'rgba(255, 255, 255, 0.5)',
+      fontSize: '0.75rem',
+      textAlign: 'center',
+    },
+  };
+
   return (
     <Dialog
       open={open}
@@ -284,21 +340,52 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
         </Button>
       </Box>
 
-      {/* Manual Assignment Dialog */}
+      {/* Redesigned Assignment Dialog */}
       <Dialog
         open={assignmentDialog}
         onClose={() => setAssignmentDialog(false)}
-        PaperProps={{
-          sx: {
-            bgcolor: 'rgba(17, 24, 39, 0.95)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(249, 115, 22, 0.2)',
-          }
-        }}
+        PaperProps={{ sx: assignmentDialogStyles.paper }}
       >
-        <DialogTitle>Assign New Mentee</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+        <DialogTitle sx={assignmentDialogStyles.title}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AddIcon sx={{ color: '#f97316' }} />
+            <Typography>Assign New Mentee</Typography>
+          </Box>
+          <IconButton
+            onClick={() => setAssignmentDialog(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: 'rgba(255, 255, 255, 0.5)',
+              '&:hover': { color: '#f97316' },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={assignmentDialogStyles.content}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Assignment Info Section */}
+            <Box sx={{ 
+              p: 2, 
+              bgcolor: 'rgba(249, 115, 22, 0.1)', 
+              borderRadius: 2,
+              border: '1px solid rgba(249, 115, 22, 0.2)'
+            }}>
+              <Typography variant="subtitle2" sx={{ color: '#f97316', mb: 1 }}>
+                Assigning to Mentor
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'white' }}>
+                {mentor?.name} ({mentor?.MUJid})
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', display: 'block' }}>
+                {mentor?.academicYear} • {mentor?.academicSession}
+              </Typography>
+            </Box>
+
+            {/* Form Fields */}
             <TextField
               label="Mentee MUJid"
               value={assignmentDetails.mentee_MUJid}
@@ -306,50 +393,86 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                 ...prev,
                 mentee_MUJid: e.target.value.toUpperCase()
               }))}
+              sx={assignmentDialogStyles.textField}
               fullWidth
+              required
+              placeholder="Enter Mentee's MUJid"
             />
-            <TextField
-              select
-              label="Section"
-              value={assignmentDetails.section}
-              onChange={(e) => setAssignmentDetails(prev => ({
-                ...prev,
-                section: e.target.value
-              }))}
-              fullWidth
-            >
-              {['A', 'B', 'C', 'D', 'E'].map(section => (
-                <MenuItem key={section} value={section}>
-                  Section {section}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Semester"
-              value={assignmentDetails.current_semester}
-              onChange={(e) => setAssignmentDetails(prev => ({
-                ...prev,
-                current_semester: e.target.value
-              }))}
-              fullWidth
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                <MenuItem key={sem} value={sem}>
-                  Semester {sem}
-                </MenuItem>
-              ))}
-            </TextField>
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                select
+                label="Section"
+                value={assignmentDetails.section}
+                onChange={(e) => setAssignmentDetails(prev => ({
+                  ...prev,
+                  section: e.target.value
+                }))}
+                sx={assignmentDialogStyles.textField}
+                fullWidth
+                required
+              >
+                {['A', 'B', 'C', 'D', 'E'].map(section => (
+                  <MenuItem key={section} value={section}>
+                    Section {section}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Semester"
+                value={assignmentDetails.current_semester}
+                onChange={(e) => setAssignmentDetails(prev => ({
+                  ...prev,
+                  current_semester: e.target.value
+                }))}
+                sx={assignmentDialogStyles.textField}
+                fullWidth
+                required
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                  <MenuItem key={sem} value={sem}>
+                    Semester {sem}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            <Typography sx={assignmentDialogStyles.helperText}>
+              Make sure to verify the mentee&apos;s details before assigning
+            </Typography>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAssignmentDialog(false)}>Cancel</Button>
-          <Button 
+
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(249, 115, 22, 0.2)' }}>
+          <Button
+            onClick={() => setAssignmentDialog(false)}
+            sx={{
+              color: 'white',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                bgcolor: 'rgba(255, 255, 255, 0.05)',
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
             onClick={handleAssignMentee}
             variant="contained"
-            sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' } }}
+            sx={{
+              bgcolor: '#f97316',
+              '&:hover': { 
+                bgcolor: '#ea580c',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)',
+              },
+              transition: 'all 0.2s ease',
+            }}
           >
-            Assign
+            Assign Mentee
           </Button>
         </DialogActions>
       </Dialog>
