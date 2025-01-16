@@ -20,7 +20,7 @@ export async function GET(request) {
     });
 
     if (!academicSession) {
-      return NextResponse.json({ meetings: [] }, { status: 200 });
+      return NextResponse.json({ meetings: ["a"] }, { status: 200 });
     }
 
     const meetings = academicSession.sessions
@@ -34,6 +34,52 @@ export async function GET(request) {
     console.error("Error fetching reported meetings:", error);
     return NextResponse.json(
       { error: "Error fetching reported meetings" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request) {
+  const { mentor_id, meeting_id, meeting_notes } = await request.json();
+
+  try {
+    const academicSession = await AcademicSession.findOneAndUpdate(
+      {
+        "sessions.semesters.sections.meetings.meeting_id": meeting_id,
+        "sessions.semesters.sections.meetings.mentor_id": mentor_id,
+      },
+      {
+        $set: {
+          "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].meeting_notes":
+            meeting_notes,
+        },
+      },
+      {
+        arrayFilters: [
+          { "session.semesters.sections.meetings.meeting_id": meeting_id },
+          { "semester.sections.meetings.meeting_id": meeting_id },
+          { "section.meetings.meeting_id": meeting_id },
+          { "meeting.meeting_id": meeting_id },
+        ],
+        new: true,
+      }
+    );
+
+    if (!academicSession) {
+      return NextResponse.json(
+        { error: "Meeting not found or update failed" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { message: "Meeting notes updated successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error updating meeting notes:", error);
+    return NextResponse.json(
+      { error: "Error updating meeting notes" },
       { status: 500 }
     );
   }
