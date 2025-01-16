@@ -12,6 +12,7 @@ import { motion} from 'framer-motion';
 import axios from 'axios';
 import BulkUploadPreview from '../common/BulkUploadPreview';
 import toast from 'react-hot-toast';
+import FilterListIcon from '@mui/icons-material/FilterList'; // Add this import
 
 const calculateCurrentSemester = (yearOfRegistration) => {
   const currentDate = new Date();
@@ -143,6 +144,7 @@ const MenteeManagement = () => {
 
   const [tableVisible, setTableVisible] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(true); // Add this state
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -432,17 +434,18 @@ const MenteeManagement = () => {
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Consolidate screenSize related effects into one
   useEffect(() => {
-    sessionStorage.removeItem('menteeData'); // Clear session storage on mount
+    // Clear session storage on mount
+    sessionStorage.removeItem('menteeData');
     setMounted(true);
-  }, []);
 
-  // useEffect(() => {
-  //   setIsFilterSelected(Boolean(academicYear || academicSession || semester || section));
-  // }, [academicYear, academicSession, semester, section]);
+    // Handle screen size changes
+    if (!isSmallScreen) {
+      setShowFilters(true);
+    }
 
-  useEffect(() => {
-    // Try to get data from session storage on mount
+    // Try to get data from session storage
     const storedData = sessionStorage.getItem('menteeData');
     if (storedData) {
       try {
@@ -453,8 +456,7 @@ const MenteeManagement = () => {
         sessionStorage.removeItem('menteeData');
       }
     }
-    setMounted(true);
-  }, []);
+  }, [isSmallScreen]); // Add isSmallScreen to dependencies
 
   const handleSearch = (data) => {
     setLoading(true);
@@ -901,21 +903,8 @@ const MenteeManagement = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: 'rgba(0, 0, 0, 0.8)',
-              color: '#fff',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '0.75rem',
-            },
-          }}
-        />
-        
+      <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
+        <Toaster position="top-center" containerStyle={{ top: 100 }} />
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -923,108 +912,111 @@ const MenteeManagement = () => {
           <div className="absolute inset-0 backdrop-blur-3xl" />
         </div>
 
-        {/* Content */}
-        <div className="relative z-10 px-4 md:px-6 py-24 max-h-screen"> {/* Updated padding and added min-height */}
-          {/* Header */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-10" // Added margin-bottom
-          >
+        {/* Main Content Container */}
+        <div className="relative z-10 h-screen flex flex-col pt-[60px]">
+          {/* Header Section */}
+          <div className="flex items-center justify-between px-4 lg:px-6">
             <motion.h1 
-              className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-5 !leading-snug" // Increased margin-bottom
+              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
               Mentee Management
             </motion.h1>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white/5 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/10"
-            >
-              
-              <FilterSection 
-                filters={filterConfig}
-                onFilterChange={handleFilterChange}
-                onSearch={handleSearch}
-                onSearchAll={handleSearchAll}
-                onAddNew={handleDialogOpen}
-                onReset={handleReset}
-                onBulkUpload={handleBulkUploadOpen}
-                onDelete={handleDelete}
-                mentees={mentees} // Pass mentees data to FilterSection
-              />
-            </motion.div>
 
-            {/* Table Section */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: tableVisible ? 1 : 0 }}
-              transition={{ duration: 0.3 }}
-              style={{ 
-                display: tableVisible ? 'block' : 'none',
-                marginTop: '20px'
+            {isSmallScreen && (
+              <IconButton
+                onClick={() => setShowFilters(!showFilters)}
+                sx={{
+                  color: '#f97316',
+                  bgcolor: 'rgba(249, 115, 22, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(249, 115, 22, 0.2)',
+                  },
+                  position: 'fixed',
+                  right: '1rem',
+                  zIndex: 10,
+                }}
+              >
+                <FilterListIcon />
+              </IconButton>
+            )}
+          </div>
+
+          {/* Main Grid Layout - Updated grid and padding */}
+          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ${
+            isSmallScreen ? 'grid-cols-1' : 'grid-cols-[400px,1fr] lg:overflow-hidden'
+          }`}>
+            {/* Filter Panel - Updated width and padding */}
+            <motion.div 
+              className={`lg:h-full ${isSmallScreen ? 'w-full' : 'w-[400px]'}`}
+              initial={false}
+              animate={{
+                height: showFilters ? 'auto' : 0,
+                opacity: showFilters ? 1 : 0,
+                marginBottom: showFilters ? '12px' : 0
+              }}
+              style={{
+                display: showFilters ? 'block' : 'none',
+                position: isSmallScreen ? 'relative' : 'sticky',
+                top: isSmallScreen ? 'auto' : '1rem',
               }}
             >
-              <Box sx={{ 
-                overflowX: 'auto', 
-                minHeight: '150px',
-                maxHeight: 'calc(100vh - 400px)', // Limit maximum height
-                overflowY: 'auto',
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '16px',
-                padding: '16px',
-                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}>
-                {loading ? (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center',
-                    height: '200px',
-                  }}>
-                    <CircularProgress sx={{ color: '#f97316' }} />
-                  </Box>
-                ) : (
-                  <MenteeTable 
-                    mentees={mentees}
-                    onEditClick={handleEditClick}
-                    onDeleteClick={handleDelete} // Changed from onDelete to onDeleteClick to match prop name
-                    isSmallScreen={isSmallScreen}
-                    onDataUpdate={handleDataUpdate} // Add this prop
-                  />
-                )}
-              </Box>
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full overflow-auto">
+                <FilterSection 
+                  filters={filterConfig}
+                  onFilterChange={handleFilterChange}
+                  onSearch={handleSearch}
+                  onSearchAll={handleSearchAll}
+                  onAddNew={handleDialogOpen}
+                  onReset={handleReset}
+                  onBulkUpload={handleBulkUploadOpen}
+                  onDelete={handleDelete}
+                  mentees={mentees}
+                />
+              </div>
             </motion.div>
 
-            {/* Show "No data" message when table is not visible */}
-            {!tableVisible && !loading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  height: '200px',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                  borderRadius: '16px',
-                  margin: '20px 0'
-                }}>
-                  Use the filters above to search for mentees
-                </Box>
-              </motion.div>
-            )}
-          </motion.div>
+            {/* Table Section - Updated for better responsiveness */}
+            <motion.div
+              className={`h-full min-w-0 transition-all duration-300 ${
+                !showFilters && isSmallScreen ? 'col-span-full' : ''
+              }`}
+              animate={{
+                gridColumn: (!showFilters && isSmallScreen) ? 'span 2' : 'auto'
+              }}
+            >
+              <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
+                <div className="h-full flex flex-col p-4 pb-2">
+                  {loading ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <CircularProgress sx={{ color: "#f97316" }} />
+                    </div>
+                  ) : mentees.length > 0 ? (
+                    <div className="h-full">
+                      <MenteeTable 
+                        mentees={mentees}
+                        onEditClick={handleEditClick}
+                        onDeleteClick={handleDelete}
+                        isSmallScreen={isSmallScreen}
+                        onDataUpdate={handleDataUpdate}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                        {tableVisible ? 'No mentees found' : 'Use the filters to search for mentees'}
+                      </Typography>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
 
+        {/* ...existing dialogs and other components... */}
         <Dialog 
           open={openDialog} 
           onClose={handleDialogClose}

@@ -1,13 +1,17 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
-import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material'; // Add Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress import
-import { useMemo, useState, useEffect } from 'react';
+import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton } from '@mui/material'; // Add Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton import
+import { useMemo, useState } from 'react';
+import InfoIcon from '@mui/icons-material/Info';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import MenteeDetailsDialog from './MenteeDetailsDialog';
 
 // Update the component props to include onDeleteClick and onDataUpdate
-const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEditClick }) => {
+const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoading }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
 
   // Add this function to handle delete click
   const handleDeleteClick = (mujid) => {
@@ -54,26 +58,14 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
           return parsedData;
         }
         // If no stored data, return empty array immediately
-        setIsLoading(false);
         return [];
       } catch (error) {
         console.error('Error parsing stored data:', error);
-        setIsLoading(false);
         return [];
       }
     }
     return mentees;
   }, [mentees]);
-
-  // Update loading effect
-  useEffect(() => {
-    // Set loading to false when we have data or definitely know we don't
-    if (effectiveMentees && effectiveMentees.length > 0) {
-      setIsLoading(false);
-    } else if (!sessionStorage.getItem('menteeData')) {
-      setIsLoading(false);
-    }
-  }, [effectiveMentees]);
 
   // Process mentees data with error handling
   const processedMentees = useMemo(() => {
@@ -158,12 +150,11 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
     { field: 'MUJid', headerName: 'MUJid', width: 150 },
     { field: 'name', headerName: 'Name', width: 200 },
     { field: 'email', headerName: 'Email', width: 250 },
-    { field: 'section', headerName: 'Section', width: 100 },
-    { field: 'semester', headerName: 'Semester', width: 100 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
-    { field: 'academicSession', headerName: 'Academic Session', width: 200 },
+    // { field: 'section', headerName: 'Section', width: 100 },
+    // { field: 'semester', headerName: 'Semester', width: 100 },
+    // { field: 'academicYear', headerName: 'Academic Year', width: 150 },
+    // { field: 'academicSession', headerName: 'Academic Session', width: 200 },
     { field: 'mentorMujid', headerName: 'Mentor MUJID', width: 150 },
-    // Actions column
     {
       field: 'actions',
       headerName: 'Actions',
@@ -172,42 +163,45 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
       align: 'center',
       renderCell: (params) => (
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            size={isSmallScreen ? "small" : "medium"}
-            variant="outlined"
-            onClick={() => handleEditClick(params.row)} // Changed to handleEditClick
+          <IconButton
+            onClick={() => setDetailsDialog({ open: true, mentee: params.row })}
             sx={{ 
-              borderRadius: '12px', 
-              fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
-              textTransform: 'capitalize',
+              color: '#3b82f6',
+              '&:hover': {
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <InfoIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            onClick={() => handleEditClick(params.row)}
+            sx={{ 
               color: '#f97316',
-              borderColor: '#f97316',
               '&:hover': {
-                borderColor: '#ea580c',
-                backgroundColor: 'rgba(249, 115, 22, 0.1)'
-              }
+                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease'
             }}
           >
-            Edit
-          </Button>
-          <Button
-            size={isSmallScreen ? "small" : "medium"}
-            variant="outlined"
-            onClick={() => handleDeleteClick(params.row.MUJid)} // Changed to handleDeleteClick
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            onClick={() => handleDeleteClick(params.row.MUJid)}
             sx={{ 
-              borderRadius: '12px', 
-              fontSize: { xs: '0.8rem', sm: '0.9rem' }, 
-              textTransform: 'capitalize',
               color: '#ef4444',
-              borderColor: '#ef4444',
               '&:hover': {
-                borderColor: '#dc2626',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)'
-              }
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                transform: 'scale(1.1)',
+              },
+              transition: 'all 0.2s ease'
             }}
           >
-            Delete
-          </Button>
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
         </Box>
       ),
     }
@@ -388,7 +382,7 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
           disableSelectionOnClick
           disableColumnMenu={false}
           disableColumnFilter={false}
-          loading={!mentees || mentees.length === 0} // Updated loading condition
+          loading={isLoading} // Updated loading condition
           initialState={{
             pagination: {
               paginationModel: { pageSize: 10, page: 0 },
@@ -423,6 +417,12 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
         />
       </Box>
 
+      <MenteeDetailsDialog
+        open={detailsDialog.open}
+        onClose={() => setDetailsDialog({ open: false, mentee: null })}
+        mentee={detailsDialog.mentee}
+      />
+
       {/* Add Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
@@ -435,7 +435,7 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
             border: '1px solid rgba(255, 255, 255, 0.1)',
           }
         }}
-      >
+      ></Dialog>
         <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           Confirm Delete
         </DialogTitle>
@@ -468,7 +468,6 @@ const MenteeTable = ({ mentees, onDeleteClick, isSmallScreen, onDataUpdate, onEd
             Delete
           </Button>
         </DialogActions>
-      </Dialog>
     </>
   );
 };

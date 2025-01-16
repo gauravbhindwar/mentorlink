@@ -16,9 +16,55 @@ import {
   DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import ManageSearchIcon from '@mui/icons-material/ManageSearch';
+import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
+
+const buttonStyles = {
+  actionButton: {
+    width: '100%',
+    borderRadius: '12px',
+    padding: '10px 16px',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    textTransform: 'none',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.2s ease',
+    marginBottom: '8px',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+    }
+  },
+  primary: {
+    background: 'linear-gradient(45deg, #f97316 30%, #fb923c 90%)',
+    color: 'white',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #ea580c 30%, #f97316 90%)',
+    }
+  },
+  secondary: {
+    background: 'rgba(255, 255, 255, 0.05)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    color: 'white',
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.1)',
+    }
+  },
+  danger: {
+    background: 'linear-gradient(45deg, #ef4444 30%, #f87171 90%)',
+    color: 'white',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #dc2626 30%, #ef4444 90%)',
+    }
+  }
+};
 
 const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddNew, onBulkUpload, onDelete }) => {
   const [isLoading, setIsLoading] = useState({
@@ -805,25 +851,6 @@ const textFieldStyles = {
     '&.Mui-focused': {
       color: '#f97316',
     },
-  }
-};
-
-const buttonStyles = {
-  primary: {
-    bgcolor: '#f97316',
-    '&:hover': { bgcolor: '#ea580c' }
-  },
-  secondary: {
-    bgcolor: '#ea580c',
-    '&:hover': { bgcolor: '#c2410c' }
-  },
-  outlined: {
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    color: 'white',
-    '&:hover': {
-      borderColor: '#f97316',
-      bgcolor: 'rgba(249, 115, 22, 0.1)'
-    }
   }
 };
 

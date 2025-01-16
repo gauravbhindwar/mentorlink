@@ -151,7 +151,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
 
     // Debug logs
-    console.log("Received search params:", Object.fromEntries(searchParams.entries()));
+    // console.log("Received search params:", Object.fromEntries(searchParams.entries()));
 
     let filters = {};
 
@@ -188,14 +188,14 @@ export async function GET(req) {
       filters.mentorMujid = searchParams.get("mentorMujid").trim().toUpperCase();
     }
 
-    console.log("Final filters:", filters);
+    // console.log("Final filters:", filters);
 
     // Try finding with less restrictive filters first
-    const allMentees = await Mentee.find({});
-    console.log("Total mentees in database:", allMentees.length);
+    // const allMentees = await Mentee.find({});
+    // console.log("Total mentees in database:", allMentees.length);
 
     const mentees = await Mentee.find(filters).lean();
-    console.log("Found mentees with filters:", mentees);
+    // console.log("Found mentees with filters:", mentees);
 
     if (!mentees || mentees.length === 0) {
       return createErrorResponse("No mentees found matching the criteria", 404);
