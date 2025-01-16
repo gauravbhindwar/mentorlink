@@ -120,6 +120,11 @@ const MentorManagement = () => {
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [deleteRoleDialog, setDeleteRoleDialog] = useState({ open: false, mentor: null });
   const [selectedRoles, setSelectedRoles] = useState([]);
+  const [currentFilters, setCurrentFilters] = useState({
+    academicYear: '',
+    academicSession: '',
+    MUJid: ''
+  });
  
   const yearRef = useRef(null);
 
@@ -212,7 +217,7 @@ const MentorManagement = () => {
           iconTheme: toastStyles.success.iconTheme,
         });
         setOpenDialog(false);
-        await fetchMentors();
+        await fetchMentors(currentFilters);
         resetMentorDetails();
       }
     } catch (error) {
@@ -259,30 +264,51 @@ const MentorManagement = () => {
   };
 
 
-  const handleEditMentor = async () => {
-    try {
-      const {...updateData } = selectedMentor;
+const handleEditMentor = async () => {
+  try {
+    const { ...updateData } = selectedMentor;
+    const hasAdminRole = updateData.role.some(role => ['admin', 'superadmin'].includes(role));
 
-      const response = await axios.patch(
-        `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
-        updateData
-      );
+    // First update the mentor record
+    const response = await axios.patch(
+      `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
+      updateData
+    );
 
-      if (response.data) {
-        toast.success("Mentor updated successfully", {
-          style: toastStyles.success.style,
-          iconTheme: toastStyles.success.iconTheme,
+    if (hasAdminRole) {
+      // Create/update admin record if admin role is present
+      try {
+        await axios.post('/api/admin/manageUsers/manageAdmin', {
+          ...updateData,
+          role: updateData.role.filter(role => ['admin', 'superadmin'].includes(role))
         });
-        setEditDialog(false);
-        await fetchMentors(); // Refresh the table data
+      } catch (adminError) {
+        // If admin already exists, update instead
+        if (adminError.response?.status === 400) {
+          await axios.patch(`/api/admin/manageUsers/manageAdmin/${updateData.MUJid}`, {
+            ...updateData,
+            role: updateData.role.filter(role => ['admin', 'superadmin'].includes(role))
+          });
+        }
       }
-    } catch (error) {
-      toast.error(error.response?.data?.error || "Error updating mentor", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
     }
-  };
+
+    if (response.data) {
+      toast.success("Mentor updated successfully", {
+        style: toastStyles.success.style,
+        iconTheme: toastStyles.success.iconTheme,
+      });
+      setEditDialog(false);
+      await fetchMentors(currentFilters);
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.error || "Error updating mentor", {
+      style: toastStyles.error.style,
+      iconTheme: toastStyles.error.iconTheme,
+    });
+  }
+};
+
 
   const handleDeleteMentor = async (MUJid) => {
     try {
@@ -299,7 +325,7 @@ const MentorManagement = () => {
           data: { MUJid, roles: ['mentor'] }
         });
         showAlert("Mentor deleted successfully", "success");
-        fetchMentors();
+        fetchMentors(currentFilters);
       }
     } catch (error) {
       showAlert(error.response?.data?.error || "Error deleting mentor", "error");
@@ -321,7 +347,7 @@ const MentorManagement = () => {
       showAlert("Roles deleted successfully", "success");
       setDeleteRoleDialog({ open: false, mentor: null });
       setSelectedRoles([]);
-      fetchMentors();
+      fetchMentors(currentFilters);
     } catch (error) {
       showAlert(error.response?.data?.error || "Error deleting roles", "error");
     }
@@ -493,6 +519,9 @@ const MentorManagement = () => {
     const fetchMentors = async ({ academicYear = '', academicSession = '', MUJid = '' } = {}) => {
     setLoading(true);
     try {
+      // Store current filters
+      setCurrentFilters({ academicYear, academicSession, MUJid });
+
       // Build query parameters
       const params = new URLSearchParams();
       if (academicYear) params.append('academicYear', academicYear);
@@ -536,7 +565,7 @@ const MentorManagement = () => {
         });
         setDuplicateMentorDialog(false);
         setDuplicateEditMode(false);
-        await fetchMentors();
+        await fetchMentors(currentFilters);
       }
     } catch (error) {
       toast.error(error.response?.data?.error || "Error updating mentor", {
@@ -1270,7 +1299,7 @@ const MentorManagement = () => {
                 },
               }}
             >
-              Update Mentor
+              Update
             </Button>
           </DialogActions>
         </Dialog>
@@ -1451,7 +1480,7 @@ const MentorManagement = () => {
                   },
                 }}
               >
-                Update Mentor
+                Update
               </Button>
             ) : (
               <Button

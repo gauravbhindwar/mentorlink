@@ -1,14 +1,15 @@
 import { connect } from "@/lib/dbConfig";
 import { Mentor } from "@/lib/db/mentorSchema";
+import { Admin } from "@/lib/db/adminSchema";
 import { NextResponse } from "next/server";
 
-// Add PATCH method
-export async function PATCH(req, { params }) {
+export async function PATCH(req, context) {
   try {
-    // Extract and await MUJid from params
-    const mujid = await params.MUJid;
+    // Properly await the params
+    const params = await Promise.resolve(context.params);
+    const MUJid = params.MUJid;
     
-    if (!mujid) {
+    if (!MUJid) {
       return NextResponse.json({
         error: "MUJid parameter is required"
       }, { status: 400 });
@@ -28,16 +29,65 @@ export async function PATCH(req, { params }) {
       Object.entries(updateData).filter(([v]) => v != null && v !== '')
     );
 
+    // Get current mentor data to check role changes
+    const currentMentor = await Mentor.findOne({ MUJid });
+    if (!currentMentor) {
+      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+    }
+
+    // Update mentor
     const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid: mujid },
+      { MUJid },
       { $set: cleanedData },
       { new: true }
     );
 
-    if (!updatedMentor) {
-      return NextResponse.json({
-        error: "Mentor not found"
-      }, { status: 404 });
+    // Handle admin roles
+    const wasAdmin = currentMentor.role.some(r => ['admin', 'superadmin'].includes(r));
+    const isNowAdmin = updateData.role?.some(r => ['admin', 'superadmin'].includes(r));
+
+    if (isNowAdmin) {
+      try {
+        // First check if admin exists
+        const existingAdmin = await Admin.findOne({ MUJid });
+        const adminRoles = updateData.role.filter(r => ['admin', 'superadmin'].includes(r));
+
+        if (existingAdmin) {
+          // Update existing admin
+          await Admin.findOneAndUpdate(
+            { MUJid },
+            { 
+              $set: {
+                ...updateData,
+                role: adminRoles
+              }
+            },
+            { new: true }
+          );
+        } else {
+          // Check for email duplicate before creating
+          const emailExists = await Admin.findOne({ email: updateData.email });
+          if (emailExists) {
+            return NextResponse.json({
+              error: "Email already exists in admin collection"
+            }, { status: 409 });
+          }
+          // Create new admin
+          await Admin.create({
+            ...updateData,
+            role: adminRoles
+          });
+        }
+      } catch (adminError) {
+        console.error("Admin update error:", adminError);
+        return NextResponse.json({
+          error: "Error updating admin record",
+          details: adminError.message
+        }, { status: 500 });
+      }
+    } else if (wasAdmin && !isNowAdmin) {
+      // Remove from Admin collection if admin roles were removed
+      await Admin.deleteOne({ MUJid });
     }
 
     return NextResponse.json({
@@ -53,11 +103,13 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function GET(req, { params }) {
+export async function GET(req, context) {
   try {
-    const mujid = await params.MUJid;
+    // Properly await the params
+    const params = await Promise.resolve(context.params);
+    const MUJid = params.MUJid;
     
-    if (!mujid) {
+    if (!MUJid) {
       return NextResponse.json(
         { error: "MUJid parameter is required" },
         { status: 400 }
@@ -66,7 +118,7 @@ export async function GET(req, { params }) {
 
     await connect();
 
-    const mentor = await Mentor.findOne({ MUJid: mujid });
+    const mentor = await Mentor.findOne({ MUJid });
     if (!mentor) {
       return NextResponse.json(
         { error: "Mentor not found" },
