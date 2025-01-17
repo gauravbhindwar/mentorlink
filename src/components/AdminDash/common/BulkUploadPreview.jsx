@@ -16,8 +16,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid } from '@mui/x-data-grid';
 
 const BulkUploadPreview = ({ open, onClose, data, errors, onConfirm, isUploading, type }) => {
-  console.log('BulkUploadPreview Props:', { data, errors, isUploading, type });
-
   const columns = type === 'mentee' ? [
     { field: 'MUJid', headerName: 'MUJid', width: 130 },
     { field: 'name', headerName: 'Name', width: 180 },

@@ -264,7 +264,7 @@ const ReportMeetings = () => {
             className="text-center mb-8"
           >
             <h1 className="text-4xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-6">
-              Report Meetings
+              Download Meeting Report
             </h1>
           </motion.div>
 

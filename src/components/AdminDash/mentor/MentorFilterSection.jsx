@@ -16,9 +16,12 @@ const filterSectionStyles = {
     gap: 2, // Reduced from 3
     color: '#FFFFFF',
     height: { xs: 'auto', lg: '100%' }, // Responsive height
-    overflow: { xs: 'visible', lg: 'auto' }, // Responsive overflow
+    overflow: { xs: 'visible', lg: 'hidden' }, // Changed from 'auto' to 'hidden'
     transition: 'all 0.3s ease',
     // Add these properties for scrollbar
+    '&:hover': {
+      overflow: { lg: 'auto' } // Show scrollbar only on hover
+    },
     '&::-webkit-scrollbar': {
       width: '8px',
     },
@@ -81,12 +84,16 @@ const buttonStyles = {
     width: '100%', // Take full width
     height: 'auto', // Allow height to adjust with content
     minHeight: '40px', // Minimum height
+    position: 'relative',
+    overflow: 'visible', // Changed from 'hidden' to 'visible'
+    transform: 'none', // Remove default transform
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', // Separate transitions
     '&:hover': {
-      transform: 'scale(1.05)',
-      transition: 'transform 0.2s',
       background: color === 'primary' ? '#ea580c' : 
                  color === 'secondary' ? '#c2410c' : 
                  'rgba(255, 255, 255, 0.2)',
+      transform: 'translateY(-2px)', // Add subtle lift effect
+      boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)', // Enhanced shadow on hover
     },
     '&:disabled': {
       background: 'rgba(255, 255, 255, 0.05)',

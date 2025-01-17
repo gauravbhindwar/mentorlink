@@ -50,7 +50,14 @@ const menteesSchema = new mongoose.Schema({
             relation: { type: String }
         }
     },
-    mentorMujid: { type: String ,required:true}, // MUJid of the assigned mentor
+    mentorMujid: { 
+        type: String,
+        required: function() {
+            // Only required if it's not being unassigned
+            return this.mentorMujid !== null;
+        },
+        default: null
+    }, // MUJid of the assigned mentor
     created_at: { type: Date, default: Date.now }, // Creation date of the mentee record
     updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentee record
     otp: { type: String },

@@ -52,13 +52,15 @@ const ManageMeeting = () => {
       `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
     ]);
     setAcademicSessions(sessions);
-  }, []);
+    
+    // Clear mentor meetings data on component mount
+    setMentorMeetings([]);
+    sessionStorage.removeItem('mentorMeetings');
 
-  useEffect(() => {
-    const storedMentorMeetings = sessionStorage.getItem('mentorMeetings');
-    if (storedMentorMeetings) {
-      setMentorMeetings(JSON.parse(storedMentorMeetings));
-    }
+    // Cleanup on component unmount
+    return () => {
+      sessionStorage.removeItem('mentorMeetings');
+    };
   }, []);
 
   const fetchMentorMeetings = async () => {
@@ -110,7 +112,7 @@ const ManageMeeting = () => {
   };
 
   const handleAcademicSessionChange = (e) => {
-    setAcademicSession(e.target.value);
+    setAcademicSession(e.target.value.toUpperCase());
   };
 
   const handleSemesterChange = (e) => {
@@ -140,38 +142,52 @@ const ManageMeeting = () => {
 
   const generateReport = async (mentorMUJid) => {
     try {
-        // First, fetch the meetings data for this mentor and save to sessionStorage
-        const response = await axios.get('/api/meetings/mentor', {
-            params: {
-                year: academicYear.split('-')[0],
-                session: academicSession,
-                semester,
-                section,
-                mentorMUJid
-            }
-        });
+      const mentorData = mentorMeetings.find(m => m.MUJid === mentorMUJid);
+      let sectionToUse = section;
 
-        // Store the fetched data in sessionStorage
-        const reportData = {
-            meetings: response.data,
-            academicYear,
-            academicSession,
-            semester,
-            section,
-            mentorMUJid // Include mentorMUJid in reportData
-        };
-        sessionStorage.setItem('mentorMeetingsData', JSON.stringify(reportData));
-        
-        // Navigate to report page with state and include mentorMUJid
-        const queryParams = {
-            data: JSON.stringify(reportData),
-            mentorMUJid // Add mentorMUJid as a separate query parameter
-        };
-        
-        window.location.href = `/pages/meetings/mreport?${new URLSearchParams(queryParams)}`;
+      // If section is empty, fetch it from the database
+      if (!section) {
+        try {
+          const response = await axios.get('/api/meetings/mentor/section', {
+            params: {
+              mentorMUJid,
+              academicYear,
+              academicSession,
+              semester
+            }
+          });
+          
+          if (response.data?.section) {
+            sectionToUse = response.data.section;
+          } else {
+            // Use empty string but don't show error
+            sectionToUse = '';
+          }
+        } catch (error) {
+          console.error('Error fetching section:', error);
+          // Continue with empty section
+          sectionToUse = '';
+        }
+      }
+
+      // Store the report data
+      const initialData = {
+        meetings: [mentorData],
+        academicYear,
+        academicSession,
+        semester,
+        section: sectionToUse,
+        mentorMUJid,
+        mentorName: mentorData?.mentorName || ''
+      };
+      
+      // Store in sessionStorage and navigate
+      sessionStorage.setItem('reportData', JSON.stringify(initialData));
+      window.open('/pages/meetings/mreport', '_blank');
+      
     } catch (error) {
-        console.error('Error generating report:', error);
-        alert('Failed to generate report');
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report');
     }
   };
 
@@ -184,20 +200,24 @@ const ManageMeeting = () => {
     {
         field: 'actions',
         headerName: 'Actions',
-        width: 200,
+        width: 300,
         renderCell: (params) => (
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-2 justify-center">
                 <button
                     onClick={() => sendEmail(params.row.mentorEmail)}
-                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded-md text-sm text-white"
+                    className="px-4 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 
+      rounded-lg text-sm text-white font-medium transition-all duration-200 
+      shadow-lg shadow-blue-500/30 hover:shadow-blue-600/40"
                 >
-                    Send Email
+                   Send Mail 📧
                 </button>
                 <button
                     onClick={() => generateReport(params.row.MUJid)}
-                    className="px-3 py-1 bg-green-500 hover:bg-green-600 rounded-md text-sm text-white"
+                    className="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 
+      rounded-lg text-sm text-white font-medium transition-all duration-200
+      shadow-lg shadow-emerald-500/30 hover:shadow-emerald-600/40"
                 >
-                    Generate Report
+                   Generate Report 📄
                 </button>
             </div>
         ),
@@ -254,14 +274,14 @@ const ManageMeeting = () => {
                   placeholder="MONTH-MONTH YYYY"
                   value={academicSession}
                   onChange={handleAcademicSessionChange}
-                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase"
                 />
                 <datalist id="academicSessions">
                   {academicSessions.map((session, index) => (
                     <option key={index} value={session} />
                   ))}
                 </datalist>
-                <small className="text-green-500">Type &apos;jul&apos; or &apos;jan&apos; for quick selection</small>
+                <small className="text-green-500">Type &apos;JUL&apos; or &apos;JAN&apos; for quick selection</small>
               </div>
             </div>
 
@@ -289,7 +309,7 @@ const ManageMeeting = () => {
               </div>
             </div>
 
-            <div className="space-y-3 flex-1 min-w-[200px]">
+            <div className="space-y-3 flex-1 min-w-[200px] mt-6 ">
               <button 
                 type="submit" 
                 className="w-full btn-orange disabled:opacity-50"
@@ -298,6 +318,8 @@ const ManageMeeting = () => {
                 {loading ? 'Fetching...' : 'Fetch Mentor Meetings'}
               </button>
             </div>
+
+            
           </form>
 
           {loading ? (
