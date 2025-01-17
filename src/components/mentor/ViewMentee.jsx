@@ -1,17 +1,24 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, IconButton, Grid } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/subComponents/Navbar';
-import MenteeTable from '../AdminDash/mentee/MenteeTable'; // Reuse the table component
+import MenteeTable from '../AdminDash/mentee/MenteeTable'; 
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 
 const ViewMentee = () => {
     const [mentees, setMentees] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedMentee, setSelectedMentee] = useState(null);
     const [editDialog, setEditDialog] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedMentee, setEditedMentee] = useState(null);
+    const [mounted, setMounted] = useState(false);
 
     // Complete theme configuration
     const theme = createTheme({
@@ -44,9 +51,23 @@ const ViewMentee = () => {
                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                                 borderColor: '#f97316',
                             },
+                            // Add styles for disabled state
+                            '&.Mui-disabled': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                '& input, & textarea': {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                            },
                         },
                         '& .MuiInputLabel-root': {
                             color: 'rgba(255, 255, 255, 0.7)',
+                            '&.Mui-disabled': {
+                                color: 'rgba(255, 255, 255, 0.5)',
+                            },
                         },
                     },
                 },
@@ -54,31 +75,40 @@ const ViewMentee = () => {
         },
     });
 
-    // Updated fetchMentees function with better error handling
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+
         const fetchMentees = async () => {
             setLoading(true);
+            const mentorEmail = sessionStorage.getItem('email'); // Make sure this key matches what you set during login
+            
+            console.log("Fetching mentees for mentor email:", mentorEmail);
+            
+            if (!mentorEmail) {
+                console.log("No mentor email found in session");
+                setLoading(false);
+                return;
+            }
+            
             try {
-                const response = await fetch('/api/mentor/getMentees', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                const response = await axios.get('/api/mentor/manageMentee', {
+                    params: { mentorEmail }
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                if (data.success) {
-                    setMentees(data.mentees || []);
+                
+                console.log("API Response:", response.data);
+                
+                if (response.data?.success && Array.isArray(response.data.mentees)) {
+                    setMentees(response.data.mentees);
                 } else {
-                    console.error('Failed to fetch mentees:', data.message);
+                    console.log("No mentees found or invalid response format");
                     setMentees([]);
                 }
             } catch (error) {
-                console.error('Error fetching mentees:', error);
+                console.error('Error fetching mentees:', error.response?.data || error.message);
                 setMentees([]);
             } finally {
                 setLoading(false);
@@ -86,7 +116,7 @@ const ViewMentee = () => {
         };
 
         fetchMentees();
-    }, []);
+    }, [mounted]);
 
     const handleEditClick = (mentee) => {
         setSelectedMentee(mentee);
@@ -96,7 +126,83 @@ const ViewMentee = () => {
     const handleEditClose = () => {
         setSelectedMentee(null);
         setEditDialog(false);
+        setIsEditing(false);
     };
+
+    const handleEditMode = () => {
+        setIsEditing(true);
+        // Ensure all fields including address are properly copied
+        setEditedMentee({
+            ...selectedMentee,
+            address: selectedMentee.address || '', // Ensure address is initialized
+            parents: {
+                ...selectedMentee.parents,
+                father: { ...selectedMentee.parents?.father } || {},
+                mother: { ...selectedMentee.parents?.mother } || {},
+                guardian: { ...selectedMentee.parents?.guardian } || {}
+            }
+        });
+    };
+
+    const handleInputChange = (e, category, subcategory) => {
+        const { name, value } = e.target;
+        
+        if (category && subcategory) {
+            setEditedMentee(prev => ({
+                ...prev,
+                parents: {
+                    ...prev.parents,
+                    [category]: {
+                        ...prev.parents?.[category],
+                        [subcategory]: value
+                    }
+                }
+            }));
+        } else {
+            // Make sure we're updating the state properly
+            setEditedMentee(prev => ({
+                ...prev,
+                [name]: value
+            }));
+            console.log(`Updating ${name} to:`, value); // Debug log
+        }
+    };
+
+    // Make sure to include MUJid in the update
+    const handleUpdate = async () => {
+        try {
+            const mentorEmail = sessionStorage.getItem('email'); // Get mentor email from session
+            const updateData = {
+                ...editedMentee,
+                MUJid: selectedMentee.MUJid  // Include MUJid for identification
+            };
+            
+            const response = await axios.put('/api/mentor/manageMentee', 
+                updateData,
+                {
+                    headers: {
+                        'mentor-email': mentorEmail
+                    }
+                }
+            );
+            
+            if (response.data.success) {
+                toast.success('Mentee details updated successfully');
+                // Update the mentees list with new data
+                setMentees(prev => prev.map(m => 
+                    m.MUJid === editedMentee.MUJid ? editedMentee : m
+                ));
+                setIsEditing(false);
+                handleEditClose();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error updating mentee');
+        }
+    };
+
+    if (!mounted) {
+        return null;
+    }
 
     return (
         <ThemeProvider theme={theme}>
@@ -154,11 +260,11 @@ const ViewMentee = () => {
                 <Dialog 
                     open={editDialog} 
                     onClose={handleEditClose}
-                    maxWidth="sm"
+                    maxWidth="md"
                     fullWidth
                     PaperProps={{ 
                         sx: {
-                            background: 'rgba(17, 17, 17, 0.95)',
+                            background: 'linear-gradient(135deg, rgba(17, 17, 17, 0.95), rgba(31, 41, 55, 0.95))',
                             backdropFilter: 'blur(10px)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                             borderRadius: '1rem',
@@ -166,76 +272,198 @@ const ViewMentee = () => {
                         }
                     }}
                 >
-                    <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        View Mentee Details
+                    <DialogTitle 
+                        sx={{ 
+                            borderBottom: '1px solid rgba(100, 100, 100, 0.1)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            p: 2
+                        }}
+                    >
+                        {/* Fixed: Remove nested Typography components */}
+                        <Box component="div" sx={{ typography: 'h6', color: 'white' }}>
+                            {isEditing ? 'Edit Mentee Details' : 'View Mentee Details'}
+                        </Box>
+                        {!isEditing && (
+                            <IconButton 
+                                onClick={handleEditMode}
+                                sx={{ 
+                                    color: '#f97316',
+                                    '&:hover': { bgcolor: 'rgba(249, 115, 22, 0.1)' }
+                                }}
+                            >
+                                <EditIcon />
+                            </IconButton>
+                        )}
                     </DialogTitle>
                     <DialogContent sx={{ mt: 2 }}>
-                        {selectedMentee && (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <TextField
-                                    label="MUJID"
-                                    value={selectedMentee.mujid || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Name"
-                                    value={selectedMentee.name || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Email"
-                                    value={selectedMentee.email || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Phone"
-                                    value={selectedMentee.phone || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Father's Name"
-                                    value={selectedMentee.fatherName || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Mother's Name"
-                                    value={selectedMentee.motherName || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Parents' Contact"
-                                    value={selectedMentee.parentsPhone || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                                <TextField
-                                    label="Year of Registration"
-                                    value={selectedMentee.yearOfRegistration || ''}
-                                    disabled
-                                    fullWidth
-                                />
-                            </Box>
+                        {(isEditing ? editedMentee : selectedMentee) && (
+                            <Grid container spacing={3}>
+                                {/* Personal Information */}
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Typography variant="subtitle2" color="#f97316">
+                                            Personal Information
+                                        </Typography>
+                                        <TextField
+                                            label="Name"
+                                            name="name"
+                                            value={isEditing ? editedMentee.name : selectedMentee.name}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Phone"
+                                            name="phone"
+                                            value={isEditing ? editedMentee.phone : selectedMentee.phone}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Address"
+                                            name="address"
+                                            multiline
+                                            rows={2}
+                                            value={isEditing ? editedMentee.address : selectedMentee.address}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                    </Box>
+                                </Grid>
+
+                                {/* Father's Details */}
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Typography variant="subtitle2" color="#f97316">
+                                            Father&apos;s Details
+                                        </Typography>
+                                        <TextField
+                                            label="Father's Name"
+                                            value={isEditing ? editedMentee.parents?.father?.name : selectedMentee.parents?.father?.name}
+                                            onChange={(e) => handleInputChange(e, 'father', 'name')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Father's Email"
+                                            value={isEditing ? editedMentee.parents?.father?.email : selectedMentee.parents?.father?.email}
+                                            onChange={(e) => handleInputChange(e, 'father', 'email')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Father's Phone"
+                                            value={isEditing ? editedMentee.parents?.father?.phone : selectedMentee.parents?.father?.phone}
+                                            onChange={(e) => handleInputChange(e, 'father', 'phone')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                    </Box>
+                                </Grid>
+
+                                {/* Mother's Details */}
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Typography variant="subtitle2" color="#f97316">
+                                            Mother&apos;s Details
+                                        </Typography>
+                                        <TextField
+                                            label="Mother's Name"
+                                            value={isEditing ? editedMentee.parents?.mother?.name : selectedMentee.parents?.mother?.name}
+                                            onChange={(e) => handleInputChange(e, 'mother', 'name')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Mother's Email"
+                                            value={isEditing ? editedMentee.parents?.mother?.email : selectedMentee.parents?.mother?.email}
+                                            onChange={(e) => handleInputChange(e, 'mother', 'email')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Mother's Phone"
+                                            value={isEditing ? editedMentee.parents?.mother?.phone : selectedMentee.parents?.mother?.phone}
+                                            onChange={(e) => handleInputChange(e, 'mother', 'phone')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                    </Box>
+                                </Grid>
+
+                                {/* Guardian's Details */}
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Typography variant="subtitle2" color="#f97316">
+                                            Guardian&apos;s Details
+                                        </Typography>
+                                        <TextField
+                                            label="Guardian's Name"
+                                            value={isEditing ? editedMentee.parents?.guardian?.name : selectedMentee.parents?.guardian?.name}
+                                            onChange={(e) => handleInputChange(e, 'guardian', 'name')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Guardian's Email"
+                                            value={isEditing ? editedMentee.parents?.guardian?.email : selectedMentee.parents?.guardian?.email}
+                                            onChange={(e) => handleInputChange(e, 'guardian', 'email')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Guardian's Phone"
+                                            value={isEditing ? editedMentee.parents?.guardian?.phone : selectedMentee.parents?.guardian?.phone}
+                                            onChange={(e) => handleInputChange(e, 'guardian', 'phone')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Relation with Guardian"
+                                            value={isEditing ? editedMentee.parents?.guardian?.relation : selectedMentee.parents?.guardian?.relation}
+                                            onChange={(e) => handleInputChange(e, 'guardian', 'relation')}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                    </Box>
+                                </Grid>
+                            </Grid>
                         )}
                     </DialogContent>
-                    <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+                    <DialogActions sx={{ borderTop: '1px solid rgba(100, 100, 100, 0.1)', p: 2, gap: 1 }}>
                         <Button 
                             onClick={handleEditClose}
-                            variant="contained"
+                            variant="outlined"
                             sx={{
-                                bgcolor: '#f97316',
+                                color: 'white',
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
                                 '&:hover': {
-                                    bgcolor: '#ea580c',
-                                },
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                }
                             }}
                         >
-                            Close
+                            Cancel
                         </Button>
+                        {isEditing && (
+                            <Button 
+                                onClick={handleUpdate}
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                sx={{
+                                    bgcolor: '#f97316',
+                                    '&:hover': {
+                                        bgcolor: '#ea580c',
+                                    },
+                                }}
+                            >
+                                Save Changes
+                            </Button>
+                        )}
                     </DialogActions>
                 </Dialog>
 

@@ -1,7 +1,7 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
 import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton } from '@mui/material'; // Add Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton import
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -12,6 +12,11 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Add this function to handle delete click
   const handleDeleteClick = (mujid) => {
@@ -69,8 +74,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
 
   // Process mentees data with error handling
   const processedMentees = useMemo(() => {
-    if (!Array.isArray(effectiveMentees)) {
-      console.error('effectiveMentees is not an array:', effectiveMentees);
+    if (!mounted || !Array.isArray(effectiveMentees)) {
       return [];
     }
 
@@ -109,7 +113,11 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         return null;
       }
     }).filter(Boolean); // Remove any null entries
-  }, [effectiveMentees]);
+  }, [effectiveMentees, mounted]);
+
+  if (!mounted) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -423,7 +431,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         mentee={detailsDialog.mentee}
       />
 
-      {/* Add Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, mujid: null })}
@@ -435,7 +443,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
             border: '1px solid rgba(255, 255, 255, 0.1)',
           }
         }}
-      ></Dialog>
+      >
         <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           Confirm Delete
         </DialogTitle>
@@ -468,6 +476,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
             Delete
           </Button>
         </DialogActions>
+      </Dialog>
     </>
   );
 };

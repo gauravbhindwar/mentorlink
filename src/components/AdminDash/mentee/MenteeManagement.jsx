@@ -101,7 +101,8 @@ const MenteeManagement = () => {
     endYear: '',
     academicYear: '', // Changed from AcademicYear
     academicSession: '', // Changed from AcademicSession
-    mentorMujid: '',
+    // mentorMujid: '',
+    mentorEmailid: '',
     parents: {
       father: {
         name: '',
@@ -130,10 +131,11 @@ const MenteeManagement = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [assignDialog, setAssignDialog] = useState(false);
   const [assignmentDetails, setAssignmentDetails] = useState({
-    mentor_MUJid: '',
+    // mentor_MUJid: '',
+    mentorEmailid: '',
     mentee_MUJid: '',
     session: '',
-    semester: '', // Changed from current_semester to semester
+    semester: '',
     section: ''
   });
 
@@ -161,11 +163,11 @@ const MenteeManagement = () => {
     }
   
     setUploading(true);
-    setBulkUploadDialog(false); // Close the upload dialog
+    setBulkUploadDialog(false);
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('type', 'mentee'); // Add the type parameter
+    formData.append('type', 'mentee'); 
   
     try {
       const previewResponse = await axios.post('/api/admin/manageUsers/previewUpload', formData, {
@@ -249,10 +251,6 @@ const MenteeManagement = () => {
     setUploadProgress(0);
     setUploading(false);
   };
-
-  // const handleBulkUploadClick = () => {
-  //   setBulkUploadDialog(true);
-  // };
 
   const showAlert = (message, severity) => {
     switch (severity) {

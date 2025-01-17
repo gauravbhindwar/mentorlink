@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
 
 const mentorsSchema = new mongoose.Schema({
-  name: { type: String, required: true }, // Full name of the mentor
+  name: { type: String, default: null },
   email: { type: String, required: true, unique: true }, // Unique email for the mentor
   MUJid: { 
     type: String, 
-    required: true, 
-    unique: true,
+    default: null,
     uppercase: true,
     validate: {
       validator: function(v) {
@@ -17,22 +16,18 @@ const mentorsSchema = new mongoose.Schema({
   }, // Unique MUJID for the mentor
   phone_number: { 
     type: String, 
-    required: true,
-    validate: {
-      validator: (value) => /^\d{10}$/.test(value),
-      message: "Phone number must be a 10-digit number"
-    }
-  }, // Contact number of the mentor
-  address: { type: String }, // Mentor's address (optional)
-  gender: { type: String }, // Gender of the mentor (optional)
-  profile_picture: { type: String }, // URL to profile picture (optional)
+    default: null
+  }, 
+  address: { type: String, default: null }, // Mentor's address (optional)
+  gender: { type: String, default: null }, // Gender of the mentor (optional)
+  profile_picture: { type: String, default: null }, // URL to profile picture (optional)
   role: { type: [String], enum: ['mentor', 'admin', 'superadmin'], default: ['mentor'] }, // Role of the mentor
-  academicYear: { type: String, required: true }, // Academic year of the mentor
-  academicSession: { type: String, required: true }, // Academic session of the mentor
+  academicYear: { type: String, default: null }, // Academic year of the mentor
+  academicSession: { type: String, default: null }, // Academic session of the mentor
   created_at: { type: Date, default: Date.now }, // Creation date of the mentor record
   updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentor record
-  otp: { type: String },
-  otpExpires: { type: Date },
+  otp: { type: String, default: null },
+  otpExpires: { type: Date, default: null },
   isOtpUsed: { type: Boolean, default: false }
 });
 
