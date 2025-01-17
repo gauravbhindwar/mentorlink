@@ -14,11 +14,9 @@ export async function GET(request) {
   const mentor_id = searchParams.get("mentor_id");
   const section = searchParams.get("section");
 
-  // const { year, session, semester, mentor_id, section } = request.query;
-
-  if (!year || !session || !semester || !mentor_id || !section) {
+  if (!year || !session || !semester || !mentor_id) {
     return NextResponse.json(
-      { error: "Year, session, and semester are required" },
+      { error: "Year, session, semester and mentor_id are required" },
       { status: 400 }
     );
   }
@@ -35,26 +33,47 @@ export async function GET(request) {
     });
 
     // First find academic session
-    const academicSession = await AcademicSession.findOne({
-      start_year: startYear,
-    }).select({
-      sessions: {
-        $elemMatch: {
-          name: session,
-          semesters: {
-            $elemMatch: {
-              semester_number: parseInt(semester),
-              sections: {
-                $elemMatch: {
-                  name: section,
-                  "meetings.mentor_id": mentor_id,
+    let academicSession;
+
+    if (section) {
+      // If section is provided, use the existing query
+      academicSession = await AcademicSession.findOne({
+        start_year: startYear,
+      }).select({
+        sessions: {
+          $elemMatch: {
+            name: session,
+            semesters: {
+              $elemMatch: {
+                semester_number: parseInt(semester),
+                sections: {
+                  $elemMatch: {
+                    name: section,
+                    "meetings.mentor_id": mentor_id,
+                  },
                 },
               },
             },
           },
         },
-      },
-    });
+      });
+    } else {
+      // If no section is provided, search across all sections in the semester
+      academicSession = await AcademicSession.findOne({
+        start_year: startYear,
+      }).select({
+        sessions: {
+          $elemMatch: {
+            name: session,
+            semesters: {
+              $elemMatch: {
+                semester_number: parseInt(semester),
+              },
+            },
+          },
+        },
+      });
+    }
 
     if (
       !academicSession ||
@@ -89,11 +108,25 @@ export async function GET(request) {
     const targetSemester = targetSession.semesters?.find(
       (s) => s.semester_number === parseInt(semester)
     );
-    const targetSection = targetSemester?.sections?.find(
-      (s) => s.name === section
-    );
-    const meetings =
-      targetSection?.meetings?.filter((m) => m.mentor_id === mentor_id) || [];
+
+    let meetings = [];
+
+    if (section) {
+      // If section is provided, get meetings for that specific section
+      const targetSection = targetSemester?.sections?.find(
+        (s) => s.name === section
+      );
+      meetings =
+        targetSection?.meetings?.filter((m) => m.mentor_id === mentor_id) || [];
+    } else {
+      // If no section is provided, collect meetings from all sections
+      meetings =
+        targetSemester?.sections?.reduce((allMeetings, section) => {
+          const sectionMeetings =
+            section.meetings?.filter((m) => m.mentor_id === mentor_id) || [];
+          return [...allMeetings, ...sectionMeetings];
+        }, []) || [];
+    }
 
     return NextResponse.json(
       {
