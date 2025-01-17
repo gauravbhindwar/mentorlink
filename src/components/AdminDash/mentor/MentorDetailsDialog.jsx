@@ -47,14 +47,6 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
   });
   const [showMentorInfo, setShowMentorInfo] = useState(true);
 
-  // Generate sections array A to Z
-  const generateSections = () => {
-    return Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
-  };
-
-  // Update sections state
-  const [sections] = useState(generateSections());
-
   const fetchMentees = async (semester, section) => {
     setLoading(true);
     try {

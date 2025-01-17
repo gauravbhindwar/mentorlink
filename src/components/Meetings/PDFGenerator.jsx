@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   detailItem: {
-    flexDirection: 'row',  // Add this to make label and value inline
+    flexDirection: 'row',
     alignItems: 'center',  // Add this for vertical alignment
     
   },
@@ -137,6 +137,7 @@ const Header = () => (
   </>
 );
 
+// mom document template
 export const MOMDocument = ({ meeting, semester, section, mentorName }) => {
   const students = meeting.mentee_details?.map((mentee, index) => ({
     srNo: index + 1,
@@ -265,6 +266,7 @@ export const MOMDocument = ({ meeting, semester, section, mentorName }) => {
   );
 };
 
+// consolidated document template
 export const ConsolidatedDocument = ({ meetings, academicYear, semester, section, mentorName }) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -301,6 +303,7 @@ export const ConsolidatedDocument = ({ meetings, academicYear, semester, section
   </Document>
 );
 
+// mom report pdf generator
 export const generateMOMPdf = (meeting, mentorName) => {
   if (!meeting) {
     console.error('No meeting data available');
@@ -317,6 +320,7 @@ export const generateMOMPdf = (meeting, mentorName) => {
   );
 };
 
+// consolidated report pdf generator
 export const generateConsolidatedPdf = (meetings, academicYear, semester, section, mentorName) => {
   return React.createElement(Document, null,
     React.createElement(ConsolidatedDocument, {
