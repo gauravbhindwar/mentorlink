@@ -1,48 +1,96 @@
 import { AcademicSession } from "@/lib/db/academicSessionSchema";
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
+import { connect } from "../../../../../lib/dbConfig";
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const mentorId = searchParams.get("mentor_id");
-  const semester = parseInt(searchParams.get("semester"));
-  const section = searchParams.get("section");
-  const session = searchParams.get("session");
-  const year = searchParams.get("year");
-
   try {
+    // Ensure database connection is established
+    await connect();
+
+    const url = new URL(request.url);
+    const mentor_id = url.searchParams.get("mentor_id");
+    const semester = url.searchParams.get("semester");
+    const section = url.searchParams.get("section");
+    const session = url.searchParams.get("session");
+    const year = url.searchParams.get("year");
+
+    if (!mentor_id || !semester || !section || !session || !year) {
+      return NextResponse.json(
+        { error: "Missing required query parameters" },
+        { status: 400 }
+      );
+    }
+
+    const startYear = parseInt(year.split("-")[0]);
+    const endYear = parseInt(year.split("-")[1]);
+
+    if (isNaN(startYear) || isNaN(endYear)) {
+      throw new Error("Invalid year format");
+    }
+
     const academicSession = await AcademicSession.findOne({
-      start_year: parseInt(year.split("-")[0]),
-      end_year: parseInt(year.split("-")[1]),
+      start_year: startYear,
+      end_year: endYear,
       "sessions.name": session,
-      "sessions.semesters.semester_number": semester,
+      "sessions.semesters.semester_number": parseInt(semester),
       "sessions.semesters.sections.name": section,
-      "sessions.semesters.sections.meetings.mentor_id": mentorId,
+      "sessions.semesters.sections.meetings.mentor_id": mentor_id,
     });
 
     if (!academicSession) {
-      return NextResponse.json({ meetings: ["a"] }, { status: 200 });
+      return NextResponse.json({ error: "No meetings found" }, { status: 404 });
     }
 
-    const meetings = academicSession.sessions
-      .flatMap((session) => session.semesters)
-      .flatMap((semester) => semester.sections)
-      .flatMap((section) => section.meetings)
-      .filter((meeting) => meeting.mentor_id === mentorId);
+    const targetSession = academicSession.sessions.find(
+      (s) => s.name === session
+    );
+    if (!targetSession) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    const targetSemester = targetSession.semesters.find(
+      (sem) => sem.semester_number === parseInt(semester)
+    );
+    if (!targetSemester) {
+      return NextResponse.json(
+        { error: "Semester not found" },
+        { status: 404 }
+      );
+    }
+
+    const targetSection = targetSemester.sections.find(
+      (sec) => sec.name === section
+    );
+    if (!targetSection) {
+      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    }
+
+    const meetings = targetSection.meetings.filter(
+      (meeting) => meeting.mentor_id === mentor_id
+    );
+
+    if (!meetings.length) {
+      return NextResponse.json({ error: "No meetings found" }, { status: 404 });
+    }
 
     return NextResponse.json({ meetings }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching reported meetings:", error);
+    console.error("Error fetching meetings:", error);
     return NextResponse.json(
-      { error: "Error fetching reported meetings" },
+      { error: "Error fetching meetings", details: error.message },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request) {
-  const { mentor_id, meeting_id, meeting_notes } = await request.json();
-
   try {
+    // Ensure database connection is established
+    await connect();
+
+    const { mentor_id, meeting_id, meeting_notes } = await request.json();
+
     const academicSession = await AcademicSession.findOneAndUpdate(
       {
         "sessions.semesters.sections.meetings.meeting_id": meeting_id,
@@ -79,7 +127,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Error updating meeting notes:", error);
     return NextResponse.json(
-      { error: "Error updating meeting notes" },
+      { error: "Error updating meeting notes", details: error.message },
       { status: 500 }
     );
   }
