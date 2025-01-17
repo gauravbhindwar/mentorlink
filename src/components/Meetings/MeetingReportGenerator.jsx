@@ -127,7 +127,12 @@ const MeetingReportGenerator = () => {
         meeting_time: meeting.meeting_time || new Date(meeting.created_at).toLocaleTimeString(),
         mentor_id: meeting.mentorMUJid || data.mentorMUJid,
         meeting_notes: {
-          TopicOfDiscussion: meeting.meeting_notes?.TopicOfDiscussion || 'N/A'
+          TopicOfDiscussion: meeting.meeting_notes?.TopicOfDiscussion || 'N/A',
+          TypeOfInformation: meeting.meeting_notes?.TypeOfInformation || 'N/A',
+          NotesToStudent: meeting.meeting_notes?.NotesToStudent || 'N/A',
+          issuesRaisedByMentee: meeting.meeting_notes?.issuesRaisedByMentee || 'N/A',
+          outcome: meeting.meeting_notes?.outcome || 'N/A',
+          closureRemarks: meeting.meeting_notes?.closureRemarks || 'N/A'
         },
         mentee_ids: meeting.mentee_ids || [],
         mentee_details: meeting.mentee_details || []
@@ -331,6 +336,7 @@ const MeetingReportGenerator = () => {
     </div>
   );
 
+  console.log('Meetings:', selectedMeeting?.meeting_notes);
   // Add new helper function for MOM buttons
   const getMOMButtonLabel = (meetingIndex) => {
     return `MOM ${meetingIndex + 1}`; // Now returns MOM button label for all meetings
@@ -349,6 +355,7 @@ const MeetingReportGenerator = () => {
 
       const meetingWithDetails = {
         ...meeting,
+        meeting_notes: meeting.meeting_notes || {},
         mentee_details: response.data.mentee_details
       };
 
@@ -621,7 +628,6 @@ const renderMOMDetailDialog = () => (
                   <div className="p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {selectedMeeting?.meeting_notes && Object.entries(selectedMeeting.meeting_notes)
-                        .filter(([, value]) => value)
                         .map(([key, value], index) => (
                           <motion.div
                             key={key}

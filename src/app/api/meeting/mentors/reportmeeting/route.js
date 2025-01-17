@@ -1,6 +1,5 @@
 import { AcademicSession } from "@/lib/db/academicSessionSchema";
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
 import { connect } from "../../../../../lib/dbConfig";
 
 export async function GET(request) {
