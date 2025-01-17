@@ -103,6 +103,11 @@ export async function POST(request) {
         },
       },
       {
+        $set: {
+          "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].isReportFilled": true,
+        },
+      },
+      {
         arrayFilters: [
           { "session.semesters.sections.meetings.meeting_id": meeting_id },
           { "semester.sections.meetings.meeting_id": meeting_id },

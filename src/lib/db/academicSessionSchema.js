@@ -79,11 +79,13 @@ const academicSessionsSchema = new mongoose.Schema({
                         "Invalid time format, please enter time in hh:mm AM/PM format",
                     },
                   },
+                  isReportFilled: { type: Boolean, default: false },
                   meeting_notes: {
                     TopicOfDiscussion: { type: String },
                     TypeOfInformation: { type: String },
                     NotesToStudent: { type: String },
                     feedbackFromMentee: { type: String },
+                    issuesRaisedByMentee: { type: String },
                     outcome: { type: String },
                     closureRemarks: { type: String },
                   },

@@ -25,6 +25,7 @@ const AddMeetingInfo = () => {
     TopicOfDiscussion: '',
     TypeOfInformation: '',
     NotesToStudent: '',
+    issuesRaisedByMentee: '',
     outcome: '',
     closureRemarks: ''
   });
@@ -242,6 +243,7 @@ const AddMeetingInfo = () => {
         TopicOfDiscussion: '',
         TypeOfInformation: '',
         NotesToStudent: '',
+        issuesRaisedByMentee: '',
         outcome: '',
         closureRemarks: ''
       });
@@ -477,6 +479,16 @@ const AddMeetingInfo = () => {
                     type="text"
                     name="NotesToStudent"
                     value={meetingNotes.NotesToStudent}
+                    onChange={handleMeetingNotesChange}
+                    className="w-full border border-gray-300 rounded-lg p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Issues Raised/Resolved</label>
+                  <input
+                    type="text"
+                    name="issuesRaisedByMentee"
+                    value={meetingNotes.issuesRaisedByMentee}
                     onChange={handleMeetingNotesChange}
                     className="w-full border border-gray-300 rounded-lg p-2"
                   />
