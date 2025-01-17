@@ -184,7 +184,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     // Validate search conditions
     const hasBasicFilters = filters.academicYear && filters.academicSession;
     const hasSemesterSection = filters.semester && filters.section;
-    const hasIdFilters = filters.menteeMujid || filters.mentorMujid;
+    const hasIdFilters = filters.menteeMujid || filters.mentorMujid || filters.mentorEmailid;
 
     if (!hasBasicFilters) {
       showAlert('Academic Year and Session are required', 'warning');
@@ -192,7 +192,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     }
 
     if (!hasSemesterSection && !hasIdFilters) {
-      showAlert('Either (Semester and Section) or (Mentee/Mentor MUJID) are required', 'warning');
+      showAlert('Either (Semester and Section) or (Mentee/Mentor MUJID/Email) are required', 'warning');
       return;
     }
 
@@ -210,6 +210,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
       if (filters.section) params.section = filters.section?.toUpperCase();
       if (filters.menteeMujid) params.MUJid = filters.menteeMujid?.toUpperCase();
       if (filters.mentorMujid) params.mentorMujid = filters.mentorMujid?.toUpperCase();
+      if (filters.mentorEmailid) params.mentorEmailid = filters.mentorEmailid;
 
       // console.log('Search params:', params); // Debug log
 
@@ -593,6 +594,19 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
           sx={textFieldStyles}
         />
       )
+    },
+    {
+      name: 'mentorEmailid',
+      label: 'Mentor Email',
+      customRender: (
+        <TextField
+          size="small"
+          label="Mentor Email"
+          value={filters.mentorEmailid || ''}
+          onChange={(e) => handleFilterChange('mentorEmailid', e.target.value)}
+          sx={textFieldStyles}
+        />
+      )
     }
   ];
 
@@ -604,7 +618,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
       disabled: !(
         filters.academicYear && 
         filters.academicSession && 
-        ((filters.semester && filters.section) || filters.menteeMujid || filters.mentorMujid)
+        ((filters.semester && filters.section) || filters.menteeMujid || filters.mentorMujid || filters.mentorEmailid)
       ),
       icon: <SearchIcon /> // Changed from ManageSearchIcon to SearchIcon
     },

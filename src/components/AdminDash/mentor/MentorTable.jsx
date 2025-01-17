@@ -5,12 +5,13 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import InfoIcon from '@mui/icons-material/Info';
 import MentorDetailsDialog from './MentorDetailsDialog';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
-const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
+const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, emailFilter = '' }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState({ open: false, mentor: null });
+  const [filteredMentors, setFilteredMentors] = useState(mentors);
 
   // Add this function to handle delete click
   const handleDeleteClick = (mujid) => {
@@ -38,18 +39,31 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
 
   // Process mentors data - Update this to include all necessary fields
   const processedMentors = useMemo(() => {
-    return mentors.map((mentor, index) => ({
-      id: mentor._id || mentor.id || `temp-${index}`,
-      MUJid: (mentor.MUJid || '').toUpperCase(),
-      name: mentor.name || '',
-      email: mentor.email || '',
-      phone_number: mentor.phone_number || '',
-      academicYear: mentor.academicYear || '',
-      academicSession: mentor.academicSession || '',
-      role: Array.isArray(mentor.role) ? mentor.role : [mentor.role] || ['mentor'],
-      gender: mentor.gender || '',
+    return mentors.map((item) => ({
+      ...item,  // Keep all original properties
+      id: item._id || item.id, // Use _id or existing id
+      MUJid: (item.MUJid || '').toUpperCase(),
+      name: item.name || '',
+      email: item.email || '',
+      phone_number: item.phone_number || '',
+      academicYear: item.academicYear || '',
+      academicSession: item.academicSession || '',
+      role: Array.isArray(item.role) ? item.role : [item.role] || ['mentor'],
+      gender: item.gender || '',
     }));
   }, [mentors]);
+
+  // Update filtered mentors when email filter or mentors change
+  useEffect(() => {
+    if (!emailFilter) {
+      setFilteredMentors(processedMentors);
+    } else {
+      const filtered = processedMentors.filter(mentor => 
+        mentor.email.toLowerCase().includes(emailFilter.toLowerCase())
+      );
+      setFilteredMentors(filtered);
+    }
+  }, [processedMentors, emailFilter]);
 
   const columns = [
     { 
@@ -206,9 +220,9 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate }) => {
       )}
       
       <DataGrid
-        rows={processedMentors}
+        rows={filteredMentors}
         columns={columns}
-        getRowId={(row) => row.id}
+        getRowId={(row) => row._id || row.id} // Handle both _id and id
         autoHeight={false} // Remove autoHeight to enable vertical scrolling
         sx={{
           height: { xs: '500px', lg: '100%' }, // Responsive height
