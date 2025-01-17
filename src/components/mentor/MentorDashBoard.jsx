@@ -10,10 +10,18 @@ const MentorDashBoard = () => {
     const [mentorData, setMentorData] = useState({});
     const [loading, setLoading] = useState(true);
 
+    const extractSessionData = (data) => ({
+        name: data.name,
+        email: data.email,
+        MUJid: data.MUJid,
+        academicSession: data.academicSession,
+        academicYear: data.academicYear,
+        isFirstTimeLogin: data.isFirstTimeLogin
+    });
+
     useEffect(() => {
         const fetchMentorData = async () => {
             try {
-                // Check session storage first
                 const sessionData = sessionStorage.getItem('mentorData');
                 if (sessionData) {
                     const parsedData = JSON.parse(sessionData);
@@ -22,13 +30,13 @@ const MentorDashBoard = () => {
                     return;
                 }
 
-                // If no session data, fetch from API
                 const response = await fetch('/api/mentor');
                 if (response.ok) {
                     const data = await response.json();
                     console.log('Mentor data:', data);
-                    // Store in session storage
-                    sessionStorage.setItem('mentorData', JSON.stringify(data));
+                    if (!data.isFirstTimeLogin) {
+                        sessionStorage.setItem('mentorData', JSON.stringify(extractSessionData(data)));
+                    }
                     setMentorData(data);
                 }
             } catch (error) {
@@ -40,13 +48,6 @@ const MentorDashBoard = () => {
 
         fetchMentorData();
     }, []);
-
-    // Update session storage when mentorData changes (for first time login)
-    useEffect(() => {
-        if (Object.keys(mentorData).length > 0) {
-            sessionStorage.setItem('mentorData', JSON.stringify(mentorData));
-        }
-    }, [mentorData]);
 
     const cards = [
         {

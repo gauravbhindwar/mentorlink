@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { signIn } from 'next-auth/react';
+// import { signIn } from 'next-auth/react';
 
 const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
     const [formData, setFormData] = useState({
@@ -61,13 +61,22 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
         return Object.keys(newErrors).length === 0;
     };
 
+    const extractSessionData = (data) => ({
+        name: data.name,
+        email: data.email,
+        MUJid: data.MUJid,
+        academicSession: data.academicSession,
+        academicYear: data.academicYear,
+        isFirstTimeLogin: data.isFirstTimeLogin
+    });
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (validateForm()) {
             try {
                 const updatedData = {
                     ...formData,
-                    email: mentorData.email, // Add email from mentorData
+                    email: mentorData.email,
                     isFirstTimeLogin: false,
                 };
 
@@ -83,10 +92,15 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                     const data = await response.json();
                     console.log('Profile updated successfully:', data);
                     
-                    // Update session storage with new mentor data
-                    const currentSessionData = JSON.parse(sessionStorage.getItem('mentorData') || '{}');
-                    const newSessionData = { ...data };
-                    sessionStorage.setItem('mentorData', JSON.stringify(newSessionData));
+                    if (mentorData.isFirstTimeLogin) {
+                        try {
+                            const sessionData = extractSessionData(data);
+                            sessionStorage.setItem('mentorData', JSON.stringify(sessionData));
+                            console.log('Session data set:', sessionData);
+                        } catch (storageError) {
+                            console.error('SessionStorage error:', storageError);
+                        }
+                    }
                     
                     onSubmitSuccess();
                 } else {
