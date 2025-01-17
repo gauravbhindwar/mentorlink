@@ -419,10 +419,11 @@ const AddMeetingInfo = () => {
                         {meetings.map((meeting, index) => (
                           <li 
                             key={index} 
-                            className="bg-black/20 flex border border-white/10 rounded-lg p-2 cursor-pointer"
+                            className={`bg-black/20 flex border border-white/10 rounded-lg p-2 cursor-pointer ${meeting.isReportFilled ? 'pointer-events-none opacity-30' : ''}`}
                             onClick={() => setSelectedMeeting(meeting)}
                           >
                             <div className="flex items-center space-x-2">
+                              {/* {console.log("meeting: ",meeting)} */}
                               <div>
                                 <p className="text-sm font-medium">Meeting ID: {meeting.meeting_id}</p>
                                 <p className="text-xs text-gray-400">Date: {new Date(meeting.meeting_date).toLocaleDateString()}</p>
