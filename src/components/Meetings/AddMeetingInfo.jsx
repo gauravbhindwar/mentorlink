@@ -419,7 +419,7 @@ const AddMeetingInfo = () => {
                         {meetings.map((meeting, index) => (
                           <li 
                             key={index} 
-                            className={`bg-black/20 flex border border-white/10 rounded-lg p-2 cursor-pointer ${meeting.isReportFilled ? 'pointer-events-none opacity-30' : ''}`}
+                            className={`bg-black/20 flex border border-white/10 rounded-lg p-2 cursor-pointer ${(meeting.isReportFilled || new Date(meeting.meeting_date) > new Date()) ? 'pointer-events-none opacity-30' : ''}`}
                             onClick={() => setSelectedMeeting(meeting)}
                           >
                             <div className="flex items-center space-x-2">
@@ -429,6 +429,22 @@ const AddMeetingInfo = () => {
                                 <p className="text-xs text-gray-400">Date: {new Date(meeting.meeting_date).toLocaleDateString()}</p>
                                 <p className="text-xs text-gray-400">Time: {meeting.meeting_time}</p>
                               </div>
+                              {
+                                meeting.isReportFilled && (
+                                  <div className="ml-auto flex items-center space-x-2">
+                                    <FiCheck className="text-green-500" />
+                                    <p className="text-xs text-gray-400">Report Filled</p>
+                                  </div>
+                                )
+                              }
+                              {
+                                new Date(meeting.meeting_date) > new Date() && (
+                                  <div className="ml-auto flex items-center space-x-2">
+                                    <FiCheck className="text-green-500" />
+                                    <p className="text-xs text-gray-400">Meeting has not been held</p>
+                                  </div>
+                                )
+                              }
                             </div>
                           </li>
                         ))}

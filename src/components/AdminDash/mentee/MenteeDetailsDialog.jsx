@@ -192,7 +192,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                 <InfoItem icon="👨‍🏫" label="Mentor MUJid" value={mentee.mentorMujid} />
                 
                 {/* Meeting Statistics */}
-                <Grid item xs={12}>
+                {/* DISABLED FOR NOW */}
+                {/* <Grid item xs={12}>
                   <Box
                     sx={{
                       p: 2,
@@ -258,7 +259,7 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                       </Grid>
                     </Grid>
                   </Box>
-                </Grid>
+                </Grid> */}
               </Grid>
             </TabPanel>
 

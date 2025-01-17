@@ -40,7 +40,7 @@ const academicSessionsSchema = new mongoose.Schema({
                   meeting_id: {
                     type: String, // Generate ObjectId instead of a string for better MongoDB practices
                   },
-                  mentor_id: {
+                  mentorMUJid: {
                     type: String,
                     ref: "Mentor",
                     uppercase: true,

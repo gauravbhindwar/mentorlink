@@ -37,6 +37,7 @@ const ScheduleMeeting = () => {
   const [semesterSuggestions, setSemesterSuggestions] = useState([]);
   console.log(semesterSuggestions);
   const semesterRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false); // Add this new state
 
   const fixedBranch = 'CSE CORE';
 
@@ -103,6 +104,7 @@ const ScheduleMeeting = () => {
         });
 
         if (response.data) {
+          
           const meetingsHeld = response.data?.meetings;
           
           
@@ -134,7 +136,7 @@ const ScheduleMeeting = () => {
     } catch (error) {
       console.log('Error in useEffect:', error);
     }
-  }, [mentorId, currentSemester, selectedSection, academicSession, academicYear]); // Add proper dependencies
+  }, [currentSemester, selectedSection]); // Add proper dependencies
 
   // useEffect(() => {
   //   if (customAlert) {
@@ -222,6 +224,7 @@ const ScheduleMeeting = () => {
 
   // Add new function to get mentees
   const getMentees = async (mentorId, semester, section) => {
+    setIsLoading(true); // Start loading
     try {
       const response = await fetch(`/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}`);
       if (!response.ok){
@@ -239,6 +242,8 @@ const ScheduleMeeting = () => {
       console.log('Error fetching mentees:', error);
       setDisabled(true);
       throw error;
+    } finally {
+      setIsLoading(false); // End loading
     }
   };
 
@@ -393,6 +398,15 @@ const ScheduleMeeting = () => {
   return (
     <AnimatePresence>
       <motion.div className="min-h-screen h-screen bg-[#0a0a0a] overflow-hidden relative">
+        {/* Add loading overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              <p className="text-white text-lg">Loading data...</p>
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
           <div className="absolute inset-0 backdrop-blur-3xl" />
