@@ -27,18 +27,14 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const MentorDetailsDialog = ({ open, onClose, mentor }) => {
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [assignmentDialog, setAssignmentDialog] = useState(false);
-  const [assignmentDetails, setAssignmentDetails] = useState({
-    mentee_MUJid: '',
-    section: '',
-    current_semester: '',
-  });
   const [editMenteeDialog, setEditMenteeDialog] = useState(false);
   const [selectedMentee, setSelectedMentee] = useState(null);
   const [bulkAssignDialog, setBulkAssignDialog] = useState(false);
@@ -49,14 +45,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     semester: '',
     section: '',
   });
-
-  // Generate sections array A to Z
-  const generateSections = () => {
-    return Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
-  };
-
-  // Update sections state
-  const [sections] = useState(generateSections());
+  const [showMentorInfo, setShowMentorInfo] = useState(true);
 
   const fetchMentees = async (semester, section) => {
     setLoading(true);
@@ -95,28 +84,6 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
       if (value && selectedSemester) {
         fetchMentees(selectedSemester, value);
       }
-    }
-  };
-
-  const handleAssignMentee = async () => {
-    try {
-      const payload = {
-        mentor_MUJid: mentor.MUJid,
-        ...assignmentDetails,
-        academicYear: mentor.academicYear,
-        academicSession: mentor.academicSession,
-        session: mentor.academicYear
-      };
-
-      await axios.post('/api/admin/assignMentor', payload);
-      toast.success('Mentee assigned successfully');
-      setAssignmentDialog(false);
-      // Refresh mentees list if current semester is selected
-      if (selectedSemester === Number(assignmentDetails.current_semester)) {
-        await fetchMentees(selectedSemester);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Error assigning mentee');
     }
   };
 
@@ -374,6 +341,21 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     },
   };
 
+  // Add a function to determine available semesters based on academic session
+  const getAvailableSemesters = () => {
+    if (!mentor?.academicSession) return [];
+    
+    // If JANUARY-JUNE, show even semesters (2,4,6,8)
+    if (mentor.academicSession.includes('JANUARY-JUNE')) {
+      return [2, 4, 6, 8];
+    }
+    // If JULY-DECEMBER, show odd semesters (1,3,5,7)
+    if (mentor.academicSession.includes('JULY-DECEMBER')) {
+      return [1, 3, 5, 7];
+    }
+    return [];
+  };
+
   return (
     <Dialog
       open={open}
@@ -382,74 +364,138 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
       fullWidth
       PaperProps={{ sx: cardStyles.container }}
     >
-      {/* Header Section */}
-      <Box sx={cardStyles.header}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ 
-            color: '#f97316',
-            fontWeight: 600,
-            letterSpacing: '0.5px',
+      {/* Header Section with Centered Toggle */}
+      <Box sx={{ position: 'relative' }}>
+        <Box sx={{
+          ...cardStyles.header,
+          transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
+          maxHeight: showMentorInfo ? '500px' : '64px',
+          opacity: showMentorInfo ? 1 : 0.8,
+          overflow: 'hidden',
+          pb: showMentorInfo ? 5 : 2, // Add padding at bottom for toggle button
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: showMentorInfo ? 3 : 0 
           }}>
-            Mentor Profile
-          </Typography>
-          <IconButton onClick={onClose} sx={{ 
-            color: 'white',
-            '&:hover': { 
-              background: 'rgba(249, 115, 22, 0.1)',
-              transform: 'rotate(90deg)',
-              transition: 'all 0.3s ease',
+            <Typography variant="h5" sx={{ 
+              color: '#f97316',
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+            }}>
+              Mentor Profile
+            </Typography>
+            <IconButton onClick={onClose} sx={{ 
+              color: 'white',
+              '&:hover': { 
+                background: 'rgba(249, 115, 22, 0.1)',
+                transform: 'rotate(90deg)',
+                transition: 'all 0.3s ease',
+              },
+            }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* Mentor Quick Info - Modified for better mobile display */}
+          <Box sx={{ 
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)'
             },
+            gap: 2,
+            opacity: showMentorInfo ? 1 : 0,
+            transition: 'opacity 0.3s ease-in-out',
+            height: showMentorInfo ? 'auto' : 0,
           }}>
-            <CloseIcon />
-          </IconButton>
+            {/* Info Cards with improved mobile layout */}
+            <Box sx={cardStyles.infoCard}>
+              <Typography variant="overline" sx={{ color: '#f97316', display: 'block', mb: 1 }}>
+                Personal Details
+              </Typography>
+              <Typography variant="h6" sx={{ color: 'white', mb: 0.5, fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                {mentor?.name}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {mentor?.MUJid}
+              </Typography>
+            </Box>
+
+            <Box sx={cardStyles.infoCard}>
+              <Typography variant="overline" sx={{ color: '#f97316', display: 'block', mb: 1 }}>
+                Contact Info
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.7)', 
+                mb: 0.5,
+                wordBreak: 'break-all'
+              }}>
+                {mentor?.email}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {mentor?.phone_number}
+              </Typography>
+            </Box>
+
+            <Box sx={cardStyles.infoCard}>
+              <Typography variant="overline" sx={{ color: '#f97316', display: 'block', mb: 1 }}>
+                Academic Details
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 0.5 }}>
+                Year: {mentor?.academicYear}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                Session: {mentor?.academicSession}
+              </Typography>
+            </Box>
+          </Box>
         </Box>
 
-        {/* Mentor Quick Info */}
-        <Box sx={{ 
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
-          gap: 2,
-        }}>
-          <Box sx={cardStyles.infoCard}>
-            <Typography variant="overline" sx={{ color: '#f97316', display: 'block', mb: 1 }}>
-              Personal Details
-            </Typography>
-            <Typography variant="h6" sx={{ color: 'white', mb: 0.5 }}>
-              {mentor?.name}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              {mentor?.MUJid}
-            </Typography>
-          </Box>
-
-          <Box sx={cardStyles.infoCard}>
-            <Typography variant="overline" sx={{ color: '#f97316', display: 'block', mb: 1 }}>
-              Contact Info
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 0.5 }}>
-              {mentor?.email}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              {mentor?.phone_number}
-            </Typography>
-          </Box>
-
-          <Box sx={cardStyles.infoCard}>
-            <Typography variant="overline" sx={{ color: '#f97316', display: 'block', mb: 1 }}>
-              Academic Details
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 0.5 }}>
-              Year: {mentor?.academicYear}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Session: {mentor?.academicSession}
-            </Typography>
-          </Box>
+        {/* Centered Toggle Button */}
+        <Box 
+          onClick={() => setShowMentorInfo(!showMentorInfo)}
+          sx={{ 
+            cursor: 'pointer',
+            position: 'absolute',
+            left: '50%',
+            bottom: 0,
+            transform: 'translate(-50%, 50%)',
+            zIndex: 2,
+            bgcolor: 'rgba(249, 115, 22, 0.1)',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              bgcolor: 'rgba(249, 115, 22, 0.2)',
+              transform: 'translate(-50%, 50%) scale(1.1)',
+            }
+          }}
+        >
+          {showMentorInfo ? 
+            <ExpandLessIcon sx={{ color: '#f97316' }} /> : 
+            <ExpandMoreIcon sx={{ color: '#f97316' }} />
+          }
         </Box>
       </Box>
 
-      {/* Main Content */}
-      <DialogContent sx={{ p: 2 }}>
+      {/* Main Content with improved mobile responsiveness */}
+      <DialogContent sx={{ 
+        p: { xs: 1, sm: 2 },
+        height: {
+          xs: `calc(100vh - ${showMentorInfo ? '350px' : '100px'})`,
+          sm: `calc(100vh - ${showMentorInfo ? '400px' : '100px'})`,
+        },
+        transition: 'height 0.3s ease-in-out',
+      }}>
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" sx={{ color: '#f97316', mb: 2 }}>
             Mentees Management
@@ -459,13 +505,23 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
               Select Semester
+              <Typography 
+                component="span" 
+                sx={{ 
+                  ml: 1,
+                  color: 'rgba(249, 115, 22, 0.7)',
+                  fontSize: '0.8rem',
+                }}
+              >
+                ({mentor?.academicSession?.includes('JANUARY-JUNE') ? 'Even Semesters' : 'Odd Semesters'})
+              </Typography>
             </Typography>
             <Box sx={{ 
               display: 'flex',
               gap: 1,
               flexWrap: 'wrap'
             }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+              {getAvailableSemesters().map((sem) => (
                 <Chip
                   key={sem}
                   label={`Semester ${sem}`}
@@ -625,29 +681,13 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
         </Box>
       </DialogContent>
 
-      {/* Footer Actions */}
+      {/* Footer Actions - Modified to only show bulk assign button */}
       <Box sx={{ 
         p: 3, 
         borderTop: '1px solid rgba(249, 115, 22, 0.1)',
         display: 'flex',
-        justifyContent: 'space-between'
+        justifyContent: 'flex-end'  // Changed from space-between to flex-end
       }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setAssignmentDialog(true)}
-          sx={{
-            bgcolor: '#f97316',
-            '&:hover': { 
-              bgcolor: '#ea580c',
-              transform: 'translateY(-2px)',
-            },
-            transition: 'all 0.2s ease',
-            boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)',
-          }}
-        >
-          Assign New Mentee
-        </Button>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -662,145 +702,9 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
             boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)',
           }}
         >
-          Assign Multiple Mentees
+          Assign Mentees
         </Button>
       </Box>
-
-      {/* Redesigned Assignment Dialog */}
-      <Dialog
-        open={assignmentDialog}
-        onClose={() => setAssignmentDialog(false)}
-        PaperProps={{ sx: assignmentDialogStyles.paper }}
-      >
-        <DialogTitle sx={assignmentDialogStyles.title}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <AddIcon sx={{ color: '#f97316' }} />
-            <Typography>Assign New Mentee</Typography>
-          </Box>
-          <IconButton
-            onClick={() => setAssignmentDialog(false)}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'rgba(255, 255, 255, 0.5)',
-              '&:hover': { color: '#f97316' },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={assignmentDialogStyles.content}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {/* Assignment Info Section */}
-            <Box sx={{ 
-              p: 2, 
-              bgcolor: 'rgba(249, 115, 22, 0.1)', 
-              borderRadius: 2,
-              border: '1px solid rgba(249, 115, 22, 0.2)'
-            }}>
-              <Typography variant="subtitle2" sx={{ color: '#f97316', mb: 1 }}>
-                Assigning to Mentor
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'white' }}>
-                {mentor?.name} ({mentor?.MUJid})
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', display: 'block' }}>
-                {mentor?.academicYear} • {mentor?.academicSession}
-              </Typography>
-            </Box>
-
-            {/* Form Fields */}
-            <TextField
-              label="Mentee MUJid"
-              value={assignmentDetails.mentee_MUJid}
-              onChange={(e) => setAssignmentDetails(prev => ({
-                ...prev,
-                mentee_MUJid: e.target.value.toUpperCase()
-              }))}
-              sx={assignmentDialogStyles.textField}
-              fullWidth
-              required
-              placeholder="Enter Mentee's MUJid"
-            />
-
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                select
-                label="Section"
-                value={assignmentDetails.section}
-                onChange={(e) => setAssignmentDetails(prev => ({
-                  ...prev,
-                  section: e.target.value
-                }))}
-                sx={assignmentDialogStyles.textField}
-                fullWidth
-                required
-              >
-                {sections.map(section => (
-                  <MenuItem key={section} value={section}>
-                    Section {section}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                select
-                label="Semester"
-                value={assignmentDetails.current_semester}
-                onChange={(e) => setAssignmentDetails(prev => ({
-                  ...prev,
-                  current_semester: e.target.value
-                }))}
-                sx={assignmentDialogStyles.textField}
-                fullWidth
-                required
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                  <MenuItem key={sem} value={sem}>
-                    Semester {sem}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-
-            <Typography sx={assignmentDialogStyles.helperText}>
-              Make sure to verify the mentee&apos;s details before assigning
-            </Typography>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(249, 115, 22, 0.2)' }}>
-          <Button            onClick={() => setAssignmentDialog(false)}
-            sx={{
-              color: 'white',
-              borderColor: 'rgba(255, 255, 255, 0.2)',
-              '&:hover': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                bgcolor: 'rgba(255, 255, 255, 0.05)',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAssignMentee}
-            variant="contained"
-            sx={{
-              bgcolor: '#f97316',
-              '&:hover': { 
-                bgcolor: '#ea580c',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)',
-              },
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Assign Mentee
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Updated Edit Mentee Dialog */}
       <Dialog
