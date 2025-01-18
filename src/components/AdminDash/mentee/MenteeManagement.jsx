@@ -97,7 +97,14 @@ const MenteeManagement = () => {
 
   const [tableVisible, setTableVisible] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true); // Add this state
+  const [showFilters, setShowFilters] = useState(() => {
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('showFilters');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -365,11 +372,15 @@ const MenteeManagement = () => {
         const parsedData = JSON.parse(storedData);
         setMentees(parsedData);
       } catch (error) {
-        console.log('Error parsing stored data:', error);
+        // console.log('Error parsing stored data:', error);
         sessionStorage.removeItem('menteeData');
       }
     }
   }, [isSmallScreen]); // Add isSmallScreen to dependencies
+
+  useEffect(() => {
+    sessionStorage.setItem('showFilters', JSON.stringify(showFilters));
+  }, [showFilters]);
 
   const handleSearch = (data) => {
     setLoading(true);
@@ -383,7 +394,7 @@ const MenteeManagement = () => {
         setTableVisible(false); // Hide table when no data
       }
     } catch (error) {
-      console.log('Error handling search:', error);
+      // console.log('Error handling search:', error);
       setMentees([]);
       setTableVisible(false);
       
@@ -661,7 +672,7 @@ const MenteeManagement = () => {
 
             {isSmallScreen && (
               <IconButton
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => setShowFilters(prev => !prev)}
                 sx={{
                   color: '#f97316',
                   bgcolor: 'rgba(249, 115, 22, 0.1)',
@@ -670,7 +681,8 @@ const MenteeManagement = () => {
                   },
                   position: 'fixed',
                   right: '1rem',
-                  zIndex: 10,
+                  top: '5rem', // Adjust position to be more accessible
+                  zIndex: 1000,
                 }}
               >
                 <FilterListIcon />
@@ -691,13 +703,17 @@ const MenteeManagement = () => {
                 opacity: showFilters ? 1 : 0,
                 marginBottom: showFilters ? '12px' : 0
               }}
+              transition={{ duration: 0.3 }}
               style={{
                 display: showFilters ? 'block' : 'none',
                 position: isSmallScreen ? 'relative' : 'sticky',
                 top: isSmallScreen ? 'auto' : '1rem',
+                maxHeight: isSmallScreen ? 'calc(100vh - 200px)' : 'none',
+                overflowY: isSmallScreen ? 'auto' : 'visible',
+                zIndex: isSmallScreen ? 50 : 'auto'
               }}
             >
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full overflow-auto">
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full">
                 <FilterSection 
                   filters={filterConfig}
                   onFilterChange={handleFilterChange}

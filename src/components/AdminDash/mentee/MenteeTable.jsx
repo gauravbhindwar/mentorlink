@@ -44,19 +44,6 @@ const CustomNoRowsOverlay = () => (
   </Box>
 );
 
-const filterData = (data, filters) => {
-  if (!data || !filters) return [];
-  
-  return data.filter(mentee => {
-    const matchesSemester = !filters.semester || mentee.semester === parseInt(filters.semester);
-    const matchesSection = !filters.section || mentee.section.toUpperCase() === filters.section.toUpperCase();
-    const matchesMujid = !filters.menteeMujid || mentee.MUJid?.includes(filters.menteeMujid.toUpperCase());
-    const matchesMentorMujid = !filters.mentorMujid || mentee.mentorMujid?.includes(filters.mentorMujid.toUpperCase());
-    const matchesMentorEmail = !filters.mentorEmailid || mentee.mentorEmailid?.includes(filters.mentorEmailid);
-    return matchesSemester && matchesSection && matchesMujid && matchesMentorMujid && matchesMentorEmail;
-  });
-};
-
 const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoading }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
@@ -75,14 +62,29 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     menteeMujid: '',
     mentorEmailid: ''
   });
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10); // Change rowsPerPage to pageSize
-  const [orderBy, setOrderBy] = useState('name');
-  const [order, setOrder] = useState('asc');
+  // const [page, setPage] = useState(0);
+  // const [pageSize, setPageSize] = useState(10); // Change rowsPerPage to pageSize
+  // const [orderBy, setOrderBy] = useState('name');
+  // const [order, setOrder] = useState('asc');
+  const [localData, setLocalData] = useState([]);
+  // const [isUsingCache, setIsUsingCache] = useState(false);
+  const [baseData, setBaseData] = useState([]); // Add this new state to store initial data
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Add this function near the top of the component
+  // const logCacheContents = () => {
+  //   console.log('MenteeTable Cache Status:', {
+  //     totalCacheEntries: cachedData.current.size,
+  //     cacheKeys: Array.from(cachedData.current.keys()),
+  //     cacheEntrySizes: Array.from(cachedData.current.entries()).map(([key, value]) => ({
+  //       key,
+  //       size: value?.length || 0
+  //     }))
+  //   });
+  // };
 
   useEffect(() => {
     const fetchDataInBatches = async () => {
@@ -134,6 +136,53 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
   }, [filters.academicYear, filters.academicSession]);
 
   useEffect(() => {
+    const fetchAndCacheData = async () => {
+      const currentKey = `${filters.academicYear}-${filters.academicSession}`;
+      
+      // Log cache contents before check
+      logCacheContents();
+      
+      // Check if data exists in cache
+      if (cachedData.current.has(currentKey)) {
+        // console.log("Cache hit for:", currentKey, {
+        //   dataSize: cachedData.current.get(currentKey)?.length || 0
+        // });
+        // setIsUsingCache(true);
+        const cachedResult = cachedData.current.get(currentKey);
+        setBaseData(cachedResult); // Store the base data
+        setLocalData(cachedResult);
+        return;
+      }
+
+      // console.log("Cache miss for:", currentKey);
+      // setIsUsingCache(false);
+      
+      try {
+        const initialResponse = await axios.get('/api/admin/manageUsers/manageMentee', {
+          params: {
+            academicYear: filters.academicYear,
+            academicSession: filters.academicSession,
+            batchSize: BATCH_SIZE,
+            offset: 0
+          }
+        });
+
+        const initialData = initialResponse.data;
+        cachedData.current.set(currentKey, initialData);
+        setBaseData(initialData); // Store the base data
+        setLocalData(initialData);
+        // ...rest of fetch logic...
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    if (filters.academicYear && filters.academicSession) {
+      fetchAndCacheData();
+    }
+  }, [filters.academicYear, filters.academicSession]);
+
+  useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const currentDate = new Date();
@@ -160,7 +209,8 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           onDataUpdate(processedData);
         }
       } catch (error) {
-        console.error('Error fetching initial data:', error);
+        // console.log('Error fetching initial data:', error);
+        toast.error('Error fetching initial data. Please try again later.');
       }
     };
 
@@ -196,60 +246,100 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     }
   };
 
-  const handleFilterChange = (name, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  // Add this function to properly handle semester comparison
+  const compareSemester = (menteeSemester, filterSemester) => {
+    const menteeNum = parseInt(menteeSemester);
+    const filterNum = parseInt(filterSemester);
+    return !filterSemester || (!isNaN(menteeNum) && !isNaN(filterNum) && menteeNum === filterNum);
   };
 
-  const handleRequestSort = (property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
+  // Add new function to get data from cache or fetch
+  const getDataFromCacheOrFetch = async (academicYear, academicSession) => {
+    const cacheKey = `${academicYear}-${academicSession}`;
+    // console.log("Checking cache for:", cacheKey);
 
-  const sortData = (data) => {
-    return [...data].sort((a, b) => {
-      if (!a[orderBy] || !b[orderBy]) return 0;
-      
-      const aValue = a[orderBy].toString().toLowerCase();
-      const bValue = b[orderBy].toString().toLowerCase();
-      
-      if (order === 'asc') {
-        return aValue.localeCompare(bValue);
-      } else {
-        return bValue.localeCompare(aValue);
-      }
-    });
-  };
-
-  const processedMentees = useMemo(() => {
-    if (!mounted) return [];
-
-    let data = [];
-    const currentKey = `${filters.academicYear}-${filters.academicSession}`;
-
-    if (cachedData.current.has(currentKey)) {
-      data = cachedData.current.get(currentKey);
-    } else if (Array.isArray(mentees) && mentees.length > 0) {
-      data = mentees;
-      cachedData.current.set(currentKey, mentees);
+    if (cachedData.current.has(cacheKey)) {
+      // console.log("Found data in cache");
+      const data = cachedData.current.get(cacheKey);
+      setBaseData(data);
+      return data;
     }
 
-    const filteredData = filterData(data, filters) || [];
+    // console.log("Fetching fresh data");
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+        params: { academicYear, academicSession }
+      });
+      const data = response.data;
+      cachedData.current.set(cacheKey, data);
+      setBaseData(data);
+      return data;
+    } catch (error) {
+      // console.error("Error fetching data:", error);
+      return [];
+    }
+  };
+
+  // Update useEffect to handle filters
+  useEffect(() => {
+    const applyFilters = async () => {
+      let dataToFilter = baseData;
+
+      // If we don't have base data and have academic year/session, fetch it
+      if (!dataToFilter.length && filters.academicYear && filters.academicSession) {
+        dataToFilter = await getDataFromCacheOrFetch(filters.academicYear, filters.academicSession);
+      }
+
+      // console.log("Applying filters to data:", {
+      //   totalRecords: dataToFilter.length,
+      //   filters: filters
+      // });
+
+      const filteredResults = dataToFilter.filter(mentee => {
+        const matchesSemester = !filters.semester || 
+          mentee.semester === (typeof filters.semester === 'string' ? 
+            parseInt(filters.semester) : filters.semester);
+        const matchesSection = !filters.section || 
+          mentee.section?.toUpperCase() === filters.section.toUpperCase();
+        const matchesMenteeMujid = !filters.menteeMujid || 
+          mentee.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
+        const matchesMentorMujid = !filters.mentorMujid || 
+          mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
+        const matchesMentorEmail = !filters.mentorEmailid || 
+          mentee.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
+
+        return matchesSemester && matchesSection && matchesMenteeMujid && 
+               matchesMentorMujid && matchesMentorEmail;
+      });
+
+      // console.log("Filter results:", {
+      //   filtered: filteredResults.length,
+      //   appliedFilters: filters
+      // });
+
+      setLocalData(filteredResults);
+    };
+
+    applyFilters();
+  }, [filters, baseData]);
+
+  // Modify processedMentees to use localData directly
+  const processedMentees = useMemo(() => {
+    if (!mounted || !localData) return [];
+
+    // console.log("Processing mentees with filters:", filters);
     
-    return filteredData.map((mentee = {}, index) => ({
-      // Set default values for required fields
+    return localData.map((mentee, index) => ({
       id: mentee._id || mentee.id || `temp-${index}-${Date.now()}`,
       MUJid: (mentee?.MUJid || '').toUpperCase(),
       name: mentee?.name || '',
       email: mentee?.email || '',
       mentorEmailid: mentee?.mentorEmailid || '',
-      // Add other fields with default values
+      semester: mentee?.semester || '',
+      section: mentee?.section || '',
       ...mentee,
     }));
-  }, [mentees, mounted, filters]);
+  }, [mounted, localData]);
 
   useEffect(() => {
     const initializeFilters = () => {
@@ -783,7 +873,6 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         </DialogActions>
       </Dialog>
     </Box>
-  );
-};
+  );};
 
 export default MenteeTable;
