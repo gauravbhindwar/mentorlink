@@ -23,71 +23,15 @@ import FilterSection from "./MentorFilterSection";
 import { Toaster,toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
-import BulkUploadPreview from "../common/BulkUploadPreview";
+// import BulkUploadPreview from "../common/BulkUploadPreview";
 import FilterListIcon from '@mui/icons-material/FilterList';
-
-const dialogStyles = {
-  paper: {
-    background: 'rgba(17, 24, 39, 0.95)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(249, 115, 22, 0.15)',
-    borderRadius: '24px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-    color: 'white',
-    maxWidth: '80vw', // Reduced from 90vw
-    width: '700px', // Reduced from 800px
-    maxHeight: '90vh',
-    overflow: 'hidden',
-  },
-  title: {
-    background: 'rgba(249, 115, 22, 0.05)',
-    borderBottom: '1px solid rgba(249, 115, 22, 0.15)',
-    padding: '20px 24px',
-  },
-  content: {
-    padding: '24px',
-  },
-  form: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '20px',
-    '& .full-width': {
-      gridColumn: '1 / -1',
-    },
-  },
-  textField: {
-    '& .MuiOutlinedInput-root': {
-      color: 'white',
-      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-      backdropFilter: 'blur(10px)',
-      borderRadius: '12px',
-      transition: 'all 0.3s ease',
-      '&:hover': {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        transform: 'translateY(-2px)',
-      },
-      '&.Mui-focused': {
-        backgroundColor: 'rgba(249, 115, 22, 0.05)',
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#f97316',
-          borderWidth: '2px',
-        },
-      },
-    },
-    '& .MuiInputLabel-root': {
-      color: 'rgba(255, 255, 255, 0.7)',
-      '&.Mui-focused': {
-        color: '#f97316',
-      },
-    },
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-  },
-  section: {
-    marginBottom: '24px',
-  },
-};
+import { dialogStyles, toastStyles } from './mentorStyle';
+import { 
+  getCurrentAcademicYear, 
+  generateAcademicSessions, 
+  validateAcademicYear,
+  generateYearSuggestions 
+} from './utils/academicUtils';
 
 const MentorManagement = () => {
   const [mentors, setMentors] = useState([]);
@@ -110,8 +54,8 @@ const MentorManagement = () => {
   const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
-  const [previewData, setPreviewData] = useState({ data: [], errors: [] });
-  const [showPreview, setShowPreview] = useState(false);
+  // const [previewData, setPreviewData] = useState({ data: [], errors: [] });
+  // const [showPreview, setShowPreview] = useState(false);
   const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
   const [existingMentorData, setExistingMentorData] = useState({});
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
@@ -141,11 +85,14 @@ const MentorManagement = () => {
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
 
-  const [uploading, setUploading] = useState(false);
+  // const [uploading, setUploading] = useState(false);
 
+  // Comment out this useEffect since previewData is no longer available
+  /*
   useEffect(() => {
     console.log("Preview Data:", previewData);
   }, [previewData]);
+  */
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -158,28 +105,28 @@ const MentorManagement = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleConfirmUpload = async () => {
-    setUploading(true);
-    try {
-      const response = await axios.post("/api/admin/manageUsers/bulkUpload", {
-        data: previewData.data,
-        type: "mentor",
-      });
+  // const handleConfirmUpload = async () => {
+  //   setUploading(true);
+  //   try {
+  //     const response = await axios.post("/api/admin/manageUsers/bulkUpload", {
+  //       data: previewData.data,
+  //       type: "mentor",
+  //     });
 
-      if (response.data && response.status === 201) {
-        showAlert("Mentors uploaded successfully!", "success");
-        setShowPreview(false);
-        handleBulkUploadClose();
-        await fetchMentors(); 
-      }
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.error || "Error uploading mentors";
-      showAlert(errorMessage, "error");
-    } finally {
-      setUploading(false);
-    }
-  };
+  //     if (response.data && response.status === 201) {
+  //       showAlert("Mentors uploaded successfully!", "success");
+  //       setShowPreview(false);
+  //       handleBulkUploadClose();
+  //       await fetchMentors(); 
+  //     }
+  //   } catch (error) {
+  //     const errorMessage =
+  //       error.response?.data?.error || "Error uploading mentors";
+  //     showAlert(errorMessage, "error");
+  //   } finally {
+  //     setUploading(false);
+  //   }
+  // };
 
   const validateForm = () => {
     const errors = [];
@@ -353,21 +300,6 @@ const handleEditMentor = async () => {
     }
   };
 
-  const getCurrentAcademicYear = () => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
-    const endYear = startYear + 1;
-    return `${startYear}-${endYear}`;
-  };
-
-  const generateAcademicSessions = (academicYear) => {
-    if (!academicYear) return [];
-    const [startYear, endYear] = academicYear.split("-");
-    return [`JULY-DECEMBER ${startYear}`, `JANUARY-JUNE ${endYear}`];
-  };
-
   useEffect(() => {
     const currentAcadYear = getCurrentAcademicYear();
     const sessions = generateAcademicSessions(currentAcadYear);
@@ -411,37 +343,6 @@ const handleEditMentor = async () => {
     }));
   };
 
-  const toastStyles = {
-    success: {
-      style: {
-        background: "#10B981",
-        color: "#fff",
-        padding: "16px",
-        borderRadius: "8px",
-        boxShadow:
-          "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-      },
-      iconTheme: {
-        primary: "#fff",
-        secondary: "#10B981",
-      },
-    },
-    error: {
-      style: {
-        background: "#EF4444",
-        color: "#fff",
-        padding: "16px",
-        borderRadius: "8px",
-        boxShadow:
-          "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-      },
-      iconTheme: {
-        primary: "#fff",
-        secondary: "#EF4444",
-      },
-    },
-  };
-
   const showAlert = (message, severity) => {
     const toastConfig = {
       style: toastStyles[severity].style,
@@ -456,20 +357,6 @@ const handleEditMentor = async () => {
   };
 
   // Add these new helper functions
-  const generateYearSuggestions = (input) => {
-    if (!input) return [];
-    const currentYear = new Date().getFullYear();
-    const suggestions = [];
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
-      const academicYear = `${year}-${year + 1}`;
-      if (academicYear.startsWith(input)) {
-        suggestions.push(academicYear);
-      }
-    }
-    return suggestions;
-  };
-
   const handleAcademicYearInput = (e) => {
     const value = e?.target?.value || '';
     const upperValue = value.toUpperCase();
@@ -506,27 +393,21 @@ const handleEditMentor = async () => {
     }, 0);
   };
   
-  // Also update the validateAcademicYear function to be more defensive:
-  const validateAcademicYear = (value) => {
-    if (!value || typeof value !== 'string') return false;
-    const regex = /^(\d{4})-(\d{4})$/;
-    if (!regex.test(value)) return false;
-    const [startYear, endYear] = value.split('-').map(Number);
-    return !isNaN(startYear) && !isNaN(endYear) && endYear === startYear + 1;
-  };
-  
 
-    const fetchMentors = async ({ academicYear = '', academicSession = '', MUJid = '' } = {}) => {
+    const fetchMentors = async ({ academicYear = '', academicSession = '' } = {}) => {
     setLoading(true);
     try {
-      // Store current filters
-      setCurrentFilters({ academicYear, academicSession, MUJid });
+      // Store current filters but only with academicYear and academicSession
+      setCurrentFilters({ 
+        academicYear, 
+        academicSession, 
+        email: '' // Initialize email as empty string
+      });
 
       // Build query parameters
       const params = new URLSearchParams();
       if (academicYear) params.append('academicYear', academicYear);
       if (academicSession) params.append('academicSession', academicSession);
-      if (MUJid) params.append('MUJid', MUJid);
 
       const response = await axios.get(`/api/admin/manageUsers/manageMentor?${params}`);
       if (response.data && response.data.mentors) {
@@ -586,38 +467,38 @@ const handleEditMentor = async () => {
     setEditDialog(true);
   };
   // use to upload mentor data
-  const handleBulkUpload = async (formData, onProgress) => {
-    try {
-      const previewResponse = await axios.post(
-        "/api/admin/manageUsers/previewUpload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            if (onProgress) onProgress(percentCompleted);
-          },
-        }
-      );
+  // const handleBulkUpload = async (formData, onProgress) => {
+  //   try {
+  //     const previewResponse = await axios.post(
+  //       "/api/admin/manageUsers/previewUpload",
+  //       formData,
+  //       {
+  //         headers: {
+  //           "Content-Type": "multipart/form-data",
+  //         },
+  //         onUploadProgress: (progressEvent) => {
+  //           const percentCompleted = Math.round(
+  //             (progressEvent.loaded * 100) / progressEvent.total
+  //           );
+  //           if (onProgress) onProgress(percentCompleted);
+  //         },
+  //       }
+  //     );
 
-      setPreviewData(previewResponse.data);
-      setShowPreview(true);
-      return previewResponse;
-    } catch (error) {
-      toast.error(
-        error.response?.data?.error || "Error processing file",
-        {
-          style: toastStyles.error.style,
-          iconTheme: toastStyles.error.iconTheme,
-        }
-      );
-      throw error;
-    }
-  };
+  //     setPreviewData(previewResponse.data);
+  //     setShowPreview(true);
+  //     return previewResponse;
+  //   } catch (error) {
+  //     toast.error(
+  //       error.response?.data?.error || "Error processing file",
+  //       {
+  //         style: toastStyles.error.style,
+  //         iconTheme: toastStyles.error.iconTheme,
+  //       }
+  //     );
+  //     throw error;
+  //   }
+  // };
 
   useEffect(() => {
     let mounted = true;
@@ -733,6 +614,13 @@ const handleEditMentor = async () => {
                       case "academicSession":
                         setAcademicSession(value);
                         break;
+                      case "email":
+                        // Update currentFilters with new email value
+                        setCurrentFilters(prev => ({
+                          ...prev,
+                          email: value
+                        }));
+                        break;
                     }
                   }}
                   onSearch={({ academicYear, academicSession, MUJid }) => {
@@ -741,7 +629,7 @@ const handleEditMentor = async () => {
                   onAddNew={() => setOpenDialog(true)}
                   onDelete={handleDeleteMentor}
                   mentors={mentors}
-                  onBulkUpload={handleBulkUpload}
+                  // onBulkUpload={handleBulkUpload}
                 />
               </div>
             </motion.div>
@@ -771,6 +659,7 @@ const handleEditMentor = async () => {
                         onEditClick={handleEditClick}
                         onDeleteClick={handleDeleteMentor}
                         isSmallScreen={isSmallScreen}
+                        emailFilter={currentFilters.email} // Pass email filter to table
                         onDataUpdate={(updatedMentors) => setMentors(updatedMentors)}
                       />
                     </div>
@@ -1303,7 +1192,7 @@ const handleEditMentor = async () => {
             </Button>
           </DialogActions>
         </Dialog>
-        <BulkUploadPreview
+        {/* <BulkUploadPreview
           open={showPreview}
           onClose={() => setShowPreview(false)}
           data={previewData.data}
@@ -1311,7 +1200,7 @@ const handleEditMentor = async () => {
           onConfirm={handleConfirmUpload}
           isUploading={uploading}
           type="mentor" // Specify the type as mentor
-        />
+        /> */}
 
         {/* Duplicate Mentor Dialog */}
         <Dialog

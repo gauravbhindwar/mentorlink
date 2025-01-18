@@ -107,29 +107,32 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     await connect();
+    const url = new URL(req.url);
+    
+    // Get all query parameters
+    const email = url.searchParams.get('email');
+    const academicYear = url.searchParams.get('academicYear');
+    const academicSession = url.searchParams.get('academicSession');
 
-    // Get search parameters from URL
-    const { searchParams } = new URL(req.url);
-    const academicYear = searchParams.get('academicYear');
-    const academicSession = searchParams.get('academicSession');
-    const MUJid = searchParams.get('MUJid');
-
-    // Build query object
+    // Build query object based on provided parameters
     const query = {};
+    if (email) query.email = email;
     if (academicYear) query.academicYear = academicYear;
     if (academicSession) query.academicSession = academicSession;
-    if (MUJid) query.MUJid = new RegExp(MUJid, 'i'); // Case-insensitive search for MUJid
 
-    // Fetch mentors based on query
-    const mentors = await Mentor.find(query).sort({ created_at: -1 });
+    const mentors = await Mentor.find(query);
 
-    return NextResponse.json({ mentors }, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      mentors
+    });
+
   } catch (error) {
     console.error("Error fetching mentors:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch mentors" },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false, 
+      message: error.message || "Error fetching mentors" 
+    }, { status: 500 });
   }
 }
 

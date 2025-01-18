@@ -111,10 +111,10 @@ const buttonStyles = {
 };
 
 const MentorFilterSection = ({ 
-  onSearch=() => {}, 
+  onSearch = () => {}, 
   onAddNew = () => {}, 
-  onBulkUpload = () => {}, 
-  onDelete = () => {} 
+  onDelete = () => {},
+  onFilterChange = () => {} // Add this prop
 }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
@@ -128,7 +128,7 @@ const MentorFilterSection = ({
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [mujidSearch, setMujidSearch] = useState('');
+  const [emailSearch, setEmailSearch] = useState('');
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -183,17 +183,23 @@ const MentorFilterSection = ({
   }, []);
 
   const handleSearch = () => {
-    if (academicYear || academicSession || mujidSearch) {
-      onSearch({ academicYear, academicSession, MUJid: mujidSearch });
-    } else {
-      toast.error('Please enter at least one filter value');
+    // Check if required fields are filled
+    if (!academicYear || !academicSession) {
+      toast.error('Academic Year and Academic Session are required');
+      return;
     }
+
+    // Call onSearch with just the required parameters
+    onSearch({ 
+      academicYear, 
+      academicSession
+    });
   };
 
   const handleReset = () => {
     setAcademicYear('');
     setAcademicSession('');
-    setMujidSearch('');
+    setEmailSearch('');
   };
 
 
@@ -472,51 +478,16 @@ const MentorFilterSection = ({
     }
   };
 
+
+  const handleEmailSearch = (value) => {
+    setEmailSearch(value);
+    onFilterChange('email', value); // Use the prop here
+  };
+
   return (
-    <Box 
-      sx={{
-        ...filterSectionStyles.wrapper,
-        animation: 'none', // Remove animation to prevent visibility issues
-        position: 'relative', // Add this to ensure proper stacking
-        zIndex: 2, // Add this to ensure filters stay above table
-        maxHeight: { lg: 'calc(100vh - 120px)' }, // Add max height for desktop
-        overflowY: { lg: 'auto' }, // Enable vertical scroll on desktop
-      }}
-    >
+    <Box sx={filterSectionStyles.wrapper}>
       <Box sx={filterSectionStyles.section}>
-        <Typography 
-          variant="subtitle2" 
-          sx={{ 
-            color: 'rgba(255, 255, 255, 0.9)',
-            fontWeight: 600,
-            mb: 0.5, // Reduced from 1
-            letterSpacing: '0.5px'
-          }}
-        >
-          Search by MUJid
-        </Typography>
-        <TextField
-          label="MUJid"
-          value={mujidSearch}
-          onChange={(e) => setMujidSearch(e.target.value.toUpperCase())}
-          size="small"
-          placeholder="Enter MUJid"
-          sx={{
-            ...textFieldStyles,
-            mb: 2, // Reduced from 3
-            '& .MuiOutlinedInput-root': {
-              ...textFieldStyles['& .MuiOutlinedInput-root'],
-              background: 'rgba(255, 255, 255, 0.05)',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
-              },
-              height: '36px', // Reduced from 40px
-            },
-          }}
-          fullWidth
-        />
+       {/* academic year */}
         <Typography 
           variant="subtitle2" 
           sx={{ 
@@ -632,6 +603,27 @@ const MentorFilterSection = ({
             dropdownRoot
           )}
         </Box>
+        <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600, mb: 0.5 }}>
+          Filter results by Email (optional)
+        </Typography>
+        <TextField
+          label="Email"
+          value={emailSearch}
+          onChange={(e) => handleEmailSearch(e.target.value)}
+          size="small"
+          placeholder="Type to filter by email"
+          type="email"
+          sx={{
+            ...textFieldStyles,
+            mb: 2,
+            '& .MuiOutlinedInput-root': {
+              ...textFieldStyles['& .MuiOutlinedInput-root'],
+              background: 'rgba(255, 255, 255, 0.05)',
+              height: '36px',
+            },
+          }}
+          fullWidth
+        />
       </Box>
 
       <Box sx={filterSectionStyles.buttonGroup}>
@@ -639,13 +631,18 @@ const MentorFilterSection = ({
           variant="contained"
           onClick={handleSearch}
           startIcon={<SearchIcon />}
+          disabled={!academicYear || !academicSession}
           sx={{
             ...buttonStyles.standard('primary'),
             py: { xs: 0.5, sm: 0.5 }, // Reduced padding
-            height: '32px' // Add fixed height
+            height: '32px', // Add fixed height
+            '&.Mui-disabled': {
+              backgroundColor: 'rgba(249, 115, 22, 0.3)',
+              color: 'rgba(255, 255, 255, 0.5)',
+            }
           }}
         >
-          Search
+          Load Mentors
         </Button>
         <Button
           variant="contained"
@@ -657,18 +654,6 @@ const MentorFilterSection = ({
           }}
         >
           Add New Mentor
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => setUploadDialog(true)}
-          sx={{
-            ...buttonStyles.standard('secondary'),
-            py: { xs: 0.5, sm: 0.5 }, // Reduced padding
-            height: '32px' // Add fixed height
-          }}
-        >
-          <UploadFileIcon sx={{ fontSize: 20}} />
-          Upload Mentors File
         </Button>
         <Button
           variant="contained"
@@ -832,8 +817,8 @@ const MentorFilterSection = ({
 MentorFilterSection.propTypes = {
   onSearch: PropTypes.func.isRequired,
   onAddNew: PropTypes.func,
-  onBulkUpload: PropTypes.func,
-  onDelete: PropTypes.func
+  onDelete: PropTypes.func,
+  onFilterChange: PropTypes.func // Add prop type validation
 };
 
 export default MentorFilterSection;

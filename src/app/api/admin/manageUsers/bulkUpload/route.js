@@ -25,7 +25,7 @@ export async function POST(req) {
     const uniqueMentors = new Map();
 
     // First pass: Collect unique mentor information by email
-    if (type === 'mentee') {
+    if (type === 'assignMentee') {
       data.forEach(record => {
         if (record.mentorEmailid && !uniqueMentors.has(record.mentorEmailid)) {
           uniqueMentors.set(record.mentorEmailid, {
@@ -42,7 +42,7 @@ export async function POST(req) {
     }
 
     // Create mentors first
-    if (type === 'mentee' && uniqueMentors.size > 0) {
+    if (type === 'assignMentee' && uniqueMentors.size > 0) {
       for (const mentorData of uniqueMentors.values()) {
         try {
           // Check if mentor already exists by email
@@ -61,7 +61,7 @@ export async function POST(req) {
     }
 
     // Then create mentees
-    const Model = type === 'mentee' ? Mentee : Mentor;
+    const Model = type === 'assignMentee' ? Mentee : Mentor;
     for (const record of data) {
       try {
         const newRecord = new Model(record);
