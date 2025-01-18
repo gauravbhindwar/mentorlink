@@ -627,7 +627,7 @@ const ScheduleMeeting = () => {
                   </div> */}
 
                   {/* File upload section */}
-                  <div className="relative">
+                  {/* <div className="relative">
                     <label className="block text-sm font-medium text-gray-300 mb-1">Attachments</label>
                     <input
                       type="file"
@@ -643,7 +643,7 @@ const ScheduleMeeting = () => {
                       <FiUpload className="text-purple-400" />
                       <span>{selectedFile ? selectedFile.name : "Upload attachments"}</span>
                     </label>
-                  </div>
+                  </div> */}
 
                   <button 
                     type="submit" 
