@@ -448,7 +448,8 @@ const ScheduleMeeting = () => {
                       placeholder="Enter mentor MUJID"
                       value={mentorId}
                       onChange={handleMentorIdChange}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase"
+                      disabled = {mentorData.MUJid ? true : false}
+                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase ${mentorData.MUJid ? 'opacity-60' : ''}`}
                     />
                   </div>
 
@@ -471,8 +472,9 @@ const ScheduleMeeting = () => {
                       placeholder="YYYY-YYYY"
                       value={academicYear}
                       onChange={handleAcademicYearInput}
+                      disabled={mentorData.academicYear ? true : false}
                       onClick={() => setShowYearOptions(true)}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm ${mentorData.academicYear ? 'opacity-60' : ''}`}
                     />
                     {showYearOptions && (
                       <div className="absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg">
@@ -505,7 +507,7 @@ const ScheduleMeeting = () => {
                       value={academicSession}
                       onChange={handleAcademicSessionInput}
                       onClick={() => setShowSessionOptions(true)}
-                      disabled={!academicYear}
+                      disabled={(mentorData.academicSession ? true : false) || !academicYear}
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50"
                     />
                     {showSessionOptions && (
@@ -527,7 +529,7 @@ const ScheduleMeeting = () => {
                   </div>
 
                   <div ref={semesterRef} className="relative">
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Semester (Required)</label>
                     <input
                       type="text"
                       placeholder={!academicYear ? 'Add academic year first' : availableSemesters[0] == 2 ? 'Select even semester' : 'Select odd semester'}
@@ -561,12 +563,12 @@ const ScheduleMeeting = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Section (Optional)</label>
                     <input 
                       type="text"
                       value={selectedSection}
                       onChange={handleSectionChange}
-                      placeholder="Enter section (e.g., A1)"
+                      placeholder="Enter section (e.g., A, B, C)"
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                       maxLength={2}
                     />
