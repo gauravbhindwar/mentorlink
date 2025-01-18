@@ -6,9 +6,11 @@ import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
 
 const AddMeetingInfo = () => {
-  const [mentorId, setMentorId] = useState('');
-  const [academicYear, setAcademicYear] = useState('');
-  const [academicSession, setAcademicSession] = useState('');
+  const sessionData = sessionStorage.getItem('mentorData');
+  const mentorData = sessionData ? JSON.parse(sessionData) : null;
+  const [mentorId, setMentorId] = useState(mentorData?.MUJid || '');
+  const [academicYear, setAcademicYear] = useState(mentorData?.academicYear || '');
+  const [academicSession, setAcademicSession] = useState(mentorData?.academicSession || '');
   const [currentSemester, setCurrentSemester] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [meetings, setMeetings] = useState([]);
@@ -33,6 +35,7 @@ const AddMeetingInfo = () => {
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
   const semesterRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleMentorIdChange = (e) => {
     let value = e.target.value.toUpperCase();
@@ -99,6 +102,7 @@ const AddMeetingInfo = () => {
   };
 
   const fetchMeetings = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get('/api/meeting/mentors/reportmeeting', {
         params: {
@@ -109,16 +113,22 @@ const AddMeetingInfo = () => {
           year: academicYear
         }
       });
+      if(response.status === 400) {
+        setMeetings([]);
+      }
       if (response.data) {
         setMeetings(response.data.meetings);
       }
     } catch (error) {
       console.log('Error fetching meetings:', error);
+      setMeetings([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (mentorId && academicYear && academicSession && currentSemester && selectedSection) {
+    if (mentorId && academicYear && academicSession && currentSemester) {
       fetchMeetings();
     }
   }, [mentorId, academicYear, academicSession, currentSemester, selectedSection]);
@@ -230,7 +240,7 @@ const AddMeetingInfo = () => {
       [name]: value
     }));
   };
-
+  // console.log('Meeting notes submitted successfully', selectedMeeting);
   const handleMeetingSubmit = async () => {
     try {
       await axios.post('/api/meeting/mentors/reportmeeting', {
@@ -293,7 +303,8 @@ const AddMeetingInfo = () => {
                       placeholder="Enter mentor MUJID"
                       value={mentorId}
                       onChange={handleMentorIdChange}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase"
+                      disabled={mentorData?.MUJid ? true : false}
+                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase ${mentorData?.MUJid ? 'opacity-60' : ''}`}
                     />
                   </div>
 
@@ -412,43 +423,61 @@ const AddMeetingInfo = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {meetings.length > 0 ? (
+                  {isLoading ? (
+                    <div className="flex justify-center items-center h-48">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+                    </div>
+                  ) : meetings.length > 0 ? (
                     <div className="mt-4">
                       <h3 className="text-lg font-semibold text-white mb-2">Meetings:</h3>
-                      <ul className="list-disc list-inside text-white space-y-2">
-                        {meetings.map((meeting, index) => (
-                          <li 
-                            key={index} 
-                            className={`bg-black/20 flex border border-white/10 rounded-lg p-2 cursor-pointer ${(meeting.isReportFilled || new Date(meeting.meeting_date) > new Date()) ? 'pointer-events-none opacity-30' : ''}`}
-                            onClick={() => setSelectedMeeting(meeting)}
-                          >
-                            <div className="flex items-center space-x-2">
-                              {/* {console.log("meeting: ",meeting)} */}
-                              <div>
-                                <p className="text-sm font-medium">Meeting ID: {meeting.meeting_id}</p>
-                                <p className="text-xs text-gray-400">Date: {new Date(meeting.meeting_date).toLocaleDateString()}</p>
-                                <p className="text-xs text-gray-400">Time: {meeting.meeting_time}</p>
+                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                        <ul className="list-disc list-inside text-white space-y-2">
+                          {meetings.map((meeting, index) => (
+                            <li 
+                              key={index} 
+                              className={`bg-black/20 flex border border-white/10 rounded-lg p-2 cursor-pointer ${(meeting.isReportFilled || new Date(meeting.meeting_date) > new Date()) ? 'pointer-events-none opacity-30' : ''}`}
+                              onClick={() => {
+                                setSelectedMeeting(meeting);
+                                setMeetingNotes({
+                                  TopicOfDiscussion: meeting?.meeting_notes?.TopicOfDiscussion || '',
+                                  TypeOfInformation: '',
+                                  NotesToStudent: '',
+                                  issuesRaisedByMentee: '',
+                                  outcome: '',
+                                  closureRemarks: ''
+                                });
+                              }}
+                            >
+                              {console.log("meeting: ",meeting)}
+                              <div className="flex items-center space-x-2">
+                                {/* {console.log("meeting: ",meeting)} */}
+                                <div>
+                                  <p className="text-sm font-medium">Meeting Topic: {meeting?.meeting_notes?.TopicOfDiscussion}</p>
+                                  <p className="text-xs text-gray-400">Meeting ID: {meeting?.meeting_id}</p>
+                                  <p className="text-xs text-gray-400">Date: {new Date(meeting?.meeting_date).toLocaleDateString()}</p>
+                                  <p className="text-xs text-gray-400">Time: {meeting?.meeting_time}</p>
+                                </div>
+                                {
+                                  meeting.isReportFilled && (
+                                    <div className="ml-auto flex items-center space-x-2">
+                                      <FiCheck className="text-green-500" />
+                                      <p className="text-xs text-gray-400">Report Filled</p>
+                                    </div>
+                                  )
+                                }
+                                {
+                                  new Date(meeting.meeting_date) > new Date() && (
+                                    <div className="ml-auto flex items-center space-x-2">
+                                      <FiCheck className="text-green-500" />
+                                      <p className="text-xs text-gray-400">Meeting has not been held</p>
+                                    </div>
+                                  )
+                                }
                               </div>
-                              {
-                                meeting.isReportFilled && (
-                                  <div className="ml-auto flex items-center space-x-2">
-                                    <FiCheck className="text-green-500" />
-                                    <p className="text-xs text-gray-400">Report Filled</p>
-                                  </div>
-                                )
-                              }
-                              {
-                                new Date(meeting.meeting_date) > new Date() && (
-                                  <div className="ml-auto flex items-center space-x-2">
-                                    <FiCheck className="text-green-500" />
-                                    <p className="text-xs text-gray-400">Meeting has not been held</p>
-                                  </div>
-                                )
-                              }
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-md text-red-600 font-semibold w-[100%] flex justify-center mt-4">No meetings found</p>
@@ -482,8 +511,8 @@ const AddMeetingInfo = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Type of Information</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows="2"
                     name="TypeOfInformation"
                     value={meetingNotes.TypeOfInformation}
                     onChange={handleMeetingNotesChange}
@@ -492,8 +521,8 @@ const AddMeetingInfo = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Notes to Student</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows="3"
                     name="NotesToStudent"
                     value={meetingNotes.NotesToStudent}
                     onChange={handleMeetingNotesChange}
@@ -502,8 +531,8 @@ const AddMeetingInfo = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Issues Raised/Resolved</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows="2"
                     name="issuesRaisedByMentee"
                     value={meetingNotes.issuesRaisedByMentee}
                     onChange={handleMeetingNotesChange}
@@ -512,8 +541,8 @@ const AddMeetingInfo = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Outcome</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows="2"
                     name="outcome"
                     value={meetingNotes.outcome}
                     onChange={handleMeetingNotesChange}
