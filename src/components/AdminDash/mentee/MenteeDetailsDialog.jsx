@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
   Dialog, 
@@ -35,22 +35,29 @@ const TabPanel = ({ children, value, index }) => (
 
 const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
   const [activeTab, setActiveTab] = useState(0);
-  const [meetingStats, setMeetingStats] = useState({
-    total: 0,
-    completed: 0,
-    pending: 0
-  });
+  const [meetingStats, setMeetingStats] = useState({});
+  const statsCache = useRef({}); // Add cache using useRef
 
   useEffect(() => {
+
     const fetchMeetingStats = async () => {
       if (mentee?.MUJid) {
+        // Check if stats exist in cache
+        if (statsCache.current[mentee.MUJid]) {
+          setMeetingStats(statsCache.current[mentee.MUJid]);
+          return;
+        }
+
         try {
           const response = await axios.get(`/api/admin/getMenteeMeetings?menteeMujid=${mentee.MUJid}`);
-          setMeetingStats({
+          const stats = {
             total: response.data.total || 0,
             completed: response.data.completed || 0,
             pending: response.data.scheduled || 0
-          });
+          };
+          // Store in cache
+          statsCache.current[mentee.MUJid] = stats;
+          setMeetingStats(stats);
         } catch (error) {
           console.error('Error fetching meeting stats:', error);
           setMeetingStats({ total: 0, completed: 0, pending: 0 });
@@ -58,10 +65,11 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
       }
     };
 
-    if (open && mentee) {
+    // Only fetch when dialog opens and stats aren't cached
+    if (open && mentee && !statsCache.current[mentee.MUJid]) {
       fetchMeetingStats();
     }
-  }, [open, mentee]);
+  }, [open, mentee]); // Remove activeTab dependency
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -189,7 +197,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                 <InfoItem icon="📚" label="Academic Year" value={mentee.academicYear} />
                 <InfoItem icon="🗓️" label="Academic Session" value={mentee.academicSession} />
                 <InfoItem icon="📅" label="Year of Registration" value={mentee.yearOfRegistration} />
-                <InfoItem icon="👨‍🏫" label="Mentor MUJid" value={mentee.mentorMujid} />
+                <InfoItem icon="👨‍🏫" label="Mentor MUJID" value={mentee.mentorMujid} />
+                <InfoItem icon="📧" label="Mentor Email" value={mentee.mentorEmailid || mentee.mentorEmailId} />
                 
                 {/* Meeting Statistics */}
                 {/* DISABLED FOR NOW */}

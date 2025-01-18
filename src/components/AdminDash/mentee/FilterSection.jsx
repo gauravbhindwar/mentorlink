@@ -78,10 +78,31 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
-  const dropdownRoot = document.getElementById('dropdown-root');
+  const [dropdownRoot, setDropdownRoot] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [cachedData, setCachedData] = useState({});
+
+  // Add new state for client-side rendering check
+  const [isClient, setIsClient] = useState(false);
+  const [portalRoot, setPortalRoot] = useState(null);
+
+  useEffect(() => {
+    setIsClient(true);
+    // Only set portal root after component mounts on client
+    setPortalRoot(document.getElementById('portal-root'));
+  }, []);
+
+  // Simplified portal rendering
+  const renderDropdown = (isOpen, content) => {
+    if (!isOpen || !isClient || !portalRoot) return null;
+    return createPortal(content, portalRoot);
+  };
+
+  useEffect(() => {
+    setDropdownRoot(document.getElementById('dropdown-root'));
+  }, []);
 
   const generateAcademicSessions = (academicYear) => {
     if (!academicYear) return [];
@@ -120,12 +141,23 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   };
 
   useEffect(() => {
-    const currentYear = getCurrentAcademicYear();
-    setAcademicYear(currentYear);
-    handleFilterChange('academicYear', currentYear);
-    
-    handleFilterChange('academicSession', '');
-  }, []);
+    const initializeFilters = () => {
+      const currentYear = getCurrentAcademicYear();
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const [startYear] = currentYear.split('-');
+      
+      const currentSession = currentMonth >= 7 && currentMonth <= 12
+        ? `JULY-DECEMBER ${startYear}`
+        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+
+      setAcademicYear(currentYear);
+      handleFilterChange('academicYear', currentYear);
+      handleFilterChange('academicSession', currentSession);
+    };
+
+    initializeFilters();
+  }, []); // Remove handleSearch from initial load
 
   useEffect(() => {
     if (!filters.academicYear) {
@@ -181,61 +213,69 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   };
 
   const handleSearch = async () => {
-    // Validate search conditions
-    const hasBasicFilters = filters.academicYear && filters.academicSession;
-    const hasSemesterSection = filters.semester && filters.section;
-    const hasIdFilters = filters.menteeMujid || filters.mentorMujid || filters.mentorEmailid;
-
-    if (!hasBasicFilters) {
-      showAlert('Academic Year and Session are required', 'warning');
+    const baseParams = {
+      academicYear: filters.academicYear.trim(),
+      academicSession: filters.academicSession.trim().toUpperCase(),
+    };
+    const cacheKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
+  
+    // Check cache first
+    if (cachedData[cacheKey]) {
+      console.log("Using cached data for:", cacheKey);
+      onSearch(cachedData[cacheKey]);
       return;
     }
-
-    if (!hasSemesterSection && !hasIdFilters) {
-      showAlert('Either (Semester and Section) or (Mentee/Mentor MUJID/Email) are required', 'warning');
-      return;
-    }
-
+  
     setIsLoading(prev => ({ ...prev, search: true }));
-    
     try {
-      // Build query parameters
-      const params = {
-        academicYear: filters.academicYear,
-        academicSession: filters.academicSession?.toUpperCase(),
-      };
-
-      // Add optional filters if they exist
-      if (filters.semester) params.semester = parseInt(filters.semester);
-      if (filters.section) params.section = filters.section?.toUpperCase();
-      if (filters.menteeMujid) params.MUJid = filters.menteeMujid?.toUpperCase();
-      if (filters.mentorMujid) params.mentorMujid = filters.mentorMujid?.toUpperCase();
-      if (filters.mentorEmailid) params.mentorEmailid = filters.mentorEmailid;
-
-      // console.log('Search params:', params); // Debug log
-
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
-
-      if (response.status === 200) {
-        const normalizedData = response.data.map(mentee => ({
-          ...mentee,
-          id: mentee._id || mentee.id,
-          MUJid: mentee.MUJid?.toUpperCase() || '',
-          mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-        }));
-        
-        sessionStorage.setItem('menteeData', JSON.stringify(normalizedData));
-        onSearch(normalizedData);
-      }
+      console.log('FilterSection - Making API call with params:', baseParams);
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+        params: baseParams
+      });
+      // ...existing code...
+      setCachedData(prev => ({ ...prev, [cacheKey]: response.data }));
+      onSearch(response.data);
     } catch (error) {
-      if (error.response?.status === 404) {
-        showAlert('No mentees found matching the criteria', 'info');
-      } else {
-        showAlert(error.response?.data?.error || 'Error searching mentees', 'error');
-      }
-      onSearch([]);
+      // ...existing error handling...
     } finally {
       setIsLoading(prev => ({ ...prev, search: false }));
+    }
+  };
+
+  // Add new function for client-side filtering
+  const filterData = (data) => {
+    return data.filter(mentee => {
+      const matchesSemester = !filters.semester || mentee.semester === parseInt(filters.semester);
+      const matchesSection = !filters.section || mentee.section.toUpperCase() === filters.section.toUpperCase();
+      const matchesMenteeMujid = !filters.menteeMujid || mentee.MUJid.includes(filters.menteeMujid.toUpperCase());
+      const matchesMentorMujid = !filters.mentorMujid || mentee.mentorMujid?.includes(filters.mentorMujid.toUpperCase());
+      const matchesMentorEmail = !filters.mentorEmailid || mentee.mentorEmailid?.includes(filters.mentorEmailid);
+
+      return matchesSemester && matchesSection && matchesMenteeMujid && matchesMentorMujid && matchesMentorEmail;
+    });
+  };
+
+  // Modify handleFilterChange to use client-side filtering for non-base filters
+  const handleFilterChange = (name, value) => {
+    const newFilters = {
+      ...filters,
+      [name]: value
+    };
+
+    // Update the filter state through the parent component
+    onFilterChange(name, value);
+
+    // If changing base filters (academicYear or academicSession), make new API call
+    if (name === 'academicYear' || name === 'academicSession') {
+      sessionStorage.removeItem('menteeData');
+      if (name === 'academicYear') {
+        const sessions = generateAcademicSessions(value);
+        onFilterChange('academicSession', sessions[0]);
+      }
+    } else if (cachedData.length > 0) {
+      // For other filters, use client-side filtering on cached data
+      const filteredData = filterData(cachedData);
+      onSearch(filteredData);
     }
   };
 
@@ -278,18 +318,6 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   const handleReset = () => {
     sessionStorage.removeItem('menteeData');
     onReset();
-  };
-
-  const handleFilterChange = (name, value) => {
-    sessionStorage.removeItem('menteeData');
-    
-    if (name === 'academicYear') {
-      const sessions = generateAcademicSessions(value);
-      onFilterChange(name, value);
-      onFilterChange('academicSession', sessions[0]);
-    } else {
-      onFilterChange(name, value);
-    }
   };
 
   useEffect(() => {
@@ -448,6 +476,55 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     }
   };
 
+  // Update year dropdown render to use renderDropdown instead of renderDropdownPortal
+  const renderYearDropdown = () => renderDropdown(
+    showYearOptions,
+    <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
+      {(yearSuggestions.length > 0 ? yearSuggestions : 
+        (() => {
+          const currentYear = new Date().getFullYear();
+          return [0, 1, 2, 3].map(offset => `${currentYear - offset}-${currentYear - offset + 1}`);
+        })()
+      ).map(year => (
+        <Box
+          key={year}
+          className="option-item"
+          onClick={() => {
+            setAcademicYear(year);
+            handleFilterChange('academicYear', year);
+            setShowYearOptions(false);
+            const sessions = generateAcademicSessions(year);
+            if (sessions.length > 0) {
+              handleFilterChange('academicSession', sessions[0]);
+            }
+          }}
+        >
+          {year}
+        </Box>
+      ))}
+    </Box>
+  );
+
+  const renderSessionDropdown = () => renderDropdown(
+    showSessionOptions,
+    <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
+      {(sessionSuggestions.length > 0 ? sessionSuggestions : 
+        generateAcademicSessions(academicYear)
+      ).map(session => (
+        <Box
+          key={session}
+          className="option-item"
+          onClick={() => {
+            handleFilterChange('academicSession', session);
+            setShowSessionOptions(false);
+          }}
+        >
+          {session}
+        </Box>
+      ))}
+    </Box>
+  );
+
   const filterControls = [
     {
       name: 'academicYear',
@@ -468,33 +545,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
             }
             sx={textFieldStyles}
           />
-          {showYearOptions && dropdownRoot && createPortal(
-            <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
-              {(yearSuggestions.length > 0 ? yearSuggestions : 
-                (() => {
-                  const currentYear = new Date().getFullYear();
-                  return [0, 1, 2, 3].map(offset => `${currentYear - offset}-${currentYear - offset + 1}`);
-                })()
-              ).map(year => (
-                <Box
-                  key={year}
-                  className="option-item"
-                  onClick={() => {
-                    setAcademicYear(year);
-                    handleFilterChange('academicYear', year);
-                    setShowYearOptions(false);
-                    const sessions = generateAcademicSessions(year);
-                    if (sessions.length > 0) {
-                      handleFilterChange('academicSession', sessions[0]);
-                    }
-                  }}
-                >
-                  {year}
-                </Box>
-              ))}
-            </Box>,
-            dropdownRoot
-          )}
+          {renderYearDropdown()}
         </Box>
       )
     },
@@ -518,25 +569,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
             disabled={!academicYear}
             sx={textFieldStyles}
           />
-          {showSessionOptions && dropdownRoot && createPortal(
-            <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
-              {(sessionSuggestions.length > 0 ? sessionSuggestions : 
-                generateAcademicSessions(academicYear)
-              ).map(session => (
-                <Box
-                  key={session}
-                  className="option-item"
-                  onClick={() => {
-                    handleFilterChange('academicSession', session);
-                    setShowSessionOptions(false);
-                  }}
-                >
-                  {session}
-                </Box>
-              ))}
-            </Box>,
-            dropdownRoot
-          )}
+          {renderSessionDropdown()}
         </Box>
       )
     },
@@ -613,14 +646,10 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   const buttons = [
     { 
       label: isLoading.search ? 'Searching...' : 'Search',
-      onClick: handleSearch,
+      onClick: () => handleSearch(), // Modified to pass no parameters
       color: 'primary',
-      disabled: !(
-        filters.academicYear && 
-        filters.academicSession && 
-        ((filters.semester && filters.section) || filters.menteeMujid || filters.mentorMujid || filters.mentorEmailid)
-      ),
-      icon: <SearchIcon /> // Changed from ManageSearchIcon to SearchIcon
+      disabled: !filters.academicYear || !filters.academicSession || isLoading.search,
+      icon: <SearchIcon />
     },
     { 
       label: isLoading.add ? 'Adding...' : 'Add New Mentee',
@@ -651,6 +680,37 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
       icon: <DeleteIcon />
     }
   ];
+
+  useEffect(() => {
+    const initializeAndFetch = async () => {
+      console.log("FilterSection - Initializing with filters:", filters);
+      if (filters.academicYear && filters.academicSession) {
+        console.log("FilterSection - Initial search with existing filters");
+        await handleSearch();
+      } else {
+        const currentYear = getCurrentAcademicYear();
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const startYear = currentYear.split('-')[0];
+        
+        const currentSession = currentMonth >= 7 ? 
+          `JULY-DECEMBER ${startYear}` : 
+          `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+
+        console.log("FilterSection - Setting initial filters:", { currentYear, currentSession });
+        handleFilterChange('academicYear', currentYear);
+        handleFilterChange('academicSession', currentSession);
+      }
+    };
+
+    if (isClient) {
+      initializeAndFetch();
+    }
+  }, [isClient]);
+
+  if (!isClient) {
+    return null; // or a loading placeholder
+  }
 
   return (
     <>

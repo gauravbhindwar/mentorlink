@@ -17,13 +17,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
-      <Navbar />
-        <div >
-          {children}
-        <SpeedInsights /> {/* Add this line */}
-        </div>
+    <html lang="en">
+      <body className={inter.className}>
+        <Navbar />
+        {children}
+        <div id="portal-root" />
+        <SpeedInsights />
       </body>
     </html>
   );

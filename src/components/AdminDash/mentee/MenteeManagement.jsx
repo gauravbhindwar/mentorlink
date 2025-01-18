@@ -570,8 +570,6 @@ const MenteeManagement = () => {
 
   const [academicSessions, setAcademicSessions] = useState([]);
 
-  if (!mounted) return null;
-
   const handleDataUpdate = (updateFn) => {
     setMentees(prevMentees => {
       const updatedMentees = typeof updateFn === 'function' 
@@ -583,6 +581,59 @@ const MenteeManagement = () => {
       return updatedMentees;
     });
   };
+
+  // Add this useEffect for initial data loading
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const currentAcadYear = getCurrentAcademicYear();
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const [startYear] = currentAcadYear.split('-');
+      
+      const currentSession = currentMonth >= 7 && currentMonth <= 12
+        ? `JULY-DECEMBER ${startYear}`
+        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+
+      // Set initial filter values without triggering search
+      setAcademicYear(currentAcadYear);
+      setAcademicSession(currentSession);
+
+      // Only perform search once filters are set
+      if (currentAcadYear && currentSession) {
+        try {
+          setLoading(true);
+          const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+            params: {
+              academicYear: currentAcadYear,
+              academicSession: currentSession
+            }
+          });
+
+          if (response.status === 200) {
+            const normalizedData = response.data.map(mentee => ({
+              ...mentee,
+              id: mentee._id || mentee.id,
+              MUJid: mentee.MUJid?.toUpperCase() || '',
+              mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+            }));
+            
+            setMentees(normalizedData);
+            sessionStorage.setItem('menteeData', JSON.stringify(normalizedData));
+            setTableVisible(true);
+          }
+        } catch (error) {
+          // Only show error if it's not the "required fields" error
+          if (error.response?.status !== 400) {
+            showAlert(error.response?.data?.error || 'Error loading initial data', 'error');
+          }
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadInitialData();
+  }, []);
 
   return (
     <ThemeProvider theme={theme}>

@@ -144,78 +144,70 @@ export async function POST(req) {
   }
 }
 
-// GET request to read mentees based on filters
+// Modify the GET handler to support batch loading
 export async function GET(req) {
   try {
     await connect();
     const { searchParams } = new URL(req.url);
-
-    // Debug logs
-    // console.log("Received search params:", Object.fromEntries(searchParams.entries()));
+    console.log("API - Received params:", Object.fromEntries(searchParams.entries()));
 
     let filters = {};
 
     // Required filters with normalized casing
     if (!searchParams.get("academicYear") || !searchParams.get("academicSession")) {
-      return createErrorResponse("Academic Year and Session are required", 400);
+      return NextResponse.json([], { status: 200 }); // Return empty array instead of error
     }
 
     filters.academicYear = searchParams.get("academicYear").trim();
     filters.academicSession = searchParams.get("academicSession").trim().toUpperCase();
 
-    // Handle MUJid search for both mentee MUJid and mentorMujid
-    if (searchParams.get("MUJid")) {
-      const searchMujid = searchParams.get("MUJid").trim();
-      filters.$or = [
-        { MUJid: new RegExp(`^${searchMujid}$`, 'i') },
-        { mentorMujid: new RegExp(`^${searchMujid}$`, 'i') }
-      ];
-      
-      // Remove other filters when fetching by MUJid for editing
-      if (searchParams.get("forEdit") === 'true') {
-        filters = { MUJid: filters.MUJid };
+    // Find mentees and populate mentor data
+    const mentees = await Mentee.aggregate([
+      { $match: filters },
+      {
+        $lookup: {
+          from: 'mentors',
+          localField: 'mentorMujid',
+          foreignField: 'MUJid',
+          as: 'mentor'
+        }
+      },
+      { $unwind: { path: '$mentor', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          MUJid: 1,
+          phone: 1,
+          yearOfRegistration: 1,
+          section: 1,
+          semester: 1,
+          academicYear: 1,
+          academicSession: 1,
+          mentorMujid: 1,
+          mentorEmailid: '$mentor.email',
+          parents: 1
+        }
       }
-    }
+    ]);
 
-    // Optional filters with proper casing
-    if (searchParams.get("semester")) {
-      filters.semester = parseInt(searchParams.get("semester"), 10);
-    }
-    if (searchParams.get("section")) {
-      filters.section = searchParams.get("section").trim().toUpperCase();
-    }
-    if (searchParams.get("mentorMujid")) {
-      filters.mentorMujid = searchParams.get("mentorMujid").trim().toUpperCase();
-    }
-
-    // console.log("Final filters:", filters);
-
-    // Try finding with less restrictive filters first
-    // const allMentees = await Mentee.find({});
-    // console.log("Total mentees in database:", allMentees.length);
-
-    const mentees = await Mentee.find(filters).lean();
-    // console.log("Found mentees with filters:", mentees);
-
-    if (!mentees || mentees.length === 0) {
-      return createErrorResponse("No mentees found matching the criteria", 404);
-    }
+    console.log("API - Found mentees count:", mentees.length);
+    console.log("API - Sample mentee:", mentees[0]);
 
     const transformedMentees = mentees.map(mentee => ({
       ...mentee,
       _id: mentee._id.toString(),
       MUJid: mentee.MUJid?.toUpperCase() || '',
-      mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+      mentorMujid: mentee.mentorMujid?.toUpperCase() || '',
+      mentorEmailid: mentee.mentorEmailid || ''
     }));
 
-    return NextResponse.json(transformedMentees, { 
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.log("API - Transformed mentees sample:", transformedMentees[0]);
+    return NextResponse.json(transformedMentees, { status: 200 });
 
   } catch (error) {
-    console.error("Server error:", error);
-    console.error("Error details:", error.stack);
+    console.error("API Error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
   }
 }

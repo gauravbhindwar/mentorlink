@@ -318,8 +318,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, emailF
       <DataGrid
         rows={filteredMentors}
         columns={columns}
-        getRowId={(row) => row._id || row.id} // Handle both _id and id
-        autoHeight={false} // Remove autoHeight to enable vertical scrolling
+        getRowId={(row) => row._id || row.id}
+        autoHeight={false} 
         sx={{
           height: { xs: '500px', lg: '100%' }, // Responsive height
           width: '100%',
