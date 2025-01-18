@@ -685,7 +685,7 @@ const ScheduleMeeting = () => {
                             </div>     
                             </div>
                           </div>
-                        </div>
+                        
                       </>   
                     )
                   }  
