@@ -10,7 +10,8 @@ const ScheduleMeeting = () => {
   const router = useRouter();
   const sessionData = sessionStorage.getItem('mentorData');
   const mentorData = JSON.parse(sessionData);
-  console.log('Mentor data:', mentorData.MUJid);
+  // console.log('Mentor data:', mentorData.MUJid);
+  // const [selectedFile, setSelectedFile] = useState(null);
   const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
@@ -127,15 +128,16 @@ const ScheduleMeeting = () => {
           
           console.log('Mentor meetings:', meetingsHeld);
           // console.log('Meeting count:', meetingCount);
-          if(meetingsHeld.length >= 4){
-            setMeetingId('You have already scheduled 4 meetings for this section')
-            setCustomAlert('You have already scheduled 4 meetings for this section')
-            setDisabled(true);
-          }else{
+          //MEETING LIMIT CURRENTLY DISABLED
+          // if(meetingsHeld.length >= 4){
+          //   setMeetingId('You have already scheduled 4 meetings for this section')
+          //   setCustomAlert('You have already scheduled 4 meetings for this section')
+          //   setDisabled(true);
+          // }else{
           setMeetingId(`${mentorId}-M${selectedSection}${meetingsHeld.length + 1}`);
           setCustomAlert('')
           setDisabled(false);
-          }
+          // }
         }
       } catch (error) {
         // console.log('Error fetching meetings:', error.response?.data || error.message);

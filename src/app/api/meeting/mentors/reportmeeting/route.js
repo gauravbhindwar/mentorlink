@@ -4,7 +4,6 @@ import { connect } from "../../../../../lib/dbConfig";
 
 export async function GET(request) {
   try {
-    // Ensure database connection is established
     await connect();
 
     const url = new URL(request.url);
@@ -14,7 +13,7 @@ export async function GET(request) {
     const session = url.searchParams.get("session");
     const year = url.searchParams.get("year");
 
-    if (!mentor_id || !semester || !section || !session || !year) {
+    if (!mentor_id || !semester || !year) {
       return NextResponse.json(
         { error: "Missing required query parameters" },
         { status: 400 }
@@ -28,17 +27,25 @@ export async function GET(request) {
       throw new Error("Invalid year format");
     }
 
-    const academicSession = await AcademicSession.findOne({
+    let query = {
       start_year: startYear,
       end_year: endYear,
       "sessions.name": session,
       "sessions.semesters.semester_number": parseInt(semester),
-      "sessions.semesters.sections.name": section,
-      "sessions.semesters.sections.meetings.mentor_id": mentor_id,
-    });
+      "sessions.semesters.sections.meetings.mentorMUJid": mentor_id,
+    };
+
+    if (section) {
+      query["sessions.semesters.sections.name"] = section;
+    }
+
+    const academicSession = await AcademicSession.findOne(query);
 
     if (!academicSession) {
-      return NextResponse.json({ error: "No meetings found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No meetings found2" },
+        { status: 404 }
+      );
     }
 
     const targetSession = academicSession.sessions.find(
@@ -58,19 +65,33 @@ export async function GET(request) {
       );
     }
 
-    const targetSection = targetSemester.sections.find(
-      (sec) => sec.name === section
-    );
-    if (!targetSection) {
-      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    let meetings = [];
+    if (section) {
+      // If section is provided, get meetings for that specific section
+      const targetSection = targetSemester.sections.find(
+        (sec) => sec.name === section
+      );
+      if (!targetSection) {
+        return NextResponse.json(
+          { error: "Section not found" },
+          { status: 404 }
+        );
+      }
+      meetings = targetSection.meetings.filter(
+        (meeting) => meeting.mentorMUJid === mentor_id
+      );
+    } else {
+      // If no section is provided, get all meetings from all sections
+      targetSemester.sections.forEach((section) => {
+        const sectionMeetings = section.meetings.filter(
+          (meeting) => meeting.mentorMUJid === mentor_id
+        );
+        meetings = meetings.concat(sectionMeetings);
+      });
     }
 
-    const meetings = targetSection.meetings.filter(
-      (meeting) => meeting.mentor_id === mentor_id
-    );
-
     if (!meetings.length) {
-      return NextResponse.json({ error: "No meetings found" }, { status: 404 });
+      return NextResponse.json({ error: "No meetings found" }, { status: 400 });
     }
 
     return NextResponse.json({ meetings }, { status: 200 });
@@ -93,7 +114,7 @@ export async function POST(request) {
     const academicSession = await AcademicSession.findOneAndUpdate(
       {
         "sessions.semesters.sections.meetings.meeting_id": meeting_id,
-        "sessions.semesters.sections.meetings.mentor_id": mentor_id,
+        "sessions.semesters.sections.meetings.mentorMUJid": mentor_id,
       },
       {
         $set: {
