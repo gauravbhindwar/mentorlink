@@ -140,7 +140,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
       const currentKey = `${filters.academicYear}-${filters.academicSession}`;
       
       // Log cache contents before check
-      logCacheContents();
+      // logCacheContents();
       
       // Check if data exists in cache
       if (cachedData.current.has(currentKey)) {
