@@ -108,9 +108,9 @@ export async function GET(request) {
     const targetSemester = targetSession.semesters?.find(
       (s) => s.semester_number === parseInt(semester)
     );
-    console.log("Target semester:", targetSemester.sections[0]);
-    console.log("isSection:", section.trim() !== "");
-    console.log("Section1:", section);
+    // console.log("Target semester:", targetSemester.sections[0]);
+    // console.log("isSection:", section.trim() !== "");
+    // console.log("Section1:", section);
     // console.log("Target section:", typeof section);
     let meetings = [];
 
@@ -119,7 +119,7 @@ export async function GET(request) {
       const targetSection = targetSemester?.sections?.find(
         (s) => s.name === section
       );
-      console.log("Target sections:", targetSection);
+      // console.log("Target sections:", targetSection);
       meetings =
         targetSection?.meetings?.filter((m) => m.mentorMUJid === mentor_id) ||
         [];

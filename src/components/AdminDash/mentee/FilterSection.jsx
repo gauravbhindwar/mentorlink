@@ -65,12 +65,20 @@ const buttonStyles = {
   }
 };
 
-const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddNew, onBulkUpload, onDelete }) => {
+const FilterSection = ({ 
+  filters = {}, 
+  onFilterChange, 
+  onSearch, 
+  onReset, 
+  onAddNew, 
+  onBulkUpload, 
+  onDelete,
+  filterData // Add filterData to props
+}) => {
   const [isLoading, setIsLoading] = useState({
-    search: false,
     add: false,
     bulkAdd: false
-  });
+  }); // Removed search loading state
   const [academicYear, setAcademicYear] = useState('');  
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
@@ -78,7 +86,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
-  const [dropdownRoot, setDropdownRoot] = useState(null);
+  // const [dropdownRoot, setDropdownRoot] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -100,9 +108,9 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     return createPortal(content, portalRoot);
   };
 
-  useEffect(() => {
-    setDropdownRoot(document.getElementById('dropdown-root'));
-  }, []);
+  // useEffect(() => {
+  //   setDropdownRoot(document.getElementById('dropdown-root'));
+  // }, []);
 
   const generateAcademicSessions = (academicYear) => {
     if (!academicYear) return [];
@@ -141,7 +149,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
   };
 
   useEffect(() => {
-    const initializeFilters = () => {
+    const initializeFilters = async () => {
       const currentYear = getCurrentAcademicYear();
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
@@ -154,6 +162,31 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
       setAcademicYear(currentYear);
       handleFilterChange('academicYear', currentYear);
       handleFilterChange('academicSession', currentSession);
+      
+      // Trigger immediate search with initial filters
+      const baseParams = {
+        academicYear: currentYear.trim(),
+        academicSession: currentSession.trim().toUpperCase(),
+      };
+
+      try {
+        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+          params: baseParams
+        });
+        
+        if (response.data) {
+          // Cache the full response
+          const cacheKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
+          setCachedData(prev => ({ ...prev, [cacheKey]: response.data }));
+          
+          // Apply any existing filters
+          const filteredData = filterData(response.data, filters);
+          onSearch(filteredData);
+        }
+      } catch (error) {
+        console.log('Error loading initial data:', error);
+        showAlert('Error loading initial data', 'error');
+      }
     };
 
     initializeFilters();
@@ -212,66 +245,6 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     }
   };
 
-  const filterData = (data) => {
-    // console.log('Filtering data with criteria:', {
-    //   semester: filters.semester,
-    //   section: filters.section,
-    //   mentorMujid: filters.mentorMujid,
-    //   menteeMujid: filters.menteeMujid,
-    //   mentorEmailid: filters.mentorEmailid
-    // });
-  
-    return data.filter(mentee => {
-      // Fix mentorMujid, menteeMujid, and mentorEmailid filtering
-      const matchesMentorMujid = !filters.mentorMujid || (
-        mentee.mentorMujid && 
-        mentee.mentorMujid.toString().toLowerCase().includes(filters.mentorMujid.toLowerCase())
-      );
-  
-      const matchesMenteeMujid = !filters.menteeMujid || (
-        mentee.MUJid && 
-        mentee.MUJid.toString().toLowerCase().includes(filters.menteeMujid.toLowerCase())
-      );
-  
-      const matchesMentorEmail = !filters.mentorEmailid || (
-        mentee.mentorEmailid && 
-        mentee.mentorEmailid.toString().toLowerCase().includes(filters.mentorEmailid.toLowerCase())
-      );
-  
-      // Other existing matches
-      const matchesSemester = !filters.semester || 
-        mentee.semester === (typeof filters.semester === 'string' ? 
-          parseInt(filters.semester) : filters.semester);
-      
-      const matchesSection = !filters.section || 
-        (mentee.section && mentee.section.toString().toUpperCase() === filters.section.toUpperCase());
-  
-      // Debug log for troubleshooting
-      // if (filters.mentorMujid || filters.menteeMujid || filters.mentorEmailid) {
-      //   console.log('Filter matches for record:', {
-      //     id: mentee.MUJid,
-      //     mentorMujid: matchesMentorMujid,
-      //     menteeMujid: matchesMenteeMujid,
-      //     mentorEmail: matchesMentorEmail,
-      //     actualMentorMujid: mentee.mentorMujid,
-      //     actualMenteeMujid: mentee.MUJid,
-      //     actualMentorEmail: mentee.mentorEmailid,
-      //     searchTerms: {
-      //       mentorMujid: filters.mentorMujid,
-      //       menteeMujid: filters.menteeMujid,
-      //       mentorEmail: filters.mentorEmailid
-      //     }
-      //   });
-      // }
-  
-      return matchesSemester && 
-             matchesSection && 
-             matchesMenteeMujid && 
-             matchesMentorMujid && 
-             matchesMentorEmail;
-    });
-  };
-
   const handleSearch = async () => {
     const baseParams = {
       academicYear: filters.academicYear.trim(),
@@ -279,56 +252,25 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     };
     const cacheKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
   
-    // console.log('Searching with params:', { ...baseParams, ...filters });
-  
-    // Check cache first
     if (cachedData[cacheKey]) {
-      // console.log(`Using cached data for ${cacheKey} - Total records:`, cachedData[cacheKey].length);
-      
-      // Apply filters to cached data
-      const filteredData = filterData(cachedData[cacheKey]);
-      // console.log('Filtered results:', {
-      //   total: cachedData[cacheKey].length,
-      //   filtered: filteredData.length,
-      //   filters: filters
-      // });
-      
+      const filteredData = filterData(cachedData[cacheKey], filters);
       onSearch(filteredData);
       return;
     }
   
-    setIsLoading(prev => ({ ...prev, search: true }));
     try {
       const response = await axios.get('/api/admin/manageUsers/manageMentee', {
         params: baseParams
       });
       
-      // Cache the full response
       setCachedData(prev => ({ ...prev, [cacheKey]: response.data }));
-      
-      // Apply filters to new data
-      const filteredData = filterData(response.data);
+      const filteredData = filterData(response.data, filters);
       onSearch(filteredData);
     } catch (error) {
-      // console.error('Search error:', error);
+      console.log('Search error:', error);
       showAlert('Error searching mentees', 'error');
-    } finally {
-      setIsLoading(prev => ({ ...prev, search: false }));
     }
   };
-
-  // Add new function for client-side filtering
-  // const filterData = (data) => {
-  //   return data.filter(mentee => {
-  //     const matchesSemester = !filters.semester || mentee.semester === parseInt(filters.semester);
-  //     const matchesSection = !filters.section || mentee.section.toUpperCase() === filters.section.toUpperCase();
-  //     const matchesMenteeMujid = !filters.menteeMujid || mentee.MUJid.includes(filters.menteeMujid.toUpperCase());
-  //     const matchesMentorMujid = !filters.mentorMujid || mentee.mentorMujid?.includes(filters.mentorMujid.toUpperCase());
-  //     const matchesMentorEmail = !filters.mentorEmailid || mentee.mentorEmailid?.includes(filters.mentorEmailid);
-
-  //     return matchesSemester && matchesSection && matchesMenteeMujid && matchesMentorMujid && matchesMentorEmail;
-  //   });
-  // };
 
   //  to handle non-base filters
   const handleFilterChange = (name, value) => {
@@ -349,8 +291,7 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
     if (['semester', 'section', 'mentorMujid', 'menteeMujid', 'mentorEmailid'].includes(name)) {
       const cacheKey = `${filters.academicYear}-${filters.academicSession}`;
       if (cachedData[cacheKey]) {
-        // console.log(`Applying ${name} filter with value:`, cleanValue);
-        const filteredData = filterData(cachedData[cacheKey]);
+        const filteredData = filterData(cachedData[cacheKey], filters);
         onSearch(filteredData);
       }
       return;
@@ -781,10 +722,10 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
 
   const buttons = [
     { 
-      label: isLoading.search ? 'Searching...' : 'Search',
+      label: 'Search',
       onClick: () => handleSearch(),
       color: 'primary',
-      disabled: !filters.academicYear || !filters.academicSession || isLoading.search,
+      disabled: !filters.academicYear || !filters.academicSession,
       icon: <SearchIcon />
     },
     { 
@@ -1009,12 +950,6 @@ const FilterSection = ({ filters = {}, onFilterChange, onSearch, onReset, onAddN
             </Button>
           ))}
         </Box>
-
-        {isLoading.search ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
-            <CircularProgress sx={{ color: '#f97316' }} />
-          </Box>
-        ) : null}
       </Box>
 
       <Dialog 

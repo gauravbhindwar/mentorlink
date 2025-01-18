@@ -2,16 +2,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
+import EmailConfirmationDialog from './EmailConfirmationDialog';
 
 const ScheduleMeeting = () => {
   const router = useRouter();
   const sessionData = sessionStorage.getItem('mentorData');
   const mentorData = JSON.parse(sessionData);
   // console.log('Mentor data:', mentorData.MUJid);
-  const [selectedFile, setSelectedFile] = useState(null);
+  // const [selectedFile, setSelectedFile] = useState(null);
   const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
@@ -23,7 +23,6 @@ const ScheduleMeeting = () => {
   const [dateTime, setDateTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [meetingId, setMeetingId] = useState('');
-  const [successPop, setSuccessPop] = useState(false);
   // Add new state variables
   const [academicYear, setAcademicYear] = useState(mentorData?.academicYear || '');
   const [academicSession, setAcademicSession] = useState(mentorData?.academicSession || '');
@@ -37,12 +36,28 @@ const ScheduleMeeting = () => {
   const [formattedTime, setFormattedTime] = useState('');
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
+
   const [semesterSuggestions, setSemesterSuggestions] = useState([]);
   console.log(semesterSuggestions);
   const semesterRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false); // Add this new state
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   const fixedBranch = 'CSE CORE';
+
+  const [preventReload, setPreventReload] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (preventReload) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [preventReload]);
 
   const handleSectionChange = (e) => {
     let value = e.target.value.toUpperCase();
@@ -170,61 +185,46 @@ const ScheduleMeeting = () => {
     // console.log('Current semester:', currentSemester);
   }, [academicSession]);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setSelectedFile(file);
-  };
-  const handleMeetingScheduled = () => {
-    const scheduleMeeting = async () => {
-      setLoading(true);
-      try {
-        // Validate required fields
-        if (!mentorId || !currentSemester || !dateTime) {
-          throw new Error('Please fill all required fields');
-        }
+ 
+  const handleMeetingScheduled = async () => {
+    if (!mentorId || !currentSemester || !dateTime) {
+      setCustomAlert('Please fill all required fields');
+      return;
+    }
 
+    setShowEmailDialog(true);
+  };
+
+  const handleEmailConfirmation = async (emailsSent) => {
+    if (emailsSent) {
+      setLoading(true);
+      setPreventReload(true);
+      try {
         const response = await axios.post('/api/meeting/mentors/schmeeting', {
           mentor_id: mentorId,
           meeting_id: meetingId,
           TopicOfDiscussion: meetingTopic,
           meeting_date: formattedDate,
           meeting_time: formattedTime,
-          // file: selectedFile,
           semester: currentSemester,
           section: selectedSection,
           session: academicSession,
           year: academicYear
         });
 
-        if (response.data) {
-          if (response.status == 200) {
-            // Meeting scheduled successfully
-            setSuccessPop(true);
-            // setTimeout(() => {
-            //   router.push('/pages/mentordashboard');
-            // }, 2000);
-          } else {
-            // Meeting scheduling failed
-            // console.log(response.data)
-            console.log('Meeting scheduling failed:', response.data.error);
-          }
-        } else {
-          // Meeting scheduling failed
-          console.log('Meeting scheduling failed:', response.data.error);
+        if (response.status === 200) {
+          router.push('/pages/mentordashboard');
         }
       } catch (error) {
-        console.error('Error scheduling meeting:', error);
-        setCustomAlert('Failed to schedule meeting')
+        console.log('Error scheduling meeting:', error);
+        setCustomAlert('Failed to schedule meeting');
+      } finally {
+        setLoading(false);
+        setPreventReload(false);
       }
     }
-
-    try {
-      scheduleMeeting();
-    } catch (error) {
-      console.log('Error in handleMeetingScheduled:', error);
-    }
-    setLoading(false);
-  }
+    setShowEmailDialog(false);
+  };
 
   // Add new function to get mentees
   const getMentees = async (mentorId, semester, section) => {
@@ -399,6 +399,28 @@ const ScheduleMeeting = () => {
     return null;
   }
 
+  const getEmailBody = () => `
+Dear Mentees,
+
+A mentor meeting has been scheduled with the following details:
+
+Meeting ID: ${meetingId}
+Date: ${formattedDate}
+Time: ${formattedTime}
+Topic: ${meetingTopic || 'N/A'}
+Branch: ${fixedBranch}
+Semester: ${currentSemester}
+Section: ${selectedSection || 'N/A'}
+
+Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
+
+Best regards,
+${mentorData?.name || 'Your Mentor'}
+${mentorData?.designation || 'Faculty Mentor'}
+Department of Computer Science and Engineering
+Manipal University Jaipur
+Contact: ${mentorData?.email || ''}`;
+
   return (
     <AnimatePresence>
       <motion.div className="min-h-screen h-screen bg-[#0a0a0a] overflow-hidden relative">
@@ -449,7 +471,7 @@ const ScheduleMeeting = () => {
                       placeholder="Enter mentor MUJID"
                       value={mentorId}
                       onChange={handleMentorIdChange}
-                      disabled = {mentorData.MUJid ? true : false}
+                      disabled={mentorData.MUJid ? true : false}
                       className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase ${mentorData.MUJid ? 'opacity-60' : ''}`}
                     />
                   </div>
@@ -667,39 +689,16 @@ const ScheduleMeeting = () => {
                     )
                   }  
                   {
-                    successPop && (
-                      <>
-                        <div
-                        className={`fixed inset-0 bg-black/40 z-110 transition-opacity`}
-                          ></div>
-                        <div className={`fixed inset-0 z-120 flex justify-center items-center`}>
-                          <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
-                            <p>Meeting scheduled successfully</p>
-                            <div className="flex justify-center mt-4 w-[100%]">
-                              <button
-                                onClick={() => {
-                                  setSuccessPop(false);
-                                  router.push('/pages/mentordashboard');
-                                }} //Write Code Gaurav
-                                className="btn-orange"
-                              >
-                                Send Email
-                              </button>
-                            </div>     
-                            </div>
-                          </div>
-                        
-                      </>   
-                    )
-                  }  
-                  {
                     mentees.length > 0 ? (
                       <div className="mt-4">
                         <h3 className="text-lg font-semibold text-white mb-2">Mentees:</h3>
                         <div className="max-h-[150px] overflow-y-auto custom-scrollbar">
                         <ul className="list-disc list-inside text-white space-y-2">
                           {mentees.map((mentee, index) => (
-                            <li key={index} className="bg-black/20 flex border border-white/10 rounded-lg p-2">
+                            <li 
+                              key={mentee.MUJid || mentee.email || `mentee-${index}`} 
+                              className="bg-black/20 flex border border-white/10 rounded-lg p-2"
+                            >
                               <div className="flex items-center space-x-2">
                                 <div>
                                   <p className="text-sm font-medium">{mentee.name}</p>
@@ -721,6 +720,16 @@ const ScheduleMeeting = () => {
           </motion.div>
         </div>
       </motion.div>
+      <EmailConfirmationDialog 
+        isOpen={showEmailDialog}
+        onClose={() => setShowEmailDialog(false)}
+        mentees={mentees}
+        emailData={{ 
+          subject: `Mentor Meeting Scheduled - ${formattedDate}`,
+          body: getEmailBody()
+        }}
+        onConfirm={handleEmailConfirmation}
+      />
     </AnimatePresence>
   );
 };
