@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Typography, 
@@ -16,11 +16,10 @@ import { ThemeProvider } from '@mui/material/styles';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MenteeTable from './MenteeTable';
 import FilterSection from './FilterSection';
-import { Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import BulkUploadPreview from '../common/BulkUploadPreview';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import { theme } from './menteeStyle';
 import AddMenteeDialog from './menteeSubComponents/AddMenteeDialog';
 import EditMenteeDialog from './menteeSubComponents/EditMenteeDialog';
@@ -28,7 +27,43 @@ import AssignMentorDialog from './menteeSubComponents/AssignMentorDialog';
 import BulkUploadDialog from './menteeSubComponents/BulkUploadDialog';
 import { calculateCurrentSemester, getCurrentAcademicYear, generateAcademicSessions } from './utils/academicUtils';
 
+// Move filterData function up before it's used
+const filterData = (data, filters) => {
+  if (!data || !filters) return [];
+  
+  return data.filter(mentee => {
+    const matchesMentorMujid = !filters.mentorMujid || (
+      mentee.mentorMujid && 
+      mentee.mentorMujid.toString().toLowerCase().includes(filters.mentorMujid.toLowerCase())
+    );
+
+    const matchesMenteeMujid = !filters.menteeMujid || (
+      mentee.MUJid && 
+      mentee.MUJid.toString().toLowerCase().includes(filters.menteeMujid.toLowerCase())
+    );
+
+    const matchesMentorEmail = !filters.mentorEmailid || (
+      mentee.mentorEmailid && 
+      mentee.mentorEmailid.toString().toLowerCase().includes(filters.mentorEmailid.toLowerCase())
+    );
+
+    const matchesSemester = !filters.semester || 
+      mentee.semester === (typeof filters.semester === 'string' ? 
+        parseInt(filters.semester) : filters.semester);
+    
+    const matchesSection = !filters.section || 
+      (mentee.section && mentee.section.toString().toUpperCase() === filters.section.toUpperCase());
+
+    return matchesSemester && 
+           matchesSection && 
+           matchesMenteeMujid && 
+           matchesMentorMujid && 
+           matchesMentorEmail;
+  });
+};
+
 const MenteeManagement = () => {
+  const [academicSessions, setAcademicSessions] = useState([]);
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(false); // Set initial loading state to false
   const [mounted, setMounted] = useState(false);
@@ -164,12 +199,17 @@ const MenteeManagement = () => {
 
       // Show errors if any
       if (errors && errors.length > 0) {
-        const errorMessage = errors.map(err => 
-          `${err.mujid}: ${err.error}`
-        ).join('\n');
-        
+        const errorMessages = errors.map(err => {
+          if (err.error) {
+            return `${err.mujid}: ${err.error}`;
+          }
+          return `${err.mujid}: ${err.details}`;
+        });
+
+        const errorMessage = errorMessages.join('\n');
+
         showAlert(
-          `Some records failed to upload:\n${errorMessage}`, 
+          `Some records failed to upload\n${errorMessage}`,
           'warning'
         );
       }
@@ -182,10 +222,21 @@ const MenteeManagement = () => {
         handleSearch([]);
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.error || 
-                      error.response?.data?.details || 
-                      'Error uploading file';
-      showAlert(errorMsg, 'error');
+      const errorMessages = [];
+      if (error.response?.data?.errors) {
+        errorMessages.push(...error.response.data.errors);
+      }
+      if (error.response?.data?.details) {
+        errorMessages.push(error.response.data.details);
+      }
+      if (error.response?.data?.error) {
+        errorMessages.push(error.response.data.error);
+      }
+
+      showAlert(
+        `Error uploading file\n${errorMessages.join('\n')}`,
+        'error'
+      );
     } finally {
       setUploading(false);
     }
@@ -201,26 +252,91 @@ const MenteeManagement = () => {
     setUploading(false);
   };
 
-  const showAlert = (message, severity) => {
+  // Updated showAlert function to handle bulk errors
+  const showAlert = (message, severity, options = {}) => {
+    // Dismiss all existing toasts
+    toast.dismiss();
+    
+    // If message is a bulk error, format it
+    if (typeof message === 'string' && message.includes('Some records failed to upload')) {
+      const errorLines = message.split('\n');
+      const totalErrors = errorLines.length - 1; // Subtract header line
+      
+      // Group duplicate errors
+      const errorGroups = errorLines.slice(1).reduce((acc, line) => {
+        const [mujid, error] = line.split(': ');
+        if (!acc[error]) {
+          acc[error] = { count: 0, mujids: [] };
+        }
+        acc[error].count++;
+        acc[error].mujids.push(mujid);
+        return acc;
+      }, {});
+
+      // Create condensed message
+      const condensedMessage = Object.entries(errorGroups)
+        .map(([error, { count, mujids }]) => {
+          const firstMujid = mujids[0];
+          const lastMujid = mujids[mujids.length - 1];
+          return `${error} (${count} records, ${firstMujid} to ${lastMujid})`;
+        })
+        .join('\n');
+
+      // Show single toast with grouped errors
+      return toast(
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+            Upload Errors ({totalErrors} issues)
+          </div>
+          <div style={{ fontSize: '0.9em', whiteSpace: 'pre-line' }}>
+            {condensedMessage}
+          </div>
+        </div>,
+        {
+          duration: 5000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            maxWidth: '400px',
+            padding: '16px',
+          },
+          id: 'upload-error' // Add unique ID to prevent duplicates
+        }
+      );
+    }
+
+    // Regular toast messages with unique IDs
+    const toastOptions = {
+      duration: 3000,
+      id: `toast-${Date.now()}`, // Add unique ID
+      style: {
+        background: severity === 'error' ? '#fee2e2' : 
+                   severity === 'success' ? '#dcfce7' : 
+                   severity === 'warning' ? '#fff3cd' : '#ffffff',
+        color: '#1a1a1a',
+        border: `1px solid ${
+          severity === 'error' ? '#f87171' : 
+          severity === 'success' ? '#86efac' : 
+          severity === 'warning' ? '#fbbf24' : '#e5e7eb'
+        }`,
+        padding: '16px',
+        borderRadius: '8px',
+        maxWidth: '400px',
+        ...options?.style
+      },
+      ...options
+    };
+
+    // Show only one toast based on severity
     switch (severity) {
       case 'error':
-        toast.error(message);
-        break;
+        return toast.error(message, toastOptions);
       case 'success':
-        toast.success(message);
-        break;
-      case 'info':
+        return toast.success(message, toastOptions);
       case 'warning':
-        toast(message, {
-          icon: severity === 'warning' ? '⚠️' : 'ℹ️',
-          style: {
-            background: severity === 'warning' ? '#fff3cd' : '#cff4fc',
-            color: '#000'
-          }
-        });
-        break;
+        return toast(message, { ...toastOptions, icon: '⚠️' });
       default:
-        toast(message);
+        return toast(message, toastOptions);
     }
   };
 
@@ -372,7 +488,7 @@ const MenteeManagement = () => {
         const parsedData = JSON.parse(storedData);
         setMentees(parsedData);
       } catch (error) {
-        // console.log('Error parsing stored data:', error);
+        console.log('Error parsing stored data:', error);
         sessionStorage.removeItem('menteeData');
       }
     }
@@ -383,45 +499,22 @@ const MenteeManagement = () => {
   }, [showFilters]);
 
   const handleSearch = (data) => {
-    setLoading(true);
-    try {
-      if (Array.isArray(data) && data.length > 0) {
-        setMentees(data);
-        setTableVisible(true); // Show table when we have data
-        // console.log('Updated mentees:', data);
-      } else {
-        setMentees([]);
-        setTableVisible(false); // Hide table when no data
-      }
-    } catch (error) {
-      // console.log('Error handling search:', error);
-      setMentees([]);
-      setTableVisible(false);
-      
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearchAll = async (data) => {
-    setLoading(true);
+    setLoading(true); // Set loading to true when search starts
     try {
       if (Array.isArray(data) && data.length > 0) {
         setMentees(data);
         setTableVisible(true);
-        // console.log('Search All data:', data);
       } else {
         setMentees([]);
         setTableVisible(false);
-        showAlert('No mentees found', 'info');
       }
     } catch (error) {
-      // console.log('Error handling search all:', error);
+      console.log('Error handling search:', error);
       setMentees([]);
       setTableVisible(false);
-      showAlert('Error fetching mentees', error);
+      showAlert('Error searching mentees', 'error');
     } finally {
-      setLoading(false);
+      setLoading(false); // Set loading to false when search completes
     }
   };
 
@@ -547,6 +640,8 @@ const MenteeManagement = () => {
     mentorEmailid
   };
 
+  const cachedData = useRef(new Map());
+
   const handleFilterChange = (name, value) => {
     const setters = {
       academicYear: setAcademicYear,
@@ -560,26 +655,115 @@ const MenteeManagement = () => {
     
     if (typeof setters[name] === 'function') {
       setters[name](value);
-    } else {
-      console.log(`No setter function found for filter: ${name}`);
-
+      
+      // For base filters, trigger immediate data fetch
+      if (['academicYear', 'academicSession'].includes(name)) {
+        const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
+        const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
+        
+        if (updatedYear && updatedSession) {
+          fetchData(updatedYear, updatedSession);
+        }
+      }
+      // For other filters, filter existing data
+      else if (cachedData.current) {
+        const currentKey = `${filterConfig.academicYear}-${filterConfig.academicSession}`;
+        const data = cachedData.current.get(currentKey) || [];
+        const filteredData = filterData(data, { ...filterConfig, [name]: value });
+        setMentees(filteredData);
+      }
     }
+  };
+
+  const fetchData = async (year, session) => {
+    if (!year || !session) return;
+
+    const cacheKey = `${year}-${session}`;
+    setLoading(true);
     
-    setMentees([]); // Clear data when filter options change
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+        params: {
+          academicYear: year,
+          academicSession: session
+        }
+      });
+
+      if (response.status === 200) {
+        const normalizedData = response.data.map(mentee => ({
+          ...mentee,
+          id: mentee._id || mentee.id,
+          MUJid: mentee.MUJid?.toUpperCase() || '',
+          mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+        }));
+        
+        // Update cache
+        cachedData.current.set(cacheKey, normalizedData);
+        
+        // Apply current filters to new data
+        const filteredData = filterData(normalizedData, filterConfig);
+        setMentees(filteredData);
+        setTableVisible(true);
+      }
+    } catch (error) {
+      if (error.response?.status !== 400) {
+        showAlert(error.response?.data?.error || 'Error loading data', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const currentAcadYear = getCurrentAcademicYear();
-    const sessions = generateAcademicSessions(currentAcadYear);
-    setAcademicSessions(sessions);
-    setMenteeDetails(prev => ({
-      ...prev,
-      academicYear: currentAcadYear,
-      academicSession: sessions[0]
-    }));
-  }, []);
+    const initializeComponent = async () => {
+      if (!mounted) return;
 
-  const [academicSessions, setAcademicSessions] = useState([]);
+      const currentAcadYear = getCurrentAcademicYear();
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const [startYear] = currentAcadYear.split('-');
+      
+      const currentSession = currentMonth >= 7 && currentMonth <= 12
+        ? `JULY-DECEMBER ${startYear}`
+        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+
+      setAcademicYear(currentAcadYear);
+      setAcademicSession(currentSession);
+      try {
+        setLoading(true);
+        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+          params: {
+            academicYear: currentAcadYear,
+            academicSession: currentSession
+          }
+        });
+
+        if (response.status === 200) {
+          const normalizedData = response.data.map(mentee => ({
+            ...mentee,
+            id: mentee._id || mentee.id,
+            MUJid: mentee.MUJid?.toUpperCase() || '',
+            mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+          }));
+          
+          // Update cache
+          cachedData.current.set(`${currentAcadYear}-${currentSession}`, normalizedData);
+          
+          // Set mentees and show table
+          setMentees(normalizedData);
+          setTableVisible(true);
+        }
+      } catch (error) {
+        if (error.response?.status !== 400) {
+          showAlert(error.response?.data?.error || 'Error loading data', 'error');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeComponent();
+  }, [mounted]);
 
   const handleDataUpdate = (updateFn) => {
     setMentees(prevMentees => {
@@ -593,63 +777,37 @@ const MenteeManagement = () => {
     });
   };
 
-  // Add this useEffect for initial data loading
+  // Add mounted state setter
   useEffect(() => {
-    const loadInitialData = async () => {
-      const currentAcadYear = getCurrentAcademicYear();
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
-      const [startYear] = currentAcadYear.split('-');
-      
-      const currentSession = currentMonth >= 7 && currentMonth <= 12
-        ? `JULY-DECEMBER ${startYear}`
-        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
-
-      // Set initial filter values without triggering search
-      setAcademicYear(currentAcadYear);
-      setAcademicSession(currentSession);
-
-      // Only perform search once filters are set
-      if (currentAcadYear && currentSession) {
-        try {
-          setLoading(true);
-          const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-            params: {
-              academicYear: currentAcadYear,
-              academicSession: currentSession
-            }
-          });
-
-          if (response.status === 200) {
-            const normalizedData = response.data.map(mentee => ({
-              ...mentee,
-              id: mentee._id || mentee.id,
-              MUJid: mentee.MUJid?.toUpperCase() || '',
-              mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-            }));
-            
-            setMentees(normalizedData);
-            sessionStorage.setItem('menteeData', JSON.stringify(normalizedData));
-            setTableVisible(true);
-          }
-        } catch (error) {
-          // Only show error if it's not the "required fields" error
-          if (error.response?.status !== 400) {
-            showAlert(error.response?.data?.error || 'Error loading initial data', 'error');
-          }
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadInitialData();
+    setMounted(true);
+    return () => setMounted(false);
   }, []);
 
   return (
     <ThemeProvider theme={theme}>
       <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
-        <Toaster position="top-center" containerStyle={{ top: 100 }} />
+        {/* Single Toaster instance with updated configuration */}
+        <Toaster 
+          position="bottom-right"
+          containerStyle={{
+            bottom: 40,
+            right: 20,
+            maxWidth: '100%'
+          }}
+          toastOptions={{
+            className: '',
+            duration: 3000,
+            style: {
+              maxWidth: '400px',
+              background: '#1a1a1a',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              fontSize: '0.875rem',
+              whiteSpace: 'pre-line'
+            },
+          }}
+        />
+
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -718,12 +876,13 @@ const MenteeManagement = () => {
                   filters={filterConfig}
                   onFilterChange={handleFilterChange}
                   onSearch={handleSearch}
-                  onSearchAll={handleSearchAll}
+                  // onSearchAll={handleSearchAll}
                   onAddNew={handleDialogOpen}
                   onReset={handleReset}
                   onBulkUpload={handleBulkUploadOpen}
                   onDelete={handleDelete}
                   mentees={mentees}
+                  filterData={filterData} // Pass filterData as prop
                 />
               </div>
             </motion.div>
@@ -756,7 +915,7 @@ const MenteeManagement = () => {
                   ) : (
                     <div className="flex-1 flex items-center justify-center">
                       <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {tableVisible ? 'No mentees found' : 'Use the filters to search for mentees'}
+                        {tableVisible ? 'No mentees found' : 'Select filters to load data'}
                       </Typography>
                     </div>
                   )}
@@ -833,7 +992,6 @@ const MenteeManagement = () => {
           type="mentee" // Specify the type as mentee
         />
         {/* Toast notifications */}        
-        <Toaster position="top-right" />      
         {editLoading && (
           <Box
             sx={{
@@ -858,6 +1016,4 @@ const MenteeManagement = () => {
     </ThemeProvider>  
   );
 };
-
 export default MenteeManagement;
-
