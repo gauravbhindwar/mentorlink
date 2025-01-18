@@ -8,11 +8,14 @@ import axios from 'axios';
 
 const ScheduleMeeting = () => {
   const router = useRouter();
+  const sessionData = sessionStorage.getItem('mentorData');
+  const mentorData = JSON.parse(sessionData);
+  console.log('Mentor data:', mentorData.MUJid);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
-  const [mentorId, setMentorId] = useState('');
+  const [mentorId, setMentorId] = useState(mentorData?.MUJid || '');
   const [mentees, setMentees] = useState([]);
   const [availableSemesters, setAvailableSemesters] = useState([]);
   // const [meetingNumber, setMeetingNumber] = useState('1');
@@ -22,8 +25,8 @@ const ScheduleMeeting = () => {
   const [meetingId, setMeetingId] = useState('');
   const [successPop, setSuccessPop] = useState(false);
   // Add new state variables
-  const [academicYear, setAcademicYear] = useState('');
-  const [academicSession, setAcademicSession] = useState('');
+  const [academicYear, setAcademicYear] = useState(mentorData?.academicYear || '');
+  const [academicSession, setAcademicSession] = useState(mentorData?.academicSession || '');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [showSemesterOptions, setShowSemesterOptions] = useState(false);
   const [ setSessionSuggestions] = useState([]);
@@ -129,7 +132,7 @@ const ScheduleMeeting = () => {
     };
 
     try {
-      if (mentorId && currentSemester && selectedSection && academicSession && academicYear) {
+      if (mentorId && currentSemester && academicSession && academicYear) {
         generateMeetingId();
         getMentees(mentorId, currentSemester, selectedSection);
       }
@@ -175,7 +178,7 @@ const ScheduleMeeting = () => {
       setLoading(true);
       try {
         // Validate required fields
-        if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
+        if (!mentorId || !currentSemester || !dateTime) {
           throw new Error('Please fill all required fields');
         }
 
@@ -196,9 +199,9 @@ const ScheduleMeeting = () => {
           if (response.status == 200) {
             // Meeting scheduled successfully
             setSuccessPop(true);
-            setTimeout(() => {
-              router.push('/pages/mentordashboard');
-            }, 2000);
+            // setTimeout(() => {
+            //   router.push('/pages/mentordashboard');
+            // }, 2000);
           } else {
             // Meeting scheduling failed
             // console.log(response.data)
@@ -209,7 +212,7 @@ const ScheduleMeeting = () => {
           console.log('Meeting scheduling failed:', response.data.error);
         }
       } catch (error) {
-        console.log('Error scheduling meeting:', error);
+        console.error('Error scheduling meeting:', error);
         setCustomAlert('Failed to schedule meeting')
       }
     }
@@ -226,7 +229,7 @@ const ScheduleMeeting = () => {
   const getMentees = async (mentorId, semester, section) => {
     setIsLoading(true); // Start loading
     try {
-      const response = await fetch(`/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}`);
+      const response = await fetch(`/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}&year=${academicYear}&session=${academicSession}`);
       if (!response.ok){
         console.log('Failed to fetch mentees');
         setDisabled(true);
@@ -670,7 +673,15 @@ const ScheduleMeeting = () => {
                           <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
                             <p>Meeting scheduled successfully</p>
                             <div className="flex justify-center mt-4 w-[100%]">
-                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500">
+                              <button
+                                onClick={() => {
+                                  setSuccessPop(false);
+                                  router.push('/pages/mentordashboard');
+                                }} //Write Code Gaurav
+                                className="btn-orange"
+                              >
+                                Send Email
+                              </button>
                             </div>     
                             </div>
                           </div>
@@ -682,6 +693,7 @@ const ScheduleMeeting = () => {
                     mentees.length > 0 ? (
                       <div className="mt-4">
                         <h3 className="text-lg font-semibold text-white mb-2">Mentees:</h3>
+                        <div className="max-h-[150px] overflow-y-auto custom-scrollbar">
                         <ul className="list-disc list-inside text-white space-y-2">
                           {mentees.map((mentee, index) => (
                             <li key={index} className="bg-black/20 flex border border-white/10 rounded-lg p-2">
@@ -694,6 +706,7 @@ const ScheduleMeeting = () => {
                             </li>
                           ))}
                         </ul>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-md text-red-600 font-semibold w-[100%] flex justify-center mt-4">No mentees found</p>
@@ -704,20 +717,6 @@ const ScheduleMeeting = () => {
             </div>
           </motion.div>
         </div>
-        {
-  successPop && (
-    <>
-      <div
-        className={`fixed inset-0 bg-black bg-opacity-50 w-[100vw] h-screen z-50 transition-opacity`}
-      ></div>
-      <div className={`fixed inset-0 z-60 flex justify-center items-center`}>
-        <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
-          {/* Add your success message content here */}
-        </div>
-      </div>
-    </>
-  )
-}
       </motion.div>
     </AnimatePresence>
   );
