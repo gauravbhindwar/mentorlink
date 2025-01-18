@@ -104,16 +104,19 @@ const MeetingReportGenerator = () => {
   const fetchMeetingsWithData = async (data) => {
     if (!data || !data.academicYear || !data.academicSession || 
         !data.semester || !data.mentorMUJid) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
     try {
+      // Get the year from the session
+      const sessionYear = data.academicSession.split(' ').pop();
+      
       const response = await axios.get('/api/meetings/mentor', {
         params: {
-          year: data.academicYear.split('-')[0],
-          session: data.academicSession,
+          year: sessionYear,
+          session: data.academicSession.trim(),
           semester: data.semester,
           section: data.section,
           mentorMUJid: data.mentorMUJid,
@@ -121,85 +124,67 @@ const MeetingReportGenerator = () => {
         }
       });
 
-      const transformedMeetings = Array.isArray(response.data) ? response.data.map(meeting => ({
-        ...meeting,
-        meeting_date: meeting.meeting_date || meeting.created_at,
-        meeting_time: meeting.meeting_time || new Date(meeting.created_at).toLocaleTimeString(),
-        mentor_id: meeting.mentorMUJid || data.mentorMUJid,
-        meeting_notes: {
-          TopicOfDiscussion: meeting.meeting_notes?.TopicOfDiscussion || 'N/A',
-          TypeOfInformation: meeting.meeting_notes?.TypeOfInformation || 'N/A',
-          NotesToStudent: meeting.meeting_notes?.NotesToStudent || 'N/A',
-          issuesRaisedByMentee: meeting.meeting_notes?.issuesRaisedByMentee || 'N/A',
-          outcome: meeting.meeting_notes?.outcome || 'N/A',
-          closureRemarks: meeting.meeting_notes?.closureRemarks || 'N/A'
-        },
-        mentee_ids: meeting.mentee_ids || [],
-        mentee_details: meeting.mentee_details || []
-      })) : [];
+      if (response.data && Array.isArray(response.data)) {
+        const transformedMeetings = response.data.map(meeting => ({
+          ...meeting,
+          meeting_date: meeting.meeting_date || meeting.created_at,
+          meeting_time: meeting.meeting_time || new Date(meeting.created_at).toLocaleTimeString(),
+          mentor_id: meeting.mentorMUJid || data.mentorMUJid
+        }));
 
-      setMeetings(transformedMeetings);
-
-      // Store the updated data
-      const newData = {
-        meetings: transformedMeetings,
-        ...data
-      };
-      sessionStorage.setItem('mentorMeetingsData', JSON.stringify(newData));
+        setMeetings(transformedMeetings);
+        
+        // Store the data
+        const completeData = {
+          meetings: transformedMeetings,
+          ...data
+        };
+        sessionStorage.setItem('mentorMeetingsData', JSON.stringify(completeData));
+      } else {
+        setMeetings([]);
+        toast.error('No meetings found');
+      }
 
     } catch (error) {
       console.error('Error fetching meetings:', error);
-      alert(error.response?.data?.message || 'Failed to fetch meetings');
+      toast.error(error.response?.data?.error || 'Failed to fetch meetings');
+      setMeetings([]);
     } finally {
       setLoading(false);
     }
-  };
+};
 
   useEffect(() => {
-    // Get data from URL params first
-    const urlParams = new URLSearchParams(window.location.search);
-    const encodedData = urlParams.get('data');
-    const mentorId = urlParams.get('mentorMUJid');
-
-    if (encodedData) {
-      try {
-        const decodedData = JSON.parse(decodeURIComponent(encodedData));
-        setReportData(decodedData);
-        setInitialStates(decodedData, mentorId);
+    try {
+      const reportData = sessionStorage.getItem('reportData');
+      if (reportData) {
+        const parsedData = JSON.parse(reportData);
         
-        // Store in sessionStorage
-        sessionStorage.setItem('mentorMeetingsData', JSON.stringify(decodedData));
-        if (mentorId) {
-          sessionStorage.setItem('mentorMUJid', mentorId);
+        // Set states from parsed data
+        setAcademicYear(parsedData.academicYear || '');
+        setAcademicSession(parsedData.academicSession || '');
+        setSemester(parsedData.semester || '');
+        setSection(parsedData.section || '');
+        
+        // Handle mentor data
+        if (parsedData.meetings?.[0]) {
+          setMentorName(parsedData.meetings[0].mentorName || '');
+          setMentorMUJid(parsedData.meetings[0].MUJid || '');
+          
+          // Automatically fetch meetings with complete data
+          fetchMeetingsWithData({
+            academicYear: parsedData.academicYear,
+            academicSession: parsedData.academicSession,
+            semester: parsedData.semester,
+            section: parsedData.section,
+            mentorMUJid: parsedData.meetings[0].MUJid
+          });
         }
-      } catch (error) {
-        console.error('Error parsing URL data:', error);
       }
-    } else {
-      // Try to get from sessionStorage if URL params aren't available
-      const storedData = sessionStorage.getItem('mentorMeeting');
-      const storedMentorId = sessionStorage.getItem('mentorMUJid');
-      if (storedData) {
-        try {
-          const parsedData = JSON.parse(storedData);
-          setReportData(parsedData);
-          setInitialStates(parsedData, storedMentorId);
-        } catch (error) {
-          console.error('Error parsing stored data:', error);
-        }
-      }
+    } catch (error) {
+      console.error('Error loading stored data:', error);
     }
   }, []);
-
-  // Helper function to set initial states
-  const setInitialStates = (data, mentorId) => {
-    setAcademicYear(data.academicYear);
-    setAcademicSession(data.academicSession);
-    setSemester(data.semester);
-    setSection(data.section);
-    setMentorMUJid(mentorId || data.mentorMUJid);
-    setMeetings(data.meetings);
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -389,25 +374,18 @@ const MeetingReportGenerator = () => {
   };
 
   const handleMOMButtonClick = async (meeting) => {
-    // Set initial meeting data for smooth transition
-    setSelectedMeeting({
-      ...meeting,
-      mentee_details: meeting.mentee_details || [] // Ensure we have an empty array if no details yet
-    });
-    setIsMOMDetailDialogOpen(true);
-    
     try {
+      setSelectedMeeting(meeting);
+      setIsMOMDetailDialogOpen(true);
+      
       const meetingWithDetails = await fetchMenteeDetails(meeting);
       if (meetingWithDetails) {
         setSelectedMeeting(meetingWithDetails);
         sessionStorage.setItem('selectedMeeting', JSON.stringify(meetingWithDetails));
-        const storedMentorMeetings = sessionStorage.getItem('mentorMeetings');
-        const mentorMeetings = storedMentorMeetings ? JSON.parse(storedMentorMeetings) : [];
-        const mentor = mentorMeetings.find(m => m.MUJid === mentorMUJid);
-        setMentorName(mentor ? mentor.mentorName : ''); // Set mentor name in state
       }
     } catch (error) {
-      console.error('Error fetching meeting details:', error);
+      console.error('Error handling MOM button click:', error);
+      toast.error('Failed to load meeting details');
     }
   };
 

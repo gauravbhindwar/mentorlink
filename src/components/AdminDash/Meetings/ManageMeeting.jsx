@@ -65,31 +65,33 @@ const ManageMeeting = () => {
 
   const fetchMentorMeetings = async () => {
     setLoading(true);
-    if (!academicYear || !academicSession) {
-      toast.error('Please select an academic year and session.');
+    if (!academicYear || !academicSession || !semester) {
+      toast.error('Please select all required fields.');
       setLoading(false);
       return;
     }
+
     try {
+      // Get the correct year based on session type
+      const isJulyDecember = academicSession.includes('JULY-DECEMBER');
+      const [startYear] = academicYear.split('-');
+      const queryYear = isJulyDecember ? startYear : parseInt(startYear) + 1;
+
       const params = {
-        year: academicYear.split('-')[0],
-        session: academicSession
+        year: queryYear,
+        session: academicSession,
+        semester,
+        ...(section && { section })
       };
       
-      if (semester) params.semester = semester;
-      if (section) params.section = section;
-
-      const response = await axios.get(`/api/admin/manageMeeting`, { params });
+      const response = await axios.get('/api/admin/manageMeeting', { params });
       
-      if (response.status === 404) {
-        toast.error(response.data.message);
-        setMentorMeetings([]);
-        return;
+      if (response.data) {
+        setMentorMeetings(response.data);
+        sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data));
       }
-
-      setMentorMeetings(response.data);
-      sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data));
     } catch (error) {
+      console.error('Error:', error.response?.data || error);
       toast.error(error.response?.data?.message || 'Failed to fetch mentor meetings');
       setMentorMeetings([]);
     } finally {
