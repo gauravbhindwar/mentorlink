@@ -209,7 +209,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           onDataUpdate(processedData);
         }
       } catch (error) {
-        // console.log('Error fetching initial data:', error);
+        console.log('Error fetching initial data:', error);
         toast.error('Error fetching initial data. Please try again later.');
       }
     };
@@ -247,11 +247,11 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
   };
 
   // Add this function to properly handle semester comparison
-  const compareSemester = (menteeSemester, filterSemester) => {
-    const menteeNum = parseInt(menteeSemester);
-    const filterNum = parseInt(filterSemester);
-    return !filterSemester || (!isNaN(menteeNum) && !isNaN(filterNum) && menteeNum === filterNum);
-  };
+  // const compareSemester = (menteeSemester, filterSemester) => {
+  //   const menteeNum = parseInt(menteeSemester);
+  //   const filterNum = parseInt(filterSemester);
+  //   return !filterSemester || (!isNaN(menteeNum) && !isNaN(filterNum) && menteeNum === filterNum);
+  // };
 
   // Add new function to get data from cache or fetch
   const getDataFromCacheOrFetch = async (academicYear, academicSession) => {
@@ -275,7 +275,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
       setBaseData(data);
       return data;
     } catch (error) {
-      // console.error("Error fetching data:", error);
+      console.log("Error fetching data:", error);
       return [];
     }
   };

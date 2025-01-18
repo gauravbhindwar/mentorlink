@@ -60,6 +60,7 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
           setMeetingStats(stats);
         } catch (error) {
           console.error('Error fetching meeting stats:', error);
+          console.log("Meeting stats not found",meetingStats);
           setMeetingStats({ total: 0, completed: 0, pending: 0 });
         }
       }

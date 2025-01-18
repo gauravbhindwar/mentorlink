@@ -147,7 +147,7 @@ academicSessionsSchema.methods.getMeetingWithMenteeDetails = async function (
       { $unwind: "$sessions.semesters.sections.meetings" },
       {
         $match: {
-          "sessions.semesters.sections.meetings.mentor_id": mentorId,
+          "sessions.semesters.sections.meetings.mentorMUJid": mentorId,
           "sessions.semesters.sections.meetings.meeting_id": meetingId,
         },
       },
