@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiCheck } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
 
