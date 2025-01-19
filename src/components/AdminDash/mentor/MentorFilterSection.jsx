@@ -129,6 +129,7 @@ const MentorFilterSection = ({
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [emailSearch, setEmailSearch] = useState('');
+  const [filters, setFilters] = useState({});
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -183,23 +184,121 @@ const MentorFilterSection = ({
   }, []);
 
   const handleSearch = () => {
-    // Check if required fields are filled
     if (!academicYear || !academicSession) {
       toast.error('Academic Year and Academic Session are required');
       return;
     }
-
-    // Call onSearch with just the required parameters
-    onSearch({ 
-      academicYear, 
-      academicSession
-    });
+  
+    // Parse the session to determine the correct academic year
+    const [sessionType, year] = academicSession.split(' ');
+    const calculatedAcademicYear = sessionType === 'JULY-DECEMBER'
+      ? `${year}-${parseInt(year) + 1}`
+      : `${parseInt(year) - 1}-${year}`;
+  
+    const currentFilters = {
+      academicYear: calculatedAcademicYear,
+      academicSession,
+      mentorEmailid: emailSearch || ''
+    };
+  
+    // Update filters state
+    setFilters(currentFilters);
+    
+    // Pass filters to parent components
+    if (onFilterChange) {
+      onFilterChange(currentFilters);
+    }
+    
+    // Call search with filters
+    onSearch(currentFilters);
   };
+  
+  useEffect(() => {
+    // Set initial values
+    const currentAcadYear = getCurrentAcademicYear();
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const [startYear] = currentAcadYear.split('-');
+    
+    const currentSession = currentMonth >= 7 && currentMonth <= 12
+      ? `JULY-DECEMBER ${startYear}`
+      : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+  
+    setAcademicYear(currentAcadYear);
+    setAcademicSession(currentSession);
+    setAcademicSessions(generateAcademicSessions(currentAcadYear));
+  }, []);
+  
+  // Add effect to handle academic year calculation based on session
+  useEffect(() => {
+    if (academicSession) {
+      const [sessionType, year] = academicSession.split(' ');
+      const calculatedAcademicYear = sessionType === 'JULY-DECEMBER'
+        ? `${year}-${parseInt(year) + 1}`
+        : `${parseInt(year) - 1}-${year}`;
+      
+      setAcademicYear(calculatedAcademicYear);
+    }
+  }, [academicSession]);
+  
+  const handleAcademicYearInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    // Auto-format while typing
+    if (value.length === 4 && !value.includes('-')) {
+      value = `${value}-${parseInt(value) + 1}`;
+    }
+    
+    // Update suggestions
+    if (value.length > 0) {
+      setYearSuggestions(generateYearSuggestions(value));
+      setShowYearOptions(true);
+    } else {
+      setYearSuggestions([]);
+      setShowYearOptions(false);
+    }
+  
+    setAcademicYear(value);
+    if (validateAcademicYear(value)) {
+      const sessions = generateAcademicSessions(value);
+      setAcademicSessions(sessions);
+      setAcademicSession(sessions[0]); // Set first session by default
+    }
+  };
+  
+  const handleAcademicSessionInput = (e) => {
+    let value = e.target.value.toUpperCase();
+    
+    // Auto-format while typing
+    if (value.startsWith('JUL')) {
+      value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
+    } else if (value.startsWith('JAN')) {
+      value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
+    }
+    
+    // Update suggestions
+    if (value.length > 0) {
+      setSessionSuggestions(generateSessionSuggestions(value));
+      setShowSessionOptions(true);
+    } else {
+      setSessionSuggestions([]);
+      setShowSessionOptions(false);
+    }
+    
+    setAcademicSession(value);
+  };
+  
 
   const handleReset = () => {
     setAcademicYear('');
     setAcademicSession('');
     setEmailSearch('');
+    setFilters(prev => ({
+      ...prev,
+      mentorEmailid: '',
+      academicYear: '',
+      academicSession: ''
+    }));
   };
 
 
@@ -360,51 +459,6 @@ const MentorFilterSection = ({
   };
 
 
-  const handleAcademicYearInput = (e) => {
-    let value = e.target.value.toUpperCase();
-    
-    // Auto-format while typing
-    if (value.length === 4 && !value.includes('-')) {
-      value = `${value}-${parseInt(value) + 1}`;
-    }
-    
-    // Update suggestions
-    if (value.length > 0) {
-      setYearSuggestions(generateYearSuggestions(value));
-      setShowYearOptions(true);
-    } else {
-      setYearSuggestions([]);
-      setShowYearOptions(false);
-    }
-
-    setAcademicYear(value);
-    if (validateAcademicYear(value)) {
-      setAcademicSessions(generateAcademicSessions(value));
-    }
-  };
-
-  const handleAcademicSessionInput = (e) => {
-    let value = e.target.value.toUpperCase();
-    
-    // Auto-format while typing
-    if (value.startsWith('JUL')) {
-      value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
-    } else if (value.startsWith('JAN')) {
-      value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
-    }
-    
-    // Update suggestions
-    if (value.length > 0) {
-      setSessionSuggestions(generateSessionSuggestions(value));
-      setShowSessionOptions(true);
-    } else {
-      setSessionSuggestions([]);
-      setShowSessionOptions(false);
-    }
-    
-    setAcademicSession(value);
-  };
-
   const showAlert = (message, type = 'info') => {
     console.warn(`${type}: ${message}`);
     // You can replace this with your preferred alert system
@@ -481,7 +535,18 @@ const MentorFilterSection = ({
 
   const handleEmailSearch = (value) => {
     setEmailSearch(value);
-    onFilterChange('email', value); // Use the prop here
+    // Update the filters state
+    setFilters(prev => ({
+      ...prev,
+      mentorEmailid: value
+    }));
+    
+    if (onFilterChange) {
+      onFilterChange({
+        ...filters,
+        mentorEmailid: value
+      });
+    }
   };
 
   return (

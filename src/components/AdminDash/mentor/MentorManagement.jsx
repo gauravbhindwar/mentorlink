@@ -1,39 +1,35 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect} from "react";
 import {
-  Box,
+  // Box,
   Typography,
-  Button,
+  // Button,
   useMediaQuery,
   IconButton,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  MenuItem,
   CircularProgress,
-  Grid,
-  Checkbox, // Add this import
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import CloseIcon from "@mui/icons-material/Close";
-import MentorTable from "./MentorTable";
-import FilterSection from "./MentorFilterSection";
-import { Toaster,toast } from "react-hot-toast";
+// import CloseIcon from "@mui/icons-material/Close";
+import FilterListIcon from '@mui/icons-material/FilterList';
+import { Toaster, toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
-// import BulkUploadPreview from "../common/BulkUploadPreview";
-import FilterListIcon from '@mui/icons-material/FilterList';
-import { dialogStyles, toastStyles } from './mentorStyle';
+import MentorTable from "./MentorTable";
+import FilterSection from "./MentorFilterSection";
+import AddMentorDialog from "./mentorSubComponents/AddMentorDialog";
+import EditMentorDialog from "./mentorSubComponents/EditMentorDialog";
+import DuplicateMentorDialog from "./mentorSubComponents/DuplicateMentorDialog";
+import RoleDeletionDialog from "./mentorSubComponents/RoleDeletionDialog";
+import { toastStyles } from './mentorStyle';
 import { 
-  getCurrentAcademicYear, 
-  generateAcademicSessions, 
-  validateAcademicYear,
-  generateYearSuggestions 
+  determineAcademicPeriod,
+  generateAcademicSessions,
+  getCurrentAcademicYear 
 } from './utils/academicUtils';
 
 const MentorManagement = () => {
+  // Add mounted state near the top with other state declarations
+  const [mounted, setMounted] = useState(false);
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -49,8 +45,18 @@ const MentorManagement = () => {
     academicYear: "",
     academicSession: "",
   });
+  const [searchingMentor, setSearchingMentor] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
-  const [selectedMentor, setSelectedMentor] = useState(null);
+  const [selectedMentor, setSelectedMentor] = useState({
+    name: "",
+    email: "",
+    MUJid: "",
+    phone_number: "",
+    role: ["mentor"],
+    isActive: true,
+    academicYear: "",
+    academicSession: "",
+  });
   const [tableVisible, setTableVisible] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
@@ -60,8 +66,6 @@ const MentorManagement = () => {
   const [existingMentorData, setExistingMentorData] = useState({});
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
-  const [yearSuggestions, setYearSuggestions] = useState([]);
-  const [showYearOptions, setShowYearOptions] = useState(false);
   const [deleteRoleDialog, setDeleteRoleDialog] = useState({ open: false, mentor: null });
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [currentFilters, setCurrentFilters] = useState({
@@ -69,8 +73,7 @@ const MentorManagement = () => {
     academicSession: '',
     MUJid: ''
   });
- 
-  const yearRef = useRef(null);
+
 
   const theme = createTheme({
     palette: {
@@ -84,49 +87,6 @@ const MentorManagement = () => {
   });
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
-
-  // const [uploading, setUploading] = useState(false);
-
-  // Comment out this useEffect since previewData is no longer available
-  /*
-  useEffect(() => {
-    console.log("Preview Data:", previewData);
-  }, [previewData]);
-  */
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (yearRef.current && !yearRef.current.contains(event.target)) {
-        setShowYearOptions(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // const handleConfirmUpload = async () => {
-  //   setUploading(true);
-  //   try {
-  //     const response = await axios.post("/api/admin/manageUsers/bulkUpload", {
-  //       data: previewData.data,
-  //       type: "mentor",
-  //     });
-
-  //     if (response.data && response.status === 201) {
-  //       showAlert("Mentors uploaded successfully!", "success");
-  //       setShowPreview(false);
-  //       handleBulkUploadClose();
-  //       await fetchMentors(); 
-  //     }
-  //   } catch (error) {
-  //     const errorMessage =
-  //       error.response?.data?.error || "Error uploading mentors";
-  //     showAlert(errorMessage, "error");
-  //   } finally {
-  //     setUploading(false);
-  //   }
-  // };
 
   const validateForm = () => {
     const errors = [];
@@ -205,51 +165,20 @@ const MentorManagement = () => {
       gender: "",
       profile_picture: "",
       role: ["mentor"],
-      academicYear: getCurrentAcademicYear(),
-      academicSession: generateAcademicSessions(getCurrentAcademicYear())[0],
+      academicYear: "", // Will be set by dialog when opened
+      academicSession: "", // Will be set by dialog when opened
     });
   };
 
 
-const handleEditMentor = async () => {
+const handleEditMentor = async (updatedMentor) => {
   try {
-    const { ...updateData } = selectedMentor;
-    const hasAdminRole = updateData.role.some(role => ['admin', 'superadmin'].includes(role));
-
-    // First update the mentor record
-    const response = await axios.patch(
-      `/api/admin/manageUsers/manageMentor/${updateData.MUJid}`,
-      updateData
-    );
-
-    if (hasAdminRole) {
-      // Create/update admin record if admin role is present
-      try {
-        await axios.post('/api/admin/manageUsers/manageAdmin', {
-          ...updateData,
-          role: updateData.role.filter(role => ['admin', 'superadmin'].includes(role))
-        });
-      } catch (adminError) {
-        // If admin already exists, update instead
-        if (adminError.response?.status === 400) {
-          await axios.patch(`/api/admin/manageUsers/manageAdmin/${updateData.MUJid}`, {
-            ...updateData,
-            role: updateData.role.filter(role => ['admin', 'superadmin'].includes(role))
-          });
-        }
-      }
-    }
-
-    if (response.data) {
-      toast.success("Mentor updated successfully", {
-        style: toastStyles.success.style,
-        iconTheme: toastStyles.success.iconTheme,
-      });
-      setEditDialog(false);
-      await fetchMentors(currentFilters);
-    }
+    setMentors(prev => prev.map(mentor => 
+      mentor.MUJid === updatedMentor.MUJid ? updatedMentor : mentor
+    ));
+    await fetchMentors(currentFilters);
   } catch (error) {
-    toast.error(error.response?.data?.error || "Error updating mentor", {
+    toast.error(error.response?.data?.error || "Error updating mentor list", {
       style: toastStyles.error.style,
       iconTheme: toastStyles.error.iconTheme,
     });
@@ -311,37 +240,37 @@ const handleEditMentor = async () => {
     }));
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  // const handleInputChange = (e) => {
+  //   const { name, value } = e.target;
     
-    if (name === "MUJid") {
-      // Only update if the value is valid
-      const formattedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      if (formattedValue !== value) {
-        e.preventDefault();
-        return;
-      }
-      setMentorDetails(prev => ({
-        ...prev,
-        [name]: formattedValue,
-      }));
-      return;
-    }
+  //   if (name === "MUJid") {
+  //     // Only update if the value is valid
+  //     const formattedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  //     if (formattedValue !== value) {
+  //       e.preventDefault();
+  //       return;
+  //     }
+  //     setMentorDetails(prev => ({
+  //       ...prev,
+  //       [name]: formattedValue,
+  //     }));
+  //     return;
+  //   }
   
-    // Handle other inputs normally
-    setMentorDetails(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  //   // Handle other inputs normally
+  //   setMentorDetails(prev => ({
+  //     ...prev,
+  //     [name]: value,
+  //   }));
+  // };
 
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setSelectedMentor((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  // const handleEditInputChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setSelectedMentor((prev) => ({
+  //     ...prev,
+  //     [name]: value,
+  //   }));
+  // };
 
   const showAlert = (message, severity) => {
     const toastConfig = {
@@ -357,71 +286,78 @@ const handleEditMentor = async () => {
   };
 
   // Add these new helper functions
-  const handleAcademicYearInput = (e) => {
-    const value = e?.target?.value || '';
-    const upperValue = value.toUpperCase();
+  // const handleAcademicYearInput = (e) => {
+  //   const value = e?.target?.value || '';
+  //   const upperValue = value.toUpperCase();
   
-    // Don't update state during render, use useEffect instead
-    setMentorDetails(prev => {
-      const updates = {
-        ...prev,
-        academicYear: upperValue,
-      };
+  //   // Don't update state during render, use useEffect instead
+  //   setMentorDetails(prev => {
+  //     const updates = {
+  //       ...prev,
+  //       academicYear: upperValue,
+  //     };
   
-      // Only update academicSession if we have a valid year
-      if (validateAcademicYear(upperValue)) {
-        const sessions = generateAcademicSessions(upperValue);
-        updates.academicSession = sessions[0];
-      } else if (!upperValue) {
-        // Clear session if year is empty
-        updates.academicSession = '';
-      }
+  //     // Only update academicSession if we have a valid year
+  //     if (validateAcademicYear(upperValue)) {
+  //       const sessions = generateAcademicSessions(upperValue);
+  //       updates.academicSession = sessions[0];
+  //     } else if (!upperValue) {
+  //       // Clear session if year is empty
+  //       updates.academicSession = '';
+  //     }
   
-      return updates;
-    });
+  //     return updates;
+  //   });
   
-    // Update suggestions outside of render
-    setTimeout(() => {
-      if (upperValue) {
-        const suggestions = generateYearSuggestions(upperValue);
-        setYearSuggestions(suggestions);
-        setShowYearOptions(suggestions.length > 0);
-      } else {
-        setYearSuggestions([]);
-        setShowYearOptions(false);
-      }
-    }, 0);
-  };
+  //   // Update suggestions outside of render
+  //   setTimeout(() => {
+  //     if (upperValue) {
+  //       const suggestions = generateYearSuggestions(upperValue);
+  //       setYearSuggestions(suggestions);
+  //       setShowYearOptions(suggestions.length > 0);
+  //     } else {
+  //       setYearSuggestions([]);
+  //       setShowYearOptions(false);
+  //     }
+  //   }, 0);
+  // };
   
 
     const fetchMentors = async ({ academicYear = '', academicSession = '' } = {}) => {
+    if (!academicYear || !academicSession) {
+      return;
+    }
+  
     setLoading(true);
     try {
-      // Store current filters but only with academicYear and academicSession
+      // Store current filters
       setCurrentFilters({ 
         academicYear, 
-        academicSession, 
-        email: '' // Initialize email as empty string
+        academicSession
       });
-
-      // Build query parameters
+  
       const params = new URLSearchParams();
-      if (academicYear) params.append('academicYear', academicYear);
-      if (academicSession) params.append('academicSession', academicSession);
-
+      params.append('academicYear', academicYear);
+      params.append('academicSession', academicSession);
+  
       const response = await axios.get(`/api/admin/manageUsers/manageMentor?${params}`);
+      
       if (response.data && response.data.mentors) {
         setMentors(response.data.mentors);
         setTableVisible(true);
       }
     } catch (error) {
-      showAlert(error.response?.data?.error || "Error fetching mentors", "error");
+      toast.error(error.response?.data?.error || "Error fetching mentors", {
+        style: toastStyles.error.style,
+        iconTheme: toastStyles.error.iconTheme,
+      });
       setMentors([]);
       setTableVisible(false);
     } finally {
       setLoading(false);
     }
   };
+  
 
   // Add this new function to handle patch update
   const handlePatchUpdate = async () => {
@@ -461,6 +397,7 @@ const handleEditMentor = async () => {
     setSelectedMentor({
       ...mentorData,
       role: Array.isArray(mentorData.role) ? mentorData.role : [mentorData.role],
+      isActive: mentorData.isActive ?? true, // Add this line
       academicYear: mentorData.academicYear || getCurrentAcademicYear(),
       academicSession: mentorData.academicSession || generateAcademicSessions(getCurrentAcademicYear())[0],
     });
@@ -500,49 +437,171 @@ const handleEditMentor = async () => {
   //   }
   // };
 
-  useEffect(() => {
-    let mounted = true;
+  // useEffect(() => {
+  //   let mounted = true;
   
-    const handleYearChange = (value) => {
-      if (!mounted) return;
+  //   const handleYearChange = (value) => {
+  //     if (!mounted) return;
       
-      if (value) {
-        const suggestions = generateYearSuggestions(value);
-        setYearSuggestions(suggestions);
-        setShowYearOptions(suggestions.length > 0);
-      } else {
-        setYearSuggestions([]);
-        setShowYearOptions(false);
+  //     if (value) {
+  //       const suggestions = generateYearSuggestions(value);
+  //       setYearSuggestions(suggestions);
+  //       // setShowYearOptions(suggestions.length > 0);
+  //     } else {
+  //       setYearSuggestions([]);
+  //       // setShowYearOptions(false);
+  //     }
+  //   };
+  
+  //   // If mentorDetails.academicYear changes, update suggestions
+  //   handleYearChange(mentorDetails.academicYear);
+  
+  //   return () => {
+  //     mounted = false;
+  //   };
+  // }, [mentorDetails.academicYear]);
+  
+
+  // Add this useEffect near other useEffect hooks
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Update the initialization useEffect to check for mounted
+  useEffect(() => {
+    const initializeComponent = async () => {
+      if (!mounted) return;
+  
+      const { academicYear: currentYear, academicSession: currentSession } = determineAcademicPeriod();
+  
+      setAcademicYear(currentYear);
+      setAcademicSession(currentSession);
+      
+      // Initialize mentor details with current academic period
+      setMentorDetails(prev => ({
+        ...prev,
+        academicYear: currentYear,
+        academicSession: currentSession
+      }));
+      
+      try {
+        setLoading(true);
+        const response = await axios.get('/api/admin/manageUsers/manageMentor', {
+          params: {
+            academicYear: currentYear,
+            academicSession: currentSession
+          }
+        });
+  
+        if (response.data && response.data.mentors) {
+          setMentors(response.data.mentors);
+          setTableVisible(true);
+        }
+      } catch (error) {
+        if (error.response?.status !== 400) {
+          toast.error(error.response?.data?.error || 'Error loading data', {
+            style: toastStyles.error.style,
+            iconTheme: toastStyles.error.iconTheme,
+          });
+        }
+      } finally {
+        setLoading(false);
       }
     };
   
-    // If mentorDetails.academicYear changes, update suggestions
-    handleYearChange(mentorDetails.academicYear);
+    initializeComponent();
+  }, [mounted]); // Add mounted to dependencies
   
-    return () => {
-      mounted = false;
-    };
-  }, [mentorDetails.academicYear]);
+
+  // Add this new function
+  const handleSearchMentor = async () => {
+    if (!mentorDetails.email) {
+      toast.error("Please enter an email address");
+      return;
+    }
   
+    setSearchingMentor(true);
+    try {
+      // Check if email exists
+      const response = await axios.get(`/api/admin/manageUsers/manageMentor?email=${mentorDetails.email}`);
+      
+      if (response.data.mentors?.length > 0) {
+        const existingMentor = response.data.mentors[0];
+        setExistingMentorData(existingMentor);
+        
+        // Show duplicate dialog and copy existing mentor's data
+        setDuplicateMentorDialog(true);
+        setMentorDetails(prev => ({
+          ...prev,
+          MUJid: existingMentor.MUJid,
+          name: existingMentor.name || '',
+          phone_number: existingMentor.phone_number || '',
+          // Keep current academic details
+          academicYear: prev.academicYear,
+          academicSession: prev.academicSession
+        }));
+        
+        setOpenDialog(false);
+      } else {
+        // Generate new MUJid for new email
+        const mujidResponse = await axios.get('/api/admin/manageUsers/getNextMUJid');
+        if (mujidResponse.data.nextMUJid) {
+          setMentorDetails(prev => ({
+            ...prev,
+            MUJid: mujidResponse.data.nextMUJid
+          }));
+        }
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Error searching for mentor");
+      // Clear MUJid on error
+      setMentorDetails(prev => ({
+        ...prev,
+        MUJid: ''
+      }));
+    } finally {
+      setSearchingMentor(false);
+    }
+  };
+  
+  // // Update dialog open handler
+  // const handleDialogOpen = () => {
+  //   const { academicYear, academicSession } = determineAcademicPeriod();
+  //   setMentorDetails(prev => ({
+  //     ...prev,
+  //     academicYear,
+  //     academicSession
+  //   }));
+  //   setOpenDialog(true);
+  // };
 
   return (
     <ThemeProvider theme={theme}>
       <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
         <Toaster 
-          position="top-center" 
+          position="bottom-right"
+          reverseOrder={false}
           containerStyle={{
-            top: 100 // This will push the toast below the navbar
+            position: 'fixed',
+            bottom: 20,
+            right: 20,
+            zIndex: 100000
           }}
           toastOptions={{
+            duration: 4000,
             style: {
-              background: 'rgba(17, 24, 39, 0.9)',
+              background: 'rgba(17, 24, 39, 0.95)',
               color: '#fff',
               backdropFilter: 'blur(8px)',
               borderRadius: '8px',
               border: '1px solid rgba(255, 255, 255, 0.1)',
+              maxWidth: '400px',
+              fontSize: '0.875rem',
             },
           }}
         />
+        
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -561,7 +620,6 @@ const handleEditMentor = async () => {
             >
               Mentor Management
             </motion.h1>
-
 
             {isSmallScreen && (
               <IconButton
@@ -676,822 +734,46 @@ const handleEditMentor = async () => {
           </div>
         </div>
 
-        {/* Keep existing dialogs */}
-        <Dialog
+        <AddMentorDialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{ 
-            sx: {
-              ...dialogStyles.paper,
-              maxHeight: '90vh', // Ensure dialog doesn't exceed viewport height
-            }
-          }}
-        >
-          <DialogTitle sx={dialogStyles.title}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM13 8V11H16V13H13V16H11V13H8V11H11V8H13Z" 
-                  fill="#f97316"/>
-              </svg>
-              <Typography variant="h6" sx={{ 
-                color: '#f97316',
-                fontWeight: 600,
-                letterSpacing: '0.5px',
-                fontSize: '1.25rem'
-              }}>
-                Add New Mentor
-              </Typography>
-            </Box>
-            <IconButton
-              onClick={() => setOpenDialog(false)}
-              sx={{
-                position: 'absolute',
-                right: '16px',
-                top: '16px',
-                color: 'rgba(255, 255, 255, 0.5)',
-                '&:hover': { color: '#f97316' },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
+          mentorDetails={mentorDetails}
+          setMentorDetails={setMentorDetails}
+          handleAddMentor={handleAddMentor}
+          handleSearchMentor={handleSearchMentor}
+          searchingMentor={searchingMentor}
+        />
 
-          <DialogContent 
-            sx={{
-              ...dialogStyles.content,
-              padding: '24px',
-              overflowY: 'auto',
-              marginTop: 2,
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: 'rgba(249, 115, 22, 0.5)',
-                borderRadius: '4px',
-                '&:hover': {
-                  background: 'rgba(249, 115, 22, 0.7)',
-                },
-              },
-            }}
-          >
-            <Box 
-              sx={{ 
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                width: '100%',
-                mt: 1,
-              }}
-            >
-              <Grid container spacing={3}>
-                {/* Academic Year */}
-                <Grid item xs={12} md={6}>
-                  <Box ref={yearRef} sx={{ position: 'relative', width: '100%' }}>
-                    <TextField
-                      fullWidth
-                      label="Academic Year"
-                      name="academicYear"
-                      value={mentorDetails.academicYear}
-                      onChange={handleAcademicYearInput}
-                      onClick={() => setShowYearOptions(true)}
-                      required
-                      sx={dialogStyles.textField}
-                      inputProps={{
-                        pattern: "\\d{4}-\\d{4}",
-                        title: "Format: YYYY-YYYY (e.g., 2023-2024)"
-                      }}
-                    />
-                    {showYearOptions && yearSuggestions.length > 0 && (
-                      <Box sx={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        zIndex: 1000,
-                        mt: 1,
-                        bgcolor: 'rgba(17, 24, 39, 0.95)',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(249, 115, 22, 0.15)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-                        maxHeight: '200px',
-                        overflowY: 'auto'
-                      }}>
-                        {yearSuggestions.map((year) => (
-                          <Box
-                            key={year}
-                            sx={{
-                              px: 2,
-                              py: 1,
-                              cursor: 'pointer',
-                              '&:hover': {
-                                bgcolor: 'rgba(249, 115, 22, 0.1)',
-                              }
-                            }}
-                            onClick={() => {
-                              setMentorDetails(prev => ({
-                                ...prev,
-                                academicYear: year,
-                                academicSession: generateAcademicSessions(year)[0]
-                              }));
-                              setShowYearOptions(false);
-                            }}
-                          >
-                            {year}
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-                </Grid>
-
-                {/* Academic Session */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Academic Session"
-                    name="academicSession"
-                    value={mentorDetails.academicSession}
-                    onChange={handleInputChange}
-                    required
-                    disabled={!mentorDetails.academicYear}
-                    sx={dialogStyles.textField}
-                  >
-                    {mentorDetails.academicYear ? 
-                      generateAcademicSessions(mentorDetails.academicYear).map((session) => (
-                        <MenuItem key={session} value={session}>
-                          {session}
-                        </MenuItem>
-                      )) : 
-                      <MenuItem value="">Select year first</MenuItem>
-                    }
-                  </TextField>
-                </Grid>
-
-                {/* MUJid */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="MUJid"
-                    name="MUJid"
-                    value={mentorDetails.MUJid}
-                    onChange={handleInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                    inputProps={{
-                      style: { textTransform: 'uppercase' }
-                    }}
-                    placeholder="Enter MUJid"
-                  />
-                </Grid>
-
-                {/* Name */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    name="name"
-                    value={mentorDetails.name}
-                    onChange={handleInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-
-                {/* Email */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={mentorDetails.email}
-                    onChange={handleInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-
-                {/* Phone Number */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    name="phone_number"
-                    value={mentorDetails.phone_number}
-                    onChange={handleInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-
-                {/* Gender */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Gender"
-                    name="gender"
-                    value={mentorDetails.gender}
-                    onChange={handleInputChange}
-                    sx={dialogStyles.textField}
-                  >
-                    <MenuItem value="male">Male</MenuItem>
-                    <MenuItem value="female">Female</MenuItem>
-                    <MenuItem value="other">Other</MenuItem>
-                  </TextField>
-                </Grid>
-
-                {/* Role */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Role"
-                    name="role"
-                    value={mentorDetails.role}
-                    onChange={handleInputChange}
-                    SelectProps={{ multiple: true }}
-                    sx={dialogStyles.textField}
-                  >
-                    <MenuItem value="mentor">Mentor</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
-                    <MenuItem value="superadmin">Super Admin</MenuItem>
-                  </TextField>
-                </Grid>
-              </Grid>
-            </Box>
-          </DialogContent>
-
-          <DialogActions sx={{
-            padding: '16px 24px',
-            borderTop: '1px solid rgba(249, 115, 22, 0.15)',
-            background: 'rgba(249, 115, 22, 0.05)',
-            gap: '12px',
-          }}>
-            <Button
-              onClick={() => setOpenDialog(false)}
-              variant="outlined"
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddMentor}
-              variant="contained"
-              sx={{
-                background: 'linear-gradient(45deg, #f97316 30%, #fb923c 90%)',
-                color: 'white',
-                fontWeight: 600,
-                padding: '8px 24px',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #ea580c 30%, #f97316 90%)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 20px rgba(249, 115, 22, 0.25)',
-                },
-              }}
-            >
-              Add Mentor
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Edit Dialog */}
-        <Dialog
+        <EditMentorDialog
           open={editDialog}
           onClose={() => setEditDialog(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{ 
-            sx: {
-              ...dialogStyles.paper,
-              maxHeight: '90vh', // Ensure dialog doesn't exceed viewport height
-            }
-          }}
-        >
-          <DialogTitle sx={dialogStyles.title}>
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ color: "#f97316", fontWeight: 600 }}
-            >
-              Edit Mentor
-            </Typography>
-            <IconButton
-              aria-label="close"
-              onClick={() => setEditDialog(false)}
-              sx={{
-                position: "absolute",
-                right: 8,
-                top: 8,
-                color: "rgba(255, 255, 255, 0.7)",
-                "&:hover": {
-                  color: "#f97316",
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent 
-            sx={{
-              ...dialogStyles.content,
-              padding: '24px',
-              overflowY: 'auto', // Enable vertical scrolling
-              marginTop: 2, // Add margin top to the content
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: 'rgba(249, 115, 22, 0.5)',
-                borderRadius: '4px',
-                '&:hover': {
-                  background: 'rgba(249, 115, 22, 0.7)',
-                },
-              },
-            }}
-          >
-            <Box 
-              sx={{ 
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                width: '100%',
-                mt: 1, // Add margin top to the Box container
-              }}
-            >
-              {/* Replace the nested Box structure with a simple Grid */}
-              <Grid container spacing={3}> {/* Increased spacing between grid items */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="MUJid"
-                    name="MUJid"
-                    value={selectedMentor?.MUJid || ""}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    name="name"
-                    value={selectedMentor?.name || ""}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={selectedMentor?.email || ""}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    name="phone_number"
-                    value={selectedMentor?.phone_number || ""}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Gender"
-                    name="gender"
-                    value={selectedMentor?.gender || ""}
-                    onChange={handleEditInputChange}
-                    sx={dialogStyles.textField}
-                  >
-                    <MenuItem value="male">Male</MenuItem>
-                    <MenuItem value="female">Female</MenuItem>
-                    <MenuItem value="other">Other</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Role"
-                    name="role"
-                    value={selectedMentor?.role || []}
-                    onChange={handleEditInputChange}
-                    SelectProps={{ multiple: true }}
-                    sx={dialogStyles.textField}
-                  >
-                    <MenuItem value="mentor">Mentor</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
-                    <MenuItem value="superadmin">Super Admin</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Academic Year"
-                    name="academicYear"
-                    value={selectedMentor?.academicYear || ""}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                    inputProps={{
-                      pattern: "\\d{4}-\\d{4}",
-                      title: "Format: YYYY-YYYY (e.g., 2023-2024)"
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Academic Session"
-                    name="academicSession"
-                    value={selectedMentor?.academicSession || ""}
-                    onChange={handleEditInputChange}
-                    required
-                    disabled={!selectedMentor?.academicYear}
-                    sx={dialogStyles.textField}
-                  >
-                    {selectedMentor?.academicYear ? 
-                      [
-                        `JULY-DECEMBER ${selectedMentor.academicYear.split('-')[0]}`,
-                        `JANUARY-JUNE ${selectedMentor.academicYear.split('-')[1]}`
-                      ].map((session) => (
-                        <MenuItem key={session} value={session}>
-                          {session}
-                        </MenuItem>
-                      )) :
-                      <MenuItem value="">Select year first</MenuItem>
-                    }
-                  </TextField>
-                </Grid>
-              </Grid>
-            </Box>
-          </DialogContent>
-          <DialogActions sx={{
-            ...dialogStyles.actions,
-            padding: '16px 24px',
-            borderTop: '1px solid rgba(249, 115, 22, 0.15)',
-            background: 'rgba(249, 115, 22, 0.05)',
-          }}>
-            <Button
-              onClick={() => setEditDialog(false)}
-              variant="outlined"
-              sx={{
-                borderColor: "rgba(255, 255, 255, 0.2)",
-                color: "white",
-                "&:hover": {
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleEditMentor}
-              variant="contained"
-              sx={{
-                bgcolor: "#f97316",
-                "&:hover": {
-                  bgcolor: "#ea580c",
-                },
-              }}
-            >
-              Update
-            </Button>
-          </DialogActions>
-        </Dialog>
-        {/* <BulkUploadPreview
-          open={showPreview}
-          onClose={() => setShowPreview(false)}
-          data={previewData.data}
-          errors={previewData.errors}
-          onConfirm={handleConfirmUpload}
-          isUploading={uploading}
-          type="mentor" // Specify the type as mentor
-        /> */}
+          selectedMentor={selectedMentor}
+          setSelectedMentor={setSelectedMentor}
+          handleEditMentor={handleEditMentor}
+        />
 
-        {/* Duplicate Mentor Dialog */}
-        <Dialog
+        <DuplicateMentorDialog
           open={duplicateMentorDialog}
           onClose={() => {
             setDuplicateMentorDialog(false);
             setDuplicateEditMode(false);
           }}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
-        >
-          <DialogTitle
-            sx={{
-              ...dialogStyles.title,
-              borderBottom: "1px solid rgba(249, 115, 22, 0.2)",
-            }}
-          >
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ color: "#f97316", fontWeight: 600 }}
-            >
-              {duplicateEditMode
-                ? "Edit Existing Mentor"
-                : "Mentor Already Exists"}
-            </Typography>
-            <IconButton
-              aria-label="close"
-              onClick={() => {
-                setDuplicateMentorDialog(false);
-                setDuplicateEditMode(false);
-              }}
-              sx={{
-                position: "absolute",
-                right: 8,
-                top: 8,
-                color: "rgba(255, 255, 255, 0.7)",
-                "&:hover": { color: "#f97316" },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent
-            sx={{
-              ...dialogStyles.content,
-              my: 2,
-            }}
-          >
-            {duplicateEditMode ? (
-              // Edit form for duplicate mentor
-              <Box sx={{ color: "white" }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Name"
-                      name="name"
-                      value={mentorDetails.name}
-                      onChange={handleInputChange}
-                      sx={dialogStyles.textField}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={mentorDetails.email}
-                      onChange={handleInputChange}
-                      sx={dialogStyles.textField}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Phone Number"
-                      name="phone_number"
-                      value={mentorDetails.phone_number}
-                      onChange={handleInputChange}
-                      sx={dialogStyles.textField}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      select
-                      label="Gender"
-                      name="gender"
-                      value={mentorDetails.gender}
-                      onChange={handleInputChange}
-                      sx={dialogStyles.textField}
-                    >
-                      <MenuItem value="male">Male</MenuItem>
-                      <MenuItem value="female">Female</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
-                    </TextField>
-                  </Grid>
-                </Grid>
-              </Box>
-            ) : (
-              // Existing mentor details view
-              <Box sx={{ color: "white" }}>
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  A mentor with these details already exists:
-                </Typography>
-                <Box
-                  sx={{
-                    bgcolor: "rgba(255, 255, 255, 0.05)",
-                    p: 3,
-                    borderRadius: 2,
-                    border: "1px solid rgba(249, 115, 22, 0.2)",
-                  }}
-                >
-                  {/* Only render fields that exist in existingMentorData */}
-                  {Object.entries(existingMentorData).map(([key, value]) => {
-                    if (value && key !== "_id") {
-                      return (
-                        <Typography key={key} variant="body2" sx={{ mb: 1 }}>
-                          <strong>{key}:</strong>{" "}
-                          {Array.isArray(value) ? value.join(", ") : value}
-                        </Typography>
-                      );
-                    }
-                    return null;
-                  })}
-                </Box>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions
-            sx={{
-              ...dialogStyles.actions,
-              justifyContent: "space-between",
-              px: 3,
-              py: 2,
-            }}
-          >
-            <Button
-              onClick={() => {
-                setDuplicateMentorDialog(false);
-                setDuplicateEditMode(false);
-              }}
-              variant="outlined"
-              sx={{
-                borderColor: "rgba(255, 255, 255, 0.2)",
-                color: "white",
-                "&:hover": {
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            {duplicateEditMode ? (
-              <Button
-                onClick={handlePatchUpdate}
-                variant="contained"
-                sx={{
-                  bgcolor: "#f97316",
-                  "&:hover": {
-                    bgcolor: "#ea580c",
-                  },
-                }}
-              >
-                Update
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setDuplicateEditMode(true)}
-                variant="contained"
-                sx={{
-                  bgcolor: "#f97316",
-                  "&:hover": {
-                    bgcolor: "#ea580c",
-                  },
-                }}
-              >
-                Edit Details
-              </Button>
-            )}
-          </DialogActions>
-        </Dialog>
+          duplicateEditMode={duplicateEditMode}
+          setDuplicateEditMode={setDuplicateEditMode}
+          existingMentorData={existingMentorData}
+          mentorDetails={mentorDetails}
+          setMentorDetails={setMentorDetails}
+          handlePatchUpdate={handlePatchUpdate}
+        />
 
-        {/* Role Deletion Dialog */}
-        <Dialog
+        <RoleDeletionDialog
           open={deleteRoleDialog.open}
           onClose={() => setDeleteRoleDialog({ open: false, mentor: null })}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
-        >
-          <DialogTitle
-            sx={{
-              ...dialogStyles.title,
-              borderBottom: "1px solid rgba(249, 115, 22, 0.2)",
-            }}
-          >
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ color: "#f97316", fontWeight: 600 }}
-            >
-              Confirm Role Deletion
-            </Typography>
-            <IconButton
-              aria-label="close"
-              onClick={() => setDeleteRoleDialog({ open: false, mentor: null })}
-              sx={{
-                position: "absolute",
-                right: 8,
-                top: 8,
-                color: "rgba(255, 255, 255, 0.7)",
-                "&:hover": { color: "#f97316" },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent
-            sx={{
-              ...dialogStyles.content,
-              my: 2,
-            }}
-          >
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              The mentor has the following roles. Please select the roles you want to delete:
-            </Typography>
-            <Box sx={{ color: "white" }}>
-              {deleteRoleDialog.mentor?.role.map((role) => (
-                <Box key={role} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Checkbox
-                    checked={selectedRoles.includes(role)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedRoles((prev) => [...prev, role]);
-                      } else {
-                        setSelectedRoles((prev) => prev.filter((r) => r !== role));
-                      }
-                    }}
-                    sx={{
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      '&.Mui-checked': {
-                        color: '#f97316',
-                      },
-                    }}
-                  />
-                  <Typography variant="body2">{role}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </DialogContent>
-          <DialogActions
-            sx={{
-              ...dialogStyles.actions,
-              justifyContent: "space-between",
-              px: 3,
-              py: 2,
-            }}
-          >
-            <Button
-              onClick={() => setDeleteRoleDialog({ open: false, mentor: null })}
-              variant="outlined"
-              sx={{
-                borderColor: "rgba(255, 255, 255, 0.2)",
-                color: "white",
-                "&:hover": {
-                  borderColor: "rgba(255, 255, 255, 0.5)",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRoleBasedDelete}
-              variant="contained"
-              sx={{
-                bgcolor: "#f97316",
-                "&:hover": {
-                  bgcolor: "#ea580c",
-                },
-              }}
-            >
-              Delete Selected Roles
-            </Button>
-          </DialogActions>
-        </Dialog>
+          deleteRoleDialog={deleteRoleDialog}
+          selectedRoles={selectedRoles}
+          setSelectedRoles={setSelectedRoles}
+          handleRoleBasedDelete={handleRoleBasedDelete}
+        />
       </div>
     </ThemeProvider>
   );

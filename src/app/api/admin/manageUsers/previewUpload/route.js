@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { read, utils } from 'xlsx';
 import { connect } from "../../../../../lib/dbConfig";
 import { AcademicSession, Mentor } from "../../../../../lib/dbModels";
-import { determineAcademicPeriod } from "../../../../../components/AdminDash/mentee/utils/academicUtils";
+import { determineAcademicPeriodServer } from "../../../../../components/AdminDash/mentee/utils/academicUtils";
 
 export async function POST(req) {
   try {
@@ -49,8 +49,8 @@ export async function POST(req) {
       'assigned mentor email': 'mentorEmail'
     };
 
-    // Get current academic period
-    const { academicYear, academicSession } = determineAcademicPeriod();
+    // Get current academic period using server-safe function
+    const { academicYear, academicSession } = determineAcademicPeriodServer();
 
     const transformedData = rows.map(row => {
       const entry = {
@@ -123,20 +123,30 @@ export async function POST(req) {
     const errors = [];
     const validData = [];
 
-    // Get valid academic sessions
+    // Get valid academic sessions with proper error handling
     const academicSessions = await AcademicSession.find({}, { 
       'sessions.name': 1, 
       'start_year': 1, 
       'end_year': 1 
-    });
+    }).lean();
+
+    if (!academicSessions || academicSessions.length === 0) {
+      return NextResponse.json({ 
+        error: 'No academic sessions found in the system' 
+      }, { status: 400 });
+    }
     
-    const validSessions = new Set(
+    // Create normalized session map for case-insensitive comparison
+    const validSessions = new Map(
       academicSessions.flatMap(as => 
         as.sessions.map(s => ({
-          session: s.name,
-          academicYear: `${as.start_year}-${as.end_year}`
+          key: `${as.start_year}-${as.end_year}:${s.name}`.toLowerCase(),
+          value: {
+            academicYear: `${as.start_year}-${as.end_year}`,
+            session: s.name
+          }
         }))
-      ).map(s => `${s.academicYear}:${s.session}`)
+      ).map(s => [s.key, s.value])
     );
 
     // Validate each row
@@ -159,9 +169,20 @@ export async function POST(req) {
         rowErrors.push('Name is required (minimum 2 characters)');
       }
 
-      const sessionKey = `${row.academicYear}:${row.academicSession}`;
-      if (!Array.from(validSessions).some(s => s.toLowerCase() === sessionKey.toLowerCase())) {
-        rowErrors.push('Academic session not found - Please create it first');
+      // Improved session validation
+      const sessionKey = `${row.academicYear}:${row.academicSession}`.toLowerCase();
+      const validSession = validSessions.get(sessionKey);
+      
+      if (!validSession) {
+        console.log('Invalid session:', {
+          provided: sessionKey,
+          available: Array.from(validSessions.keys())
+        });
+        rowErrors.push(`Invalid academic session: ${row.academicYear} ${row.academicSession}`);
+      } else {
+        // Normalize the session data
+        row.academicYear = validSession.academicYear;
+        row.academicSession = validSession.session;
       }
 
       if (type === 'mentee') {
@@ -205,25 +226,38 @@ export async function POST(req) {
       }
     }
 
+    // Debug logging
+    console.log('Validation summary:', {
+      totalRows: transformedData.length,
+      validRows: validData.length,
+      errorRows: errors.length,
+      sampleValidSession: Array.from(validSessions.keys())[0]
+    });
+
     return NextResponse.json({
+      success: true,
       data: validData,
       errors: errors,
       totalRows: transformedData.length,
-      academicSessionsAvailable: Array.from(validSessions),
+      academicSessionsAvailable: Array.from(validSessions.values()),
       mentorActions: {
         toCreate: mentorsToCreate,
         toUpdate: mentorsToUpdate,
         summary: {
           total: uniqueMentors.size,
-          new: mentorsToCreate.length,
+          new: mentorsToCreate.length,               
           update: mentorsToUpdate.length
         }
       }
     });
 
   } catch (error) {
+    console.error('Preview upload error:', error);
     return NextResponse.json(
-      { error: error.message || 'Error processing file' },
+      { 
+        error: error.message || 'Error processing file',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
