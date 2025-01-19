@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import mongoose from 'mongoose';
+import mongoose, { PipelineStage } from 'mongoose';
 import { AcademicSession } from '../../../../lib/dbModels';
 import { Mentor } from '../../../../lib/db/mentorSchema';
 import { connect } from '../../../../lib/dbConfig';
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
             end_year: { $gte: parseInt(year) }
         };
 
-        const aggregationPipeline = [
+        const aggregationPipeline: PipelineStage[] = [
             { $match: matchStage },
             { $unwind: '$sessions' },
             { 
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
                     meetingCount: { $sum: 1 },
                     lastMeeting: { $last: '$sessions.semesters.sections.meetings' }
                 }
-            },
+            } as PipelineStage,
             {
                 $match: {
                     _id: { $ne: null, $exists: true }

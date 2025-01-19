@@ -6,11 +6,10 @@ import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
 
 const AddMeetingInfo = () => {
-  const sessionData = sessionStorage.getItem('mentorData');
-  const mentorData = sessionData ? JSON.parse(sessionData) : null;
-  const [mentorId, setMentorId] = useState(mentorData?.MUJid || '');
-  const [academicYear, setAcademicYear] = useState(mentorData?.academicYear || '');
-  const [academicSession, setAcademicSession] = useState(mentorData?.academicSession || '');
+  const [mentorData, setMentorData] = useState(null);
+  const [mentorId, setMentorId] = useState('');
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
   const [currentSemester, setCurrentSemester] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [meetings, setMeetings] = useState([]);
@@ -36,6 +35,21 @@ const AddMeetingInfo = () => {
   const sessionRef = useRef(null);
   const semesterRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const sessionData = window.sessionStorage.getItem('mentorData');
+      const parsedData = sessionData ? JSON.parse(sessionData) : null;
+      setMentorData(parsedData);
+      if (parsedData) {
+        setMentorId(parsedData.MUJid || '');
+        setAcademicYear(parsedData.academicYear || '');
+        setAcademicSession(parsedData.academicSession || '');
+      }
+    } catch (error) {
+      console.log('Error accessing sessionStorage:', error);
+    }
+  }, []);
 
   const handleMentorIdChange = (e) => {
     let value = e.target.value.toUpperCase();

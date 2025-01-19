@@ -7,7 +7,7 @@ export async function GET(request) {
     await connect();
 
     const url = new URL(request.url);
-    const mentor_id = url.searchParams.get("mentorMUJid");
+    const mentor_id = url.searchParams.get("mentor_id");
     const semester = url.searchParams.get("semester");
     const section = url.searchParams.get("section");
     const session = url.searchParams.get("session");

@@ -1,4 +1,4 @@
-"use client"
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,26 +6,21 @@ import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
 import EmailConfirmationDialog from './EmailConfirmationDialog';
 
-const ScheduleMeeting = () => {
+const ScheduleMeetingComponent = () => {
   const router = useRouter();
-  const sessionData = sessionStorage.getItem('mentorData');
-  const mentorData = JSON.parse(sessionData);
-  // console.log('Mentor data:', mentorData.MUJid);
-  // const [selectedFile, setSelectedFile] = useState(null);
+  const [mentorData, setMentorData] = useState(null);
   const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
-  const [mentorId, setMentorId] = useState(mentorData?.MUJid || '');
+  const [mentorId, setMentorId] = useState('');
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
   const [mentees, setMentees] = useState([]);
   const [availableSemesters, setAvailableSemesters] = useState([]);
-  // const [meetingNumber, setMeetingNumber] = useState('1');
   const [meetingTopic, setMeetingTopic] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [meetingId, setMeetingId] = useState('');
-  // Add new state variables
-  const [academicYear, setAcademicYear] = useState(mentorData?.academicYear || '');
-  const [academicSession, setAcademicSession] = useState(mentorData?.academicSession || '');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [showSemesterOptions, setShowSemesterOptions] = useState(false);
   const [ setSessionSuggestions] = useState([]);
@@ -46,6 +41,23 @@ const ScheduleMeeting = () => {
   const fixedBranch = 'CSE CORE';
 
   const [preventReload, setPreventReload] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const sessionData = window.sessionStorage.getItem('mentorData');
+        if (sessionData) {
+          const parsedData = JSON.parse(sessionData);
+          setMentorData(parsedData);
+          setMentorId(parsedData?.MUJid || '');
+          setAcademicYear(parsedData?.academicYear || '');
+          setAcademicSession(parsedData?.academicSession || '');
+        }
+      } catch (error) {
+        console.error('Error accessing sessionStorage:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -734,4 +746,4 @@ Contact: ${mentorData?.email || ''}`;
   );
 };
 
-export default ScheduleMeeting;
+export default ScheduleMeetingComponent;

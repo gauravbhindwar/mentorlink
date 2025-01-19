@@ -7,10 +7,9 @@ import { generateMOMPdf, generateConsolidatedPdf } from './PDFGenerator';
 import { PDFDownloadComponent } from './PDFGenerator';
 
 const ReportMeetings = () => {
-  const sessionData = sessionStorage.getItem('mentorData');
-  const mentorData = JSON.parse(sessionData);
-  const [academicYear, setAcademicYear] = useState(mentorData?.academicYear || '');
-  const [academicSession, setAcademicSession] = useState(mentorData?.academicSession || '');
+  const [mentorData, setMentorData] = useState(null);
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
   const [semester, setSemester] = useState('');
   const [section, setSection] = useState('');
   const [meetings, setMeetings] = useState([]);
@@ -32,11 +31,30 @@ const ReportMeetings = () => {
     reportType: '',
     selectedMOM: ''
   });
-  const [mentorMUJid, setMentorMUJid] = useState(mentorData?.MUJid || '');
+  const [mentorMUJid, setMentorMUJid] = useState('');
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [isMOMDetailDialogOpen, setIsMOMDetailDialogOpen] = useState(false);
   const [mentorName, setMentorName] = useState('');
   const [isGeneratingConsolidated, setIsGeneratingConsolidated] = useState(false);
+
+  const getInputClass = (isDisabled) => `w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all ${isDisabled ? 'opacity-60' : ''}`;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const sessionData = window.sessionStorage.getItem('mentorData');
+        if (sessionData) {
+          const parsedData = JSON.parse(sessionData);
+          setMentorData(parsedData);
+          setAcademicYear(parsedData?.academicYear || '');
+          setAcademicSession(parsedData?.academicSession || '');
+          setMentorMUJid(parsedData?.MUJid || '');
+        }
+      } catch (error) {
+        console.error('Error accessing sessionStorage:', error);
+      }
+    }
+  }, []);
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -267,7 +285,7 @@ const ReportMeetings = () => {
             value={academicYear}
             disabled={mentorData?.academicYear ? true : false}
             onChange={handleAcademicYearChange}
-            className={`w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all ${mentorData?.academicYear ? 'opacity-60' : ''} `}
+            className={getInputClass(mentorData?.academicYear)}
           />
           <datalist id="academicYears">
             {academicYears.map((year, index) => (
@@ -285,7 +303,7 @@ const ReportMeetings = () => {
             value={academicSession}
             disabled={mentorData?.academicSession ? true : false}
             onChange={handleAcademicSessionChange}
-            className={`w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all ${mentorData?.academicSession ? 'opacity-60' : ''} `}
+            className={getInputClass(mentorData?.academicSession)}
           />
           <datalist id="academicSessions">
             {academicSessions.map((session, index) => (
@@ -324,7 +342,7 @@ const ReportMeetings = () => {
             value={mentorMUJid}
             onChange={handleMentorMUJidChange}
             disabled={mentorData?.MUJid ? true : false}
-            className={`w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white placeholder-white/50 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all ${mentorData?.MUJid ? 'opacity-60' : ''} `}
+            className={getInputClass(mentorData?.MUJid)}
           />
         </div>
 
