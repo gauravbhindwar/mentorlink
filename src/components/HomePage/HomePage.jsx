@@ -16,14 +16,15 @@ const HomePage = () => {
       gradient: 'from-orange-500 via-amber-500 to-yellow-500',
       shadowColor: 'rgba(251, 146, 60, 0.4)'
     },
-    { 
-      type: 'mentee', 
-      icon: '👨‍🎓', 
-      title: 'Mentee Portal',
-      description: 'Connect with mentors and track your progress',
-      gradient: 'from-pink-500 via-rose-500 to-red-500',
-      shadowColor: 'rgba(244, 63, 94, 0.4)'
-    },
+    //Currently disabled Mentee Portal
+    // { 
+    //   type: 'mentee', 
+    //   icon: '👨‍🎓', 
+    //   title: 'Mentee Portal',
+    //   description: 'Connect with mentors and track your progress',
+    //   gradient: 'from-pink-500 via-rose-500 to-red-500',
+    //   shadowColor: 'rgba(244, 63, 94, 0.4)'
+    // },
     { 
       type: 'admin', 
       icon: '👨‍💼', 
@@ -32,14 +33,14 @@ const HomePage = () => {
       gradient: 'from-purple-500 via-violet-500 to-indigo-500',
       shadowColor: 'rgba(147, 51, 234, 0.4)'
     },
-    { 
-      type: 'superadmin', 
-      icon: '👑', 
-      title: 'SuperAdmin Portal',
-      description: 'Full system control and configuration',
-      gradient: 'from-blue-500 via-cyan-500 to-teal-500',
-      shadowColor: 'rgba(59, 130, 246, 0.4)'
-    },
+    // { 
+    //   type: 'superadmin', 
+    //   icon: '👑', 
+    //   title: 'SuperAdmin Portal',
+    //   description: 'Full system control and configuration',
+    //   gradient: 'from-blue-500 via-cyan-500 to-teal-500',
+    //   shadowColor: 'rgba(59, 130, 246, 0.4)'
+    // },
   ];
 
 

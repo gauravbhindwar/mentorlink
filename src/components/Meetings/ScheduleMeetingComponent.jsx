@@ -1,29 +1,26 @@
-"use client"
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload } from 'react-icons/fi';
 import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
+import EmailConfirmationDialog from './EmailConfirmationDialog';
 
-const ScheduleMeeting = () => {
+const ScheduleMeetingComponent = () => {
   const router = useRouter();
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [mentorData, setMentorData] = useState(null);
   const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
   const [selectedSection, setSelectedSection] = useState('');
   const [mentorId, setMentorId] = useState('');
+  const [academicYear, setAcademicYear] = useState('');
+  const [academicSession, setAcademicSession] = useState('');
   const [mentees, setMentees] = useState([]);
   const [availableSemesters, setAvailableSemesters] = useState([]);
-  // const [meetingNumber, setMeetingNumber] = useState('1');
   const [meetingTopic, setMeetingTopic] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [meetingId, setMeetingId] = useState('');
-  const [successPop, setSuccessPop] = useState(false);
-  // Add new state variables
-  const [academicYear, setAcademicYear] = useState('');
-  const [academicSession, setAcademicSession] = useState('');
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [showSemesterOptions, setShowSemesterOptions] = useState(false);
   const [ setSessionSuggestions] = useState([]);
@@ -34,11 +31,45 @@ const ScheduleMeeting = () => {
   const [formattedTime, setFormattedTime] = useState('');
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
+
   const [semesterSuggestions, setSemesterSuggestions] = useState([]);
   console.log(semesterSuggestions);
   const semesterRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false); // Add this new state
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   const fixedBranch = 'CSE CORE';
+
+  const [preventReload, setPreventReload] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const sessionData = window.sessionStorage.getItem('mentorData');
+        if (sessionData) {
+          const parsedData = JSON.parse(sessionData);
+          setMentorData(parsedData);
+          setMentorId(parsedData?.MUJid || '');
+          setAcademicYear(parsedData?.academicYear || '');
+          setAcademicSession(parsedData?.academicSession || '');
+        }
+      } catch (error) {
+        console.error('Error accessing sessionStorage:', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (preventReload) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [preventReload]);
 
   const handleSectionChange = (e) => {
     let value = e.target.value.toUpperCase();
@@ -103,20 +134,22 @@ const ScheduleMeeting = () => {
         });
 
         if (response.data) {
+          
           const meetingsHeld = response.data?.meetings;
           
           
           console.log('Mentor meetings:', meetingsHeld);
           // console.log('Meeting count:', meetingCount);
-          if(meetingsHeld.length >= 4){
-            setMeetingId('You have already scheduled 4 meetings for this section')
-            setCustomAlert('You have already scheduled 4 meetings for this section')
-            setDisabled(true);
-          }else{
+          //MEETING LIMIT CURRENTLY DISABLED
+          // if(meetingsHeld.length >= 4){
+          //   setMeetingId('You have already scheduled 4 meetings for this section')
+          //   setCustomAlert('You have already scheduled 4 meetings for this section')
+          //   setDisabled(true);
+          // }else{
           setMeetingId(`${mentorId}-M${selectedSection}${meetingsHeld.length + 1}`);
           setCustomAlert('')
           setDisabled(false);
-          }
+          // }
         }
       } catch (error) {
         // console.log('Error fetching meetings:', error.response?.data || error.message);
@@ -127,14 +160,14 @@ const ScheduleMeeting = () => {
     };
 
     try {
-      if (mentorId && currentSemester && selectedSection && academicSession && academicYear) {
+      if (mentorId && currentSemester && academicSession && academicYear) {
         generateMeetingId();
         getMentees(mentorId, currentSemester, selectedSection);
       }
     } catch (error) {
       console.log('Error in useEffect:', error);
     }
-  }, [mentorId, currentSemester, selectedSection, academicSession, academicYear]); // Add proper dependencies
+  }, [currentSemester, selectedSection]); // Add proper dependencies
 
   // useEffect(() => {
   //   if (customAlert) {
@@ -164,66 +197,52 @@ const ScheduleMeeting = () => {
     // console.log('Current semester:', currentSemester);
   }, [academicSession]);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setSelectedFile(file);
-  };
-  const handleMeetingScheduled = () => {
-    const scheduleMeeting = async () => {
-      setLoading(true);
-      try {
-        // Validate required fields
-        if (!mentorId || !currentSemester || !selectedSection || !dateTime) {
-          throw new Error('Please fill all required fields');
-        }
+ 
+  const handleMeetingScheduled = async () => {
+    if (!mentorId || !currentSemester || !dateTime) {
+      setCustomAlert('Please fill all required fields');
+      return;
+    }
 
+    setShowEmailDialog(true);
+  };
+
+  const handleEmailConfirmation = async (emailsSent) => {
+    if (emailsSent) {
+      setLoading(true);
+      setPreventReload(true);
+      try {
         const response = await axios.post('/api/meeting/mentors/schmeeting', {
           mentor_id: mentorId,
           meeting_id: meetingId,
           TopicOfDiscussion: meetingTopic,
           meeting_date: formattedDate,
           meeting_time: formattedTime,
-          // file: selectedFile,
           semester: currentSemester,
           section: selectedSection,
           session: academicSession,
           year: academicYear
         });
 
-        if (response.data) {
-          if (response.status == 200) {
-            // Meeting scheduled successfully
-            setSuccessPop(true);
-            setTimeout(() => {
-              router.push('/pages/mentordashboard');
-            }, 2000);
-          } else {
-            // Meeting scheduling failed
-            // console.log(response.data)
-            console.log('Meeting scheduling failed:', response.data.error);
-          }
-        } else {
-          // Meeting scheduling failed
-          console.log('Meeting scheduling failed:', response.data.error);
+        if (response.status === 200) {
+          router.push('/pages/mentordashboard');
         }
       } catch (error) {
         console.log('Error scheduling meeting:', error);
-        setCustomAlert('Failed to schedule meeting')
+        setCustomAlert('Failed to schedule meeting');
+      } finally {
+        setLoading(false);
+        setPreventReload(false);
       }
     }
-
-    try {
-      scheduleMeeting();
-    } catch (error) {
-      console.log('Error in handleMeetingScheduled:', error);
-    }
-    setLoading(false);
-  }
+    setShowEmailDialog(false);
+  };
 
   // Add new function to get mentees
   const getMentees = async (mentorId, semester, section) => {
+    setIsLoading(true); // Start loading
     try {
-      const response = await fetch(`/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}`);
+      const response = await fetch(`/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}&year=${academicYear}&session=${academicSession}`);
       if (!response.ok){
         console.log('Failed to fetch mentees');
         setDisabled(true);
@@ -239,6 +258,8 @@ const ScheduleMeeting = () => {
       console.log('Error fetching mentees:', error);
       setDisabled(true);
       throw error;
+    } finally {
+      setIsLoading(false); // End loading
     }
   };
 
@@ -390,9 +411,40 @@ const ScheduleMeeting = () => {
     return null;
   }
 
+  const getEmailBody = () => `
+Dear Mentees,
+
+A mentor meeting has been scheduled with the following details:
+
+Meeting ID: ${meetingId}
+Date: ${formattedDate}
+Time: ${formattedTime}
+Topic: ${meetingTopic || 'N/A'}
+Branch: ${fixedBranch}
+Semester: ${currentSemester}
+Section: ${selectedSection || 'N/A'}
+
+Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
+
+Best regards,
+${mentorData?.name || 'Your Mentor'}
+${mentorData?.designation || 'Faculty Mentor'}
+Department of Computer Science and Engineering
+Manipal University Jaipur
+Contact: ${mentorData?.email || ''}`;
+
   return (
     <AnimatePresence>
       <motion.div className="min-h-screen h-screen bg-[#0a0a0a] overflow-hidden relative">
+        {/* Add loading overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              <p className="text-white text-lg">Loading data...</p>
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
           <div className="absolute inset-0 backdrop-blur-3xl" />
@@ -431,7 +483,8 @@ const ScheduleMeeting = () => {
                       placeholder="Enter mentor MUJID"
                       value={mentorId}
                       onChange={handleMentorIdChange}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase"
+                      disabled={mentorData.MUJid ? true : false}
+                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase ${mentorData.MUJid ? 'opacity-60' : ''}`}
                     />
                   </div>
 
@@ -454,8 +507,9 @@ const ScheduleMeeting = () => {
                       placeholder="YYYY-YYYY"
                       value={academicYear}
                       onChange={handleAcademicYearInput}
+                      disabled={mentorData.academicYear ? true : false}
                       onClick={() => setShowYearOptions(true)}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm ${mentorData.academicYear ? 'opacity-60' : ''}`}
                     />
                     {showYearOptions && (
                       <div className="absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg">
@@ -488,7 +542,7 @@ const ScheduleMeeting = () => {
                       value={academicSession}
                       onChange={handleAcademicSessionInput}
                       onClick={() => setShowSessionOptions(true)}
-                      disabled={!academicYear}
+                      disabled={(mentorData.academicSession ? true : false) || !academicYear}
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50"
                     />
                     {showSessionOptions && (
@@ -510,7 +564,7 @@ const ScheduleMeeting = () => {
                   </div>
 
                   <div ref={semesterRef} className="relative">
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Semester (Required)</label>
                     <input
                       type="text"
                       placeholder={!academicYear ? 'Add academic year first' : availableSemesters[0] == 2 ? 'Select even semester' : 'Select odd semester'}
@@ -544,12 +598,12 @@ const ScheduleMeeting = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Section (Optional)</label>
                     <input 
                       type="text"
                       value={selectedSection}
                       onChange={handleSectionChange}
-                      placeholder="Enter section (e.g., A1)"
+                      placeholder="Enter section (e.g., A, B, C)"
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                       maxLength={2}
                     />
@@ -610,7 +664,7 @@ const ScheduleMeeting = () => {
                   </div> */}
 
                   {/* File upload section */}
-                  <div className="relative">
+                  {/* <div className="relative">
                     <label className="block text-sm font-medium text-gray-300 mb-1">Attachments</label>
                     <input
                       type="file"
@@ -626,7 +680,7 @@ const ScheduleMeeting = () => {
                       <FiUpload className="text-purple-400" />
                       <span>{selectedFile ? selectedFile.name : "Upload attachments"}</span>
                     </label>
-                  </div>
+                  </div> */}
 
                   <button 
                     type="submit" 
@@ -647,30 +701,16 @@ const ScheduleMeeting = () => {
                     )
                   }  
                   {
-                    successPop && (
-                      <>
-                        <div
-                        className={`fixed inset-0 bg-black/40 z-110 transition-opacity`}
-                          ></div>
-                        <div className={`fixed inset-0 z-120 flex justify-center items-center`}>
-                          <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
-                            <p>Meeting scheduled successfully</p>
-                            <div className="flex justify-center mt-4 w-[100%]">
-                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500">
-                            </div>     
-                            </div>
-                          </div>
-                        </div>
-                      </>   
-                    )
-                  }  
-                  {
                     mentees.length > 0 ? (
                       <div className="mt-4">
                         <h3 className="text-lg font-semibold text-white mb-2">Mentees:</h3>
+                        <div className="max-h-[150px] overflow-y-auto custom-scrollbar">
                         <ul className="list-disc list-inside text-white space-y-2">
                           {mentees.map((mentee, index) => (
-                            <li key={index} className="bg-black/20 flex border border-white/10 rounded-lg p-2">
+                            <li 
+                              key={mentee.MUJid || mentee.email || `mentee-${index}`} 
+                              className="bg-black/20 flex border border-white/10 rounded-lg p-2"
+                            >
                               <div className="flex items-center space-x-2">
                                 <div>
                                   <p className="text-sm font-medium">{mentee.name}</p>
@@ -680,6 +720,7 @@ const ScheduleMeeting = () => {
                             </li>
                           ))}
                         </ul>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-md text-red-600 font-semibold w-[100%] flex justify-center mt-4">No mentees found</p>
@@ -690,23 +731,19 @@ const ScheduleMeeting = () => {
             </div>
           </motion.div>
         </div>
-        {
-  successPop && (
-    <>
-      <div
-        className={`fixed inset-0 bg-black bg-opacity-50 w-[100vw] h-screen z-50 transition-opacity`}
-      ></div>
-      <div className={`fixed inset-0 z-60 flex justify-center items-center`}>
-        <div className="bg-white p-10 pb-2 sm:p-16 w-[100vw] sm:w-[fit-content] sm:max-w-[600px] rounded-t-lg sm:rounded-lg">
-          {/* Add your success message content here */}
-        </div>
-      </div>
-    </>
-  )
-}
       </motion.div>
+      <EmailConfirmationDialog 
+        isOpen={showEmailDialog}
+        onClose={() => setShowEmailDialog(false)}
+        mentees={mentees}
+        emailData={{ 
+          subject: `Mentor Meeting Scheduled - ${formattedDate}`,
+          body: getEmailBody()
+        }}
+        onConfirm={handleEmailConfirmation}
+      />
     </AnimatePresence>
   );
 };
 
-export default ScheduleMeeting;
+export default ScheduleMeetingComponent;

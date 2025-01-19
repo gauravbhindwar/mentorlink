@@ -1,82 +1,69 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, useMediaQuery, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions,  LinearProgress, MenuItem, CircularProgress } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import CloseIcon from '@mui/icons-material/Close';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { useDropzone } from 'react-dropzone';
+import { 
+  Box, 
+  Typography, 
+  useMediaQuery, 
+  IconButton, 
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
+} from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import MenteeTable from './MenteeTable';
 import FilterSection from './FilterSection';
-import { Toaster } from 'react-hot-toast';
-import { motion} from 'framer-motion';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 import BulkUploadPreview from '../common/BulkUploadPreview';
-import toast from 'react-hot-toast';
-import FilterListIcon from '@mui/icons-material/FilterList'; // Add this import
+import toast, { Toaster } from 'react-hot-toast';
+import { theme } from './menteeStyle';
+import AddMenteeDialog from './menteeSubComponents/AddMenteeDialog';
+import EditMenteeDialog from './menteeSubComponents/EditMenteeDialog';
+import AssignMentorDialog from './menteeSubComponents/AssignMentorDialog';
+import BulkUploadDialog from './menteeSubComponents/BulkUploadDialog';
+import { calculateCurrentSemester, getCurrentAcademicYear, generateAcademicSessions } from './utils/academicUtils';
 
-const calculateCurrentSemester = (yearOfRegistration) => {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
-
-  // Calculate years completed
-  let yearsCompleted = currentYear - yearOfRegistration;
+// Move filterData function up before it's used
+const filterData = (data, filters) => {
+  if (!data || !filters) return [];
   
-  // Calculate semester based on current month
-  // August to November is odd semester
-  // December to June is even semester
-  let semesterInCurrentYear;
-  if (currentMonth >= 8 && currentMonth <= 11) {
-    semesterInCurrentYear = 1; // Odd semester
-  } else if ((currentMonth >= 12) || (currentMonth >= 1 && currentMonth <= 6)) {
-    semesterInCurrentYear = 2; // Even semester
-  } else {
-    // July is considered as end of even semester
-    semesterInCurrentYear = 2;
-  }
+  return data.filter(mentee => {
+    const matchesMentorMujid = !filters.mentorMujid || (
+      mentee.mentorMujid && 
+      mentee.mentorMujid.toString().toLowerCase().includes(filters.mentorMujid.toLowerCase())
+    );
 
-  // Calculate total semesters completed
-  let totalSemesters = (yearsCompleted * 2) + semesterInCurrentYear;
+    const matchesMenteeMujid = !filters.menteeMujid || (
+      mentee.MUJid && 
+      mentee.MUJid.toString().toLowerCase().includes(filters.menteeMujid.toLowerCase())
+    );
 
-  // Ensure semester doesn't exceed 8 (4-year program)
-  return Math.min(totalSemesters, 8);
+    const matchesMentorEmail = !filters.mentorEmailid || (
+      mentee.mentorEmailid && 
+      mentee.mentorEmailid.toString().toLowerCase().includes(filters.mentorEmailid.toLowerCase())
+    );
+
+    const matchesSemester = !filters.semester || 
+      mentee.semester === (typeof filters.semester === 'string' ? 
+        parseInt(filters.semester) : filters.semester);
+    
+    const matchesSection = !filters.section || 
+      (mentee.section && mentee.section.toString().toUpperCase() === filters.section.toUpperCase());
+
+    return matchesSemester && 
+           matchesSection && 
+           matchesMenteeMujid && 
+           matchesMentorMujid && 
+           matchesMentorEmail;
+  });
 };
-
-const getCurrentAcademicYear = () => {
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1; // 1-12
-  const currentYear = currentDate.getFullYear();
-  
-  // If current month is after June (start of academic year), use current year
-  // Otherwise use previous year
-  const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
-  const endYear = startYear + 1;
-  return `${startYear}-${endYear}`;
-};
-
-const generateAcademicSessions = (academicYear) => {
-  if (!academicYear) return [];
-  const [startYear, endYear] = academicYear.split('-');
-  return [
-    `July-December ${startYear}`,
-    `January-June ${endYear}`
-  ];
-};
-
-const generateSemesterOptions = (academicSession) => {
-  if (!academicSession) return [];
-  const sessionParts = academicSession.split(' ');
-  const sessionPeriod = sessionParts[0];
-  if (sessionPeriod === 'July-December') {
-    return [1, 3, 5, 7]; // Odd semesters
-  } else if (sessionPeriod === 'January-June') {
-    return [2, 4, 6, 8]; // Even semesters
-  }
-  return [];
-};
-
 
 const MenteeManagement = () => {
+  const [academicSessions, setAcademicSessions] = useState([]);
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(false); // Set initial loading state to false
   const [mounted, setMounted] = useState(false);
@@ -84,10 +71,9 @@ const MenteeManagement = () => {
   const [academicSession, setAcademicSession] = useState('');
   const [semester, setSemester] = useState('');
   const [section, setSection] = useState('');
-  const [menteeMujid, setMenteeMujid] = useState(''); // Move this up
-  const [mentorMujid, setMentorMujid] = useState(''); // Move this up
-  // const [isFilterSelected, setIsFilterSelected] = useState(false);
-  // console.log(isFilterSelected)
+  const [menteeMujid, setMenteeMujid] = useState(''); 
+  const [mentorMujid, setMentorMujid] = useState(''); 
+  const [mentorEmailid, setMentorEmailid] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
     name: '',
@@ -101,7 +87,8 @@ const MenteeManagement = () => {
     endYear: '',
     academicYear: '', // Changed from AcademicYear
     academicSession: '', // Changed from AcademicSession
-    mentorMujid: '',
+    // mentorMujid: '',
+    mentorEmailid: '',
     parents: {
       father: {
         name: '',
@@ -130,10 +117,11 @@ const MenteeManagement = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [assignDialog, setAssignDialog] = useState(false);
   const [assignmentDetails, setAssignmentDetails] = useState({
-    mentor_MUJid: '',
+    // mentor_MUJid: '',
+    mentorEmailid: '',
     mentee_MUJid: '',
     session: '',
-    semester: '', // Changed from current_semester to semester
+    semester: '',
     section: ''
   });
 
@@ -144,7 +132,14 @@ const MenteeManagement = () => {
 
   const [tableVisible, setTableVisible] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true); // Add this state
+  const [showFilters, setShowFilters] = useState(() => {
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('showFilters');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -161,11 +156,11 @@ const MenteeManagement = () => {
     }
   
     setUploading(true);
-    setBulkUploadDialog(false); // Close the upload dialog
+    setBulkUploadDialog(false);
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('type', 'mentee'); // Add the type parameter
+    formData.append('type', 'mentee'); 
   
     try {
       const previewResponse = await axios.post('/api/admin/manageUsers/previewUpload', formData, {
@@ -192,7 +187,7 @@ const MenteeManagement = () => {
     try {
       const response = await axios.post('/api/admin/manageUsers/bulkUpload', {
         data: previewData.data,
-        type: 'mentee'
+        type: 'assignMentee'
       });
 
       const { errors, savedCount } = response.data;
@@ -204,12 +199,17 @@ const MenteeManagement = () => {
 
       // Show errors if any
       if (errors && errors.length > 0) {
-        const errorMessage = errors.map(err => 
-          `${err.mujid}: ${err.error}`
-        ).join('\n');
-        
+        const errorMessages = errors.map(err => {
+          if (err.error) {
+            return `${err.mujid}: ${err.error}`;
+          }
+          return `${err.mujid}: ${err.details}`;
+        });
+
+        const errorMessage = errorMessages.join('\n');
+
         showAlert(
-          `Some records failed to upload:\n${errorMessage}`, 
+          `Some records failed to upload\n${errorMessage}`,
           'warning'
         );
       }
@@ -222,23 +222,25 @@ const MenteeManagement = () => {
         handleSearch([]);
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.error || 
-                      error.response?.data?.details || 
-                      'Error uploading file';
-      showAlert(errorMsg, 'error');
+      const errorMessages = [];
+      if (error.response?.data?.errors) {
+        errorMessages.push(...error.response.data.errors);
+      }
+      if (error.response?.data?.details) {
+        errorMessages.push(error.response.data.details);
+      }
+      if (error.response?.data?.error) {
+        errorMessages.push(error.response.data.error);
+      }
+
+      showAlert(
+        `Error uploading file\n${errorMessages.join('\n')}`,
+        'error'
+      );
     } finally {
       setUploading(false);
     }
   };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: handleFileUpload,
-    accept: {
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-    },
-    multiple: false
-  });
 
   const handleBulkUploadOpen = () => {
     setBulkUploadDialog(true);
@@ -250,30 +252,91 @@ const MenteeManagement = () => {
     setUploading(false);
   };
 
-  // const handleBulkUploadClick = () => {
-  //   setBulkUploadDialog(true);
-  // };
+  // Updated showAlert function to handle bulk errors
+  const showAlert = (message, severity, options = {}) => {
+    // Dismiss all existing toasts
+    toast.dismiss();
+    
+    // If message is a bulk error, format it
+    if (typeof message === 'string' && message.includes('Some records failed to upload')) {
+      const errorLines = message.split('\n');
+      const totalErrors = errorLines.length - 1; // Subtract header line
+      
+      // Group duplicate errors
+      const errorGroups = errorLines.slice(1).reduce((acc, line) => {
+        const [mujid, error] = line.split(': ');
+        if (!acc[error]) {
+          acc[error] = { count: 0, mujids: [] };
+        }
+        acc[error].count++;
+        acc[error].mujids.push(mujid);
+        return acc;
+      }, {});
 
-  const showAlert = (message, severity) => {
+      // Create condensed message
+      const condensedMessage = Object.entries(errorGroups)
+        .map(([error, { count, mujids }]) => {
+          const firstMujid = mujids[0];
+          const lastMujid = mujids[mujids.length - 1];
+          return `${error} (${count} records, ${firstMujid} to ${lastMujid})`;
+        })
+        .join('\n');
+
+      // Show single toast with grouped errors
+      return toast(
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+            Upload Errors ({totalErrors} issues)
+          </div>
+          <div style={{ fontSize: '0.9em', whiteSpace: 'pre-line' }}>
+            {condensedMessage}
+          </div>
+        </div>,
+        {
+          duration: 5000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            maxWidth: '400px',
+            padding: '16px',
+          },
+          id: 'upload-error' // Add unique ID to prevent duplicates
+        }
+      );
+    }
+
+    // Regular toast messages with unique IDs
+    const toastOptions = {
+      duration: 3000,
+      id: `toast-${Date.now()}`, // Add unique ID
+      style: {
+        background: severity === 'error' ? '#fee2e2' : 
+                   severity === 'success' ? '#dcfce7' : 
+                   severity === 'warning' ? '#fff3cd' : '#ffffff',
+        color: '#1a1a1a',
+        border: `1px solid ${
+          severity === 'error' ? '#f87171' : 
+          severity === 'success' ? '#86efac' : 
+          severity === 'warning' ? '#fbbf24' : '#e5e7eb'
+        }`,
+        padding: '16px',
+        borderRadius: '8px',
+        maxWidth: '400px',
+        ...options?.style
+      },
+      ...options
+    };
+
+    // Show only one toast based on severity
     switch (severity) {
       case 'error':
-        toast.error(message);
-        break;
+        return toast.error(message, toastOptions);
       case 'success':
-        toast.success(message);
-        break;
-      case 'info':
+        return toast.success(message, toastOptions);
       case 'warning':
-        toast(message, {
-          icon: severity === 'warning' ? '⚠️' : 'ℹ️',
-          style: {
-            background: severity === 'warning' ? '#fff3cd' : '#cff4fc',
-            color: '#000'
-          }
-        });
-        break;
+        return toast(message, { ...toastOptions, icon: '⚠️' });
       default:
-        toast(message);
+        return toast(message, toastOptions);
     }
   };
 
@@ -335,35 +398,27 @@ const MenteeManagement = () => {
     }
   };
 
-  const handleEditInputChange = (e, category, subcategory) => {
-    if (category && subcategory) {
-      // Handle nested parent fields
-      setSelectedMentee(prev => ({
-        ...prev,
-        parents: {
-          ...prev.parents,
-          [category]: {
-            ...prev.parents?.[category],
-            [subcategory]: e.target.value
-          }
-        }
-      }));
-    } else {
-      // Handle top-level fields
-      const { name, value } = e.target;
-      setSelectedMentee(prev => ({
-        ...prev,
-        [name]: name === 'MUJid' ? value.toUpperCase() : value
-      }));
-    }
-  };
-
-  // const handleAssignClick = (mentee) => {
-  //   setAssignmentDetails({
-  //       ...assignmentDetails,
-  //       mentee_MUJid: mentee.mujid
-  //   });
-  //   setAssignDialog(true);
+  // const handleEditInputChange = (e, category, subcategory) => {
+  //   if (category && subcategory) {
+  //     // Handle nested parent fields
+  //     setSelectedMentee(prev => ({
+  //       ...prev,
+  //       parents: {
+  //         ...prev.parents,
+  //         [category]: {
+  //           ...prev.parents?.[category],
+  //           [subcategory]: e.target.value
+  //         }
+  //       }
+  //     }));
+  //   } else {
+  //     // Handle top-level fields
+  //     const { name, value } = e.target;
+  //     setSelectedMentee(prev => ({
+  //       ...prev,
+  //       [name]: name === 'MUJid' ? value.toUpperCase() : value
+  //     }));
+  //   }
   // };
 
   const handleAssignClose = () => {
@@ -372,7 +427,7 @@ const MenteeManagement = () => {
         mentor_MUJid: '',
         mentee_MUJid: '',
         session: '',
-        semester: '', // Changed from current_semester to semester
+        semester: '',
         section: ''
     });
   };
@@ -413,25 +468,6 @@ const MenteeManagement = () => {
     }
   };
 
-  const theme = createTheme({
-    palette: {
-      primary: {
-        main: '#f97316', // orange-500
-      },
-      secondary: {
-        main: '#ea580c', // orange-600
-      },
-      background: {
-        default: '#0a0a0a',
-        paper: 'rgba(255, 255, 255, 0.05)',
-      },
-      text: {
-        primary: '#ffffff',
-        secondary: 'rgba(255, 255, 255, 0.7)',
-      },
-    },
-  });
-
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Consolidate screenSize related effects into one
@@ -458,46 +494,27 @@ const MenteeManagement = () => {
     }
   }, [isSmallScreen]); // Add isSmallScreen to dependencies
 
+  useEffect(() => {
+    sessionStorage.setItem('showFilters', JSON.stringify(showFilters));
+  }, [showFilters]);
+
   const handleSearch = (data) => {
-    setLoading(true);
+    setLoading(true); // Set loading to true when search starts
     try {
       if (Array.isArray(data) && data.length > 0) {
         setMentees(data);
-        setTableVisible(true); // Show table when we have data
-        // console.log('Updated mentees:', data);
+        setTableVisible(true);
       } else {
         setMentees([]);
-        setTableVisible(false); // Hide table when no data
+        setTableVisible(false);
       }
     } catch (error) {
       console.log('Error handling search:', error);
       setMentees([]);
       setTableVisible(false);
-      
+      showAlert('Error searching mentees', 'error');
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearchAll = async (data) => {
-    setLoading(true);
-    try {
-      if (Array.isArray(data) && data.length > 0) {
-        setMentees(data);
-        setTableVisible(true);
-        // console.log('Search All data:', data);
-      } else {
-        setMentees([]);
-        setTableVisible(false);
-        showAlert('No mentees found', 'info');
-      }
-    } catch (error) {
-      // console.log('Error handling search all:', error);
-      setMentees([]);
-      setTableVisible(false);
-      showAlert('Error fetching mentees', error);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Set loading to false when search completes
     }
   };
 
@@ -551,7 +568,6 @@ const MenteeManagement = () => {
 
   // this submits add new mentee dialogue box
   const handleFormSubmit = async () => {
-    // Validate required fields
     const requiredFields = [
       'name',
       'email',
@@ -559,8 +575,8 @@ const MenteeManagement = () => {
       'yearOfRegistration',
       'section',
       'semester',
-      'academicYear', // Changed from AcademicYear
-      'academicSession', // Changed from AcademicSession
+      'academicYear',
+      'academicSession', 
       'mentorMujid'
     ];
 
@@ -575,96 +591,12 @@ const MenteeManagement = () => {
       if (response.status === 201) {
         showAlert('Mentee added successfully', 'success');
         handleDialogClose();
-        // Refresh the mentee list
         handleSearch();
       }
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
     }
   };
-
-  const renderBulkUploadDialog = () => (
-    <Dialog
-      open={bulkUploadDialog}
-      onClose={handleBulkUploadClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: {
-        ...dialogStyles.paper,
-        overflow: 'hidden'
-      }}}
-    >
-      <DialogTitle sx={dialogStyles.title}>
-        <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-          Bulk Upload Mentees
-        </Typography>
-        <IconButton
-          onClick={handleBulkUploadClose}
-          sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: 'rgba(255, 255, 255, 0.7)',
-            '&:hover': { color: '#f97316' }
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent sx={{ ...dialogStyles.content, p: 0 }}>
-        <Box
-          {...getRootProps()}
-          sx={{
-            p: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-            border: '2px dashed',
-            borderColor: isDragActive ? '#f97316' : 'rgba(255, 255, 255, 0.2)',
-            borderRadius: 2,
-            bgcolor: isDragActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
-            transition: 'all 0.2s ease',
-            cursor: 'pointer',
-            '&:hover': {
-              borderColor: '#f97316',
-              bgcolor: 'rgba(249, 115, 22, 0.05)'
-            }
-          }}
-        >
-          <input {...getInputProps()} />
-          <UploadFileIcon sx={{ fontSize: 48, color: '#f97316' }} />
-          <Typography variant="h6" sx={{ color: 'white', textAlign: 'center' }}>
-            {isDragActive
-              ? 'Drop the Excel file here'
-              : 'Drag & drop an Excel file here, or click to select'}
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
-            Supports .xls and .xlsx files only
-          </Typography>
-        </Box>
-        {uploading && (
-          <Box sx={{ p: 2 }}>
-            <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
-              Uploading... {uploadProgress}%
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={uploadProgress}
-              sx={{
-                height: 8,
-                borderRadius: 4,
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-                '& .MuiLinearProgress-bar': {
-                  bgcolor: '#f97316'
-                }
-              }}
-            />
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
 
   useEffect(() => {
     const updateSemesters = () => {
@@ -676,7 +608,6 @@ const MenteeManagement = () => {
       );
     };
 
-    // Update initially
     updateSemesters();
 
     // Update every day at midnight
@@ -705,8 +636,11 @@ const MenteeManagement = () => {
     semester,
     section,
     menteeMujid, // Add setter for menteeMujid
-    mentorMujid  // Add setter for mentorMujid
+    mentorMujid,  // Add setter for mentorMujid,
+    mentorEmailid
   };
+
+  const cachedData = useRef(new Map());
 
   const handleFilterChange = (name, value) => {
     const setters = {
@@ -714,180 +648,122 @@ const MenteeManagement = () => {
       academicSession: setAcademicSession,
       semester: setSemester,
       section: setSection,
-      menteeMujid: setMenteeMujid, // Add setter for menteeMujid
-      mentorMujid: setMentorMujid  // Add setter for mentorMujid
+      menteeMujid: setMenteeMujid, 
+      mentorMujid: setMentorMujid,
+      mentorEmailid: setMentorEmailid  
     };
     
     if (typeof setters[name] === 'function') {
       setters[name](value);
-    } else {
-      console.log(`No setter function found for filter: ${name}`);
-
+      
+      // For base filters, trigger immediate data fetch
+      if (['academicYear', 'academicSession'].includes(name)) {
+        const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
+        const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
+        
+        if (updatedYear && updatedSession) {
+          fetchData(updatedYear, updatedSession);
+        }
+      }
+      // For other filters, filter existing data
+      else if (cachedData.current) {
+        const currentKey = `${filterConfig.academicYear}-${filterConfig.academicSession}`;
+        const data = cachedData.current.get(currentKey) || [];
+        const filteredData = filterData(data, { ...filterConfig, [name]: value });
+        setMentees(filteredData);
+      }
     }
-    
-    setMentees([]); // Clear data when filter options change
   };
 
-  // Add this common dialog styles object
-  const dialogStyles = {
-    paper: {
-      background: 'rgba(17, 17, 17, 0.95)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '1rem',
-      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-      color: 'white',
-    },
-    title: {
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-      px: 3,
-      py: 2,
-    },
-    content: {
-      px: 3,
-      py: 2,
-    },
-    textField: {
-      '& .MuiOutlinedInput-root': {
-        color: 'white',
-        backgroundColor: '#1a1a1a', // Solid dark background instead of transparent
-        // Remove backdropFilter
-        borderRadius: '12px',
-        '&:hover .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#f97316',
-        },
-        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#f97316',
-          borderWidth: '2px',
-        },
-        '&.Mui-disabled': {
-          backgroundColor: 'rgba(255, 59, 48, 0.1)',
-          '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 59, 48, 0.3)',
-          },
-          '& input': {
-            color: 'rgba(255, 59, 48, 0.7) !important', // Force red color for disabled input
-            WebkitTextFillColor: 'rgba(255, 59, 48, 0.7) !important', // For Safari
-          },
-        },
-      },
-      '& .MuiOutlinedInput-notchedOutline': {
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-      },
-      '& .MuiInputLabel-root': {
-        color: 'rgba(255, 255, 255, 0.7)',
-        '&.Mui-focused': {
-          color: '#f97316',
-        },
-        '&.Mui-disabled': {
-          color: 'rgba(255, 59, 48, 0.7)',
-        },
-      },
-      '& .MuiInputBase-input': {
-        '&::placeholder': {
-          color: 'rgba(255, 255, 255, 0.5)',
-          opacity: 1,
-        },
-      },
-      '& .MuiInputAdornment-root .MuiSvgIcon-root': {
-        color: '#f97316',
-      },
-      '& .MuiIconButton-root': {
-        color: '#f97316',
-      },
-    },
-    actions: {
-      p: 3,
-      gap: 1,
-      borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-    },
+  const fetchData = async (year, session) => {
+    if (!year || !session) return;
+
+    const cacheKey = `${year}-${session}`;
+    setLoading(true);
+    
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+        params: {
+          academicYear: year,
+          academicSession: session
+        }
+      });
+
+      if (response.status === 200) {
+        const normalizedData = response.data.map(mentee => ({
+          ...mentee,
+          id: mentee._id || mentee.id,
+          MUJid: mentee.MUJid?.toUpperCase() || '',
+          mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+        }));
+        
+        // Update cache
+        cachedData.current.set(cacheKey, normalizedData);
+        
+        // Apply current filters to new data
+        const filteredData = filterData(normalizedData, filterConfig);
+        setMentees(filteredData);
+        setTableVisible(true);
+      }
+    } catch (error) {
+      if (error.response?.status !== 400) {
+        showAlert(error.response?.data?.error || 'Error loading data', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const currentAcadYear = getCurrentAcademicYear();
-    const sessions = generateAcademicSessions(currentAcadYear);
-    setAcademicSessions(sessions);
-    setMenteeDetails(prev => ({
-      ...prev,
-      academicYear: currentAcadYear,
-      academicSession: sessions[0]
-    }));
-  }, []);
+    const initializeComponent = async () => {
+      if (!mounted) return;
 
-  const [academicSessions, setAcademicSessions] = useState([]);
+      const currentAcadYear = getCurrentAcademicYear();
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const [startYear] = currentAcadYear.split('-');
+      
+      const currentSession = currentMonth >= 7 && currentMonth <= 12
+        ? `JULY-DECEMBER ${startYear}`
+        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
 
-  // Add this near other state declarations
-  const [yearSuggestions, setYearSuggestions] = useState([]);
-  const yearRef = useRef(null);
-  const sessionRef = useRef(null);
-  const [showYearOptions, setShowYearOptions] = useState(false);
-  const [showSessionOptions, setShowSessionOptions] = useState(false);
+      setAcademicYear(currentAcadYear);
+      setAcademicSession(currentSession);
+      try {
+        setLoading(true);
+        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+          params: {
+            academicYear: currentAcadYear,
+            academicSession: currentSession
+          }
+        });
 
-  // Add these helper functions
-  const generateYearSuggestions = (input) => {
-    if (!input) return [];
-    const currentYear = new Date().getFullYear();
-    const suggestions = [];
-    
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
-      const academicYear = `${year}-${year + 1}`;
-      if (academicYear.startsWith(input)) {
-        suggestions.push(academicYear);
-      }
-    }
-    return suggestions;
-  };
-
-  // Add this useEffect for handling clicks outside dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (yearRef.current && !yearRef.current.contains(event.target)) {
-        setShowYearOptions(false);
-      }
-      if (sessionRef.current && !sessionRef.current.contains(event.target)) {
-        setShowSessionOptions(false);
+        if (response.status === 200) {
+          const normalizedData = response.data.map(mentee => ({
+            ...mentee,
+            id: mentee._id || mentee.id,
+            MUJid: mentee.MUJid?.toUpperCase() || '',
+            mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+          }));
+          
+          // Update cache
+          cachedData.current.set(`${currentAcadYear}-${currentSession}`, normalizedData);
+          
+          // Set mentees and show table
+          setMentees(normalizedData);
+          setTableVisible(true);
+        }
+      } catch (error) {
+        if (error.response?.status !== 400) {
+          showAlert(error.response?.data?.error || 'Error loading data', 'error');
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Make sure to add the comboBoxStyles if not already present
-  const comboBoxStyles = {
-    position: 'relative',
-    width: '100%',
-    '& .MuiTextField-root': {
-      width: '100%',
-    },
-    '& .options-dropdown': {
-      position: 'absolute',
-      top: '100%',
-      left: 0,
-      right: 0,
-      zIndex: 9999,
-      backgroundColor: '#1a1a1a',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '8px',
-      marginTop: '4px',
-      padding: '8px 0',
-      maxHeight: '200px',
-      overflowY: 'auto',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-      '& .option-item': {
-        padding: '8px 16px',
-        color: 'white',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
-        },
-      },
-    },
-  };
-
-  if (!mounted) return null;
+    initializeComponent();
+  }, [mounted]);
 
   const handleDataUpdate = (updateFn) => {
     setMentees(prevMentees => {
@@ -901,10 +777,37 @@ const MenteeManagement = () => {
     });
   };
 
+  // Add mounted state setter
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
-        <Toaster position="top-center" containerStyle={{ top: 100 }} />
+        {/* Single Toaster instance with updated configuration */}
+        <Toaster 
+          position="bottom-right"
+          containerStyle={{
+            bottom: 40,
+            right: 20,
+            maxWidth: '100%'
+          }}
+          toastOptions={{
+            className: '',
+            duration: 3000,
+            style: {
+              maxWidth: '400px',
+              background: '#1a1a1a',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              fontSize: '0.875rem',
+              whiteSpace: 'pre-line'
+            },
+          }}
+        />
+
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
@@ -927,7 +830,7 @@ const MenteeManagement = () => {
 
             {isSmallScreen && (
               <IconButton
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => setShowFilters(prev => !prev)}
                 sx={{
                   color: '#f97316',
                   bgcolor: 'rgba(249, 115, 22, 0.1)',
@@ -936,7 +839,8 @@ const MenteeManagement = () => {
                   },
                   position: 'fixed',
                   right: '1rem',
-                  zIndex: 10,
+                  top: '5rem', // Adjust position to be more accessible
+                  zIndex: 1000,
                 }}
               >
                 <FilterListIcon />
@@ -957,23 +861,28 @@ const MenteeManagement = () => {
                 opacity: showFilters ? 1 : 0,
                 marginBottom: showFilters ? '12px' : 0
               }}
+              transition={{ duration: 0.3 }}
               style={{
                 display: showFilters ? 'block' : 'none',
                 position: isSmallScreen ? 'relative' : 'sticky',
                 top: isSmallScreen ? 'auto' : '1rem',
+                maxHeight: isSmallScreen ? 'calc(100vh - 200px)' : 'none',
+                overflowY: isSmallScreen ? 'auto' : 'visible',
+                zIndex: isSmallScreen ? 50 : 'auto'
               }}
             >
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full overflow-auto">
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full">
                 <FilterSection 
                   filters={filterConfig}
                   onFilterChange={handleFilterChange}
                   onSearch={handleSearch}
-                  onSearchAll={handleSearchAll}
+                  // onSearchAll={handleSearchAll}
                   onAddNew={handleDialogOpen}
                   onReset={handleReset}
                   onBulkUpload={handleBulkUploadOpen}
                   onDelete={handleDelete}
                   mentees={mentees}
+                  filterData={filterData} // Pass filterData as prop
                 />
               </div>
             </motion.div>
@@ -1006,7 +915,7 @@ const MenteeManagement = () => {
                   ) : (
                     <div className="flex-1 flex items-center justify-center">
                       <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {tableVisible ? 'No mentees found' : 'Use the filters to search for mentees'}
+                        {tableVisible ? 'No mentees found' : 'Select filters to load data'}
                       </Typography>
                     </div>
                   )}
@@ -1016,1079 +925,38 @@ const MenteeManagement = () => {
           </div>
         </div>
 
-        {/* ...existing dialogs and other components... */}
-        <Dialog 
-          open={openDialog} 
+        <AddMenteeDialog 
+          open={openDialog}
           onClose={handleDialogClose}
-          maxWidth="lg" 
-          fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
-        >
-          <DialogTitle sx={dialogStyles.title}>
-            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-              Add New Mentee
-            </Typography>
-            <IconButton
-              aria-label="close"
-              onClick={handleDialogClose}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&:hover': {
-                  color: '#f97316',
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={dialogStyles.content}>
-            <Box sx={{ 
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)', // Changed from 3 columns to 2
-              gap: 3,
-              minHeight: '40vh', // Reduced height since we have fewer fields
-              overflowY: 'auto',
-              pr: 2,
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: 'rgba(249, 115, 22, 0.5)',
-                borderRadius: '4px',
-                '&:hover': {
-                  background: 'rgba(249, 115, 22, 0.7)',
-                },
-              },
-              '& .MuiTextField-root': dialogStyles.textField,
-            }}>
-              {/* Essential Information */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                  Student Information
-                </Typography>
-                <TextField
-                  label="MUJid"
-                  name="MUJid"         // Changed from mujid to MUJid
-                  value={menteeDetails.MUJid}  // Changed from mujid to MUJid
-                  onChange={handleInputChange}
-                  required
-                  inputProps={{
-                    style: { textTransform: 'uppercase' }
-                  }}
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-                <TextField
-                  label="Name"
-                  name="name"
-                  value={menteeDetails.name}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-                <TextField
-                  label="College Email"
-                  name="email"
-                  type="email"
-                  value={menteeDetails.email}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-                <TextField
-                  label="Phone"
-                  name="phone"
-                  value={menteeDetails.phone}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-                <TextField
-                  label="Year of Registration"
-                  name="yearOfRegistration"
-                  type="number"
-                  value={menteeDetails.yearOfRegistration}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-                
-              </Box>
+          menteeDetails={menteeDetails}
+          onInputChange={handleInputChange}
+          onSubmit={handleFormSubmit}
+          academicSessions={academicSessions}
+        />
 
-              {/* Academic Information */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                  Academic Information
-                </Typography>
-                <TextField
-                  label="Academic Year"
-                  name="academicYear"
-                  select
-                  value={menteeDetails.academicYear}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                >
-                  {(() => {
-                    const currentYear = new Date().getFullYear();
-                    return [
-                      `${currentYear}-${currentYear + 1}`,
-                      `${currentYear - 1}-${currentYear}`,
-                      `${currentYear - 2}-${currentYear - 1}`,
-                      `${currentYear - 3}-${currentYear - 2}`
-                    ].map(year => (
-                      <MenuItem key={year} value={year}>{year}</MenuItem>
-                    ));
-                  })()}
-                </TextField>
-                <TextField
-                  label="Academic Session"
-                  name="academicSession"
-                  select
-                  value={menteeDetails.academicSession || ''}
-                  onChange={handleInputChange}
-                  disabled={!menteeDetails.academicYear}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                >
-                  {academicSessions.map(session => (
-                    <MenuItem key={session} value={session}>{session}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Semester"
-                  name="semester"
-                  value={menteeDetails.semester || ''}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                >
-                  <MenuItem value="">Select Semester</MenuItem>
-                  {generateSemesterOptions(menteeDetails.academicSession).map((sem) => (
-                    <MenuItem key={sem} value={sem}>
-                      Semester {sem}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label="Section"
-                  name="section"
-                  value={menteeDetails.section}
-                  onChange={handleInputChange}
-                  required
-                  inputProps={{
-                    maxLength: 1,
-                    pattern: "[A-Z]",
-                    style: { textTransform: 'uppercase' }
-                  }}
-                  helperText="Enter a single capital letter (A-Z)"
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-                <TextField
-                  label="Mentor MUJid"
-                  name="mentorMujid"
-                  value={menteeDetails.mentorMujid}
-                  onChange={handleInputChange}
-                  required
-                  SelectProps={{
-                    MenuProps: {
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-              </Box>
-            </Box>
-          </DialogContent>
-          <DialogActions sx={dialogStyles.actions}>
-            <Button 
-              onClick={handleDialogClose}
-              variant="outlined"
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleFormSubmit}
-              variant="contained"
-              sx={{
-                bgcolor: '#f97316',
-                '&:hover': {
-                  bgcolor: '#ea580c',
-                },
-              }}
-            >
-              Add Mentee
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog 
-          open={editDialog} 
+        <EditMenteeDialog
+          open={editDialog}
           onClose={handleEditClose}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
-        >
-          <DialogTitle sx={dialogStyles.title}>
-            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-              Edit Mentee Details
-            </Typography>
-            <IconButton
-              onClick={handleEditClose}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&:hover': { color: '#f97316' },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={dialogStyles.content}>
-            {selectedMentee && (
-              <Box sx={{ 
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-                gap: 3,
-                py: 2
-              }}>
-                {/* Student Information */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                    Student Information
-                  </Typography>
-                  <TextField
-                    label="MUJid"
-                    name="MUJid"
-                    value={selectedMentee.MUJid || ''}
-                    disabled
-                    sx={dialogStyles.textField}
-                  />
-                  <TextField
-                    label="Name"
-                    name="name"
-                    value={selectedMentee.name || ''}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                  <TextField
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={selectedMentee.email || ''}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                  <TextField
-                    label="Phone"
-                    name="phone"
-                    value={selectedMentee.phone || ''}
-                    onChange={handleEditInputChange}
-                    sx={dialogStyles.textField}
-                  />
-                  <TextField
-                    label="Address"
-                    name="address"
-                    value={selectedMentee.address || ''}
-                    onChange={handleEditInputChange}
-                    multiline
-                    rows={2}
-                    sx={dialogStyles.textField}
-                  />
-                </Box>
+          mentee={selectedMentee}
+          onUpdate={handleUpdate}
+          loading={editLoading}
+        />
 
-                {/* Academic Information */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                    Academic Information
-                  </Typography>
-                  {/* Academic Year with suggestions */}
-                  <Box ref={yearRef} sx={comboBoxStyles}>
-                    <TextField
-                      label="Academic Year"
-                      name="academicYear"
-                      value={selectedMentee?.academicYear || ''}
-                      onChange={(e) => {
-                        let value = e.target.value.toUpperCase();
-                        if (value.length === 4 && !value.includes('-')) {
-                          value = `${value}-${parseInt(value) + 1}`;
-                        }
-                        setYearSuggestions(generateYearSuggestions(value));
-                        setShowYearOptions(true);
-                        handleEditInputChange({ target: { name: 'academicYear', value } });
-                      }}
-                      onClick={() => setShowYearOptions(true)}
-                      placeholder="YYYY-YYYY"
-                      required
-                      sx={dialogStyles.textField}
-                    />
-                    {showYearOptions && (
-                      <Box className="options-dropdown">
-                        {(yearSuggestions.length > 0 ? yearSuggestions : 
-                          (() => {
-                            const currentYear = new Date().getFullYear();
-                            return [0, 1, 2, 3].map(offset => `${currentYear - offset}-${currentYear - offset + 1}`);
-                          })()
-                        ).map(year => (
-                          <Box
-                            key={year}
-                            className="option-item"
-                            onClick={() => {
-                              handleEditInputChange({ target: { name: 'academicYear', value: year } });
-                              setShowYearOptions(false);
-                              const sessions = generateAcademicSessions(year);
-                              if (sessions.length > 0) {
-                                handleEditInputChange({ target: { name: 'academicSession', value: sessions[0] } });
-                              }
-                            }}
-                          >
-                            {year}
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-
-                  {/* Academic Session with suggestions */}
-                  <Box ref={sessionRef} sx={comboBoxStyles}>
-                    <TextField
-                      label="Academic Session"
-                      name="academicSession"
-                      value={selectedMentee?.academicSession || ''}
-                      onChange={(e) => {
-                        let value = e.target.value.toUpperCase();
-                        if (value.startsWith('JUL')) {
-                          value = `JULY-DECEMBER ${selectedMentee?.academicYear?.split('-')[0]}`;
-                        } else if (value.startsWith('JAN')) {
-                          value = `JANUARY-JUNE ${selectedMentee?.academicYear?.split('-')[1]}`;
-                        }
-                        handleEditInputChange({ target: { name: 'academicSession', value } });
-                        setShowSessionOptions(true);
-                      }}
-                      onClick={() => setShowSessionOptions(true)}
-                      placeholder="MONTH-MONTH YYYY"
-                      required
-                      disabled={!selectedMentee?.academicYear}
-                      sx={dialogStyles.textField}
-                    />
-                    {showSessionOptions && (
-                      <Box className="options-dropdown">
-                        {generateAcademicSessions(selectedMentee?.academicYear).map(session => (
-                          <Box
-                            key={session}
-                            className="option-item"
-                            onClick={() => {
-                              handleEditInputChange({ target: { name: 'academicSession', value: session } });
-                              setShowSessionOptions(false);
-                            }}
-                          >
-                            {session}
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-
-                  {/* Rest of Academic Information fields */}
-                  <TextField
-                    label="Year of Registration"
-                    name="yearOfRegistration"
-                    type="number"
-                    value={selectedMentee.yearOfRegistration || ''}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                  <TextField
-                    label="Section"
-                    name="section"
-                    value={selectedMentee.section || ''}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                  <TextField
-                    label="Semester"
-                    name="semester"
-                    type="number"
-                    value={selectedMentee.semester || ''}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Box>
-
-
-                {/* Mentor Information */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                    Mentor Information
-                  </Typography>
-                  <TextField
-                    label="Mentor MUJid"
-                    name="mentorMujid"
-                    value={selectedMentee.mentorMujid || ''}
-                    onChange={handleEditInputChange}
-                    required
-                    sx={dialogStyles.textField}
-                  />
-                </Box>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions sx={dialogStyles.actions}>
-            <Button 
-              onClick={handleEditClose}
-              variant="outlined"
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleUpdate}
-              variant="contained"
-              sx={{
-                bgcolor: '#f97316',
-                '&:hover': {
-                  bgcolor: '#ea580c',
-                },
-              }}
-            >
-              Update
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog 
-          open={assignDialog} 
+        <AssignMentorDialog
+          open={assignDialog}
           onClose={handleAssignClose}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
-        >
-          <DialogTitle sx={dialogStyles.title}>
-            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-              Assign Mentor
-            </Typography>
-            <IconButton
-              aria-label="close"
-              onClick={handleAssignClose}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&:hover': {
-                  color: '#f97316',
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={dialogStyles.content}>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 2,
-              '& .MuiTextField-root': dialogStyles.textField,
-            }}>
-              <TextField
-                label="Mentor MUJid"
-                name="mentor_MUJid"
-                value={assignmentDetails.mentor_MUJid}
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-              <TextField
-                label="Session"
-                name="session"
-                value={assignmentDetails.session}
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-              <TextField
-                label="Semester" // Changed from Current Semester to Semester
-                name="semester" // Changed from current_semester to semester
-                type="number"
-                value={assignmentDetails.semester} // Changed from current_semester to semester
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-              <TextField
-                select
-                label="Section"
-                name="section"
-                value={assignmentDetails.section}
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              >
-                <MenuItem value="">Select Section</MenuItem>
-                <MenuItem value="A">A</MenuItem>
-                <MenuItem value="B">B</MenuItem>
-                <MenuItem value="C">C</MenuItem>
-                <MenuItem value="D">D</MenuItem>
-                <MenuItem value="E">E</MenuItem>
-              </TextField>
-            </Box>
-          </DialogContent>
-          <DialogActions sx={dialogStyles.actions}>
-            <Button 
-              onClick={handleAssignClose}
-              variant="outlined"
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAssignSubmit}
-              variant="contained"
-              sx={{
-                bgcolor: '#f97316',
-                '&:hover': {
-                  bgcolor: '#ea580c',
-                },
-              }}
-            >
-              Assign
-            </Button>
-          </DialogActions>
-        </Dialog>
+          details={assignmentDetails}
+          onChange={handleAssignInputChange}
+          onSubmit={handleAssignSubmit}
+        />
 
-        <Dialog 
-          open={assignDialog} 
-          onClose={handleAssignClose}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{ sx: dialogStyles.paper }}
-        >
-          <DialogTitle sx={dialogStyles.title}>
-            <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-              Assign Mentor
-            </Typography>
-            <IconButton
-              aria-label="close"
-              onClick={handleAssignClose}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&:hover': {
-                  color: '#f97316',
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={dialogStyles.content}>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 2,
-              '& .MuiTextField-root': dialogStyles.textField,
-            }}>
-              <TextField
-                label="Mentor MUJid"
-                name="mentor_MUJid"
-                value={assignmentDetails.mentor_MUJid}
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-              <TextField
-                label="Session"
-                name="session"
-                value={assignmentDetails.session}
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-              <TextField
-                label="Semester" // Changed from Current Semester to Semester
-                name="semester" // Changed from current_semester to semester
-                type="number"
-                value={assignmentDetails.semester} // Changed from current_semester to semester
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-              <TextField
-                select
-                label="Section"
-                name="section"
-                value={assignmentDetails.section}
-                onChange={handleAssignInputChange}
-                required
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
-                            '&:hover': {
-                              bgcolor: '#404040',
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }}
-              >
-                <MenuItem value="">Select Section</MenuItem>
-                <MenuItem value="A">A</MenuItem>
-                <MenuItem value="B">B</MenuItem>
-                <MenuItem value="C">C</MenuItem>
-                <MenuItem value="D">D</MenuItem>
-                <MenuItem value="E">E</MenuItem>
-              </TextField>
-            </Box>
-          </DialogContent>
-          <DialogActions sx={dialogStyles.actions}>
-            <Button 
-              onClick={handleAssignClose}
-              variant="outlined"
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                },
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAssignSubmit}
-              variant="contained"
-              sx={{
-                bgcolor: '#f97316',
-                '&:hover': {
-                  bgcolor: '#ea580c',
-                },
-              }}
-            >
-              Assign
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <BulkUploadDialog
+          open={bulkUploadDialog}
+          onClose={handleBulkUploadClose}
+          onUpload={handleFileUpload}
+          uploading={uploading}
+          uploadProgress={uploadProgress}
+        />
 
         <Dialog 
           open={confirmDialog.open}           
@@ -2114,7 +982,6 @@ const MenteeManagement = () => {
             </Button>          
           </DialogActions>        
         </Dialog>        
-        {renderBulkUploadDialog()}        
         <BulkUploadPreview
           open={showPreview}
           onClose={() => setShowPreview(false)}
@@ -2125,7 +992,6 @@ const MenteeManagement = () => {
           type="mentee" // Specify the type as mentee
         />
         {/* Toast notifications */}        
-        <Toaster position="top-right" />      
         {editLoading && (
           <Box
             sx={{
@@ -2150,6 +1016,4 @@ const MenteeManagement = () => {
     </ThemeProvider>  
   );
 };
-
 export default MenteeManagement;
-

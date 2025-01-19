@@ -1,22 +1,25 @@
 import mongoose from "mongoose";
 
 const menteesSchema = new mongoose.Schema({
-    name: { type: String, required: true }, // Full name of the mentee
-    email: { type: String, required: true, unique: true }, // Unique email for the mentee
+    name: { type: String, required: true }, 
+    email: { type: String, required: true, unique: true },
     MUJid: { type: String, required: true, unique: true  ,
         validate: {
         validator: (value) => /^[A-Z0-9]+$/.test(value),
         message: "mujid must be alphanumeric and uppercase, with no special characters or symbols",
-    },}, // Unique MUJID for the mentee
-    phone: { 
+    },},
+    phone: {
         type: String,
         required: false,
         validate: {
             validator: (value) => /^\d{10}$/.test(value),
             message: "Phone number must be a 10-digit number"
         }
-    }, // Contact number of the mentee
-    address: { type: String },
+    },
+    address: { 
+        type: String,
+        default: ''  // Provide a default empty string
+    },
     yearOfRegistration: {    type: Number,
         required: true,
         validate: {
@@ -25,11 +28,11 @@ const menteesSchema = new mongoose.Schema({
                 return value >= 1900 && value <= currentYear;
             },
             message: "Invalid year of registration",
-        },}, // Year of registration for the mentee
+        },},
     section: { type: String, required: true },
     semester: { type: Number, required: true, min: 1, max: 8 },
-    academicYear: { type: String, required: true }, // Changed from AcademicYear
-    academicSession: { type: String, required: true }, // Changed from AcademicSession
+    academicYear: { type: String, required: true },
+    academicSession: { type: String, required: true },
     parents: {
         father: {
             name: { type: String },
@@ -57,10 +60,18 @@ const menteesSchema = new mongoose.Schema({
             return this.mentorMujid !== null;
         },
         default: null
-    }, // MUJid of the assigned mentor
+    },
+    mentorEmailid:{
+        type: String,
+        required: function() {
+            return this.mentorEMailid !== null;
+        },
+        default: null
+    },
     created_at: { type: Date, default: Date.now }, // Creation date of the mentee record
     updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentee record
     otp: { type: String },
+    password: { type: String },
     otpExpires: { type: Date },
     isOtpUsed: { type: Boolean, default: false }
 });

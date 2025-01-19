@@ -40,7 +40,7 @@ const academicSessionsSchema = new mongoose.Schema({
                   meeting_id: {
                     type: String, // Generate ObjectId instead of a string for better MongoDB practices
                   },
-                  mentor_id: {
+                  mentorMUJid: {
                     type: String,
                     ref: "Mentor",
                     uppercase: true,
@@ -114,10 +114,35 @@ const academicSessionsSchema = new mongoose.Schema({
   updated_at: { type: Date, default: Date.now }, // Last updated date
 });
 
+// Add indexes for frequently queried fields
+academicSessionsSchema.index({ start_year: 1 });
+academicSessionsSchema.index({ 'sessions.name': 1 });
+academicSessionsSchema.index({ 'sessions.semesters.semester_number': 1 });
+academicSessionsSchema.index({ 'sessions.semesters.sections.name': 1 });
+
 // Middleware to enforce `session_id` equals `start_year`
 academicSessionsSchema.pre("save", function (next) {
   this.session_id = this.start_year;
   next();
+});
+
+// Ensure data consistency on save
+academicSessionsSchema.pre('save', function(next) {
+    // Format session names
+    this.sessions.forEach(session => {
+        session.name = session.name.trim().toUpperCase();
+    });
+
+    // Format section names
+    this.sessions.forEach(session => {
+        session.semesters.forEach(semester => {
+            semester.sections.forEach(section => {
+                section.name = section.name.trim().toUpperCase();
+            });
+        });
+    });
+
+    next();
 });
 
 academicSessionsSchema.methods.getMentorMeetingCounts = async function () {
@@ -139,7 +164,6 @@ academicSessionsSchema.methods.getMeetingWithMenteeDetails = async function (
   meetingId
 ) {
   try {
-    // First find the meeting
     const result = await this.model("AcademicSession").aggregate([
       { $unwind: "$sessions" },
       { $unwind: "$sessions.semesters" },
@@ -147,39 +171,49 @@ academicSessionsSchema.methods.getMeetingWithMenteeDetails = async function (
       { $unwind: "$sessions.semesters.sections.meetings" },
       {
         $match: {
-          "sessions.semesters.sections.meetings.mentor_id": mentorId,
+          "sessions.semesters.sections.meetings.mentorMUJid": mentorId,
           "sessions.semesters.sections.meetings.meeting_id": meetingId,
         },
       },
+      {
+        $project: {
+          meeting: "$sessions.semesters.sections.meetings",
+          section: "$sessions.semesters.sections.name",
+          semester: "$sessions.semesters.semester_number",
+          session: "$sessions.name",
+          _id: 0
+        }
+      }
     ]);
 
     if (!result.length) {
       throw new Error("Meeting not found");
     }
 
-    const meeting = result[0].sessions.semesters.sections.meetings;
-
+    const meeting = result[0].meeting;
+    
     // Fetch mentee details from Mentee collection
     const menteeDetails = await Promise.all(
       meeting.mentee_ids.map(async (mujId) => {
         const mentee = await Mentee.findOne({ MUJid: mujId })
           .select("MUJid name email phone academicYear semester section")
           .lean();
-        return (
-          mentee || {
-            mujId,
-            name: "Name not found",
-            email: "Email not found",
-            section: "Section not found",
-            semester: "Semester not found",
-          }
-        );
+        return mentee || {
+          MUJid: mujId,
+          name: "Name not found",
+          email: "Email not found",
+          section: "Section not found",
+          semester: "Semester not found",
+        };
       })
     );
 
     return {
       meeting,
       mentee_details: menteeDetails,
+      section: result[0].section,
+      semester: result[0].semester,
+      session: result[0].session
     };
   } catch (error) {
     console.error("Error fetching meeting with mentee details:", error);
@@ -200,6 +234,21 @@ academicSessionsSchema.methods.getMentorDetails = async function (mentorMUJid) {
     console.error("Error fetching mentor details:", error);
     throw error;
   }
+};
+
+// Add a method to find meetings by criteria
+academicSessionsSchema.methods.findMeetingsByCriteria = async function(year, session, semester, section) {
+    const query = {
+        start_year: parseInt(year),
+        'sessions.name': session,
+        'sessions.semesters.semester_number': parseInt(semester)
+    };
+    
+    if (section) {
+        query['sessions.semesters.sections.name'] = section.toUpperCase();
+    }
+    
+    return this.model('AcademicSession').findOne(query);
 };
 
 const AcademicSession =
