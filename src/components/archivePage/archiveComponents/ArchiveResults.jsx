@@ -155,8 +155,7 @@ const ArchiveResults = ({ searchParams }) => {
           gap: 1,
           fontSize: '1.1rem',
         }}>
-          <span className="material-icons" style={{ fontSize: '1.3rem' }}>description</span>
-          Archive Results
+          <span className="material-icons" style={{ fontSize: '1.3rem' }}>Archive Results</span>
         </Typography>
         <Typography sx={{ 
           color: '#f97316',
@@ -176,7 +175,7 @@ const ArchiveResults = ({ searchParams }) => {
           backgroundColor: '#1a1a1a',  // Darker background
           borderColor: 'rgba(249, 115, 22, 0.2)',
           color: 'white',
-          width: 'fit-content',  // Prevent extra space
+          // width: 'fit-content',  // Prevent extra space
           margin: '0 auto',  // Center the table
         },
         '& .MuiDataGrid-columnHeaders': {
@@ -185,6 +184,7 @@ const ArchiveResults = ({ searchParams }) => {
           '& .MuiDataGrid-columnHeader': {
             color: '#f97316',
             fontWeight: 600,
+            flexGrow: 1
           }
         },
         '& .MuiDataGrid-cell': {

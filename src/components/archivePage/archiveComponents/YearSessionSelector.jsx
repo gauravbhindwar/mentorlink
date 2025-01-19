@@ -144,6 +144,15 @@ const YearSessionSelector = ({ onSearch }) => {
             '&.Mui-focused fieldset': {
               borderColor: '#f97316',
               borderWidth: '2px',
+            },
+            '& input': {
+              color: 'white !important', // Ensure the selected value remains white
+            },
+            '& .MuiSelect-select': {
+              color: 'white !important', // Ensure the selected value remains white
+            },
+            '& select': {
+              color: 'white !important', // Ensure the selected value remains white
             }
           },
           '& .MuiInputLabel-root': {
