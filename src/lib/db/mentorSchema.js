@@ -27,7 +27,7 @@ const mentorsSchema = new mongoose.Schema({
     type: [String],
     enum: ["mentor", "admin", "superadmin"],
     default: ["mentor"],
-  }, // Role of the mentor
+  }, 
   academicYear: { type: String, default: null }, // Academic year of the mentor
   academicSession: { type: String, default: null }, // Academic session of the mentor
   created_at: { type: Date, default: Date.now }, // Creation date of the mentor record
@@ -35,6 +35,7 @@ const mentorsSchema = new mongoose.Schema({
   otp: { type: String, default: null },
   otpExpires: { type: Date, default: null },
   isOtpUsed: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
 });
 
 // Add a pre-save middleware to ensure MUJid is uppercase

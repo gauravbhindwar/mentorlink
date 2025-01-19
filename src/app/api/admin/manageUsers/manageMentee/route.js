@@ -58,7 +58,7 @@ const menteeSchema = Joi.object({
     }).allow(null),
     guardian: Joi.object({
       name: Joi.string().allow("", null),
-      email: Joi.string().email().allow("", null),
+      email: Joi.string().allow("", null),
       phone: Joi.string().allow("", null),
       relation: Joi.string().allow("", null),
     }).allow(null),
@@ -77,40 +77,65 @@ export async function POST(req) {
   try {
     await connect();
     let menteeData = await req.json();
-    // Clean up parent data to ensure empty objects if not provided
-    menteeData = {
-      ...menteeData,
-      parents: {
-        father: menteeData.parents?.father || {},
-        mother: menteeData.parents?.mother || {},
-        guardian: menteeData.parents?.guardian || {},
-      },
-    };
-
-    // Normalize academic session casing
-    if (menteeData.academicSession) {
-      menteeData.academicSession = menteeData.academicSession.toUpperCase();
+    
+    // Validate required fields
+    const requiredFields = ['MUJid', 'name', 'email', 'yearOfRegistration', 'section', 'semester', 'mentorMujid'];
+    const missingFields = requiredFields.filter(field => !menteeData[field]);
+    
+    if (missingFields.length > 0) {
+      return createErrorResponse(`Missing required fields: ${missingFields.join(', ')}`, 400);
     }
 
-    console.log("API Request:", menteeData?.mentorMujid);
-    let mentorMUJid = menteeData.mentorMujid;
-    if (!mentorMUJid) {
+    // Clean and normalize data
+    menteeData = {
+      ...menteeData,
+      MUJid: menteeData.MUJid?.toUpperCase(),
+      academicSession: menteeData.academicSession?.toUpperCase(),
+      parents: {
+        father: { name: null, email: null, phone: null, alternatePhone: null },
+        mother: { name: null, email: null, phone: null, alternatePhone: null },
+        guardian: { name: null, email: null, phone: null, relation: null }
+      }
+    };
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(menteeData.email)) {
+      return createErrorResponse('Invalid email format', 400);
+    }
+
+    // Single check for existing mentee (removed duplicate check)
+    const existingMentee = await Mentee.findOne({
+      $or: [
+        { MUJid: menteeData.MUJid },
+        { email: menteeData.email }
+      ]
+    });
+
+    if (existingMentee) {
+      let errorMessage = '';
+      if (existingMentee.MUJid === menteeData.MUJid) {
+        errorMessage = `Mentee already exists with MUJid: ${menteeData.MUJid}`;
+      } else if (existingMentee.email === menteeData.email) {
+        errorMessage = `Mentee already exists with email: ${menteeData.email}`;
+      }
+      return createErrorResponse(errorMessage, 400);
+    }
+
+    // Check for required mentor fields
+    if (!menteeData.mentorMujid) {
       return createErrorResponse("Mentor MUJid is required", 400);
     }
 
     // Check if the mentor exists
-    const mentorExists = await Mentor.findOne({ MUJid: mentorMUJid });
+    const mentorExists = await Mentor.findOne({ MUJid: menteeData.mentorMujid });
     if (!mentorExists) {
-      return createErrorResponse(
-        "Mentor not found with the provided MUJid",
-        404
-      );
+      return createErrorResponse("Mentor not found with the provided MUJid", 404);
     }
 
-    // Validate the data against the schema
+    // Validate data against schema
     const { error, value } = menteeSchema.validate(menteeData, {
-      abortEarly: false, // Get all errors, not just the first one
-      stripUnknown: true, // Remove unknown fields
+      abortEarly: false,
+      stripUnknown: true,
     });
 
     if (error) {
@@ -118,29 +143,39 @@ export async function POST(req) {
       return createErrorResponse(errorMessages, 400);
     }
 
-    // Check for existing mentee
-    const existingMentee = await Mentee.findOne({
-      $or: [{ email: menteeData.email }, { MUJid: menteeData.MUJid }],
-    });
-
-    if (existingMentee) {
-      return createErrorResponse(
-        "Mentee already exists with this email or MUJid",
-        400
-      );
+    // Additional validations for academic fields
+    const currentYear = new Date().getFullYear();
+    if (menteeData.yearOfRegistration > currentYear) {
+      return createErrorResponse("Year of registration cannot be in the future", 400);
     }
 
-    // Create new mentee using validated data
-    const newMentee = new Mentee(value);
+    // Create new mentee with dates handled by schema defaults
+    const newMentee = new Mentee({
+      ...value,
+      parents: menteeData.parents,
+      created_at: new Date(),
+      updated_at: new Date()
+    });
+
     await newMentee.save();
 
     return NextResponse.json(
-      { message: "Mentee added successfully" },
+      { 
+        message: "Mentee added successfully",
+        mentee: newMentee
+      },
       { status: 201 }
     );
   } catch (error) {
-    console.log("Server error:", error);
-    return createErrorResponse("Something went wrong on the server", 500);
+    console.error("Server error:", error);
+    return createErrorResponse(
+      error.name === 'ValidationError' 
+        ? error.message 
+        : error.code === 11000 
+          ? "A mentee with this MUJid or email already exists"
+          : "Server error occurred while adding mentee",
+      500
+    );
   }
 }
 
@@ -315,7 +350,7 @@ export async function PATCH(req) {
         }),
         guardian: Joi.object({
           name: Joi.string().allow("", null),
-          email: Joi.string().email().allow("", null),
+          email: Joi.string().allow("", null),
           phone: Joi.string().allow("", null),
           relation: Joi.string().allow("", null),
         }),

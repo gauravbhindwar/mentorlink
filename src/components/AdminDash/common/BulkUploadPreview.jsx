@@ -14,9 +14,28 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid } from '@mui/x-data-grid';
+import { toast } from 'react-hot-toast';
 
-const BulkUploadPreview = ({ open, onClose, data, errors, onConfirm, isUploading, type }) => {
+const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfirm, isUploading, type }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [pageSize, setPageSize] = useState(5); // Default page size
+
+  useEffect(() => {
+    setMounted(true);
+    // Update page size after mount
+    if (typeof window !== 'undefined') {
+      const newPageSize = Math.floor((window.innerHeight - 400) / 48) || 5;
+      setPageSize(newPageSize);
+
+      // Add resize listener
+      const handleResize = () => {
+        setPageSize(Math.floor((window.innerHeight - 400) / 48) || 5);
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Simulate upload progress
   useEffect(() => {
@@ -38,33 +57,30 @@ const BulkUploadPreview = ({ open, onClose, data, errors, onConfirm, isUploading
   }, [isUploading]);
 
   const columns = type === 'mentee' ? [
-    { field: 'MUJid', headerName: 'MUJid', width: 130 },
-    { field: 'name', headerName: 'Name', width: 180 },
-    { field: 'email', headerName: 'Email', width: 200 },
-    { field: 'section', headerName: 'Section', width: 100 },
-    { field: 'semester', headerName: 'Semester', width: 100 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
-    { field: 'academicSession', headerName: 'Academic Session', width: 180 },
-    { field: 'mentorMujid', headerName: 'Mentor MUJid', width: 130 },
+    { field: 'MUJid', headerName: 'Mentee MUJid', flex: 0.75, minWidth: 130,headerAlign: 'center', align: 'center' }, // Decreased width
+    { field: 'name', headerName: 'Mentee Name', flex: 1, minWidth: 150,headerAlign: 'center', align: 'center' },    // Decreased width
+    { field: 'email', headerName: 'Mentee Email', flex: 1.5, minWidth: 250,headerAlign: 'center', align: 'center' },  // Increased width
+    { field: 'section', headerName: 'Section', flex: 0.45, minWidth: 70,headerAlign: 'center', align: 'center' },
+    { field: 'semester', headerName: 'Semester', flex: 0.5, minWidth: 100,headerAlign: 'center', align: 'center' }, // Increased width
+    { field: 'mentorEmail', headerName: 'Mentor Email', flex: 1.3, minWidth: 180,headerAlign: 'center', align: 'center' } // Decreased width
   ] : [
-    { field: 'MUJid', headerName: 'MUJid', width: 130 },
-    { field: 'name', headerName: 'Name', width: 180 },
-    { field: 'email', headerName: 'Email', width: 200 },
-    { field: 'phone_number', headerName: 'Phone Number', width: 150 },
-    { field: 'gender', headerName: 'Gender', width: 100 },
-    { field: 'role', headerName: 'Role', width: 100 },
-    { field: 'academicYear', headerName: 'Academic Year', width: 150 },
-    { field: 'academicSession', headerName: 'Academic Session', width: 180 }
+    { field: 'MUJid', headerName: 'MUJid', flex: 1, minWidth: 130 },
+    { field: 'name', headerName: 'Name', flex: 1.5, minWidth: 180 },
+    { field: 'email', headerName: 'Email', flex: 1.5, minWidth: 200 },
+    { field: 'phone_number', headerName: 'Phone', flex: 1, minWidth: 120 },
+    { field: 'gender', headerName: 'Gender', flex: 0.5, minWidth: 80 },
+    { field: 'role', headerName: 'Role', flex: 0.5, minWidth: 80 }
   ];
 
-  const rows = data.map((row, index) => ({
-    id: index,
-    ...row
-  }));
+  const rows = data
+    .filter(row => Object.values(row).some(value => value)) // Remove empty rows
+    .map((row, index) => ({
+      id: index,
+      ...row
+    }));
   
   // Enhanced error grouping that consolidates duplicate errors
   const groupErrors = (errors) => {
-    // Error category definitions with colors and priorities
     const errorCategories = {
       'duplicate_email': { 
         title: 'Duplicate Email', 
@@ -193,300 +209,415 @@ const BulkUploadPreview = ({ open, onClose, data, errors, onConfirm, isUploading
     );
   };
 
-  return (
-    <Dialog 
-      open={open}
-      onClose={onClose}
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#1a1a1a',
-          borderRadius: '12px',
-          boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
-          color: '#ffffff',
-          overflow: 'hidden',
-          border: '1px solid rgba(249, 115, 22, 0.1)',
-          maxHeight: '90vh',
-          transition: 'all 0.3s ease-in-out',
-        }
-      }}
-    >
-      <DialogTitle 
-        sx={{
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          p: 2, // Reduced padding
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#1a1a1a',
+  const renderMentorSummary = () => {
+    if (!mentorActions || (!mentorActions.toCreate.length && !mentorActions.toUpdate.length)) {
+      return null;
+    }
+
+    return (
+      <Alert 
+        severity="info" 
+        sx={{ 
+          mb: 2,
+          borderRadius: '8px',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+          bgcolor: 'rgba(59, 130, 246, 0.1)',
+          color: '#ffffff'
         }}
       >
-        <Typography
-          variant="h6"
-          sx={{
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            color: '#ffffff',
-            letterSpacing: '-0.025em'
-          }}
-        >
-          Preview Data
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+          Mentor Changes Summary
         </Typography>
-        <IconButton
-          onClick={onClose}
+        {mentorActions.toCreate.length > 0 && (
+          <Typography sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+            • New mentors to be created: {mentorActions.toCreate.length}
+          </Typography>
+        )}
+        {mentorActions.toUpdate.length > 0 && (
+          <Typography sx={{ fontSize: '0.875rem' }}>
+            • Existing mentors to be updated: {mentorActions.toUpdate.length}
+          </Typography>
+        )}
+      </Alert>
+    );
+  };
+
+  const handleConfirm = async () => {
+    try {
+      onConfirm();
+      toast.promise(
+        new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        }),
+        {
+          loading: 'Uploading data...',
+          success: type === 'mentor' ? 
+            'Successfully uploaded mentors!' : 
+            'Successfully uploaded mentees and updated mentors!',
+          error: 'Error occurred while uploading'
+        }
+      );
+    } catch (error) {
+      console.log('Upload error:', error);
+      toast.error('Failed to upload data');
+    }
+  };
+
+  // Get academic period from first row of data
+  const academicPeriod = data[0] ? {
+    year: data[0].academicYear,
+    session: data[0].academicSession
+  } : null;
+
+  // Calculate pageSize only after component mounts
+  const getPageSize = () => {
+    if (!mounted) return 5; // Default value during SSR
+    return Math.floor((window?.innerHeight - 400) / 48) || 5;
+  };
+
+  if (!mounted) {
+    return null; // or a loading spinner
+  }
+
+  return (
+    <>
+      <Dialog 
+        open={open}
+        onClose={onClose}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: '#1a1a1a',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
+            color: '#ffffff',
+            overflow: 'hidden',
+            border: '1px solid rgba(249, 115, 22, 0.1)',
+            maxHeight: '90vh',
+            transition: 'all 0.3s ease-in-out',
+          }
+        }}
+      >
+        <DialogTitle 
           sx={{
-            color: '#94a3b8',
-            transition: 'all 0.2s',
-            '&:hover': {
-              transform: 'scale(1.1)',
-              color: '#f97316',
-              bgcolor: 'rgba(249, 115, 22, 0.1)'
-            }
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            p: 2, // Reduced padding
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#1a1a1a',
           }}
         >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      
-      <DialogContent sx={{ p: 2, bgcolor: '#1a1a1a' }}> {/* Reduced padding */}
-        {errors.length > 0 && renderErrorSummary(groupErrors(errors))}
-
-        <Box sx={{ 
-          height: errors.length > 0 ? 400 : 500, // Adjust height based on errors
-          width: '100%',
-          '& .MuiDataGrid-root': {
-            border: '1px solid rgba(249, 115, 22, 0.2)',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            color: '#ffffff',
-            '& .MuiDataGrid-cell': {
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              color: '#ffffff',
-              transition: 'background-color 0.2s ease',
-              '&:hover': {
-                backgroundColor: 'rgba(249, 115, 22, 0.05)'
-              }
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              background: 'rgba(249, 115, 22, 0.1)',
-              borderBottom: '2px solid rgba(249, 115, 22, 0.2)'
-            },
-            '& .MuiDataGrid-columnHeaderTitle': {
+          <Typography
+            variant="h6"
+            sx={{
+              fontSize: '1.25rem',
               fontWeight: 600,
-              color: '#ffffff' // Darker color for better visibility
-            },
-            '& .MuiDataGrid-row': {
-              transition: 'transform 0.2s ease, background-color 0.2s ease',
-              '&:hover': {
-                backgroundColor: 'rgba(249, 115, 22, 0.05)',
-                transform: 'translateX(6px)'
-              }
-            },
-            '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-              bgcolor: 'rgba(249, 115, 22, 0.05)'
-            },
-            '& .MuiTablePagination-root': {
               color: '#ffffff',
-              '& .MuiIconButton-root': {
-                color: '#94a3b8',
-                '&.Mui-disabled': {
-                  color: 'rgba(255, 255, 255, 0.3)'
-                },
+              letterSpacing: '-0.025em'
+            }}
+          >
+            {`Preview Upload Data ${academicPeriod ? `(${academicPeriod.year}, ${academicPeriod.session})` : ''}`}
+          </Typography>
+          <IconButton
+            onClick={onClose}
+            sx={{
+              color: '#94a3b8',
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'scale(1.1)',
+                color: '#f97316',
+                bgcolor: 'rgba(249, 115, 22, 0.1)'
+              }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 2, bgcolor: '#1a1a1a' }}> {/* Reduced padding */}
+          {renderMentorSummary()}
+          {errors.length > 0 && renderErrorSummary(groupErrors(errors))}
+
+          <Box sx={{ 
+            height: 'calc(100vh - 300px)', // Dynamic height based on viewport
+            width: '100%',
+            '& .MuiDataGrid-root': {
+              border: '1px solid rgba(249, 115, 22, 0.2)',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              color: '#ffffff',
+              // Add auto-sizing
+              '& .MuiDataGrid-main': {
+                overflow: 'hidden'
+              },
+              // Improve cell alignment
+              '& .MuiDataGrid-cell': {
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                padding: '8px 16px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                '&:focus': {
+                  outline: 'none'
+                }
+              },
+              // Improve header styling
+              '& .MuiDataGrid-columnHeaders': {
+                background: 'rgba(249, 115, 22, 0.1)',
+                borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
+                '& .MuiDataGrid-columnHeader': {
+                  padding: '8px 16px',
+                  '&:focus': {
+                    outline: 'none'
+                  }
+                }
+              },
+              // Remove cell selection highlight
+              '& .MuiDataGrid-cell:focus-within': {
+                outline: 'none !important'
+              },
+              // Improve row styling
+              '& .MuiDataGrid-row': {
+                minHeight: '48px !important',
+                maxHeight: '48px !important',
                 '&:hover': {
-                  color: '#f97316',
-                  bgcolor: 'rgba(249, 115, 22, 0.1)'
+                  backgroundColor: 'rgba(249, 115, 22, 0.05)',
+                  transform: 'none'
+                }
+              },
+              // Fix footer alignment
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+                minHeight: '48px',
+                bgcolor: '#1a1a1a', // Solid background color
+                color: '#ffffff',
+                '& .MuiTablePagination-root': {
+                  color: '#ffffff',
+                  '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                    color: '#94a3b8'
+                  },
+                  '& .MuiTablePagination-select': {
+                    color: '#ffffff',
+                    bgcolor: '#1a1a1a' // Solid background for select
+                  },
+                  '& .MuiTablePagination-selectIcon': {
+                    color: '#94a3b8'
+                  },
+                  '& .MuiIconButton-root': {
+                    color: '#94a3b8',
+                    '&.Mui-disabled': {
+                      color: 'rgba(255, 255, 255, 0.3)'
+                    },
+                    '&:hover': {
+                      color: '#f97316',
+                      bgcolor: 'rgba(249, 115, 22, 0.1)'
+                    }
+                  }
+                }
+              },
+              // Add styles for the select dropdown
+              '& .MuiSelect-select': {
+                color: '#ffffff',
+                '&:focus': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.1)'
+                }
+              },
+              // Update select dropdown menu styles
+              '& .MuiMenu-paper': {
+                bgcolor: '#1a1a1a',
+                color: '#ffffff',
+                border: '1px solid rgba(249, 115, 22, 0.2)',
+                '& .MuiMenuItem-root': {
+                  '&:hover': {
+                    bgcolor: 'rgba(249, 115, 22, 0.1)'
+                  },
+                  '&.Mui-selected': {
+                    bgcolor: 'rgba(249, 115, 22, 0.2)'
+                  }
                 }
               }
-            },
-            '& .MuiDataGrid-menuIcon': {
-              color: '#94a3b8',
-              '&:hover': {
-                color: '#f97316'
-              }
-            },
-            '& .MuiDataGrid-sortIcon': {
-              color: '#94a3b8'
             }
-          }
-        }}>
-          {Array.isArray(data) && data.length > 0 ? (
+          }}>
             <DataGrid
               rows={rows}
               columns={columns}
-              pageSize={7} // Increased page size
-              rowsPerPageOptions={[7]}
+              pageSize={pageSize}
+              rowsPerPageOptions={[5, 10, 25]}
               disableSelectionOnClick
               disableColumnMenu
-              disableColumnFilter
-              checkboxSelection={false} // Removed checkboxes
-              sx={{
-                '& .MuiDataGrid-cell': {
-                  color: '#ffffff'
-                }
-              }}
-            />
-          ) : (
-            <Box sx={{ 
-              height: '100%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.05)'
-            }}>
-              <Typography sx={{ color: '#94a3b8', fontWeight: 500 }}>
-                No valid data to preview
-              </Typography>
-            </Box>
-          )}
-        </Box>
-
-        {isUploading && (
-          <Box sx={{ width: '100%', mt: 2 }}> {/* Reduced margin */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, position: 'relative' }}>
-              <Typography 
-                sx={{ 
-                  color: '#ffffff',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  mr: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                {uploadProgress < 100 
-                  ? `Uploading... ${Math.round(uploadProgress)}%`
-                  : 'Processing...'
-                }
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    display: 'flex',
-                    gap: '4px',
-                    alignItems: 'center'
-                  }}
-                >
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      style={{
-                        width: '4px',
-                        height: '4px',
-                        borderRadius: '50%',
-                        backgroundColor: '#f97316',
-                        animation: `bounce 0.8s ${i * 0.2}s infinite`
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Typography>
-            </Box>
-            <LinearProgress  
-              variant="determinate"
-              value={uploadProgress}
-              sx={{
-                height: 6,
-                borderRadius: 3,
-                bgcolor: 'rgba(249, 115, 22, 0.1)',
-                '& .MuiLinearProgress-bar': {
-                  bgcolor: '#f97316',
-                  backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
-                  backgroundSize: '1rem 1rem',
-                  animation: 'uploadProgress 1s linear infinite, stripe 1s linear infinite'
-                }
+              autoHeight
+              hideFooterSelectedRowCount
+              components={{
+                NoRowsOverlay: () => (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    height: '100%'
+                  }}>
+                    <Typography sx={{ color: '#94a3b8' }}>
+                      No valid data to preview
+                    </Typography>
+                  </Box>
+                ),
+                Footer: (props) => (
+                  <Box sx={{ 
+                    bgcolor: '#1a1a1a', // Solid background color
+                    borderTop: '1px solid rgba(249, 115, 22, 0.2)'
+                  }}>
+                    {props.children}
+                  </Box>
+                )
               }}
             />
           </Box>
-        )}
-      </DialogContent>
 
-      <DialogActions sx={{ 
-        p: 2, // Reduced padding
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-        background: '#1a1a1a',
-        gap: 1 // Reduced gap
-      }}>
-        <Button 
-          onClick={onClose}
-          variant="outlined"
-          disabled={isUploading} // Add this line
-          sx={{
-            color: '#94a3b8',
-            borderColor: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: '8px',
-            textTransform: 'none',
-            fontWeight: 600,
-            '&:hover': {
-              borderColor: '#f97316',
-              bgcolor: 'rgba(249, 115, 22, 0.1)'
-            },
-            '&.Mui-disabled': { // Add disabled styles
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              color: 'rgba(255, 255, 255, 0.3)'
-            }
-          }}
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={onConfirm} 
-          disabled={isUploading || errors.length > 0}
-          variant="contained"
-          sx={{
-            bgcolor: '#f97316',
-            borderRadius: '8px',
-            textTransform: 'none',
-            fontWeight: 600,
-            boxShadow: 'none',
-            '&:hover': {
-              bgcolor: '#ea580c',
-              boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)'
-            },
-            '&.Mui-disabled': {
-              bgcolor: 'rgba(249, 115, 22, 0.3)',
-              color: 'rgba(255, 255, 255, 0.5)'
-            }
-          }}
-        >
-          {isUploading ? 'Uploading...' : 'Confirm Upload'}
-        </Button>
-      </DialogActions>
+          {isUploading && (
+            <Box sx={{ width: '100%', mt: 2 }}> {/* Reduced margin */}
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, position: 'relative' }}>
+                <Typography 
+                  sx={{ 
+                    color: '#ffffff',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mr: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}
+                >
+                  {uploadProgress < 100 
+                    ? `Uploading... ${Math.round(uploadProgress)}%`
+                    : 'Processing...'
+                  }
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      display: 'flex',
+                      gap: '4px',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        style={{
+                          width: '4px',
+                          height: '4px',
+                          borderRadius: '50%',
+                          backgroundColor: '#f97316',
+                          animation: `bounce 0.8s ${i * 0.2}s infinite`
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Typography>
+              </Box>
+              <LinearProgress  
+                variant="determinate"
+                value={uploadProgress}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: 'rgba(249, 115, 22, 0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: '#f97316',
+                    backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
+                    backgroundSize: '1rem 1rem',
+                    animation: 'uploadProgress 1s linear infinite, stripe 1s linear infinite'
+                  }
+                }}
+              />
+            </Box>
+          )}
+        </DialogContent>
 
-      <style jsx global>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.4; }
-          100% { opacity: 1; }
-        }
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        
-        @keyframes uploadProgress {
-          0% { background-position: 1rem 0; }
-          100% { background-position: 0 0; }
-        }
-        
-        @keyframes stripe {
-          0% { background-position: 0 0; }
-          100% { background-position: 1rem 0; }
-        }
-        
-        .MuiDataGrid-row {
-          cursor: pointer;
-        }
-        
-        .MuiDataGrid-cell:hover {
-          color: #f97316 !important;
-        }
-      `}</style>
-    </Dialog>
+        <DialogActions sx={{ 
+          p: 2, // Reduced padding
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          background: '#1a1a1a',
+          gap: 1 // Reduced gap
+        }}>
+          <Button 
+            onClick={onClose}
+            variant="outlined"
+            disabled={isUploading} // Add this line
+            sx={{
+              color: '#94a3b8',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': {
+                borderColor: '#f97316',
+                bgcolor: 'rgba(249, 115, 22, 0.1)'
+              },
+              '&.Mui-disabled': { // Add disabled styles
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.3)'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirm} 
+            disabled={isUploading || errors.length > 0}
+            variant="contained"
+            sx={{
+              bgcolor: '#f97316',
+              borderRadius: '8px',
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: 'none',
+              '&:hover': {
+                bgcolor: '#ea580c',
+                boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)'
+              },
+              '&.Mui-disabled': {
+                bgcolor: 'rgba(249, 115, 22, 0.3)',
+                color: 'rgba(255, 255, 255, 0.5)'
+              }
+            }}
+          >
+            {isUploading ? 'Uploading...' : 'Confirm Upload'}
+          </Button>
+        </DialogActions>
+
+        <style jsx global>{`
+          @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+          }
+          @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+          }
+          
+          @keyframes uploadProgress {
+            0% { background-position: 1rem 0; }
+            100% { background-position: 0 0; }
+          }
+          
+          @keyframes stripe {
+            0% { background-position: 0 0; }
+            100% { background-position: 1rem 0; }
+          }
+          
+          .MuiDataGrid-row {
+            cursor: pointer;
+          }
+          
+          .MuiDataGrid-cell:hover {
+            color: #f97316 !important;
+          }
+        `}</style>
+      </Dialog>
+    </>
   );
 };
-
 export default BulkUploadPreview;

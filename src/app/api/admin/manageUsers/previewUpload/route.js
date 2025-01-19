@@ -1,7 +1,10 @@
+// check and upload mentor mentee excel sheet data
+
 import { NextResponse } from 'next/server';
 import { read, utils } from 'xlsx';
 import { connect } from "../../../../../lib/dbConfig";
-import { AcademicSession } from "../../../../../lib/dbModels";
+import { AcademicSession, Mentor } from "../../../../../lib/dbModels";
+import { determineAcademicPeriod } from "../../../../../components/AdminDash/mentee/utils/academicUtils";
 
 export async function POST(req) {
   try {
@@ -27,35 +30,100 @@ export async function POST(req) {
     const headers = filteredData[0];
     const rows = filteredData.slice(1);
 
-    const requiredColumns = type === 'mentee' ? [
-      'name', 'email', 'MUJid', 'yearOfRegistration',
-      'section', 'semester', 'academicYear', 'academicSession',
-      'mentorMujid'
-    ] : [
-      'name', 'email', 'MUJid', 'phone_number',
-      'gender', 'role', 'academicYear', 'academicSession'
-    ];
+    // Column mapping for standardization
+    const columnMap = {
+      'mentee mujid': 'MUJid',
+      'mentee name': 'name',
+      'mentee email': 'email',
+      'year of registration': 'yearOfRegistration',
+      'section': 'section',
+      'semester': 'semester',
+      'mentee phone numer': 'phone_number',
+      'mentee address': 'address',
+      "mentee's father name": 'fatherName',
+      "mentee's father phone": 'fatherPhone',
+      "mentee's mother name": 'motherName',
+      "mentee's mother phone": 'motherPhone',
+      "mentee's guardian name": 'guardianName',
+      "mentee's guardian phone": 'guardianPhone',
+      'assigned mentor email': 'mentorEmail'
+    };
 
-    const missingColumns = requiredColumns.filter(col => 
-      !headers.map(h => h.toLowerCase()).includes(col.toLowerCase())
-    );
-
-    if (missingColumns.length > 0) {
-      throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
-    }
+    // Get current academic period
+    const { academicYear, academicSession } = determineAcademicPeriod();
 
     const transformedData = rows.map(row => {
-      const entry = {};
+      const entry = {
+        role: type === 'mentee' ? ['mentee'] : ['mentor'],
+        isActive: true,
+        academicYear,
+        academicSession
+      };
+      
       headers.forEach((header, index) => {
-        entry[header] = row[index]?.toString().trim() || '';
+        const normalizedHeader = header.toLowerCase().trim();
+        const mappedKey = columnMap[normalizedHeader];
+        if (mappedKey) {
+          entry[mappedKey] = row[index]?.toString().trim() ?? '';
+        }
       });
+
+      // Debug log
+      console.log('Processing row:', {
+        MUJid: entry.MUJid,
+        mentorEmail: entry.mentorEmail,
+        motherName: entry.motherName // Added to verify mother's name is captured
+      });
+      
       return entry;
+    });
+
+    // Create a map of unique mentors from the data
+    const uniqueMentors = new Map();
+    const mentorsToCreate = [];
+    const mentorsToUpdate = [];
+
+    // First pass: collect unique mentors
+    transformedData.forEach(row => {
+      if (row.mentorEmail && !uniqueMentors.has(row.mentorEmail)) {
+        uniqueMentors.set(row.mentorEmail, {
+          email: row.mentorEmail,
+          academicYear, // Use automatically determined value
+          academicSession, // Use automatically determined value
+          role: ['mentor'],
+          isFirstTimeLogin: true
+        });
+      }
+    });
+
+    // Check existing mentors
+    const existingMentors = await Mentor.find({
+      email: { $in: Array.from(uniqueMentors.keys()) }
+    }).select('email academicYear academicSession _id');
+
+    // Create mentor email to details map
+    const mentorMap = new Map(existingMentors.map(m => [m.email, m]));
+
+    // Categorize mentors for creation/update
+    uniqueMentors.forEach((mentorData, email) => {
+      const existingMentor = mentorMap.get(email);
+      if (!existingMentor) {
+        mentorsToCreate.push(mentorData);
+      } else if (
+        existingMentor.academicYear !== mentorData.academicYear ||
+        existingMentor.academicSession !== mentorData.academicSession
+      ) {
+        mentorsToUpdate.push({
+          ...mentorData,
+          _id: existingMentor._id
+        });
+      }
     });
 
     const errors = [];
     const validData = [];
-    const seenEmails = new Set();
 
+    // Get valid academic sessions
     const academicSessions = await AcademicSession.find({}, { 
       'sessions.name': 1, 
       'start_year': 1, 
@@ -71,41 +139,62 @@ export async function POST(req) {
       ).map(s => `${s.academicYear}:${s.session}`)
     );
 
+    // Validate each row
     for (const [index, row] of transformedData.entries()) {
       const rowErrors = [];
       const rowNumber = index + 2;
 
-      if (!row.MUJid || !/^[A-Z0-9]+$/.test(row.MUJid)) {
-        rowErrors.push('Invalid MUJid format');
+      // Basic validation
+      if (!row.MUJid || !/^MUJ\d{7}$/i.test(row.MUJid)) {
+        rowErrors.push('Invalid MUJid format (should be MUJxxxxxxx)');
       }
 
       if (!row.email) {
         rowErrors.push('Email is required');
-      } else if (!row.email.includes('@')) {
+      } else if (!row.email.toLowerCase().includes('@')) {
         rowErrors.push('Invalid email format');
-      } else if (seenEmails.has(row.email.toLowerCase())) {
-        rowErrors.push('Duplicate email found in upload');
-      } else {
-        seenEmails.add(row.email.toLowerCase());
+      }
+
+      if (!row.name || row.name.length < 2) {
+        rowErrors.push('Name is required (minimum 2 characters)');
       }
 
       const sessionKey = `${row.academicYear}:${row.academicSession}`;
-      if (!validSessions.has(sessionKey)) {
+      if (!Array.from(validSessions).some(s => s.toLowerCase() === sessionKey.toLowerCase())) {
         rowErrors.push('Academic session not found - Please create it first');
       }
 
       if (type === 'mentee') {
-        if (!row.section || !/^[A-Z]$/.test(row.section)) {
-          rowErrors.push('Invalid section (must be A-Z)');
+        if (!row.section || !/^[A-Z]$/i.test(row.section)) {
+          rowErrors.push('Invalid section (must be a single letter A-Z)');
         }
 
-        const semester = parseInt(row.semester);
-        if (isNaN(semester) || semester < 1 || semester > 8) {
-          rowErrors.push('Invalid semester (must be 1-8)');
+        if (!row.semester || isNaN(row.semester) || row.semester < 1 || row.semester > 8) {
+          rowErrors.push('Invalid semester (must be between 1-8)');
         }
 
-        if (!row.mentorMujid || !/^[A-Z0-9]+$/.test(row.mentorMujid)) {
-          rowErrors.push('Invalid mentor MUJid format');
+        if (!row.mentorEmail || !row.mentorEmail.includes('@')) {
+          rowErrors.push('Invalid mentor email format');
+        }
+
+        // Add validation for yearOfRegistration
+        const currentYear = new Date().getFullYear();
+        const year = parseInt(row.yearOfRegistration);
+        if (!year || year < 2020 || year > currentYear) {
+          rowErrors.push(`Invalid year of registration (must be between 2020-${currentYear})`);
+        }
+
+        // Add mentor status to row data
+        const mentor = mentorMap.get(row.mentorEmail);
+        if (!mentor) {
+          row.mentorStatus = 'new';
+        } else if (
+          mentor.academicYear !== row.academicYear ||
+          mentor.academicSession !== row.academicSession
+        ) {
+          row.mentorStatus = 'update';
+        } else {
+          row.mentorStatus = 'existing';
         }
       }
 
@@ -120,7 +209,16 @@ export async function POST(req) {
       data: validData,
       errors: errors,
       totalRows: transformedData.length,
-      academicSessionsAvailable: Array.from(validSessions)
+      academicSessionsAvailable: Array.from(validSessions),
+      mentorActions: {
+        toCreate: mentorsToCreate,
+        toUpdate: mentorsToUpdate,
+        summary: {
+          total: uniqueMentors.size,
+          new: mentorsToCreate.length,
+          update: mentorsToUpdate.length
+        }
+      }
     });
 
   } catch (error) {

@@ -35,28 +35,27 @@ const menteesSchema = new mongoose.Schema({
     academicSession: { type: String, required: true },
     parents: {
         father: {
-            name: { type: String },
-            email: { type: String },
-            phone: { type: String },
-            alternatePhone: { type: String }
+            name: { type: String, default: null },
+            email: { type: String, default: null },
+            phone: { type: String, default: null },
+            alternatePhone: { type: String, default: null }
         },
         mother: {
-            name: { type: String },
-            email: { type: String },
-            phone: { type: String },
-            alternatePhone: { type: String }
+            name: { type: String, default: null },
+            email: { type: String, default: null },
+            phone: { type: String, default: null },
+            alternatePhone: { type: String, default: null }
         },
         guardian: {
-            name: { type: String },
-            email: { type: String },
-            phone: { type: String },
-            relation: { type: String }
+            name: { type: String, default: null },
+            email: { type: String, default: null },
+            phone: { type: String, default: null },
+            relation: { type: String, default: null }
         }
     },
     mentorMujid: { 
         type: String,
         required: function() {
-            // Only required if it's not being unassigned
             return this.mentorMujid !== null;
         },
         default: null
@@ -64,16 +63,31 @@ const menteesSchema = new mongoose.Schema({
     mentorEmailid:{
         type: String,
         required: function() {
-            return this.mentorEMailid !== null;
+            return this.mentorEmailid !== null;
         },
         default: null
     },
-    created_at: { type: Date, default: Date.now }, // Creation date of the mentee record
-    updated_at: { type: Date, default: Date.now }, // Last update timestamp for the mentee record
     otp: { type: String },
-    password: { type: String },
     otpExpires: { type: Date },
-    isOtpUsed: { type: Boolean, default: false }
+    isOtpUsed: { type: Boolean, default: false },
+    
+    created_at: { 
+        type: Date, 
+        default: () => new Date() 
+    },
+    updated_at: { 
+        type: Date, 
+        default: () => new Date() 
+    }
+});
+
+// Add pre-save middleware to update timestamps
+menteesSchema.pre('save', function(next) {
+    this.updated_at = new Date();
+    if (!this.created_at) {
+        this.created_at = new Date();
+    }
+    next();
 });
 
 const Mentee = mongoose.models.Mentee || mongoose.model("Mentee", menteesSchema);

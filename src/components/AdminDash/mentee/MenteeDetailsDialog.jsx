@@ -84,10 +84,10 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
       fullWidth
       PaperProps={{
         sx: {
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(17, 24, 39, 0.95) 100%)',
-          backdropFilter: 'blur(20px)',
+          background: 'linear-gradient(to bottom, rgba(17, 24, 39, 0.95), rgba(10, 15, 24, 0.95))',
+          backdropFilter: 'blur(10px)',
           borderRadius: '24px',
-          border: '1px solid rgba(148, 163, 184, 0.2)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
           maxHeight: '90vh',
           overflow: 'hidden'
         }
@@ -98,8 +98,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
           {/* Header Section */}
           <Box sx={{ 
             p: 3, 
-            borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
-            background: 'linear-gradient(to right, rgba(30, 41, 59, 0.5), rgba(17, 24, 39, 0.5))',
+            borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
+            background: 'linear-gradient(to right, rgba(99, 102, 241, 0.1), rgba(0, 0, 0, 0))',
             display: 'flex',
             flexDirection: 'column',
             gap: 2
@@ -110,14 +110,18 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                   sx={{ 
                     width: 60, 
                     height: 60, 
-                    background: 'linear-gradient(135deg, #6366f1, #3b82f6)',
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
                     border: '2px solid rgba(99, 102, 241, 0.5)'
                   }}
                 >
                   {mentee.name?.charAt(0)}
                 </Avatar>
                 <Box>
-                  <Typography variant="h5" sx={{ color: 'white', fontWeight: '600' }}>
+                  <Typography variant="h5" sx={{ 
+                    color: 'white',
+                    fontWeight: '600',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}>
                     {mentee.name}
                   </Typography>
                   <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
@@ -125,41 +129,39 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                   </Typography>
                 </Box>
               </Box>
-              <IconButton onClick={onClose} sx={{ color: 'white' }}>
+              <IconButton 
+                onClick={onClose} 
+                sx={{ 
+                  color: '#6366f1',
+                  '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' }
+                }}
+              >
                 <CloseIcon />
               </IconButton>
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Chip 
-                label={`Semester ${mentee.semester}`}
-                sx={{ 
-                  bgcolor: 'rgba(99, 102, 241, 0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(99, 102, 241, 0.3)'
-                }}
-              />
-              <Chip 
-                label={`Section ${mentee.section}`}
-                sx={{ 
-                  bgcolor: 'rgba(99, 102, 241, 0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(99, 102, 241, 0.3)'
-                }}
-              />
-              <Chip 
-                label={mentee.academicYear}
-                sx={{ 
-                  bgcolor: 'rgba(99, 102, 241, 0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(99, 102, 241, 0.3)'
-                }}
-              />
+              {['semester', 'section', 'academicYear'].map((field) => (
+                mentee[field] && (
+                  <Chip 
+                    key={field}
+                    label={field === 'semester' ? `Semester ${mentee[field]}` :
+                           field === 'section' ? `Section ${mentee[field]}` :
+                           mentee[field]}
+                    sx={{ 
+                      bgcolor: 'rgba(99, 102, 241, 0.1)',
+                      color: '#6366f1',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.2)' }
+                    }}
+                  />
+                )
+              ))}
             </Box>
           </Box>
 
           {/* Tabs Navigation */}
-          <Box sx={{ borderBottom: 1, borderColor: 'rgba(148, 163, 184, 0.2)' }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'rgba(99, 102, 241, 0.2)' }}>
             <Tabs 
               value={activeTab} 
               onChange={handleTabChange}
@@ -182,7 +184,11 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
             </Tabs>
           </Box>
 
-          <DialogContent sx={{ p: 3 }}>
+          <DialogContent sx={{ 
+            p: 3, 
+            bgcolor: 'transparent',
+            background: 'linear-gradient(to bottom, rgba(26, 26, 26, 0.5), rgba(17, 17, 17, 0.5))'
+          }}>
             {/* Basic Info Tab */}
             <TabPanel value={activeTab} index={0}>
               <Grid container spacing={3}>
@@ -340,13 +346,15 @@ const InfoItem = ({ icon, label, value, fullWidth = false }) => (
     <Box
       sx={{
         p: 2,
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+        background: 'rgba(99, 102, 241, 0.05)',
         borderRadius: 2,
         border: '1px solid rgba(99, 102, 241, 0.2)',
         height: '100%',
-        transition: 'transform 0.2s ease',
+        transition: 'all 0.2s ease',
         '&:hover': {
           transform: 'translateY(-2px)',
+          borderColor: '#6366f1',
+          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
         }
       }}
     >
@@ -363,17 +371,19 @@ const InfoItem = ({ icon, label, value, fullWidth = false }) => (
   </Grid>
 );
 
-const FamilyContactCard = ({ title, icon, contact, gradient }) => (
+const FamilyContactCard = ({ title, icon, contact }) => (
   <Box
     sx={{
       p: 2.5,
-      background: `linear-gradient(${gradient})`,
+      background: 'rgba(99, 102, 241, 0.05)',
       borderRadius: 2,
       border: '1px solid rgba(99, 102, 241, 0.2)',
       height: '100%',
-      transition: 'transform 0.2s ease',
+      transition: 'all 0.2s ease',
       '&:hover': {
         transform: 'translateY(-2px)',
+        borderColor: '#6366f1',
+        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
       }
     }}
   >

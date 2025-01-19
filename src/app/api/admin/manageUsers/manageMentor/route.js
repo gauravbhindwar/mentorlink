@@ -1,32 +1,32 @@
 import { connect } from "../../../../../lib/dbConfig";
 import { Mentor, Admin } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
-import Joi from "joi";
+// import Joi from "joi";
 
 // Updated schema with proper validations
-const mentorSchema = Joi.object({
-  name: Joi.string().required(),
-  email: Joi.string().email().required(),
-  MUJid: Joi.string().required(),
-  phone_number: Joi.string().required(),
-  address: Joi.string().allow('', null),
-  gender: Joi.string().valid('male', 'female', 'other').allow('', null),
-  profile_picture: Joi.string().allow('', null),
-  role: Joi.array().items(Joi.string().valid('mentor', 'admin', 'superadmin')).default(['mentor']),
-  academicYear: Joi.string()
-    .pattern(/^\d{4}-\d{4}$/)
-    .custom((value, helpers) => {
-      const [startYear, endYear] = value.split('-').map(Number);
-      if (endYear !== startYear + 1) {
-        return helpers.error('any.invalid');
-      }
-      return value;
-    })
-    .allow('', null),
-  academicSession: Joi.string()
-    .pattern(/^(JULY-DECEMBER|JANUARY-JUNE)\s\d{4}$/)
-    .allow('', null)
-});
+// const mentorSchema = Joi.object({
+//   name: Joi.string().required(),
+//   email: Joi.string().email().required(),
+//   MUJid: Joi.string().required(),
+//   phone_number: Joi.string().required(),
+//   address: Joi.string().allow('', null),
+//   gender: Joi.string().valid('male', 'female', 'other').allow('', null),
+//   profile_picture: Joi.string().allow('', null),
+//   role: Joi.array().items(Joi.string().valid('mentor', 'admin', 'superadmin')).default(['mentor']),
+//   academicYear: Joi.string()
+//     .pattern(/^\d{4}-\d{4}$/)
+//     .custom((value, helpers) => {
+//       const [startYear, endYear] = value.split('-').map(Number);
+//       if (endYear !== startYear + 1) {
+//         return helpers.error('any.invalid');
+//       }
+//       return value;
+//     })
+//     .allow('', null),
+//   academicSession: Joi.string()
+//     .pattern(/^(JULY-DECEMBER|JANUARY-JUNE)\s\d{4}$/)
+//     .allow('', null)
+// });
 
 // Utility function to handle errors
 const createErrorResponse = (message, statusCode = 400) => {
@@ -37,69 +37,39 @@ const createErrorResponse = (message, statusCode = 400) => {
 export async function POST(req) {
   try {
     await connect();
-    const mentorData = await req.json();
-    
-    if (!mentorData || Object.keys(mentorData).length === 0) {
-      return NextResponse.json({
-        error: "Invalid mentor data provided"
-      }, { status: 400 });
+    const data = await req.json();
+
+    // Get latest mentor MUJid
+    const latestMentor = await Mentor.findOne({})
+      .sort({ MUJid: -1 })
+      .select('MUJid');
+
+    let nextMentorId = 1;
+    if (latestMentor?.MUJid) {
+      const match = latestMentor.MUJid.match(/\d+/);
+      if (match) {
+        nextMentorId = parseInt(match[0]) + 1;
+      }
     }
 
-    // Check if mentor already exists
-    const existingMentor = await Mentor.findOne({ 
-      $or: [
-        { MUJid: mentorData.MUJid },
-        { email: mentorData.email }
-      ]
+    // Create new mentor with auto-generated MUJid
+    const newMentor = new Mentor({
+      email: data.email,
+      MUJid: `MUJ${String(nextMentorId).padStart(5, '0')}`,
+      role: ['mentor'],
+      isFirstTimeLogin: true,
+      academicYear: data.academicYear || null,
+      academicSession: data.academicSession || null,
+      created_at: new Date(),
+      updated_at: new Date()
     });
 
-    if (existingMentor) {
-      // Safe access to existing mentor data
-      const duplicateData = {
-        MUJid: existingMentor?.MUJid || '',
-        name: existingMentor?.name || '',
-        email: existingMentor?.email || '',
-        phone_number: existingMentor?.phone_number || '',
-        gender: existingMentor?.gender || '',
-        role: Array.isArray(existingMentor?.role) ? existingMentor.role : ['mentor'],
-        academicYear: existingMentor?.academicYear || '',
-        academicSession: existingMentor?.academicSession || ''
-      };
+    await newMentor.save();
 
-      return NextResponse.json({
-        error: "Mentor already exists",
-        existingMentor: duplicateData,
-        duplicateField: mentorData.MUJid === existingMentor.MUJid ? 'MUJid' : 'email'
-      }, { status: 409 });
-    }
-
-    // Validate mentor data
-    const { error } = mentorSchema.validate(mentorData);
-    if (error) {
-      return NextResponse.json({ 
-        error: error.details[0].message 
-      }, { status: 400 });
-    }
-
-    // Create new mentor
-    const newMentor = new Mentor(mentorData);
-    const savedMentor = await newMentor.save();
-
-    // Handle admin roles if present
-    if (mentorData.role?.includes('admin') || mentorData.role?.includes('superadmin')) {
-      await Admin.create(mentorData);
-    }
-
-    return NextResponse.json({ 
-      message: "Mentor created successfully",
-      mentor: savedMentor 
-    }, { status: 201 });
-
+    return NextResponse.json({ mentor: newMentor }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST:', error);
-    return NextResponse.json({ 
-      error: "Failed to create mentor: " + (error.message || "Unknown error")
-    }, { status: 500 });
+    console.error("Error creating mentor:", error);
+    return NextResponse.json({ error: "Error creating mentor" }, { status: 500 });
   }
 }
 
@@ -107,32 +77,20 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     await connect();
-    const url = new URL(req.url);
-    
-    // Get all query parameters
-    const email = url.searchParams.get('email');
-    const academicYear = url.searchParams.get('academicYear');
-    const academicSession = url.searchParams.get('academicSession');
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get("email");
 
-    // Build query object based on provided parameters
-    const query = {};
-    if (email) query.email = email;
-    if (academicYear) query.academicYear = academicYear;
-    if (academicSession) query.academicSession = academicSession;
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
 
-    const mentors = await Mentor.find(query);
-
-    return NextResponse.json({
-      success: true,
-      mentors
-    });
-
+    const mentor = await Mentor.findOne({ email });
+    return NextResponse.json({ mentor });
   } catch (error) {
-    console.error("Error fetching mentors:", error);
-    return NextResponse.json({ 
-      success: false, 
-      message: error.message || "Error fetching mentors" 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error fetching mentor" },
+      { status: 500 }
+    );
   }
 }
 

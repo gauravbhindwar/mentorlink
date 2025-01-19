@@ -463,48 +463,48 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
-      width: 50,
+      flex: 0.4,
       renderCell: (params) => {
         const index = processedMentees.findIndex(mentee => mentee.id === params.row.id);
         return index + 1;
       },
-      sortable: false,
+      sortable: true,
       headerAlign: 'center',
       align: 'center',
     },
     {
       field: 'MUJid',
-      headerName: 'MUJ ID',
-      width: 150,
+      headerName: 'MUJ ID', 
+      flex: 0.8,
       sortable: true,
     },
     {
       field: 'name',
       headerName: 'Name',
-      width: 200,
+      flex: 1,
       sortable: true,
     },
     {
       field: 'email',
       headerName: 'Email',
-      width: 250,
+      flex: 1.2,
       sortable: true,
     },
     {
       field: 'mentorEmailid',
       headerName: 'Mentor Email',
-      width: 250,
+      flex: 1.2,
       sortable: true,
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 200,
+      flex: 0.8,
       sortable: false,
       renderCell: (params) => {
         if (!params?.row) return null;
         return (
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
             <IconButton
               onClick={() => setDetailsDialog({ open: true, mentee: params.row })}
               sx={{ 
@@ -549,44 +549,18 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     ...col,
     headerAlign: 'center',
     align: 'center',
-    flex: 0,
-    minWidth: col.width || 100,
-    sortable: col.field !== 'serialNumber' && col.field !== 'actions',
-    // Add sort icons configuration
+    sortable: col.field !== 'actions',
     renderHeader: (params) => (
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center',
-        gap: 0.5,
-        color: '#f97316',
+        justifyContent: 'center',
+        color: 'rgba(255, 255, 255, 0.9)',
         fontSize: '0.95rem',
         fontWeight: 600,
+        width: '100%'
       }}>
         {params.colDef.headerName}
-        {params.colDef.sortable && (
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center',
-            ml: 0.5
-          }}>
-            <ArrowUpwardIcon 
-              sx={{ 
-                fontSize: '0.75rem',
-                opacity: params.sortDirection === 'asc' ? 1 : 0.3,
-                transition: 'opacity 0.2s'
-              }} 
-            />
-            <ArrowDownwardIcon 
-              sx={{ 
-                fontSize: '0.75rem',
-                opacity: params.sortDirection === 'desc' ? 1 : 0.3,
-                marginTop: '-2px',
-                transition: 'opacity 0.2s'
-              }} 
-            />
-          </Box>
-        )}
       </Box>
     ),
   }));
@@ -768,7 +742,6 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
               backgroundColor: 'rgba(249, 115, 22, 0.08)',
             }
           },
-          // Smooth but subtle transitions
           '& .MuiDataGrid-columnHeader': {
             transition: 'background-color 0.2s ease',
           },
@@ -778,9 +751,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           '& .MuiDataGrid-footerContainer': {
             transition: 'opacity 0.2s ease',
           },
-          // Remove pulse and slide animations
           animation: 'none',
-          // Remove other distracting transitions
           '& *': {
             animation: 'none !important',
           }
@@ -811,8 +782,8 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         pageSize={10}
         rowsPerPageOptions={[10, 25, 50]}
         pagination
-        disableSelectionOnClick
-        disableColumnMenu={false}
+        disableSelectionOnClick={true}
+        disableColumnMenu={true}
         disableColumnFilter={false}
       />
 

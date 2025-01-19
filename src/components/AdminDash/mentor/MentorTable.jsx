@@ -419,8 +419,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate, emailF
           },
           transition: 'all 0.3s ease',
         }}
-        disableSelectionOnClick
-        disableColumnMenu={false}
+        disableSelectionOnClick={true}
+        disableColumnMenu={true}
         disableColumnFilter={false}
         loading={!mentors.length}
         components={{
