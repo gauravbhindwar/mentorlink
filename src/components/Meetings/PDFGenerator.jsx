@@ -129,7 +129,7 @@ const Header = () => (
     />
     <View style={styles.header}>
       <Text style={{ fontSize: 16, fontWeight: 'bold', fontFamily: 'Cambria' }}>
-        Department of Computer Science and Engineering
+        School of Computer Science and Engineering
       </Text>
       <Text>School of Computing & Information Technology</Text>
       <View style={{ width: '80%', height: 1, backgroundColor: '#000', alignSelf: 'center', marginVertical: 10 }} />
