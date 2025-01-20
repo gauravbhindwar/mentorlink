@@ -41,6 +41,20 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
     }
   }, [open]); // Dependency on open prop
 
+  const getMentorFromList = async (email) => {
+    try {
+      const response = await fetch('/api/admin/manageUsers/manageMentor');
+      const data = await response.json();
+      if (data.mentors && Array.isArray(data.mentors)) {
+        return data.mentors.find(mentor => mentor.email.toLowerCase() === email.toLowerCase());
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching mentors:', error);
+      return null;
+    }
+  };
+
   const searchMentor = async () => {
     if (!menteeDetails.mentorEmailid) {
       setMentorError('Please enter mentor email');
@@ -48,13 +62,12 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
     }
 
     try {
-      const response = await fetch(`/api/admin/manageUsers/manageMentor?email=${menteeDetails.mentorEmailid}`);
-      const data = await response.json();
+      const mentor = await getMentorFromList(menteeDetails.mentorEmailid);
       
-      if (data.mentor) {
+      if (mentor) {
         setMenteeDetails(prev => ({
           ...prev,
-          mentorMujid: data.mentor.MUJid
+          mentorMujid: mentor.MUJid
         }));
         setMentorError(null);
         setShowCreateMentorPrompt(false);

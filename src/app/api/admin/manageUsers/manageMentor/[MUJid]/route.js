@@ -35,7 +35,7 @@ export async function PATCH(request, { params }) {
 
     // Clean the update data
     const cleanedData = Object.fromEntries(
-      Object.entries(updateData).filter(([_, v]) => v != null && v !== '')
+      Object.entries(updateData).filter(([v]) => v != null && v !== '')
     );
 
     // Get current mentor data to check role changes

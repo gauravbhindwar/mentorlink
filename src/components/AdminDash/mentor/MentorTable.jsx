@@ -8,7 +8,8 @@ import TransferIcon from '@mui/icons-material/SwapHoriz';
 import MentorDetailsDialog from './MentorDetailsDialog';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // Add this import
 
 const BATCH_SIZE = 50;
 const BACKGROUND_BATCH_SIZE = 100;
@@ -93,9 +94,44 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
     }
   };
 
+  // Define toast configuration
+  const toastConfig = {
+    position: "bottom-right",
+    autoClose: 3000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    theme: "dark",
+    style: {
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      backdropFilter: 'blur(8px)',
+      borderRadius: '8px',
+      border: '1px solid rgba(249, 115, 22, 0.2)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+      fontSize: '0.875rem',
+      padding: '12px 16px',
+    }
+  };
+
   // Add this function to handle delete click
-  const handleDeleteClick = (mujid) => {
-    setDeleteDialog({ open: true, mujid });
+  const handleDeleteClick = async (mujid) => {
+    try {
+      const response = await axios.get(`/api/admin/manageUsers/checkMentorMentees?mentorMujid=${mujid}`);
+      
+      if (response.data.hasMentees) {
+        toast.warn(
+          `Cannot delete mentor - ${response.data.menteeCount} mentees need to be transferred first`,
+          toastConfig
+        );
+      } else {
+        setDeleteDialog({ open: true, mujid });
+      }
+    } catch (error) {
+      console.log('Error checking mentor status:', error);
+      toast.error('Error checking mentor status', toastConfig);
+    }
   };
 
   // Update handleConfirmDelete to include loading state
@@ -104,12 +140,16 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       setLoading(true);
       try {
         await onDeleteClick(deleteDialog.mujid);
+        toast.success('Mentor deleted successfully', toastConfig);
         // Update local data
         if (onDataUpdate) {
           onDataUpdate(prevMentors => 
             prevMentors.filter(m => m.MUJid !== deleteDialog.mujid)
           );
         }
+      } catch (error) {
+        toast.error('Error deleting mentor', toastConfig);
+        console.log('Error deleting mentor:', error);
       } finally {
         setLoading(false);
         setDeleteDialog({ open: false, mujid: null });
@@ -136,7 +176,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       
       if (!foundMentor) {
         setTransferError('No mentor found with this email in the same academic year and session');
-        toast.error('No mentor found with this email in the same academic year and session');
+        toast.error('No mentor found with this email in the same academic year and session', toastConfig);
         setSearchingMentor(false);
         return;
       }
@@ -144,18 +184,18 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       // Prevent self-transfer
       if (foundMentor.MUJid === transferDialog.fromMentor.MUJid) {
         setTransferError('Cannot transfer mentees to the same mentor');
-        toast.error('Cannot transfer mentees to the same mentor');
+        toast.error('Cannot transfer mentees to the same mentor', toastConfig);
         setSearchingMentor(false);
         return;
       }
 
       setTargetMentor(foundMentor);
-      toast.success('Mentor found successfully');
+      toast.success('Mentor found successfully', toastConfig);
       setSearchingMentor(false);
 
     } catch (error) {
       setTransferError(error.response?.data?.message || 'Error finding mentor');
-      toast.error(error.response?.data?.message || 'Error finding mentor');
+      toast.error(error.response?.data?.message || 'Error finding mentor', toastConfig);
       setSearchingMentor(false);
     }
   };
@@ -172,7 +212,10 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       });
 
       if (response.data.success) {
-        toast.success('Mentees transferred successfully');
+        toast.success(
+          `Successfully transferred ${response.data.updatedCount} mentees from ${transferDialog.fromMentor.name} to ${targetMentor.name}`,
+          toastConfig
+        );
         setTransferDialog({ open: false, fromMentor: null });
         setTransferEmail('');
         setTargetMentor(null);
@@ -181,8 +224,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
         }
       }
     } catch (error) {
+      toast.error(
+        `Error transferring mentees: ${error.response?.data?.message || 'Unknown error'}`,
+        toastConfig
+      );
       setTransferError(error.response?.data?.message || 'Error transferring mentees');
-      toast.error(error.response?.data?.message || 'Error transferring mentees');
     } finally {
       setTransferLoading(false);
     }
@@ -389,7 +435,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
         const index = params.api.getRowIndexRelativeToVisibleRows(params.row.id);
         return index !== undefined ? index + 1 : '';
       },
-      sortable: false,
+      sortable: true,
     },
     {
       field: 'MUJid',
@@ -407,13 +453,13 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       field: 'email',
       headerName: 'Email',
       flex: 1.2,
-      sortable: true,
+      sortable: false,
     },
     {
       field: 'phone_number',
       headerName: 'Phone',
       flex: 0.8,
-      sortable: true,
+      sortable: false,
     },
     {
       field: 'isActive',
@@ -606,38 +652,64 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
 
   return (
     <Box sx={{ 
-      height: { xs: 'auto', lg: 'calc(100vh - 200px)' }, // Responsive height
-      width: '100%',
-      position: 'relative',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'all 0.3s ease',
-    }}>
-      {loading && (
-        <Box sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          zIndex: 10,
-          borderRadius: 2
-        }}>
-          <CircularProgress sx={{ color: '#ea580c', mb: 2 }} />
-          <Typography sx={{ color: 'white' }}>
-            Loading...
-          </Typography>
-        </Box>
-      )}
-      
-      <DataGrid
-        rows={processedMentors || []} // Add fallback empty array
+       // Responsive height
+        width: '100%',
+        position: 'relative', 
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'all 0.3s ease',
+          }}>
+        <ToastContainer
+          position="bottom-right" 
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+          limit={3}
+          style={{
+            minWidth: '300px',
+            maxWidth: '400px'
+          }}
+          toastStyle={{
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '8px',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            fontSize: '0.875rem',
+            padding: '12px 16px',
+          }}
+        />
+        {loading && (
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 10,
+            borderRadius: 2
+          }}>
+            <CircularProgress sx={{ color: '#ea580c', mb: 2 }} />
+            <Typography sx={{ color: 'white' }}>
+          Loading...
+            </Typography>
+          </Box>
+        )}
+        
+        <DataGrid
+          rows={processedMentors || []} // Add fallback empty array
         columns={columns}
         getRowId={(row) => row?._id || row?.id || String(Math.random())} // Add safer row ID getter
         initialState={{
@@ -817,7 +889,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
           Confirm Delete
         </DialogTitle>
         <DialogContent sx={{ my: 2 }}>
-          Are you sure you want to delete this mentor? This action cannot be undone.
+          <Typography color="white">
+            Are you sure you want to delete this mentor? This action cannot be undone.
+            <br/><br/>
+            <span style={{ color: '#10B981' }}>✓ Verified: No assigned mentees</span>
+          </Typography>
         </DialogContent>
         <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
           <Button

@@ -270,10 +270,10 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
   } : null;
 
   // Calculate pageSize only after component mounts
-  const getPageSize = () => {
-    if (!mounted) return 5; // Default value during SSR
-    return Math.floor((window?.innerHeight - 400) / 48) || 5;
-  };
+  // const getPageSize = () => {
+  //   if (!mounted) return 5; // Default value during SSR
+  //   return Math.floor((window?.innerHeight - 400) / 48) || 5;
+  // };
 
   if (!mounted) {
     return null; // or a loading spinner

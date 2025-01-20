@@ -9,7 +9,7 @@ export async function PATCH(request, { params }) {
     const data = await request.json();
 
     // Remove MUJid from update data if present
-    const { MUJid, ...updateData } = data;
+    const { ...updateData } = data;
 
     // Validate required fields
     if (!mujid) {

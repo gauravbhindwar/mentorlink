@@ -7,8 +7,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import MenteeDetailsDialog from './MenteeDetailsDialog';
 import axios from 'axios';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+// import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+// import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
 const BATCH_SIZE = 50;
 const BACKGROUND_BATCH_SIZE = 100;

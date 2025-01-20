@@ -1168,4 +1168,3 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
 };
 
 export default MentorDetailsDialog;
-
