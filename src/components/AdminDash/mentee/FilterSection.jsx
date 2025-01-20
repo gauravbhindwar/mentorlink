@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, 
   Button, 
@@ -23,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
+import { debounce } from 'lodash';
 
 const buttonStyles = {
   actionButton: {
@@ -66,27 +67,22 @@ const buttonStyles = {
 };
 
 const FilterSection = ({ 
-  filters = {}, 
-  onFilterChange, 
-  onSearch, 
-  onReset, 
-  onAddNew, 
-  onBulkUpload, 
+  filters,
+  onFilterChange,
+  onSearch,
+  onReset,
+  onAddNew,
+  onBulkUpload,
   onDelete,
-  filterData // Add filterData to props
+  isLoading,
+  filterData
 }) => {
-  const [isLoading, setIsLoading] = useState({
-    add: false,
-    bulkAdd: false
-  }); // Removed search loading state
-  const [academicYear, setAcademicYear] = useState('');  
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
-  // const [dropdownRoot, setDropdownRoot] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -108,10 +104,6 @@ const FilterSection = ({
     return createPortal(content, portalRoot);
   };
 
-  // useEffect(() => {
-  //   setDropdownRoot(document.getElementById('dropdown-root'));
-  // }, []);
-
   const generateAcademicSessions = (academicYear) => {
     if (!academicYear) return [];
     
@@ -126,11 +118,6 @@ const FilterSection = ({
     else if (typeof academicYear === 'string' && academicYear.includes('-')) {
       [startYear, endYear] = academicYear.split('-').map(Number);
     } 
-    // Invalid input
-    // else {
-    //   console.error('Invalid academicYear format:', academicYear);
-    //   return [];
-    // }
   
     return [
       `JULY-DECEMBER ${startYear}`,
@@ -150,47 +137,29 @@ const FilterSection = ({
 
   useEffect(() => {
     const initializeFilters = async () => {
-      const currentYear = getCurrentAcademicYear();
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
-      const [startYear] = currentYear.split('-');
-      
-      const currentSession = currentMonth >= 7 && currentMonth <= 12
-        ? `JULY-DECEMBER ${startYear}`
-        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+      if (!isClient) return;
 
-      setAcademicYear(currentYear);
-      handleFilterChange('academicYear', currentYear);
-      handleFilterChange('academicSession', currentSession);
-      
-      // Trigger immediate search with initial filters
-      const baseParams = {
-        academicYear: currentYear.trim(),
-        academicSession: currentSession.trim().toUpperCase(),
-      };
-
-      try {
-        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-          params: baseParams
-        });
+      // Only set default values if both fields are empty
+      if (!filters.academicYear && !filters.academicSession) {
+        const currentYear = getCurrentAcademicYear();
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const [startYear] = currentYear.split('-');
         
-        if (response.data) {
-          // Cache the full response
-          const cacheKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
-          setCachedData(prev => ({ ...prev, [cacheKey]: response.data }));
-          
-          // Apply any existing filters
-          const filteredData = filterData(response.data, filters);
-          onSearch(filteredData);
-        }
-      } catch (error) {
-        console.log('Error loading initial data:', error);
-        showAlert('Error loading initial data', 'error');
+        const currentSession = currentMonth >= 7 
+          ? `JULY-DECEMBER ${startYear}` 
+          : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+
+        // Set both values together
+        Promise.resolve().then(() => {
+          onFilterChange('academicYear', currentYear);
+          onFilterChange('academicSession', currentSession);
+        });
       }
     };
 
     initializeFilters();
-  }, []);
+  }, [isClient, filters.academicYear, filters.academicSession, onFilterChange]);
 
   useEffect(() => {
     if (!filters.academicYear) {
@@ -246,6 +215,11 @@ const FilterSection = ({
   };
 
   const handleSearch = async () => {
+    if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) {
+      showAlert('Please select both Academic Year and Academic Session', 'warning');
+      return;
+    }
+  
     const baseParams = {
       academicYear: filters.academicYear.trim(),
       academicSession: filters.academicSession.trim().toUpperCase(),
@@ -253,11 +227,13 @@ const FilterSection = ({
     const cacheKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
   
     if (cachedData[cacheKey]) {
+      // Use cached data and apply filters
       const filteredData = filterData(cachedData[cacheKey], filters);
       onSearch(filteredData);
       return;
     }
   
+    // Only fetch if not in cache
     try {
       const response = await axios.get('/api/admin/manageUsers/manageMentee', {
         params: baseParams
@@ -273,19 +249,22 @@ const FilterSection = ({
   };
 
   //  to handle non-base filters
+  const debouncedFilterChange = useCallback(
+    debounce((name, value) => {
+      onFilterChange(name, value);
+    }, 300),
+    []
+  );
+
   const handleFilterChange = (name, value) => {
-    // console.log(`Filter changed: ${name} =`, value);
-    
-    // Format input values based on field type
-    let formattedValue = value;
-    if (name === 'mentorMujid' || name === 'menteeMujid') {
-      formattedValue = value.toUpperCase();
-    } else if (name === 'mentorEmailid') {
-      formattedValue = value.toLowerCase();
+    if (['academicYear', 'academicSession'].includes(name)) {
+      const trimmedValue = value?.trim() || '';
+      if (!trimmedValue) return;
+      
+      debouncedFilterChange(name, trimmedValue);
+    } else {
+      onFilterChange(name, value);
     }
-    
-    // Update parent component's filters
-    onFilterChange(name, formattedValue);
 
     // For these filters, apply filtering on cached data
     if (['semester', 'section', 'mentorMujid', 'menteeMujid', 'mentorEmailid'].includes(name)) {
@@ -308,7 +287,6 @@ const FilterSection = ({
   };
 
   const handleAddMentee = async (menteeData) => {
-    setIsLoading(prev => ({ ...prev, add: true }));
     try {
       const response = await axios.post('/api/admin/manageUsers/manageMentee', menteeData);
       
@@ -320,13 +298,10 @@ const FilterSection = ({
       }
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
-    } finally {
-      setIsLoading(prev => ({ ...prev, add: false }));
     }
   };
 
   const handleBulkAddMentees = async (menteesData) => {
-    setIsLoading(prev => ({ ...prev, bulkAdd: true }));
     try {
       const response = await axios.post('/api/admin/manageUsers/manageMentee', menteesData);
       
@@ -338,8 +313,6 @@ const FilterSection = ({
       }
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error adding mentees', 'error');
-    } finally {
-      setIsLoading(prev => ({ ...prev, bulkAdd: false }));
     }
   };
 
@@ -380,22 +353,19 @@ const FilterSection = ({
 
   const generateYearSuggestions = (input) => {
     if (!input) return [];
-    const currentYear = new Date().getFullYear();
-    const suggestions = [];
+    const currentAcademicYear = getCurrentAcademicYear();
+    const [currentStartYear] = currentAcademicYear.split('-').map(Number);
     
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
-      const academicYear = `${year}-${year + 1}`;
-      if (academicYear.startsWith(input)) {
-        suggestions.push(academicYear);
-      }
+    // Only return current academic year if it matches input
+    if (currentAcademicYear.startsWith(input)) {
+      return [currentAcademicYear];
     }
-    return suggestions;
+    return [];
   };
 
   const generateSessionSuggestions = (input) => {
-    if (!academicYear || !input) return [];
-    const [startYear, endYear] = academicYear.split('-');
+    if (!filters.academicYear || !input) return [];
+    const [startYear, endYear] = filters.academicYear.split('-');
     const possibleSessions = [
       `JULY-DECEMBER ${startYear}`,
       `JANUARY-JUNE ${endYear}`
@@ -425,8 +395,17 @@ const FilterSection = ({
     const regex = /^(\d{4})-(\d{4})$/;
     if (!regex.test(value)) return false;
     
-    const [startYear, endYear] = value.split('-').map(Number);
-    return endYear === startYear + 1;
+    const [startYear] = value.split('-').map(Number);
+    const currentAcademicYear = getCurrentAcademicYear();
+    const [currentStartYear] = currentAcademicYear.split('-').map(Number);
+    
+    // Only allow current academic year
+    if (startYear !== currentStartYear) {
+      showAlert('Only current academic year is allowed', 'warning');
+      return false;
+    }
+    
+    return true;
   };
 
   const handleAcademicYearInput = (e) => {
@@ -434,7 +413,16 @@ const FilterSection = ({
     
     // Auto-format while typing
     if (value.length === 4 && !value.includes('-')) {
-      value = `${value}-${parseInt(value) + 1}`;
+      const yearNum = parseInt(value);
+      const currentAcademicYear = getCurrentAcademicYear();
+      const [currentStartYear] = currentAcademicYear.split('-').map(Number);
+      
+      // Only allow input if it matches current academic year
+      if (yearNum !== currentStartYear) {
+        showAlert('Only current academic year is allowed', 'warning');
+        return;
+      }
+      value = `${value}-${yearNum + 1}`;
     }
     
     // Update suggestions
@@ -446,25 +434,24 @@ const FilterSection = ({
       setShowYearOptions(false);
     }
 
-    setAcademicYear(value);
     if (validateAcademicYear(value)) {
       const sessions = generateAcademicSessions(value);
       handleFilterChange('academicYear', value);
-      if (sessions.length > 0) {
+      // Automatically select the first session if none is selected
+      if (!filters.academicSession && sessions.length > 0) {
         handleFilterChange('academicSession', sessions[0]);
       }
     }
   };
-
 
   const handleAcademicSessionInput = (e) => {
     let value = e.target.value.toUpperCase();
     
     // Auto-format while typing
     if (value.startsWith('JUL')) {
-      value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
+      value = `JULY-DECEMBER ${filters.academicYear?.split('-')[0]}`;
     } else if (value.startsWith('JAN')) {
-      value = `JANUARY-JUNE ${academicYear?.split('-')[1]}`;
+      value = `JANUARY-JUNE ${filters.academicYear?.split('-')[1]}`;
     }
     
     // Update suggestions
@@ -518,7 +505,6 @@ const FilterSection = ({
           key={year}
           className="option-item"
           onClick={() => {
-            setAcademicYear(year);
             handleFilterChange('academicYear', year);
             setShowYearOptions(false);
             const sessions = generateAcademicSessions(year);
@@ -537,7 +523,7 @@ const FilterSection = ({
     showSessionOptions,
     <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
       {(sessionSuggestions.length > 0 ? sessionSuggestions : 
-        generateAcademicSessions(academicYear)
+        generateAcademicSessions(filters.academicYear)
       ).map(session => (
         <Box
           key={session}
@@ -562,7 +548,7 @@ const FilterSection = ({
           <TextField
             size="small"
             label="Academic Year"
-            value={academicYear || ''}  // Changed from filters.academicYear
+            value={filters.academicYear || ''}  // Changed from filters.academicYear
             onChange={handleAcademicYearInput}
             onClick={() => setShowYearOptions(true)}
             placeholder="YYYY-YYYY"
@@ -594,7 +580,7 @@ const FilterSection = ({
                Type &apos;jul&apos; or &apos;jan&apos; for quick selection
               </Box>
             }
-            disabled={!academicYear}
+           disabled={!filters.academicYear}
             sx={textFieldStyles}
           />
           {renderSessionDropdown()}
@@ -671,22 +657,6 @@ const FilterSection = ({
       )
     },
     {
-      name: 'mentorMujid',
-      label: 'Mentor MUJID',
-      customRender: (
-        <TextField
-          size="small"
-          label="Mentor MUJID"
-          value={filters.mentorMujid || ''}
-          onChange={(e) => handleFilterChange('mentorMujid', e.target.value)}
-          inputProps={{
-            style: { textTransform: 'uppercase' }
-          }}
-          sx={textFieldStyles}
-        />
-      )
-    },
-    {
       name: 'menteeMujid',
       label: 'Mentee MUJID',
       customRender: (
@@ -723,9 +693,9 @@ const FilterSection = ({
   const buttons = [
     { 
       label: 'Search',
-      onClick: () => handleSearch(),
+      onClick: handleSearch,
       color: 'primary',
-      disabled: !filters.academicYear || !filters.academicSession,
+      disabled: !filters.academicYear?.trim() || !filters.academicSession?.trim() || isLoading,
       icon: <SearchIcon />
     },
     { 
@@ -920,8 +890,11 @@ const FilterSection = ({
               variant="contained" 
               color={button.color}
               onClick={button.onClick}
-              disabled={button.disabled}
-              startIcon={button.icon}  // Changed this line to use the icon prop
+              disabled={button.disabled || isLoading}
+              startIcon={isLoading && button.label === 'Search' ? 
+                <CircularProgress size={20} sx={{ color: 'white' }} /> : 
+                button.icon
+              }
               sx={{ 
                 borderRadius: '50px',
                 px: { xs: 2, sm: 3 },
@@ -946,7 +919,7 @@ const FilterSection = ({
                 }
               }}
             >
-              {button.label}
+              {isLoading && button.label === 'Search' ? 'Loading...' : button.label}
             </Button>
           ))}
         </Box>

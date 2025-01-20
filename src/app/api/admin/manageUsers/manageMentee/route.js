@@ -167,7 +167,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Server error:", error);
+    // console.log("Server error:", error);
     return createErrorResponse(
       error.name === 'ValidationError' 
         ? error.message 
@@ -182,9 +182,17 @@ export async function POST(req) {
 // Modify the GET handler to support batch loading
 export async function GET(req) {
   try {
-    await connect();
     const { searchParams } = new URL(req.url);
-    console.log("API - Received params:", Object.fromEntries(searchParams.entries()));
+    const academicYear = searchParams.get("academicYear")?.trim();
+    const academicSession = searchParams.get("academicSession")?.trim();
+
+    // Return early if either parameter is missing or empty
+    if (!academicYear || !academicSession) {
+      return NextResponse.json({ error: "Both academicYear and academicSession are required" }, { status: 400 });
+    }
+
+    await connect();
+    // console.log("API - Received params:", Object.fromEntries(searchParams.entries()));
 
     let filters = {};
 
@@ -227,8 +235,8 @@ export async function GET(req) {
       }
     ]);
 
-    console.log("API - Found mentees count:", mentees.length);
-    console.log("API - Sample mentee:", mentees[0]);
+    // console.log("API - Found mentees count:", mentees.length);
+    // console.log("API - Sample mentee:", mentees[0]);
 
     const transformedMentees = mentees.map(mentee => ({
       ...mentee,
@@ -238,7 +246,7 @@ export async function GET(req) {
       mentorEmailid: mentee.mentorEmailid || ''
     }));
 
-    console.log("API - Transformed mentees sample:", transformedMentees[0]);
+    // console.log("API - Transformed mentees sample:", transformedMentees[0]);
     return NextResponse.json(transformedMentees, { status: 200 });
 
   } catch (error) {
