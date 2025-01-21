@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { debounce } from 'lodash'; // Add this import
+// Remove lodash import
 import { 
   Box, 
   Typography, 
@@ -86,55 +86,68 @@ const MenteeManagement = () => {
   // Add currentFilters state
   const [currentFilters, setCurrentFilters] = useState(null);
 
-  // Single centralized data fetching function
-  const fetchMenteeData = useCallback(
-    debounce(async (params) => {
-      if (!params.academicYear || !params.academicSession) return;
+  // Replace debounce with simple delay using setTimeout
+  const fetchMenteeData = useCallback(async (params) => {
+    if (!params.academicYear || !params.academicSession) return;
+    
+    const cacheKey = `${params.academicYear}-${params.academicSession}`;
+    if (dataCache.current.has(cacheKey)) {
+      setMentees(dataCache.current.get(cacheKey));
+      setTableVisible(true);
+      return;
+    }
+
+    setLoadingStates(prev => ({ ...prev, fetching: true }));
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
+      const processedData = response.data.map(mentee => ({
+        ...mentee,
+        id: mentee._id || mentee.id,
+        MUJid: mentee.MUJid?.toUpperCase(),
+        mentorMujid: mentee.mentorMujid?.toUpperCase()
+      }));
       
-      const cacheKey = `${params.academicYear}-${params.academicSession}`;
-      if (dataCache.current.has(cacheKey)) {
-        setMentees(dataCache.current.get(cacheKey));
-        setTableVisible(true);
-        return;
+      dataCache.current.set(cacheKey, processedData);
+      setMentees(processedData);
+      setTableVisible(true);
+    } catch (error) {
+      console.error('Error fetching mentees:', error);
+      if (error.response?.status !== 400) {
+        showAlert(error.response?.data?.error || 'Error loading data', 'error');
       }
+    } finally {
+      setLoadingStates(prev => ({ ...prev, fetching: false }));
+    }
+  }, []);
 
-      setLoadingStates(prev => ({ ...prev, fetching: true }));
-      try {
-        const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
-        const processedData = response.data.map(mentee => ({
-          ...mentee,
-          id: mentee._id || mentee.id,
-          MUJid: mentee.MUJid?.toUpperCase(),
-          mentorMujid: mentee.mentorMujid?.toUpperCase()
-        }));
-        
-        dataCache.current.set(cacheKey, processedData);
-        setMentees(processedData);
-        setTableVisible(true);
-      } catch (error) {
-        console.error('Error fetching mentees:', error);
-        if (error.response?.status !== 400) {
-          showAlert(error.response?.data?.error || 'Error loading data', 'error');
-        }
-      } finally {
-        setLoadingStates(prev => ({ ...prev, fetching: false }));
-      }
-    }, 300),
-    []
-  );
-
-  // Filter handler
+  // Handle filter changes with timeout
+  const filterTimeout = useRef(null);
   const handleFilterChange = useCallback((name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));
 
-    // For base filters, fetch new data
+    // For base filters, fetch new data with a small delay
     if (['academicYear', 'academicSession'].includes(name)) {
-      fetchMenteeData({
-        academicYear: name === 'academicYear' ? value : filters.academicYear,
-        academicSession: name === 'academicSession' ? value : filters.academicSession
-      });
+      if (filterTimeout.current) {
+        clearTimeout(filterTimeout.current);
+      }
+      
+      filterTimeout.current = setTimeout(() => {
+        fetchMenteeData({
+          academicYear: name === 'academicYear' ? value : filters.academicYear,
+          academicSession: name === 'academicSession' ? value : filters.academicSession
+        });
+      }, 300);
     }
   }, [filters.academicYear, filters.academicSession, fetchMenteeData]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (filterTimeout.current) {
+        clearTimeout(filterTimeout.current);
+      }
+    };
+  }, []);
 
   const [academicSessions, setAcademicSessions] = useState([]);
   const [loading, setLoading] = useState(false); // Set initial loading state to false
