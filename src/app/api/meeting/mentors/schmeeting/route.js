@@ -161,6 +161,8 @@ export async function POST(request) {
       section,
       session,
       year,
+      isMeetingOnline,
+      venue,
     } = body;
 
     if (
@@ -171,7 +173,9 @@ export async function POST(request) {
       !meeting_time ||
       !semester ||
       !session ||
-      !year
+      !year ||
+      !isMeetingOnline ||
+      !venue
     ) {
       return NextResponse.json(
         { error: "All fields except section are required" },
@@ -262,6 +266,8 @@ export async function POST(request) {
       meeting_id,
       meeting_notes: {
         TopicOfDiscussion,
+        isMeetingOnline: isMeetingOnline ? true : false,
+        venue,
       },
       meeting_date,
       meeting_time,
