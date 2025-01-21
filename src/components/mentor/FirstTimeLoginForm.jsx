@@ -136,7 +136,7 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                 </div>
 
                 {/* MUJid Input */}
-                <div>
+                {/* <div>
                     <label className="block text-white mb-2">MUJid</label>
                     <input
                         type="text"
@@ -147,7 +147,7 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                         maxLength={10}
                     />
                     {errors.MUJid && <span className="text-red-500 text-sm">{errors.MUJid}</span>}
-                </div>
+                </div> */}
 
                 {/* Phone Number Input */}
                 <div>
@@ -163,7 +163,7 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                 </div>
 
                 {/* Address Input */}
-                <div>
+                {/* <div>
                     <label className="block text-white mb-2">Address</label>
                     <input
                         type="text"
@@ -172,7 +172,7 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                         className={`w-full p-2 rounded bg-white/10 text-white border ${errors.address ? 'border-red-500' : 'border-white/20'}`}
                     />
                     {errors.address && <span className="text-red-500 text-sm">{errors.address}</span>}
-                </div>
+                </div> */}
 
                 {/* Gender Select */}
                 <div>
@@ -198,7 +198,8 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                         value={formData.academicYear}
                         onChange={(e) => setFormData({...formData, academicYear: e.target.value})}
                         placeholder={mentorData?.academicYear}
-                        className={`w-full p-2 rounded bg-white/10 text-white border ${errors.academicYear ? 'border-red-500' : 'border-white/20'}`}
+                        disabled={mentorData?.academicYear ? true : false}
+                        className={`w-full p-2 rounded bg-white/10 text-white border ${errors.academicYear ? 'border-red-500' : 'border-white/20'} ${mentorData?.academicYear ? 'opacity-60' : ''}`}
                     />
                     {errors.academicYear && <span className="text-red-500 text-sm">{errors.academicYear}</span>}
                 </div>
@@ -209,7 +210,7 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
                     <select
                         value={formData.academicSession}
                         onChange={(e) => setFormData({...formData, academicSession: e.target.value})}
-                        className={`w-full p-2 rounded bg-white/10 text-white border ${errors.academicSession ? 'border-red-500' : 'border-white/20'}`}
+                        className={`w-full p-2 rounded bg-white/10 text-white border ${errors.academicSession ? 'border-red-500' : 'border-white/20'} ${formData.academicYear ? 'opacity-60' : ''}`}
                         disabled={!formData.academicYear}
                     >
                         <option className='text-black' value="">Select Session</option>

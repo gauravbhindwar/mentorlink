@@ -131,7 +131,7 @@ const Header = () => (
       <Text style={{ fontSize: 16, fontWeight: 'bold', fontFamily: 'Cambria' }}>
         Department of Computer Science and Engineering
       </Text>
-      <Text>School of Computing & Information Technology</Text>
+      <Text>School of  Computer Science and Engineering</Text>
       <View style={{ width: '80%', height: 1, backgroundColor: '#000', alignSelf: 'center', marginVertical: 10 }} />
     </View>
   </>
@@ -334,16 +334,22 @@ export const generateConsolidatedPdf = (meetings, academicYear, semester, sectio
 };
 
 // Add new export for PDF download
-export const PDFDownloadComponent = ({ document, fileName, children }) => (
+export const PDFDownloadComponent = ({ document, fileName, children , page }) => (
   <BlobProvider document={document}>
     {({ url, loading }) => (
       loading ? (
-        <button disabled>Loading...</button>
+        page && page === 'MentorDashboard' ? (
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <button disabled>Loading...</button>
+        )
       ) : (
         <a 
           href={url} 
           download={fileName}
-          className="inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
+          className={`${page && page === 'MentorDashboard' ? '' : 'inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all'}`}
         >
           {children || 'Download PDF'}
         </a>

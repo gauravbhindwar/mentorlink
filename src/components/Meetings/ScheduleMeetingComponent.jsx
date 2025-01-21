@@ -41,6 +41,8 @@ const ScheduleMeetingComponent = () => {
   const fixedBranch = 'CSE CORE';
 
   const [preventReload, setPreventReload] = useState(false);
+  const [isMeetingOnline, setIsMeetingOnline] = useState(false);
+  const [venue, setVenue] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -199,7 +201,7 @@ const ScheduleMeetingComponent = () => {
 
  
   const handleMeetingScheduled = async () => {
-    if (!mentorId || !currentSemester || !dateTime) {
+    if (!mentorId || !currentSemester || !dateTime || !venue || !meetingTopic) {
       setCustomAlert('Please fill all required fields');
       return;
     }
@@ -221,7 +223,9 @@ const ScheduleMeetingComponent = () => {
           semester: currentSemester,
           section: selectedSection,
           session: academicSession,
-          year: academicYear
+          year: academicYear,
+          meeting_type: isMeetingOnline,
+          venue: venue
         });
 
         if (response.status === 200) {
@@ -411,7 +415,8 @@ const ScheduleMeetingComponent = () => {
     return null;
   }
 
-  const getEmailBody = () => `
+  // In ScheduleMeetingComponent.jsx, update the getEmailBody function
+const getEmailBody = () => `
 Dear Mentees,
 
 A mentor meeting has been scheduled with the following details:
@@ -420,6 +425,8 @@ Meeting ID: ${meetingId}
 Date: ${formattedDate}
 Time: ${formattedTime}
 Topic: ${meetingTopic || 'N/A'}
+Meeting Type: ${isMeetingOnline ? 'Online' : 'Offline'}
+${isMeetingOnline ? 'Meeting Link' : 'Venue'}: ${venue}
 Branch: ${fixedBranch}
 Semester: ${currentSemester}
 Section: ${selectedSection || 'N/A'}
@@ -467,16 +474,17 @@ Contact: ${mentorData?.email || ''}`;
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto"
+            className="max-w-6xl mx-auto" // Changed from max-w-4xl to max-w-6xl
           >
             <div className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
               <form onSubmit={(e)=>{
                 e.preventDefault();
-              }} className="grid grid-cols-2 gap-4">
+              }} className="grid grid-cols-3 gap-4"> {/* Changed from grid-cols-2 to grid-cols-3 */}
                 {/* Left Column */}
                 <div className="space-y-3">
                   {/* Add Mentor MUJID field */}
-                  <div>
+                  {/* Disabled for now */}
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Mentor MUJID</label>
                     <input
                       type="text"
@@ -486,7 +494,7 @@ Contact: ${mentorData?.email || ''}`;
                       disabled={mentorData.MUJid ? true : false}
                       className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase ${mentorData.MUJid ? 'opacity-60' : ''}`}
                     />
-                  </div>
+                  </div> */}
 
                   {/* Existing academic fields */}
                   <div>
@@ -609,6 +617,10 @@ Contact: ${mentorData?.email || ''}`;
                     />
                   </div>
                   
+                </div>
+
+                {/* Middle Column */}
+                <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Meeting ID</label>
                     <input
@@ -620,10 +632,6 @@ Contact: ${mentorData?.email || ''}`;
                     />
                   </div>
                   
-                </div>
-
-                {/* Right Column - reordered and added fields */}
-                <div className="space-y-3">
                   {/* Meeting Title moved to top */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Meeting Topic</label>
@@ -653,58 +661,61 @@ Contact: ${mentorData?.email || ''}`;
                     </div>
                   </div>
 
-                  {/* Meeting Agenda */}
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Meeting Agenda</label>
-                    <textarea
-                      placeholder="Describe the meeting agenda..."
-                      rows="5" // Reduced from 7 to accommodate new fields
+                  {/* Meeting Type Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Meeting Type</label>
+                    <select
+                      value={isMeetingOnline ? 'online' : 'offline'}
+                      onChange={(e) => {
+                        setIsMeetingOnline(e.target.value === 'online');
+                        setVenue(''); // Reset venue when changing meeting type
+                      }}
+                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                    >
+                      <option value="offline">Offline</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </div>
+
+                  {/* Conditional Venue/Link Field */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      {isMeetingOnline ? 'Meeting Link' : 'Venue'}
+                    </label>
+                    <input
+                      type="text"
+                      value={venue}
+                      onChange={(e) => setVenue(e.target.value)}
+                      placeholder={isMeetingOnline ? 'Enter meeting link' : 'Enter venue location'}
                       className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                     />
-                  </div> */}
-
-                  {/* File upload section */}
-                  {/* <div className="relative">
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Attachments</label>
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      id="file-upload"
-                      accept=".pdf,.doc,.docx,.txt"
-                    />
-                    <label
-                      htmlFor="file-upload"
-                      className="w-full flex items-center gap-2 bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm cursor-pointer hover:bg-black/30 transition-all"
-                    >
-                      <FiUpload className="text-purple-400" />
-                      <span>{selectedFile ? selectedFile.name : "Upload attachments"}</span>
-                    </label>
-                  </div> */}
+                  </div>
 
                   <button 
                     type="submit" 
                     className="w-full btn-orange disabled:opacity-50"
                     disabled={loading || isDisabled}
-                    onClick={
-                      handleMeetingScheduled
-                    }
+                    onClick={handleMeetingScheduled}
                   >
                     {loading ? 
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500">
-                    </div>                    
-                    : 'Schedule Meeting'}
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500">
+                      </div>                    
+                      : 'Schedule Meeting'
+                    }
                   </button>
-                  {
-                    customAlert && (
-                      <p className='text-md text-red-600 font-semibold w-[100%] flex justify-center'><span>{customAlert}</span></p>
-                    )
-                  }  
-                  {
-                    mentees.length > 0 ? (
-                      <div className="mt-4">
-                        <h3 className="text-lg font-semibold text-white mb-2">Mentees:</h3>
-                        <div className="max-h-[150px] overflow-y-auto custom-scrollbar">
+                  {customAlert && (
+                    <p className='text-md text-red-600 font-semibold w-[100%] flex justify-center'>
+                      <span>{customAlert}</span>
+                    </p>
+                  )}  
+                </div>
+
+                {/* Right Column - Mentees List */}
+                <div className="space-y-3">
+                  {mentees.length > 0 ? (
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Mentees:</h3>
+                      <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                         <ul className="list-disc list-inside text-white space-y-2">
                           {mentees.map((mentee, index) => (
                             <li 
@@ -720,12 +731,13 @@ Contact: ${mentorData?.email || ''}`;
                             </li>
                           ))}
                         </ul>
-                        </div>
                       </div>
-                    ) : (
-                      <p className="text-md text-red-600 font-semibold w-[100%] flex justify-center mt-4">No mentees found</p>
-                    )
-                  }              
+                    </div>
+                  ):(
+                    <div>
+                      <h3 className="text-md font-semibold text-rose-800 mb-2 text-center">No mentees found</h3>
+                    </div>
+                  )}
                 </div>
               </form>
             </div>
