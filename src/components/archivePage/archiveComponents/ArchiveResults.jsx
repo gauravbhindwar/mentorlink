@@ -38,14 +38,14 @@ const columns = [
     headerAlign: 'center',
     align: 'center',
   },
-  { 
-    field: 'department', 
-    headerName: 'Department', 
-    width: 130,  // Adjusted width
-    renderCell: (params) => params.row?.department || '',
-    headerAlign: 'center',
-    align: 'center',
-  },
+  // { 
+  //   field: 'department', 
+  //   headerName: 'Department', 
+  //   width: 130,  // Adjusted width
+  //   renderCell: (params) => params.row?.department || '',
+  //   headerAlign: 'center',
+  //   align: 'center',
+  // },
   { 
     field: 'phone_number', 
     headerName: 'Phone', 
