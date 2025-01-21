@@ -306,7 +306,7 @@ const MentorDashBoard = () => {
                                 borderRadius: '1rem',
                             }}
                         >
-                            <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm">
+                            <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm overflow-y-auto max-h-[448px] custom-scrollbar">
                                 
                                     {meetingsLoading ? (
                                         <div className="flex items-center justify-center py-8">

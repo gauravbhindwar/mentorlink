@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/subComponents/Navbar';
 import axios from 'axios';
-import EmailConfirmationDialog from './EmailConfirmationDialog';
 
 const ScheduleMeetingComponent = () => {
   const router = useRouter();
@@ -36,7 +35,6 @@ const ScheduleMeetingComponent = () => {
   console.log(semesterSuggestions);
   const semesterRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false); // Add this new state
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   const fixedBranch = 'CSE CORE';
 
@@ -148,7 +146,7 @@ const ScheduleMeetingComponent = () => {
           //   setCustomAlert('You have already scheduled 4 meetings for this section')
           //   setDisabled(true);
           // }else{
-          setMeetingId(`${mentorId}-M${selectedSection}${meetingsHeld.length + 1}`);
+          setMeetingId(`${mentorId}${currentSemester}-M${selectedSection}${meetingsHeld.length + 1}`);
           setCustomAlert('')
           setDisabled(false);
           // }
@@ -206,40 +204,41 @@ const ScheduleMeetingComponent = () => {
       return;
     }
 
-    setShowEmailDialog(true);
-  };
+    setLoading(true);
+    setPreventReload(true);
+    try {
+      // First schedule the meeting
+      const response = await axios.post('/api/meeting/mentors/schmeeting', {
+        mentor_id: mentorId,
+        meeting_id: meetingId,
+        TopicOfDiscussion: meetingTopic,
+        meeting_date: formattedDate,
+        meeting_time: formattedTime,
+        semester: currentSemester,
+        section: selectedSection,
+        session: academicSession,
+        year: academicYear,
+        meeting_type: isMeetingOnline,
+        venue: venue
+      });
 
-  const handleEmailConfirmation = async (emailsSent) => {
-    if (emailsSent) {
-      setLoading(true);
-      setPreventReload(true);
-      try {
-        const response = await axios.post('/api/meeting/mentors/schmeeting', {
-          mentor_id: mentorId,
-          meeting_id: meetingId,
-          TopicOfDiscussion: meetingTopic,
-          meeting_date: formattedDate,
-          meeting_time: formattedTime,
-          semester: currentSemester,
-          section: selectedSection,
-          session: academicSession,
-          year: academicYear,
-          meeting_type: isMeetingOnline,
-          venue: venue
-        });
-
-        if (response.status === 200) {
-          router.push('/pages/mentordashboard');
+      if (response.status === 200) {
+        // Then send emails to all mentees
+        const menteeEmails = mentees.map(mentee => mentee.email);
+        console.log('Mentee emails:', menteeEmails);
+        try {
+          await sendEmailToMentees(menteeEmails);
+        } catch (error) {
+          console.log('Error sending emails to mentees:', error);
         }
-      } catch (error) {
-        console.log('Error scheduling meeting:', error);
-        setCustomAlert('Failed to schedule meeting');
-      } finally {
-        setLoading(false);
-        setPreventReload(false);
       }
+    } catch (error) {
+      console.log('Error scheduling meeting:', error);
+      setCustomAlert('Failed to schedule meeting or send emails');
+    } finally {
+      setLoading(false);
+      setPreventReload(false);
     }
-    setShowEmailDialog(false);
   };
 
   // Add new function to get mentees
@@ -439,6 +438,26 @@ ${mentorData?.designation || 'Faculty Mentor'}
 Department of Computer Science and Engineering
 Manipal University Jaipur
 Contact: ${mentorData?.email || ''}`;
+
+const sendEmailToMentees = async (menteeEmails) => {
+  try {
+    const emailPromises = menteeEmails.map(async (email) => {
+      const response = await axios.post('/api/meeting/send-email', {
+        email,
+        subject: `Meeting Scheduled - ${meetingId}`,
+        body: getEmailBody()
+      });
+      router.push('/pages/mentordashboard');
+
+      return response;
+    });
+
+    await Promise.all(emailPromises);
+  } catch (error) {
+    console.error('Error sending emails:', error);
+    throw error;
+  }
+};
 
   return (
     <AnimatePresence>
@@ -744,16 +763,6 @@ Contact: ${mentorData?.email || ''}`;
           </motion.div>
         </div>
       </motion.div>
-      <EmailConfirmationDialog 
-        isOpen={showEmailDialog}
-        onClose={() => setShowEmailDialog(false)}
-        mentees={mentees}
-        emailData={{ 
-          subject: `Mentor Meeting Scheduled - ${formattedDate}`,
-          body: getEmailBody()
-        }}
-        onConfirm={handleEmailConfirmation}
-      />
     </AnimatePresence>
   );
 };
