@@ -12,20 +12,13 @@ export async function GET(request: Request) {
         const session = searchParams.get('session');
         const semester = searchParams.get('semester');
         const section = searchParams.get('section');
+        const page = parseInt(searchParams.get('page') || '0');
+        const limit = parseInt(searchParams.get('limit') || '5');
 
-        if (!year || !session || !semester) {
-            return NextResponse.json(
-                { error: 'Missing required parameters' },
-                { status: 400 }
-            );
-        }
-
-        await mongoose.connect(process.env.MONGODB_URI as string);
-
-        // Modified matching conditions
+        // Validation and base pipeline setup
         const matchStage: mongoose.FilterQuery<mongoose.Document> = {
-            start_year: { $lte: parseInt(year) },
-            end_year: { $gte: parseInt(year) }
+            start_year: { $lte: parseInt(year!) },
+            end_year: { $gte: parseInt(year!) }
         };
 
         const aggregationPipeline: PipelineStage[] = [
@@ -33,122 +26,107 @@ export async function GET(request: Request) {
             { $unwind: '$sessions' },
             { 
                 $match: {
-                    'sessions.name': {
-                        $regex: new RegExp(session.trim(), 'i')  // Case-insensitive match
-                    }
+                    'sessions.name': session?.trim()
                 }
             },
             { $unwind: '$sessions.semesters' },
-            {
+            ...(semester ? [{
                 $match: {
-                    'sessions.semesters.semester_number': parseInt(semester)
+                    'sessions.semesters.semester_number': parseInt(semester!)
                 }
-            },
-            { $unwind: '$sessions.semesters.sections' }
-        ];
-
-        // Add section filter if provided
-        if (section) {
-            aggregationPipeline.push({
+            }] : []),
+            { $unwind: '$sessions.semesters.sections' },
+            ...(section ? [{
                 $match: {
                     'sessions.semesters.sections.name': section.toUpperCase()
                 }
-            });
-        }
-
-        // Add remaining pipeline stages
-        aggregationPipeline.push(
+            }] : []),
             { $unwind: '$sessions.semesters.sections.meetings' },
             {
                 $group: {
-                    _id: '$sessions.semesters.sections.meetings.mentorMUJid',
-                    meetingCount: { $sum: 1 },
-                    lastMeeting: { $last: '$sessions.semesters.sections.meetings' }
+                    _id: {
+                        mentorMUJid: '$sessions.semesters.sections.meetings.mentorMUJid',
+                        meeting_id: '$sessions.semesters.sections.meetings.meeting_id'
+                    },
+                    meetingData: { $first: '$sessions.semesters.sections.meetings' }
                 }
-            } as PipelineStage,
+            },
             {
-                $match: {
-                    _id: { $ne: null, $exists: true }
+                $group: {
+                    _id: '$_id.mentorMUJid',
+                    meetingCount: { $sum: 1 },
+                    uniqueMeetings: { 
+                        $addToSet: {
+                            meeting_id: '$_id.meeting_id',
+                            date: '$meetingData.meeting_date'
+                        }
+                    }
+                }
+            },
+            {
+                $sort: { _id: 1 }
+            }
+        ];
+
+        // Facet pipeline to get both total count and paginated results in one query
+        const facetPipeline = [
+            ...aggregationPipeline,
+            {
+                $facet: {
+                    metadata: [{ $count: "total" }],
+                    data: [
+                        { $skip: page * limit },
+                        { $limit: limit }
+                    ]
                 }
             }
-        );
+        ];
 
-        // Execute aggregation with improved pipeline
-        const mentorMeetingCounts = await AcademicSession.aggregate(aggregationPipeline);
-
-        // Debug logging
-        // console.log('Query parameters:', {
-        //     year,
-        //     session,
-        //     semester,
-        //     section,
-        //     matchStage,
-        //     resultCount: mentorMeetingCounts.length
-        // });
-
-        // Add more detailed debug logging
-        // console.log('Detailed query params:', {
-        //     yearQuery: {
-        //         $or: [
-        //             { start_year: parseInt(year) },
-        //             { end_year: parseInt(year) }
-        //         ]
-        //     },
-        //     session: session.trim(),
-        //     semester: parseInt(semester),
-        //     section: section?.toUpperCase()
-        // });
-
-        // Add debug logging
-        // console.log('Aggregation result:', JSON.stringify(mentorMeetingCounts, null, 2));
-
-        // Debug logging
-        // console.log('Aggregation query:', JSON.stringify({
-        //     year: parseInt(year),
-        //     session,
-        //     semester: parseInt(semester),
-        //     section: section?.toUpperCase()
-        // }, null, 2));
-
-        // Log for debugging
-        // console.log('Query params:', { year, session, semester, section });
-        // console.log('Found meetings:', mentorMeetingCounts.length);
-
-        // Get unique mentor IDs
-        const mentorIds = mentorMeetingCounts.map(m => m._id).filter(Boolean);
-
-        if (mentorIds.length === 0) {
-            return NextResponse.json(
-                { message: 'No meetings found for the selected criteria' },
-                { status: 404 }
-            );
+        interface AggregationResult {
+            _id: string;
+            meetingCount: number;
+            uniqueMeetings: { meeting_id: string; date: Date }[];
         }
 
-        // Fetch mentor details from Mentor schema
+        const [result] = await AcademicSession.aggregate(facetPipeline);
+        
+        const total = result.metadata[0]?.total || 0;
+        const mentorIds = result.data.map((m: AggregationResult) => m._id).filter(Boolean);
+
+        // If no meetings found, return empty result with pagination
+        if (mentorIds.length === 0) {
+            return NextResponse.json({
+                meetings: [],
+                total: 0,
+                page,
+                limit
+            });
+        }
+
+        // Fetch unique mentor details
         const mentors = await Mentor.find({
             MUJid: { $in: mentorIds }
-        }).select('MUJid name email phone_number');
+        }).select('MUJid name email phone_number').lean();
 
-        // Combine mentor details with meeting counts
+        // Combine mentor details with unique meeting counts
         const mentorMeetings = mentors.map(mentor => {
-            const meetingInfo = mentorMeetingCounts.find(m => m._id === mentor.MUJid);
+            const meetingInfo = result.data.find((m: AggregationResult) => m._id === mentor.MUJid);
             return {
                 MUJid: mentor.MUJid,
                 mentorName: mentor.name,
                 mentorEmail: mentor.email,
                 mentorPhone: mentor.phone_number,
-                meetingCount: meetingInfo?.meetingCount || 0
+                meetingCount: meetingInfo?.meetingCount || 0,
+                meetings: meetingInfo?.uniqueMeetings || []
             };
         });
 
-        if (mentorMeetings.length === 0) {
-            return NextResponse.json(
-                { message: 'No meetings found for the selected criteria' },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json(mentorMeetings);
+        return NextResponse.json({
+            meetings: mentorMeetings,
+            total,
+            page,
+            limit
+        });
 
     } catch (error) {
         console.error('Database error:', error);

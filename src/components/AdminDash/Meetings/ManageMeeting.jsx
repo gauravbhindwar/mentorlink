@@ -23,57 +23,52 @@ const ManageMeeting = () => {
   const [loading, setLoading] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
   const [academicSessions, setAcademicSessions] = useState([]);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
+  const [totalRows, setTotalRows] = useState(0);
+  const [showTable, setShowTable] = useState(false);
 
   useEffect(() => {
-    // Get academic period using the utility function
-    const { academicYear: currentAcadYear, academicSession: currentSession } = determineAcademicPeriod();
-    const sessions = generateAcademicSessions(currentAcadYear);
-    
-    setAcademicYear(currentAcadYear);
-    setAcademicSession(currentSession);
-    setAcademicYears([
-      currentAcadYear,
-      `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
-      `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
-    ]);
-    setAcademicSessions(sessions);
-    
-    // Clear mentor meetings data on component mount
-    setMentorMeetings([]);
-    sessionStorage.removeItem('mentorMeetings');
-
-    // Cleanup on component unmount
-    return () => {
-      sessionStorage.removeItem('mentorMeetings');
+    const init = async () => {
+      const { academicYear: currentAcadYear, academicSession: currentSession } = determineAcademicPeriod();
+      const sessions = generateAcademicSessions(currentAcadYear);
+      
+      // Set initial values
+      setAcademicYear(currentAcadYear);
+      setAcademicSession(currentSession);
+      setAcademicYears([
+        currentAcadYear,
+        `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
+        `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
+      ]);
+      setAcademicSessions(sessions);
     };
+
+    init();
   }, []);
 
-  const fetchMentorMeetings = async () => {
+  const fetchMentorMeetings = async (year = academicYear, session = academicSession, sem = semester, sec = section, pg = page, size = pageSize) => {
     setLoading(true);
-    if (!academicYear || !academicSession || !semester) {
-      toast.error('Please select all required fields.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Get the correct year based on session type
-      const isJulyDecember = academicSession.includes('JULY-DECEMBER');
-      const [startYear] = academicYear.split('-');
+      const isJulyDecember = session.includes('JULY-DECEMBER');
+      const [startYear] = year.split('-');
       const queryYear = isJulyDecember ? startYear : parseInt(startYear) + 1;
 
       const params = {
         year: queryYear,
-        session: academicSession,
-        semester,
-        ...(section && { section })
+        session: session,
+        semester: sem,
+        ...(sec && { section: sec }),
+        page: pg,
+        limit: size
       };
       
       const response = await axios.get('/api/admin/manageMeeting', { params });
       
       if (response.data) {
-        setMentorMeetings(response.data);
-        sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data));
+        setMentorMeetings(response.data.meetings);
+        setTotalRows(response.data.total);
+        sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data.meetings));
       }
     } catch (error) {
       console.error('Error:', error.response?.data || error);
@@ -82,6 +77,17 @@ const ManageMeeting = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    fetchMentorMeetings(academicYear, academicSession, semester, section, newPage, pageSize);
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    setPageSize(newPageSize);
+    setPage(0);
+    fetchMentorMeetings(academicYear, academicSession, semester, section, 0, newPageSize);
   };
 
   const handleAcademicYearChange = (e) => {
@@ -103,7 +109,11 @@ const ManageMeeting = () => {
   };
 
   const handleSemesterChange = (e) => {
-    setSemester(e.target.value);
+    const value = e.target.value;
+    // Only allow numbers 1-8
+    if (value === '' || (/^[1-8]$/.test(value))) {
+      setSemester(value);
+    }
   };
 
   const handleSectionChange = (e) => {
@@ -115,7 +125,9 @@ const ManageMeeting = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    fetchMentorMeetings();
+    setPage(0); // Reset to first page
+    setShowTable(true); // Show table when fetching
+    fetchMentorMeetings(academicYear, academicSession, semester, section, 0, pageSize);
   };
 
   const sendEmail = async (mentorEmail) => {
@@ -285,7 +297,6 @@ const ManageMeeting = () => {
                     <option key={index} value={session} />
                   ))}
                 </datalist>
-                <small className="text-green-500">Type &apos;JUL&apos; or &apos;JAN&apos; for quick selection</small>
               </div>
             </div>
 
@@ -293,11 +304,20 @@ const ManageMeeting = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
                 <input
-                  type="text"
-                  placeholder="Enter Semester"
+                  type="number"
+                  min="1"
+                  max="8"
+                  placeholder="Enter Semester (1-8)"
                   value={semester}
                   onChange={handleSemesterChange}
-                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                  onKeyDown={(e) => {
+                    // Prevent typing non-numeric characters
+                    if (!/[0-9]|\Backspace|\Tab/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  maxLength={1}
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
@@ -326,32 +346,49 @@ const ManageMeeting = () => {
             
           </form>
 
-          {loading ? (
-            <LoadingComponent />
-          ) : (
-            mentorMeetings.length > 0 && (
-              <div className="mt-6 h-[400px] w-full">
-                <ThemeProvider theme={darkTheme}>
-                  <DataGrid
-                    rows={rows}
-                    columns={columns}
-                    initialState={{
-                      pagination: {
-                        paginationModel: { pageSize: 5 },
+          {loading && showTable && <LoadingComponent />}
+        
+          {!loading && showTable && mentorMeetings.length > 0 && (
+            <div className="mt-6 h-[400px] w-full custom-scrollbar">
+              <ThemeProvider theme={darkTheme}>
+                <DataGrid
+                  rows={rows}
+                  columns={columns}
+                  rowCount={totalRows}
+                  page={page}
+                  pageSize={pageSize}
+                  paginationMode="server"
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                  pageSizeOptions={[5, 10, 20]}
+                  loading={loading}
+                  disableRowSelectionOnClick
+                  disableColumnMenu={true}
+                  disableColumnFilter={false}
+                  sx={{
+                    '& .MuiDataGrid-virtualScroller': {
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      '&::-webkit-scrollbar': {
+                        width: '8px',
+                        height: '8px'
                       },
-                    }}
-                    pageSizeOptions={[5, 10, 20]}
-                    // checkboxSelection
-                    disableRowSelectionOnClick
-                    // autoHeight
-                    // disableColumnMenu: true
-                    disableSelectionOnClick={true}
-                    disableColumnMenu={true}
-                    disableColumnFilter={false}
-                  />
-                </ThemeProvider>
-              </div>
-            )
+                      '&::-webkit-scrollbar-track': {
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '4px'
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: 'rgba(249, 115, 22, 0.5)',
+                        borderRadius: '4px',
+                        '&:hover': {
+                          background: 'rgba(249, 115, 22, 0.7)'
+                        }
+                      }
+                    }
+                  }}
+                />
+              </ThemeProvider>
+            </div>
           )}
         </div>
       </div>
