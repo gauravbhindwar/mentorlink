@@ -6,12 +6,12 @@ import {
   Box, 
   Typography, 
   IconButton, 
-  Grid,
   Tabs,
   Tab,
   Fade,
   Avatar,
   Chip,
+  Stack,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -191,147 +191,85 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
           }}>
             {/* Basic Info Tab */}
             <TabPanel value={activeTab} index={0}>
-              <Grid container spacing={3}>
+              <Stack 
+                direction="row" 
+                flexWrap="wrap" 
+                gap={3}
+              >
                 <InfoItem icon="📧" label="Email" value={mentee.email} />
                 <InfoItem icon="📱" label="Phone" value={mentee.phone} />
                 <InfoItem icon="📍" label="Address" value={mentee.address} fullWidth />
-              </Grid>
+              </Stack>
             </TabPanel>
 
             {/* Academic Info Tab */}
             <TabPanel value={activeTab} index={1}>
-              <Grid container spacing={3}>
+              <Stack 
+                direction="row" 
+                flexWrap="wrap" 
+                gap={3}
+              >
                 <InfoItem icon="📚" label="Academic Year" value={mentee.academicYear} />
                 <InfoItem icon="🗓️" label="Academic Session" value={mentee.academicSession} />
                 <InfoItem icon="📅" label="Year of Registration" value={mentee.yearOfRegistration} />
                 <InfoItem icon="👨‍🏫" label="Mentor MUJID" value={mentee.mentorMujid} />
                 <InfoItem icon="📧" label="Mentor Email" value={mentee.mentorEmailid || mentee.mentorEmailId} />
-                
-                {/* Meeting Statistics */}
-                {/* DISABLED FOR NOW */}
-                {/* <Grid item xs={12}>
-                  <Box
-                    sx={{
-                      p: 2,
-                      bgcolor: 'rgba(249, 115, 22, 0.1)',
-                      borderRadius: 2,
-                      border: '1px solid rgba(249, 115, 22, 0.2)',
-                    }}
-                  >
-                    <Typography variant="h6" sx={{ color: '#f97316', mb: 2 }}>
-                      Meeting Statistics
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={4}>
-                        <Box
-                          sx={{
-                            p: 2,
-                            bgcolor: 'rgba(249, 115, 22, 0.05)',
-                            borderRadius: 1,
-                            textAlign: 'center'
-                          }}
-                        >
-                          <Typography variant="h4" sx={{ color: '#f97316' }}>
-                            {meetingStats.total}
-                          </Typography>
-                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Total Meetings
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <Box
-                          sx={{
-                            p: 2,
-                            bgcolor: 'rgba(34, 197, 94, 0.05)',
-                            borderRadius: 1,
-                            textAlign: 'center'
-                          }}
-                        >
-                          <Typography variant="h4" sx={{ color: '#22c55e' }}>
-                            {meetingStats.completed}
-                          </Typography>
-                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Completed
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <Box
-                          sx={{
-                            p: 2,
-                            bgcolor: 'rgba(234, 179, 8, 0.05)',
-                            borderRadius: 1,
-                            textAlign: 'center'
-                          }}
-                        >
-                          <Typography variant="h4" sx={{ color: '#eab308' }}>
-                            {meetingStats.pending}
-                          </Typography>
-                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Scheduled
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                </Grid> */}
-              </Grid>
+              </Stack>
             </TabPanel>
 
             {/* Family Info Tab */}
             <TabPanel value={activeTab} index={2}>
               {mentee.parents && (
-                <Grid container spacing={3}>
-                  {/* Parents Summary Card */}
-                  <Grid item xs={12}>
-                    <Box
-                      sx={{
-                        p: 3,
-                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
-                        borderRadius: 3,
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
-                        mb: 3
-                      }}
+                <Box sx={{ width: '100%' }}>
+                  <Box
+                    sx={{
+                      p: 3,
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+                      borderRadius: 3,
+                      border: '1px solid rgba(99, 102, 241, 0.2)',
+                      mb: 3
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ color: '#6366f1', mb: 2 }}>
+                      Family Information
+                    </Typography>
+                    <Stack 
+                      direction={{ xs: 'column', md: 'row' }}
+                      spacing={2}
                     >
-                      <Typography variant="h6" sx={{ color: '#6366f1', mb: 2 }}>
-                        Family Information
-                      </Typography>
-                      <Grid container spacing={2}>
-                        {mentee.parents.father && (
-                          <Grid item xs={12} md={4}>
-                            <FamilyContactCard
-                              title="Father"
-                              icon="👨"
-                              contact={mentee.parents.father}
-                              gradient="135deg, rgba(99, 102, 241, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%"
-                            />
-                          </Grid>
-                        )}
-                        {mentee.parents.mother && (
-                          <Grid item xs={12} md={4}>
-                            <FamilyContactCard
-                              title="Mother"
-                              icon="👩"
-                              contact={mentee.parents.mother}
-                              gradient="135deg, rgba(124, 58, 237, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%"
-                            />
-                          </Grid>
-                        )}
-                        {mentee.parents.guardian && (
-                          <Grid item xs={12} md={4}>
-                            <FamilyContactCard
-                              title="Guardian"
-                              icon="👥"
-                              contact={mentee.parents.guardian}
-                              gradient="135deg, rgba(79, 70, 229, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%"
-                            />
-                          </Grid>
-                        )}
-                      </Grid>
-                    </Box>
-                  </Grid>
-                </Grid>
+                      {mentee.parents.father && (
+                        <Box flex={1}>
+                          <FamilyContactCard
+                            title="Father"
+                            icon="👨"
+                            contact={mentee.parents.father}
+                            gradient="135deg, rgba(99, 102, 241, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%"
+                          />
+                        </Box>
+                      )}
+                      {mentee.parents.mother && (
+                        <Box flex={1}>
+                          <FamilyContactCard
+                            title="Mother"
+                            icon="👩"
+                            contact={mentee.parents.mother}
+                            gradient="135deg, rgba(124, 58, 237, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%"
+                          />
+                        </Box>
+                      )}
+                      {mentee.parents.guardian && (
+                        <Box flex={1}>
+                          <FamilyContactCard
+                            title="Guardian"
+                            icon="👥"
+                            contact={mentee.parents.guardian}
+                            gradient="135deg, rgba(79, 70, 229, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%"
+                          />
+                        </Box>
+                      )}
+                    </Stack>
+                  </Box>
+                </Box>
               )}
             </TabPanel>
           </DialogContent>
@@ -342,33 +280,32 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
 };
 
 const InfoItem = ({ icon, label, value, fullWidth = false }) => (
-  <Grid item xs={12} sm={fullWidth ? 12 : 6}>
-    <Box
-      sx={{
-        p: 2,
-        background: 'rgba(99, 102, 241, 0.05)',
-        borderRadius: 2,
-        border: '1px solid rgba(99, 102, 241, 0.2)',
-        height: '100%',
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          borderColor: '#6366f1',
-          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
-        }
-      }}
-    >
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
-        <Typography>{icon}</Typography>
-        <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
-          {label}
-        </Typography>
-      </Box>
-      <Typography sx={{ color: 'white' }}>
-        {value || 'N/A'}
+  <Box
+    sx={{
+      flex: fullWidth ? '1 1 100%' : '1 1 calc(50% - 12px)',
+      p: 2,
+      background: 'rgba(99, 102, 241, 0.05)',
+      borderRadius: 2,
+      border: '1px solid rgba(99, 102, 241, 0.2)',
+      height: '100%',
+      transition: 'all 0.2s ease',
+      '&:hover': {
+        transform: 'translateY(-2px)',
+        borderColor: '#6366f1',
+        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
+      }
+    }}
+  >
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
+      <Typography>{icon}</Typography>
+      <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
+        {label}
       </Typography>
     </Box>
-  </Grid>
+    <Typography sx={{ color: 'white' }}>
+      {value || 'N/A'}
+    </Typography>
+  </Box>
 );
 
 const FamilyContactCard = ({ title, icon, contact }) => (

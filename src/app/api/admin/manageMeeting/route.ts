@@ -77,42 +77,42 @@ export async function GET(request: Request) {
         const mentorMeetingCounts = await AcademicSession.aggregate(aggregationPipeline);
 
         // Debug logging
-        console.log('Query parameters:', {
-            year,
-            session,
-            semester,
-            section,
-            matchStage,
-            resultCount: mentorMeetingCounts.length
-        });
+        // console.log('Query parameters:', {
+        //     year,
+        //     session,
+        //     semester,
+        //     section,
+        //     matchStage,
+        //     resultCount: mentorMeetingCounts.length
+        // });
 
         // Add more detailed debug logging
-        console.log('Detailed query params:', {
-            yearQuery: {
-                $or: [
-                    { start_year: parseInt(year) },
-                    { end_year: parseInt(year) }
-                ]
-            },
-            session: session.trim(),
-            semester: parseInt(semester),
-            section: section?.toUpperCase()
-        });
+        // console.log('Detailed query params:', {
+        //     yearQuery: {
+        //         $or: [
+        //             { start_year: parseInt(year) },
+        //             { end_year: parseInt(year) }
+        //         ]
+        //     },
+        //     session: session.trim(),
+        //     semester: parseInt(semester),
+        //     section: section?.toUpperCase()
+        // });
 
         // Add debug logging
-        console.log('Aggregation result:', JSON.stringify(mentorMeetingCounts, null, 2));
+        // console.log('Aggregation result:', JSON.stringify(mentorMeetingCounts, null, 2));
 
         // Debug logging
-        console.log('Aggregation query:', JSON.stringify({
-            year: parseInt(year),
-            session,
-            semester: parseInt(semester),
-            section: section?.toUpperCase()
-        }, null, 2));
+        // console.log('Aggregation query:', JSON.stringify({
+        //     year: parseInt(year),
+        //     session,
+        //     semester: parseInt(semester),
+        //     section: section?.toUpperCase()
+        // }, null, 2));
 
         // Log for debugging
-        console.log('Query params:', { year, session, semester, section });
-        console.log('Found meetings:', mentorMeetingCounts.length);
+        // console.log('Query params:', { year, session, semester, section });
+        // console.log('Found meetings:', mentorMeetingCounts.length);
 
         // Get unique mentor IDs
         const mentorIds = mentorMeetingCounts.map(m => m._id).filter(Boolean);

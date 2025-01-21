@@ -190,6 +190,7 @@ export async function GET(req) {
     if (!academicYear || !academicSession) {
       return NextResponse.json({ error: "Both academicYear and academicSession are required" }, { status: 400 });
     }
+    // console.log("API - Received params:", Object.fromEntries(searchParams.entries()));
 
     await connect();
     // console.log("API - Received params:", Object.fromEntries(searchParams.entries()));
@@ -398,8 +399,7 @@ export async function PATCH(req) {
 
     return NextResponse.json(updatedMentee, { status: 200 });
   } catch (error) {
-    console.log("Server error:", error);
-    return createErrorResponse("Something went wrong on the server", 500);
+    return createErrorResponse(error.message || "Something went wrong on the server", 500);
   }
 }
 
@@ -440,7 +440,7 @@ export async function DELETE(req) {
       { status: 200 }
     );
   } catch (error) {
-    console.log("Server error:", error);
-    return createErrorResponse("Something went wrong on the server", 500);
+    // console.log("Server error:", error);
+    return createErrorResponse(error.message || "Something went wrong on the server", 500);
   }
 }

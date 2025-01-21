@@ -69,11 +69,11 @@ export async function POST(req) {
       });
 
       // Debug log
-      console.log('Processing row:', {
-        MUJid: entry.MUJid,
-        mentorEmail: entry.mentorEmail,
-        motherName: entry.motherName // Added to verify mother's name is captured
-      });
+      // console.log('Processing row:', {
+      //   MUJid: entry.MUJid,
+      //   mentorEmail: entry.mentorEmail,
+      //   motherName: entry.motherName // Added to verify mother's name is captured
+      // });
       
       return entry;
     });
@@ -155,9 +155,9 @@ export async function POST(req) {
       const rowNumber = index + 2;
 
       // Basic validation
-      if (!row.MUJid || !/^MUJ\d{7}$/i.test(row.MUJid)) {
-        rowErrors.push('Invalid MUJid format (should be MUJxxxxxxx)');
-      }
+      // if (!row.MUJid || !/^MUJ\d{7}$/i.test(row.MUJid)) {
+      //   rowErrors.push('Invalid MUJid format (should be MUJxxxxxxx)');
+      // }
 
       if (!row.email) {
         rowErrors.push('Email is required');
@@ -174,10 +174,10 @@ export async function POST(req) {
       const validSession = validSessions.get(sessionKey);
       
       if (!validSession) {
-        console.log('Invalid session:', {
-          provided: sessionKey,
-          available: Array.from(validSessions.keys())
-        });
+        // console.log('Invalid session:', {
+        //   provided: sessionKey,
+        //   available: Array.from(validSessions.keys())
+        // });
         rowErrors.push(`Invalid academic session: ${row.academicYear} ${row.academicSession}`);
       } else {
         // Normalize the session data
@@ -227,12 +227,12 @@ export async function POST(req) {
     }
 
     // Debug logging
-    console.log('Validation summary:', {
-      totalRows: transformedData.length,
-      validRows: validData.length,
-      errorRows: errors.length,
-      sampleValidSession: Array.from(validSessions.keys())[0]
-    });
+    // console.log('Validation summary:', {
+    //   totalRows: transformedData.length,
+    //   validRows: validData.length,
+    //   errorRows: errors.length,
+    //   sampleValidSession: Array.from(validSessions.keys())[0]
+    // });
 
     return NextResponse.json({
       success: true,

@@ -6,12 +6,12 @@ export async function POST(req) {
   try {
     await connect();
     const { data, mentorActions, type } = await req.json();
-    console.log('Received type:', type);
+    // console.log('Received type:', type);
 
     if (type === 'assignMentee') {
       // Get unique mentor emails from the data
       const uniqueMentorEmails = [...new Set(data.map(m => m.mentorEmail))];
-      console.log('Unique mentor emails:', uniqueMentorEmails);
+      // console.log('Unique mentor emails:', uniqueMentorEmails);
 
       // First, get existing mentors
       const existingMentors = await Mentor.find({
@@ -82,9 +82,9 @@ export async function POST(req) {
       }).filter(Boolean); // Remove any undefined operations
 
       // Process mentor operations
-      console.log('Processing mentor operations...');
+      // console.log('Processing mentor operations...');
       const mentorResult = await Mentor.bulkWrite(mentorOps);
-      console.log('Mentor operation results:', mentorResult);
+      // console.log('Mentor operation results:', mentorResult);
 
       // Get updated mentor details
       const updatedMentors = await Mentor.find({
@@ -187,7 +187,7 @@ export async function POST(req) {
         isActive: true
       }));
 
-      console.log('Creating/Updating mentors:', mentorRecords);
+      // console.log('Creating/Updating mentors:', mentorRecords);
 
       const bulkOps = mentorRecords.map(record => ({
         updateOne: {
@@ -206,7 +206,7 @@ export async function POST(req) {
       }));
 
       const result = await Mentor.bulkWrite(bulkOps);
-      console.log('Mentor upload result:', result);
+      // console.log('Mentor upload result:', result);
 
       return NextResponse.json({
         success: true,
@@ -230,7 +230,7 @@ export async function POST(req) {
         }
       }
 
-      console.log('Next mentor ID:', nextMentorId);
+      // console.log('Next mentor ID:', nextMentorId);
 
       // Handle mentor creation with auto-incrementing MUJids
       if (mentorActions?.toCreate?.length > 0) {
@@ -243,7 +243,7 @@ export async function POST(req) {
           updated_at: new Date()
         }));
 
-        console.log('Creating mentors:', mentorsWithIds);
+        // console.log('Creating mentors:', mentorsWithIds);
         await Mentor.insertMany(mentorsWithIds);
       }
 
@@ -268,7 +268,7 @@ export async function POST(req) {
         email: { $in: [...new Set(data.map(m => m.mentorEmail))] }
       });
 
-      console.log('Found mentors:', updatedMentors.length);
+      // console.log('Found mentors:', updatedMentors.length);
 
       const mentorEmailMap = new Map(
         updatedMentors.map(m => [m.email, { MUJid: m.MUJid, email: m.email }])
@@ -277,7 +277,7 @@ export async function POST(req) {
       // Prepare mentee records
       const menteeRecords = data.map(mentee => {
         const mentorInfo = mentorEmailMap.get(mentee.mentorEmail);
-        console.log(`Mentor info for ${mentee.mentorEmail}:`, mentorInfo);
+        // console.log(`Mentor info for ${mentee.mentorEmail}:`, mentorInfo);
 
         return {
           name: mentee.name,
@@ -329,9 +329,9 @@ export async function POST(req) {
         }
       }));
 
-      console.log('Uploading mentees:', menteeRecords.length);
+      // console.log('Uploading mentees:', menteeRecords.length);
       const result = await Mentee.bulkWrite(bulkOps);
-      console.log('Upload result:', result);
+      // console.log('Upload result:', result);
 
       return NextResponse.json({
         success: true,

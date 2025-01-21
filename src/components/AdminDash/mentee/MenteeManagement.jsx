@@ -83,7 +83,10 @@ const MenteeManagement = () => {
     updating: false
   });
 
-  // Centralized data fetching
+  // Add currentFilters state
+  const [currentFilters, setCurrentFilters] = useState(null);
+
+  // Single centralized data fetching function
   const fetchMenteeData = useCallback(
     debounce(async (params) => {
       if (!params.academicYear || !params.academicSession) return;
@@ -547,10 +550,12 @@ const MenteeManagement = () => {
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Consolidate screenSize related effects into one
   useEffect(() => {
-    // Clear session storage on mount
+    // // Clear session storage on mount
+    // console.log("Mentee Management Mounted    and removing session storage");
+    // console.log("Session Storage",sessionStorage.getItem('menteeData'));
     sessionStorage.removeItem('menteeData');
+    
     setMounted(true);
 
     // Handle screen size changes
@@ -569,29 +574,95 @@ const MenteeManagement = () => {
         sessionStorage.removeItem('menteeData');
       }
     }
-  }, [isSmallScreen]); // Add isSmallScreen to dependencies
+  }, [isSmallScreen]);
+
 
   useEffect(() => {
     sessionStorage.setItem('showFilters', JSON.stringify(showFilters));
   }, [showFilters]);
 
-  const handleSearch = (data) => {
-    setLoading(true); // Set loading to true when search starts
+  const handleSearch = async () => {
+    if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) return;
+
+    setLoading(true);
+
+    const baseParams = {
+      academicYear: filters.academicYear.trim(),
+      academicSession: filters.academicSession.trim().toUpperCase(),
+    };
+
+    // Create unique keys for storage
+    const storageKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
+
     try {
-      if (Array.isArray(data) && data.length > 0) {
-        setMentees(data);
-        setTableVisible(true);
+      let data;
+      const localData = localStorage.getItem(storageKey);
+      
+      // Check if we need to fetch new data
+      if (!localData || (!filters.semester && !filters.section && !filters.menteeMujid && !filters.mentorEmailid)) {
+        // Fetch new data from API
+        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+          params: baseParams
+        });
+        data = response.data;
+
+        // Store base data
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        dataCache.current.set(storageKey, data);
       } else {
-        setMentees([]);
-        setTableVisible(false);
+        // Use cached data
+        let sourceData;
+        if (localData) {
+          sourceData = JSON.parse(localData);
+        } else if (dataCache.current.has(storageKey)) {
+          sourceData = dataCache.current.get(storageKey);
+        } else {
+          const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+            params: baseParams
+          });
+          sourceData = response.data.map(item => ({
+            ...item,
+            MUJid: item.MUJid?.toUpperCase(),
+            mentorMujid: item.mentorMujid?.toUpperCase(),
+            section: item.section?.toUpperCase()
+          }));
+          localStorage.setItem(storageKey, JSON.stringify(sourceData));
+          dataCache.current.set(storageKey, sourceData);
+        }
+
+        // Apply filters
+        data = sourceData.filter(item => {
+          const matchSemester = !filters.semester || 
+            parseInt(item.semester) === parseInt(filters.semester);
+
+          const matchSection = !filters.section || 
+            item.section?.toUpperCase() === filters.section.toUpperCase();
+
+          const matchMenteeMujid = !filters.menteeMujid || 
+            item.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
+
+          const matchMentorMujid = !filters.mentorMujid || 
+            item.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
+
+          const matchMentorEmail = !filters.mentorEmailid || 
+            item.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
+
+          return matchSemester && matchSection && matchMenteeMujid && 
+                 matchMentorMujid && matchMentorEmail;
+        });
       }
+
+      setMentees(data);
+      setTableVisible(true);
+      setCurrentFilters({ ...filters, key: storageKey });
+
     } catch (error) {
-      console.log('Error handling search:', error);
+      console.error('Search error:', error);
+      showAlert('Error searching mentees', 'error');
       setMentees([]);
       setTableVisible(false);
-      showAlert('Error searching mentees', 'error');
     } finally {
-      setLoading(false); // Set loading to false when search completes
+      setLoading(false);
     }
   };
 
@@ -609,6 +680,8 @@ const MenteeManagement = () => {
     setTableVisible(false);
     sessionStorage.removeItem('menteeData');
     setLoading(false); // Ensure loading state is set to false after reset
+    // Reset current filters
+    setCurrentFilters(null);
   };
 
   const handleDialogOpen = () => {
@@ -796,6 +869,7 @@ const MenteeManagement = () => {
   //   }
   // };
 
+  // Single initialization effect
   useEffect(() => {
     const initializeComponent = async () => {
       if (!mounted) return;
@@ -982,6 +1056,7 @@ const MenteeManagement = () => {
                         isSmallScreen={isSmallScreen}
                         onDataUpdate={handleDataUpdate}
                         isLoading={loadingStates.fetching}
+                        currentFilters={currentFilters} // Pass filters to table
                       />
                     </div>
                   ) : (
@@ -994,7 +1069,7 @@ const MenteeManagement = () => {
                 </div>
               </div>
             </motion.div>
-          </div>
+          </div> 
         </div>
 
         <AddMenteeDialog 
