@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, BlobProvider, Font } from '@react-pdf/renderer';
 
 // Add font registration before styles
@@ -138,13 +138,25 @@ const Header = () => (
 );
 
 // mom document template
-export const MOMDocument = ({ meeting, semester, section, mentorName }) => {
-  const students = meeting.mentee_details?.map((mentee, index) => ({
+export const MOMDocument = ({ meeting, semester, section, mentorName, presentMenteeDetails }) => {
+  
+  let students;
+  if(presentMenteeDetails && presentMenteeDetails.length > 0){
+      students = presentMenteeDetails?.map((mentee, index) => ({
+      srNo: index + 1,
+      regNo: mentee?.MUJid,
+      name: mentee.name,
+      section: mentee.section // Ensure section is fetched
+    })) || [];
+  }
+  else{
+  students = meeting.mentee_details?.map((mentee, index) => ({
     srNo: index + 1,
     regNo: mentee.mujId,
     name: mentee.name,
     section: mentee.section // Ensure section is fetched
   })) || [];
+  }
 
   const firstHalf = students.slice(0, Math.ceil(students.length / 2));
   const secondHalf = students.slice(Math.ceil(students.length / 2));
@@ -309,6 +321,26 @@ export const generateMOMPdf = (meeting, mentorName) => {
     console.error('No meeting data available');
     return null;
   }
+  console.log("MUJid of mentees Present:", meeting.present_mentees);
+
+  // Filter menteeDetails to only include present mentees
+  if(meeting.menteeDetails && meeting?.menteeDetails.length > 0){
+  const presentMenteeDetails = meeting.menteeDetails.filter(mentee => 
+    meeting.present_mentees?.includes(mentee.MUJid)
+  );
+  console.log("mentees Present:", presentMenteeDetails);
+
+  return (
+    <MOMDocument 
+      meeting={meeting}
+      semester={meeting.semester}
+      section={meeting.section}
+      mentorName={mentorName} // Ensure mentorName is passed here
+      presentMenteeDetails = {presentMenteeDetails}
+    />
+  );
+
+  }
 
   return (
     <MOMDocument 
@@ -334,26 +366,53 @@ export const generateConsolidatedPdf = (meetings, academicYear, semester, sectio
 };
 
 // Add new export for PDF download
-export const PDFDownloadComponent = ({ document, fileName, children , page }) => (
-  <BlobProvider document={document}>
-    {({ url, loading }) => (
-      loading ? (
-        page && page === 'MentorDashboard' ? (
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <button disabled>Loading...</button>
-        )
-      ) : (
-        <a 
-          href={url} 
-          download={fileName}
-          className={`${page && page === 'MentorDashboard' ? '' : 'inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all'}`}
-        >
-          {children || 'Download PDF'}
-        </a>
-      )
-    )}
-  </BlobProvider>
-);
+export const PDFDownloadComponent = ({ document, fileName, children, page }) => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Return null or loading state on server-side
+  if (!isClient) {
+    return page && page === 'MentorDashboard' ? (
+      <div className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+      </div>
+    ) : (
+      <button disabled>Loading...</button>
+    );
+  }
+
+  // Only render BlobProvider on client-side
+  return (
+    <BlobProvider document={document}>
+      {({ url, loading, error }) => {
+        if (error) {
+          console.warn('PDF generation error:', error);
+          return null;
+        }
+
+        if (loading) {
+          return page && page === 'MentorDashboard' ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <button disabled>Loading...</button>
+          );
+        }
+
+        return (
+          <a 
+            href={url} 
+            download={fileName}
+            className={`${page && page === 'MentorDashboard' ? '' : 'inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all'}`}
+          >
+            {children || 'Download PDF'}
+          </a>
+        );
+      }}
+    </BlobProvider>
+  );
+};
