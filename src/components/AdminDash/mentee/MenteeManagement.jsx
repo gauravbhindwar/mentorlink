@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { debounce } from 'lodash'; // Add this import
 import { 
   Box, 
   Typography, 
@@ -63,17 +64,78 @@ const filterData = (data, filters) => {
 };
 
 const MenteeManagement = () => {
-  const [academicSessions, setAcademicSessions] = useState([]);
   const [mentees, setMentees] = useState([]);
+  const [filters, setFilters] = useState({
+    academicYear: '',
+    academicSession: '',
+    semester: '',
+    section: '',
+    mentorMujid: '',
+    menteeMujid: '',
+    mentorEmailid: ''
+  });
+  const dataCache = useRef(new Map());
+
+  // Add new centralized loading state
+  const [loadingStates, setLoadingStates] = useState({
+    initial: true,
+    fetching: false,
+    updating: false
+  });
+
+  // Centralized data fetching
+  const fetchMenteeData = useCallback(
+    debounce(async (params) => {
+      if (!params.academicYear || !params.academicSession) return;
+      
+      const cacheKey = `${params.academicYear}-${params.academicSession}`;
+      if (dataCache.current.has(cacheKey)) {
+        setMentees(dataCache.current.get(cacheKey));
+        setTableVisible(true);
+        return;
+      }
+
+      setLoadingStates(prev => ({ ...prev, fetching: true }));
+      try {
+        const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
+        const processedData = response.data.map(mentee => ({
+          ...mentee,
+          id: mentee._id || mentee.id,
+          MUJid: mentee.MUJid?.toUpperCase(),
+          mentorMujid: mentee.mentorMujid?.toUpperCase()
+        }));
+        
+        dataCache.current.set(cacheKey, processedData);
+        setMentees(processedData);
+        setTableVisible(true);
+      } catch (error) {
+        console.error('Error fetching mentees:', error);
+        if (error.response?.status !== 400) {
+          showAlert(error.response?.data?.error || 'Error loading data', 'error');
+        }
+      } finally {
+        setLoadingStates(prev => ({ ...prev, fetching: false }));
+      }
+    }, 300),
+    []
+  );
+
+  // Filter handler
+  const handleFilterChange = useCallback((name, value) => {
+    setFilters(prev => ({ ...prev, [name]: value }));
+
+    // For base filters, fetch new data
+    if (['academicYear', 'academicSession'].includes(name)) {
+      fetchMenteeData({
+        academicYear: name === 'academicYear' ? value : filters.academicYear,
+        academicSession: name === 'academicSession' ? value : filters.academicSession
+      });
+    }
+  }, [filters.academicYear, filters.academicSession, fetchMenteeData]);
+
+  const [academicSessions, setAcademicSessions] = useState([]);
   const [loading, setLoading] = useState(false); // Set initial loading state to false
   const [mounted, setMounted] = useState(false);
-  const [academicYear, setAcademicYear] = useState('');
-  const [academicSession, setAcademicSession] = useState('');
-  const [semester, setSemester] = useState('');
-  const [section, setSection] = useState('');
-  const [menteeMujid, setMenteeMujid] = useState(''); 
-  const [mentorMujid, setMentorMujid] = useState(''); 
-  const [mentorEmailid, setMentorEmailid] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
     name: '',
@@ -458,13 +520,28 @@ const MenteeManagement = () => {
       
       showAlert(`Successfully deleted ${response.data.deletedCount} mentee(s)`, 'success');
       
-      // Refresh the table
-      if (mentees.length > 0) {
-        const updatedMentees = mentees.filter(m => !mujids.includes(m.MUJid));
-        setMentees(updatedMentees);
+      // Update local state immediately
+      setMentees(prevMentees => 
+        prevMentees.filter(m => !mujids.includes(m.MUJid))
+      );
+
+      // Update cache
+      const cacheKey = `${filters.academicYear}-${filters.academicSession}`;
+      const cachedData = dataCache.current.get(cacheKey);
+      if (cachedData) {
+        dataCache.current.set(
+          cacheKey,
+          cachedData.filter(m => !mujids.includes(m.MUJid))
+        );
       }
+
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error deleting mentees', 'error');
+      // Optionally refresh data from server if delete failed
+      await fetchMenteeData({
+        academicYear: filters.academicYear,
+        academicSession: filters.academicSession
+      });
     }
   };
 
@@ -519,10 +596,15 @@ const MenteeManagement = () => {
   };
 
   const handleReset = () => {
-    setAcademicYear('');
-    setAcademicSession('');
-    setSemester('');
-    setSection('');
+    setFilters({
+      academicYear: '',
+      academicSession: '',
+      semester: '',
+      section: '',
+      mentorMujid: '',
+      menteeMujid: '',
+      mentorEmailid: ''
+    });
     setMentees([]); // Clear mentees data
     setTableVisible(false);
     sessionStorage.removeItem('menteeData');
@@ -631,88 +713,88 @@ const MenteeManagement = () => {
   }, []);
 
   const filterConfig = {
-    academicYear,
-    academicSession,
-    semester,
-    section,
-    menteeMujid, // Add setter for menteeMujid
-    mentorMujid,  // Add setter for mentorMujid,
-    mentorEmailid
+    academicYear: filters.academicYear,
+    academicSession: filters.academicSession,
+    semester: filters.semester,
+    section: filters.section,
+    menteeMujid: filters.menteeMujid, // Add setter for menteeMujid
+    mentorMujid: filters.mentorMujid,  // Add setter for mentorMujid,
+    mentorEmailid: filters.mentorEmailid
   };
 
-  const cachedData = useRef(new Map());
+  // const cachedData = useRef(new Map());
 
-  const handleFilterChange = (name, value) => {
-    const setters = {
-      academicYear: setAcademicYear,
-      academicSession: setAcademicSession,
-      semester: setSemester,
-      section: setSection,
-      menteeMujid: setMenteeMujid, 
-      mentorMujid: setMentorMujid,
-      mentorEmailid: setMentorEmailid  
-    };
+  // const handleFilterChange = (name, value) => {
+  //   const setters = {
+  //     academicYear: setAcademicYear,
+  //     academicSession: setAcademicSession,
+  //     semester: setSemester,
+  //     section: setSection,
+  //     menteeMujid: setMenteeMujid, 
+  //     mentorMujid: setMentorMujid,
+  //     mentorEmailid: setMentorEmailid  
+  //   };
     
-    if (typeof setters[name] === 'function') {
-      setters[name](value);
+  //   if (typeof setters[name] === 'function') {
+  //     setters[name](value);
       
-      // For base filters, trigger immediate data fetch
-      if (['academicYear', 'academicSession'].includes(name)) {
-        const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
-        const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
+  //     // For base filters, trigger immediate data fetch
+  //     if (['academicYear', 'academicSession'].includes(name)) {
+  //       const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
+  //       const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
         
-        if (updatedYear && updatedSession) {
-          fetchData(updatedYear, updatedSession);
-        }
-      }
-      // For other filters, filter existing data
-      else if (cachedData.current) {
-        const currentKey = `${filterConfig.academicYear}-${filterConfig.academicSession}`;
-        const data = cachedData.current.get(currentKey) || [];
-        const filteredData = filterData(data, { ...filterConfig, [name]: value });
-        setMentees(filteredData);
-      }
-    }
-  };
+  //       if (updatedYear && updatedSession) {
+  //         fetchData(updatedYear, updatedSession);
+  //       }
+  //     }
+  //     // For other filters, filter existing data
+  //     else if (cachedData.current) {
+  //       const currentKey = `${filterConfig.academicYear}-${filterConfig.academicSession}`;
+  //       const data = cachedData.current.get(currentKey) || [];
+  //       const filteredData = filterData(data, { ...filterConfig, [name]: value });
+  //       setMentees(filteredData);
+  //     }
+  //   }
+  // };
 
-  const fetchData = async (year, session) => {
-    if (!year || !session) return;
+  // const fetchData = async (year, session) => {
+  //   if (!year || !session) return;
 
-    const cacheKey = `${year}-${session}`;
-    setLoading(true);
+  //   const cacheKey = `${year}-${session}`;
+  //   setLoading(true);
     
-    try {
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-        params: {
-          academicYear: year,
-          academicSession: session
-        }
-      });
+  //   try {
+  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+  //       params: {
+  //         academicYear: year,
+  //         academicSession: session
+  //       }
+  //     });
 
-      if (response.status === 200) {
-        const normalizedData = response.data.map(mentee => ({
-          ...mentee,
-          id: mentee._id || mentee.id,
-          MUJid: mentee.MUJid?.toUpperCase() || '',
-          mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-        }));
+  //     if (response.status === 200) {
+  //       const normalizedData = response.data.map(mentee => ({
+  //         ...mentee,
+  //         id: mentee._id || mentee.id,
+  //         MUJid: mentee.MUJid?.toUpperCase() || '',
+  //         mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
+  //       }));
         
-        // Update cache
-        cachedData.current.set(cacheKey, normalizedData);
+  //       // Update cache
+  //       cachedData.current.set(cacheKey, normalizedData);
         
-        // Apply current filters to new data
-        const filteredData = filterData(normalizedData, filterConfig);
-        setMentees(filteredData);
-        setTableVisible(true);
-      }
-    } catch (error) {
-      if (error.response?.status !== 400) {
-        showAlert(error.response?.data?.error || 'Error loading data', 'error');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  //       // Apply current filters to new data
+  //       const filteredData = filterData(normalizedData, filterConfig);
+  //       setMentees(filteredData);
+  //       setTableVisible(true);
+  //     }
+  //   } catch (error) {
+  //     if (error.response?.status !== 400) {
+  //       showAlert(error.response?.data?.error || 'Error loading data', 'error');
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   useEffect(() => {
     const initializeComponent = async () => {
@@ -727,38 +809,26 @@ const MenteeManagement = () => {
         ? `JULY-DECEMBER ${startYear}`
         : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
 
-      setAcademicYear(currentAcadYear);
-      setAcademicSession(currentSession);
-      try {
-        setLoading(true);
-        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-          params: {
-            academicYear: currentAcadYear,
-            academicSession: currentSession
-          }
-        });
+      // Update filters instead of using setAcademicYear
+      setFilters(prev => ({
+        ...prev,
+        academicYear: currentAcadYear,
+        academicSession: currentSession
+      }));
 
-        if (response.status === 200) {
-          const normalizedData = response.data.map(mentee => ({
-            ...mentee,
-            id: mentee._id || mentee.id,
-            MUJid: mentee.MUJid?.toUpperCase() || '',
-            mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-          }));
-          
-          // Update cache
-          cachedData.current.set(`${currentAcadYear}-${currentSession}`, normalizedData);
-          
-          // Set mentees and show table
-          setMentees(normalizedData);
-          setTableVisible(true);
-        }
+      try {
+        setLoadingStates(prev => ({ ...prev, fetching: true }));
+        await fetchMenteeData({
+          academicYear: currentAcadYear,
+          academicSession: currentSession
+        });
+        setTableVisible(true);
       } catch (error) {
         if (error.response?.status !== 400) {
           showAlert(error.response?.data?.error || 'Error loading data', 'error');
         }
       } finally {
-        setLoading(false);
+        setLoadingStates(prev => ({ ...prev, fetching: false }));
       }
     };
 
@@ -883,6 +953,7 @@ const MenteeManagement = () => {
                   onDelete={handleDelete}
                   mentees={mentees}
                   filterData={filterData} // Pass filterData as prop
+                  isLoading={loadingStates.fetching}
                 />
               </div>
             </motion.div>
@@ -910,6 +981,7 @@ const MenteeManagement = () => {
                         onDeleteClick={handleDelete}
                         isSmallScreen={isSmallScreen}
                         onDataUpdate={handleDataUpdate}
+                        isLoading={loadingStates.fetching}
                       />
                     </div>
                   ) : (

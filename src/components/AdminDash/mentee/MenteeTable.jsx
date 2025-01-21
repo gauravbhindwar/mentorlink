@@ -1,7 +1,7 @@
 'use client';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Typography } from '@mui/material';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -45,10 +45,56 @@ const CustomNoRowsOverlay = () => (
 );
 
 const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoading }) => {
+  const [mounted, setMounted] = useState(false);
+  const [tableData, setTableData] = useState([]);
+  const [loadingState, setLoadingState] = useState({
+    initial: true,
+    background: false
+  });
+  const dataCache = useRef(new Map());
+
+  // Simplified data fetching
+  const fetchData = useCallback(async (params) => {
+    const cacheKey = `${params.academicYear}-${params.academicSession}`;
+    
+    if (dataCache.current.has(cacheKey)) {
+      return dataCache.current.get(cacheKey);
+    }
+
+    setLoadingState(prev => ({ ...prev, initial: true }));
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
+      const processedData = response.data.map(mentee => ({
+        ...mentee,
+        id: mentee._id || `temp-${Math.random().toString(36).substr(2, 9)}`
+      }));
+      
+      dataCache.current.set(cacheKey, processedData);
+      return processedData;
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      return [];
+    } finally {
+      setLoadingState(prev => ({ ...prev, initial: false }));
+    }
+  }, []);
+
+  // Handle data updates
+  useEffect(() => {
+    if (mentees?.length > 0) {
+      setTableData(mentees);
+    }
+  }, [mentees]);
+
+  // Initialize component
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
-  const [mounted, setMounted] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
   const cachedData = useRef(new Map());
@@ -62,29 +108,12 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     menteeMujid: '',
     mentorEmailid: ''
   });
-  // const [page, setPage] = useState(0);
-  // const [pageSize, setPageSize] = useState(10); // Change rowsPerPage to pageSize
-  // const [orderBy, setOrderBy] = useState('name');
-  // const [order, setOrder] = useState('asc');
   const [localData, setLocalData] = useState([]);
-  // const [isUsingCache, setIsUsingCache] = useState(false);
   const [baseData, setBaseData] = useState([]); // Add this new state to store initial data
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Add this function near the top of the component
-  // const logCacheContents = () => {
-  //   console.log('MenteeTable Cache Status:', {
-  //     totalCacheEntries: cachedData.current.size,
-  //     cacheKeys: Array.from(cachedData.current.keys()),
-  //     cacheEntrySizes: Array.from(cachedData.current.entries()).map(([key, value]) => ({
-  //       key,
-  //       size: value?.length || 0
-  //     }))
-  //   });
-  // };
 
   useEffect(() => {
     const fetchDataInBatches = async () => {
@@ -234,11 +263,36 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
       setLoading(true);
       try {
         await onDeleteClick([deleteDialog.mujid]);
+        
+        // Update local data immediately
+        setLocalData(prevData => 
+          prevData.filter(m => m.MUJid !== deleteDialog.mujid)
+        );
+        
+        // Update baseData to maintain consistency
+        setBaseData(prevData => 
+          prevData.filter(m => m.MUJid !== deleteDialog.mujid)
+        );
+        
+        // Update cache
+        const currentKey = `${filters.academicYear}-${filters.academicSession}`;
+        const cachedData = dataCache.current.get(currentKey);
+        if (cachedData) {
+          dataCache.current.set(
+            currentKey, 
+            cachedData.filter(m => m.MUJid !== deleteDialog.mujid)
+          );
+        }
+
+        // Notify parent component if needed
         if (onDataUpdate) {
           onDataUpdate(prevMentees => 
             prevMentees.filter(m => m.MUJid !== deleteDialog.mujid)
           );
         }
+      } catch (error) {
+        // Add error handling if needed
+        console.error('Delete failed:', error);
       } finally {
         setLoading(false);
         setDeleteDialog({ open: false, mujid: null });
