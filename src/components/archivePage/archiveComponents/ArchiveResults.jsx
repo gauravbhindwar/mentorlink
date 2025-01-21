@@ -5,69 +5,56 @@ import { DataGrid } from '@mui/x-data-grid';
 import axios from 'axios';
 
 const columns = [
-  { 
-    field: 'serialNumber',    
-    headerName: 'S.No',
-    width: 60,  // Reduced width
-    renderCell: (params) => params.row?.serialNumber || '',
-    sortable: false,
-    headerAlign: 'center',
-    align: 'center',
-  },
-  { 
-    field: 'MUJid', 
-    headerName: 'MUJ ID', 
-    width: 120,  // Adjusted width
-    renderCell: (params) => params.row?.MUJid || '',
-    headerAlign: 'center',
-    align: 'center',
-  },
-  { 
-    field: 'name', 
-    headerName: 'Name', 
-    width: 160,  // Adjusted width
-    renderCell: (params) => params.row?.name || '',
-    headerAlign: 'center',
-    align: 'center',
-  },
-  { 
-    field: 'email', 
-    headerName: 'Email', 
-    width: 200,  // Adjusted width
-    renderCell: (params) => params.row?.email || '',
-    headerAlign: 'center',
-    align: 'center',
-  },
-  // { 
-  //   field: 'department', 
-  //   headerName: 'Department', 
-  //   width: 130,  // Adjusted width
-  //   renderCell: (params) => params.row?.department || '',
-  //   headerAlign: 'center',
-  //   align: 'center',
-  // },
-  { 
-    field: 'phone_number', 
-    headerName: 'Phone', 
-    width: 120,  // Adjusted width
-    renderCell: (params) => params.row?.phone_number || '',
-    headerAlign: 'center',
-    align: 'center',
-  },
-  { 
-    field: 'mentee_count', 
-    headerName: 'Mentees', 
-    width: 80,   // Adjusted width
-    renderCell: (params) => params.row?.mentees?.length || 0,
-    headerAlign: 'center',
-    align: 'center',
-  },
-].map(col => ({
-  ...col,
-  flex: 0,  // Prevent column expansion
-  minWidth: col.width,  // Set minimum width
-  maxWidth: col.width,  // Set maximum width to prevent expansion
-}));
+    { 
+        field: 'serialNumber',    
+        headerName: 'S.No',
+        flex: 0.7,
+        headerClassName: 'super-app-theme--header',
+        headerAlign: 'center',
+        align: 'center',
+    },
+    { 
+        field: 'MUJid', 
+        headerName: 'MUJ ID', 
+        flex: 1,
+        headerClassName: 'super-app-theme--header',
+        headerAlign: 'center',
+        align: 'center',
+    },
+    { 
+        field: 'name', 
+        headerName: 'Name', 
+        flex: 1.2,
+        headerClassName: 'super-app-theme--header',
+        headerAlign: 'center',
+        align: 'center',
+    },
+    { 
+        field: 'email', 
+        headerName: 'Email', 
+        flex: 1.5,
+        headerClassName: 'super-app-theme--header',
+        headerAlign: 'center',
+        align: 'center',
+    },
+    { 
+        field: 'phone_number', 
+        headerName: 'Phone', 
+        flex: 1,
+        headerClassName: 'super-app-theme--header',
+        headerAlign: 'center',
+        align: 'center',
+    },
+    { 
+        field: 'mentee_count', 
+        headerName: 'Mentees', 
+        flex: 0.8,
+        headerClassName: 'super-app-theme--header',
+        headerAlign: 'center',
+        align: 'center',
+        renderCell: (params) => params.row?.mentees?.length || 0,
+    },
+];
 
 const ArchiveResults = ({ searchParams }) => {
   const [loading, setLoading] = useState(false);
@@ -110,161 +97,142 @@ const ArchiveResults = ({ searchParams }) => {
     fetchArchiveData();
   }, [searchParams]);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-        <CircularProgress sx={{ color: '#f97316' }} />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Typography color="error" align="center" sx={{ p: 3 }}>
-        {error}
-      </Typography>
-    );
-  }
-
   return (
-    <Box sx={{
-      height: '100%',
-      backgroundColor: '#1a1a1a',
-      borderRadius: '24px',
-      border: '1px solid rgba(249, 115, 22, 0.2)',
-      p: 3,
-      display: 'flex',
-      flexDirection: 'column',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-    }}>
-      <Box sx={{
-        p: 2,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
-        background: 'linear-gradient(to right, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.05))',
-        borderRadius: '16px',
-        mb: 2,
-      }}>
-        <Typography sx={{ 
-          color: '#f97316',
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          fontSize: '1.1rem',
+    <div className="archive-results-container">
+        <Box sx={{ 
+            height: '100%',
+            minHeight: '400px',
+            overflowX: 'auto',
+            backgroundColor: 'transparent'
         }}>
-          <span className="material-icons" style={{ fontSize: '1.3rem' }}>description</span>
-          Archive Results
-        </Typography>
-        <Typography sx={{ 
-          color: '#f97316',
-          fontSize: '0.9rem',
-          fontWeight: 500,
-          padding: '4px 12px',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
-        }}>
-          Total Records: {data.length}
-        </Typography>
-      </Box>
+            {loading ? (
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    height: '400px',
+                    flexDirection: 'column',
+                    gap: 2
+                }}>
+                    <CircularProgress sx={{ color: '#f97316' }} />
+                    <Typography sx={{ color: 'white', opacity: 0.7 }}>
+                        Loading archive data...
+                    </Typography>
+                </Box>
+            ) : data.length > 0 ? (
+                <DataGrid
+                    rows={data}
+                    columns={columns}
+                    getRowId={(row) => row.id}
+                    disableRowSelectionOnClick
+                    disableColumnMenu={true}
+                    pageSizeOptions={[5, 10, 25]}
+                    initialState={{
+                        pagination: { paginationModel: { pageSize: 10 } },
+                    }}
+                    sx={{
+                        height: '100%',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        '& .MuiDataGrid-cell': {
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                        },
+                        '& .MuiDataGrid-columnHeaders': {
+                            backgroundColor: '#1a1a1a',
+                            borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
+                        },
+                        '& .MuiDataGrid-columnHeader': {
+                            color: '#f97316',
+                            fontWeight: 600,
+                            fontSize: '0.95rem',
+                            backgroundColor: '#1a1a1a',
+                            '&:focus': {
+                                outline: 'none',
+                            },
+                            '&:focus-within': {
+                                outline: 'none',
+                            },
+                        },
+                        '& .MuiDataGrid-iconButtonContainer': {
+                            visibility: 'visible',
+                            width: 'auto',
+                            padding: '4px',
+                        },
+                        '& .MuiDataGrid-sortIcon': {
+                            color: '#f97316',
+                            opacity: 1,
+                        },
+                        '& .MuiDataGrid-columnHeaderDraggableContainer': {
+                            width: '100%',
+                        },
+                        '& .MuiDataGrid-columnHeaderTitleContainer': {
+                            padding: '0 8px',
+                        },
+                        '& .MuiDataGrid-columnSeparator': {
+                            color: 'rgba(249, 115, 22, 0.2)',
+                        },
+                        '& .MuiDataGrid-footerContainer': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                            minHeight: '56px',
+                            padding: '8px 0',
+                        },
+                        '& .MuiDataGrid-row': {
+                            backgroundColor: 'inherit',
+                        },
+                        '& .MuiDataGrid-menuIcon': {
+                            color: 'white',
+                        },
+                        '& .MuiDataGrid-pagination': {
+                            color: 'white',
+                        },
+                        '& .MuiTablePagination-root': {
+                            color: 'white',
+                        },
+                        '& .MuiTablePagination-select': {
+                            color: 'white',
+                        },
+                        '& .MuiTablePagination-selectIcon': {
+                            color: 'white',
+                        },
+                        '& .MuiIconButton-root': {
+                            color: 'white',
+                        },
+                    }}
+                />
+            ) : (
+                <Box sx={{ 
+                    p: 4, 
+                    textAlign: 'center', 
+                    color: 'white',
+                    backdropFilter: 'blur(8px)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '1rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                    <Typography variant="h6" sx={{ mb: 2, color: '#f97316' }}>
+                        No Archive Data Found
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                        {error || 'Try selecting a different academic year or session'}
+                    </Typography>
+                </Box>
+            )}
+        </Box>
 
-      <Box sx={{ 
-        flexGrow: 1,
-        '& .MuiDataGrid-root': {
-          backgroundColor: '#1a1a1a',  // Darker background
-          borderColor: 'rgba(249, 115, 22, 0.2)',
-          color: 'white',
-          width: 'fit-content',  // Prevent extra space
-          margin: '0 auto',  // Center the table
-        },
-        '& .MuiDataGrid-columnHeaders': {
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
-          borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
-          '& .MuiDataGrid-columnHeader': {
-            color: '#f97316',
-            fontWeight: 600,
-          }
-        },
-        '& .MuiDataGrid-cell': {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        },
-        '& .MuiDataGrid-row': {
-          '&:hover': {
-            backgroundColor: 'rgba(249, 115, 22, 0.05)',
-            cursor: 'pointer',
-          }
-        },
-      }}>
-        <DataGrid
-          rows={data}
-          columns={columns}
-          pageSize={5}
-          rowsPerPageOptions={[5]}
-          disableSelectionOnClick
-          // autoHeight
-          getRowId={(row) => row.id}
-          loading={loading}
-          initialState={{
-            pagination: {
-              pageSize: 5,
-            },
-            sorting: {
-              sortModel: [{ field: 'serialNumber', sort: 'asc' }],
-            },
-          }}
-          components={{
-            NoRowsOverlay: () => (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100%' 
-              }}>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                  {error || 'No mentors found'}
-                </Typography>
-              </Box>
-            ),
-            LoadingOverlay: () => (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100%' 
-              }}>
-                <CircularProgress sx={{ color: '#f97316' }} />
-              </Box>
-            ),
-          }}
-          componentsProps={{
-            cell: {
-              sx: {
-                // Add safe checks for cell content
-                '& .MuiDataGrid-cellContent': {
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }
-              }
+        <style jsx>{`
+            .archive-results-container {
+                height: 100%;
+                border-radius: 24px;
+                border: 1px solid rgba(249, 115, 22, 0.2);
+                padding: 24px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                background: rgba(26, 26, 26, 0.6);
+                backdrop-filter: blur(10px);
             }
-          }}
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-              backgroundColor: 'rgba(249, 115, 22, 0.05)',
-            },
-            '& .MuiTablePagination-root': {
-              color: 'white',
-            },
-            '& .MuiIconButton-root': {
-              color: '#f97316',
-            }
-          }}
-        />
-      </Box>
-    </Box>
+        `}</style>
+    </div>
   );
 };
 
