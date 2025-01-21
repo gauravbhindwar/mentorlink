@@ -177,6 +177,12 @@ const MentorDashBoard = () => {
         meeting_notes: meetingNotes,
         presentMentees: meetingNotes.presentMentees,
       });
+      console.log("Meeting notes submitted successfully", selectedMeeting);
+      await axios.post("/api/mentee/meetings-attended", {
+        meeting_id: selectedMeeting.meeting.meeting_id,
+        presentMentees: meetingNotes.presentMentees,
+        totalMentees: selectedMeeting.meeting?.mentee_ids,
+      });
       setSelectedMeeting(null);
       setMeetingNotes({
         TopicOfDiscussion: "",
@@ -311,6 +317,7 @@ Contact: ${mentorData?.email || ""}`;
       description: "Generate Consolidated meeting reports",
       gradient: "from-purple-500 via-violet-500 to-indigo-500",
       shadowColor: "rgba(147, 51, 234, 0.4)",
+      onClick: () => router.push("/pages/mentordashboard/consolidatedReport"), // Updated path
     },
 
     //DISABLED CURRENTLY
@@ -392,15 +399,15 @@ Contact: ${mentorData?.email || ""}`;
                     boxShadow: `0 0 30px ${card.shadowColor}`,
                   }}
                   className={`
-                                        relative overflow-hidden
-                                        bg-gradient-to-br ${card.gradient}
-                                        rounded-lg p-4
-                                        cursor-pointer
-                                        transition-all duration-500
-                                        border border-white/10
-                                        backdrop-blur-sm
-                                        hover:border-white/20
-                                    `}
+                                relative overflow-hidden
+                                bg-gradient-to-br ${card.gradient}
+                                rounded-lg p-4
+                                cursor-pointer
+                                transition-all duration-500
+                                border border-white/10
+                                backdrop-blur-sm
+                                hover:border-white/20
+                            `}
                   onClick={card.onClick}>
                   <div className='absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity' />
                   <span className='text-3xl mb-3 block'>{card.icon}</span>
@@ -457,6 +464,13 @@ Contact: ${mentorData?.email || ""}`;
                           )}
                           <div className='text-white flex justify-between'>
                             <div>
+                              <p>
+                                Meeting Topic:{" "}
+                                {
+                                  meeting.meeting.meeting_notes
+                                    .TopicOfDiscussion
+                                }
+                              </p>
                               <p className='font-semibold'>
                                 {meeting?.sections
                                   ? `Sections: ${[
@@ -609,7 +623,7 @@ Contact: ${mentorData?.email || ""}`;
                                           )}
                                           fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
                                           <button className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
-                                            Download Report
+                                            Download MOM Report
                                           </button>
                                         </PDFDownloadComponent>
                                       )}

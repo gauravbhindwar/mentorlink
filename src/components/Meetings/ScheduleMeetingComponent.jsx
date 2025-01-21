@@ -630,7 +630,10 @@ Contact: ${mentorData?.email || ""}`;
                       value={academicYear && currentSemester}
                       onChange={(e) => {
                         const value = e.target.value;
-                        if (availableSemesters.includes(parseInt(value))) {
+                        if (
+                          availableSemesters.includes(parseInt(value)) ||
+                          value === ""
+                        ) {
                           handleSemesterInput(e);
                         }
                       }}
