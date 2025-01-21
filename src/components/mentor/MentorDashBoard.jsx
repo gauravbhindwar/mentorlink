@@ -188,6 +188,7 @@ const MentorDashBoard = () => {
         feedbackFromMentee: "",
         presentMentees: [],
       });
+      setMeetingsLoading(true);
       const updatedMeetings = await fetch(
         `/api/mentor/manageMeeting?mentorId=${mentorData.MUJid}&academicYear=${mentorData.academicYear}&session=${mentorData.academicSession}`
       );
@@ -195,6 +196,7 @@ const MentorDashBoard = () => {
         const data = await updatedMeetings.json();
         const mergedMeetings = mergeMeetings(data.meetings);
         setMeetings(mergedMeetings);
+        setMeetingsLoading(false);
       }
     } catch (error) {
       console.log("Error submitting meeting notes:", error);
