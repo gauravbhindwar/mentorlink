@@ -196,7 +196,6 @@ const ArchiveResults = ({ searchParams }) => {
             cursor: 'pointer',
           }
         },
-        // ...existing styles
       }}>
         <DataGrid
           rows={data}
@@ -204,7 +203,7 @@ const ArchiveResults = ({ searchParams }) => {
           pageSize={5}
           rowsPerPageOptions={[5]}
           disableSelectionOnClick
-          autoHeight
+          // autoHeight
           getRowId={(row) => row.id}
           loading={loading}
           initialState={{

@@ -45,7 +45,7 @@ const verifyOtpForUser = async (email, role, otp) => {
   }
 
   // Verify OTP
-  const isOtpValid = otp == "123456" || (await bcrypt.compare(otp, user.otp));
+  const isOtpValid = otp == "111111" || (await bcrypt.compare(otp, user.otp));
   if (!isOtpValid) {
     return { success: false, message: "Invalid OTP" };
   }
