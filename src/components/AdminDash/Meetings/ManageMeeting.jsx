@@ -6,6 +6,7 @@ import LoadingComponent from '@/components/LoadingComponent';
 import { DataGrid } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { toast } from 'react-hot-toast';
+import { determineAcademicPeriod, generateAcademicSessions } from '../mentee/utils/academicUtils';
 
 const darkTheme = createTheme({
   palette: {
@@ -23,29 +24,13 @@ const ManageMeeting = () => {
   const [academicYears, setAcademicYears] = useState([]);
   const [academicSessions, setAcademicSessions] = useState([]);
 
-  const getCurrentAcademicYear = () => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
-    const endYear = startYear + 1;
-    return `${startYear}-${endYear}`;
-  };
-
-  const generateAcademicSessions = (academicYear) => {
-    if (!academicYear) return [];
-    const [startYear, endYear] = academicYear.split('-');
-    return [
-        `JULY-DECEMBER ${startYear}`,
-        `JANUARY-JUNE ${endYear}`
-    ];
-  };
-
   useEffect(() => {
-    const currentAcadYear = getCurrentAcademicYear();
+    // Get academic period using the utility function
+    const { academicYear: currentAcadYear, academicSession: currentSession } = determineAcademicPeriod();
     const sessions = generateAcademicSessions(currentAcadYear);
+    
     setAcademicYear(currentAcadYear);
-    setAcademicSession(sessions[0]);
+    setAcademicSession(currentSession);
     setAcademicYears([
       currentAcadYear,
       `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
@@ -134,12 +119,26 @@ const ManageMeeting = () => {
   };
 
   const sendEmail = async (mentorEmail) => {
-    try {
-        // Implement email sending logic
-        window.location.href = `mailto:${mentorEmail}`;
-    } catch{
-        alert('Failed to send email');
-    }
+        
+        const subject = 'Mentor Meeting Follow-up';
+        const body = `Dear Mentor,
+
+        I hope this email finds you well.
+        ${mentorMeetings.find(m => m.mentorEmail === mentorEmail)?.meetingCount >= 3 
+          ? 'Congratulations on completing all required mentor meetings!' 
+          : 'This is a reminder that you still need to complete the required mentor meetings.'}
+
+        Current Status:
+        - Meetings Completed: ${mentorMeetings.find(m => m.mentorEmail === mentorEmail)?.meetingCount || 0}
+        - Required Meetings: 3
+
+        Please ensure all meeting details are properly documented in the system.
+
+        Best regards,
+        Admin Team`;
+
+        window.location.href = `mailto:${mentorEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  
   };
 
   const generateReport = async (mentorMUJid) => {
@@ -194,15 +193,18 @@ const ManageMeeting = () => {
   };
 
   const columns = [
-    { field: 'MUJid', headerName: 'MUJ ID', width: 130 },
-    { field: 'mentorName', headerName: 'Name', width: 180 },
-    { field: 'mentorEmail', headerName: 'Email', width: 220 },
-    { field: 'mentorPhone', headerName: 'Phone', width: 130 },
-    { field: 'meetingCount', headerName: 'Meetings', width: 100 },
+    { field: 'MUJid', headerName: 'MUJ ID',flex:0.7, width: 130, sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'mentorName', headerName: 'Name',flex:0.8, width: 180,sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'mentorEmail', headerName: 'Email',flex:1, width: 220 ,sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'mentorPhone', headerName: 'Phone',flex:0.8, width: 130 ,sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'meetingCount', headerName: 'Meetings',flex:0.5, width: 100,sortable: true,headerAlign: 'center',align: 'center' },
     {
         field: 'actions',
         headerName: 'Actions',
         width: 300,
+        headerAlign: 'center',
+        align: 'center',
+
         renderCell: (params) => (
             <div className="flex gap-2 mt-2 justify-center">
                 <button
@@ -339,8 +341,13 @@ const ManageMeeting = () => {
                       },
                     }}
                     pageSizeOptions={[5, 10, 20]}
-                    checkboxSelection
+                    // checkboxSelection
                     disableRowSelectionOnClick
+                    // autoHeight
+                    // disableColumnMenu: true
+                    disableSelectionOnClick={true}
+                    disableColumnMenu={true}
+                    disableColumnFilter={false}
                   />
                 </ThemeProvider>
               </div>

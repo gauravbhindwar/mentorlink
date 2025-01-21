@@ -70,7 +70,7 @@ export const sendBulkEmail = async ({
 
   // Log results
   const successful = results.filter(r => r.status === 'fulfilled').length;
-  console.log(`Email sending completed: ${successful}/${recipients.length} successful`);
+  // console.log(`Email sending completed: ${successful}/${recipients.length} successful`);
 
   return {
     total: recipients.length,

@@ -1,6 +1,6 @@
 'use client';
-
-import { useState, useEffect, useRef, useCallback } from 'react';
+//gaurav
+import { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Button, 
@@ -23,7 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { debounce } from 'lodash';
+// import { debounce } from 'lodash';
 
 const buttonStyles = {
   actionButton: {
@@ -86,7 +86,6 @@ const FilterSection = ({
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [cachedData, setCachedData] = useState({});
 
   // Add new state for client-side rendering check
   const [isClient, setIsClient] = useState(false);
@@ -215,76 +214,42 @@ const FilterSection = ({
   };
 
   const handleSearch = async () => {
-    if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) {
-      showAlert('Please select both Academic Year and Academic Session', 'warning');
-      return;
-    }
+    if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) return;
   
     const baseParams = {
       academicYear: filters.academicYear.trim(),
       academicSession: filters.academicSession.trim().toUpperCase(),
     };
-    const cacheKey = `${baseParams.academicYear}-${baseParams.academicSession}`;
   
-    if (cachedData[cacheKey]) {
-      // Use cached data and apply filters
-      const filteredData = filterData(cachedData[cacheKey], filters);
-      onSearch(filteredData);
-      return;
-    }
-  
-    // Only fetch if not in cache
     try {
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-        params: baseParams
-      });
+      let data;
+      const localData = localStorage.getItem('mentee data');
       
-      setCachedData(prev => ({ ...prev, [cacheKey]: response.data }));
-      const filteredData = filterData(response.data, filters);
-      onSearch(filteredData);
+      if (!localData || (!filters.semester && !filters.section && !filters.menteeMujid && !filters.mentorEmailid)) {
+        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
+          params: baseParams
+        });
+        data = response.data;
+        localStorage.setItem('mentee data', JSON.stringify(data));
+      } else {
+        data = JSON.parse(localData);
+        const filteredData = filterData(data, filters);
+        localStorage.setItem('menteeFilteredData', JSON.stringify(filteredData));
+        data = filteredData;
+      }
+  
+      onSearch(data, filters); // Pass both data and filters to parent
     } catch (error) {
-      console.log('Search error:', error);
+      console.error('Search error:', error);
       showAlert('Error searching mentees', 'error');
     }
   };
-
-  //  to handle non-base filters
-  const debouncedFilterChange = useCallback(
-    debounce((name, value) => {
-      onFilterChange(name, value);
-    }, 300),
-    []
-  );
-
+  
+  // to do avi
   const handleFilterChange = (name, value) => {
-    if (['academicYear', 'academicSession'].includes(name)) {
-      const trimmedValue = value?.trim() || '';
-      if (!trimmedValue) return;
-      
-      debouncedFilterChange(name, trimmedValue);
-    } else {
-      onFilterChange(name, value);
-    }
-
-    // For these filters, apply filtering on cached data
-    if (['semester', 'section', 'mentorMujid', 'menteeMujid', 'mentorEmailid'].includes(name)) {
-      const cacheKey = `${filters.academicYear}-${filters.academicSession}`;
-      if (cachedData[cacheKey]) {
-        const filteredData = filterData(cachedData[cacheKey], filters);
-        onSearch(filteredData);
-      }
-      return;
-    }
-
-    // Handle base filters as before
-    if (name === 'academicYear') {
-      const sessions = generateAcademicSessions(value);
-      onFilterChange('academicSession', sessions[0]);
-      handleSearch();
-    } else if (name === 'academicSession') {
-      handleSearch();
-    }
+    onFilterChange(name, value);
   };
+  
 
   const handleAddMentee = async (menteeData) => {
     try {
@@ -354,7 +319,7 @@ const FilterSection = ({
   const generateYearSuggestions = (input) => {
     if (!input) return [];
     const currentAcademicYear = getCurrentAcademicYear();
-    const [currentStartYear] = currentAcademicYear.split('-').map(Number);
+    // const [currentStartYear] = currentAcademicYear.split('-').map(Number);
     
     // Only return current academic year if it matches input
     if (currentAcademicYear.startsWith(input)) {
@@ -545,23 +510,25 @@ const FilterSection = ({
       label: 'Academic Year',
       customRender: (
         <Box ref={yearRef} sx={comboBoxStyles}>
-          <TextField
-            size="small"
-            label="Academic Year"
-            value={filters.academicYear || ''}  // Changed from filters.academicYear
-            onChange={handleAcademicYearInput}
-            onClick={() => setShowYearOptions(true)}
-            placeholder="YYYY-YYYY"
-            helperText={
-              <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
-               Example: 2023-2024
-              </Box>
-            }
-            sx={textFieldStyles}
-          />
-          {renderYearDropdown()}
-        </Box>
-      )
+         <TextField
+           size="small"
+           label="Academic Year"
+           value={filters.academicYear || ''}  // Changed from filters.academicYear
+           onChange={handleAcademicYearInput}
+           onClick={() => setShowYearOptions(false)}
+          //  disabled={filters.academicSession}
+          // disabled={true}
+           placeholder="YYYY-YYYY"
+           // helperText={
+           //   <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
+           //    Example: 2023-2024
+           //   </Box>
+           // }
+           sx={textFieldStyles}
+         />
+         {renderYearDropdown()}
+       </Box>
+     )
     },
     {
       name: 'academicSession',
@@ -573,13 +540,13 @@ const FilterSection = ({
             label="Academic Session"
             value={filters.academicSession || ''}
             onChange={handleAcademicSessionInput}
-            onClick={() => setShowSessionOptions(true)}
+            onClick={() => setShowSessionOptions(false)}
             placeholder="MONTH-MONTH YYYY"
-            helperText={
-              <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
-               Type &apos;jul&apos; or &apos;jan&apos; for quick selection
-              </Box>
-            }
+            // helperText={
+            //   <Box component="span" sx={{ fontSize: '0.75rem', color: 'green' }}>
+            //    Type &apos;jul&apos; or &apos;jan&apos; for quick selection
+            //   </Box>
+            // }
            disabled={!filters.academicYear}
             sx={textFieldStyles}
           />
@@ -601,6 +568,7 @@ const FilterSection = ({
               handleFilterChange('semester', value);
             }}
             disabled={!filters.academicSession}
+        
             MenuProps={{
               PaperProps: {
                 sx: {
@@ -640,18 +608,21 @@ const FilterSection = ({
       customRender: (
         <TextField
           size="small"
-          label="Section"
+          label={filters.semester ? `Section` : `Select Semester First`}
           value={filters.section || ''}
           onChange={(e) => {
+            if(!filters.semester) return;
             const value = e.target.value.toUpperCase().slice(0, 1);
             if (value && !/^[A-Z]$/.test(value)) return;
-            onFilterChange('section', value);
+            handleFilterChange('section', value);
+
           }}
+          // disabled={!filters.semester}
           inputProps={{
             style: { textTransform: 'uppercase' },
             maxLength: 1
           }}
-          placeholder="A-Z"
+          placeholder={filters.semester ? "A-Z" : `Semester First`}
           sx={textFieldStyles}
         />
       )
@@ -772,10 +743,6 @@ const FilterSection = ({
         flexDirection: { xs: 'column', md: 'row' },
         gap: 2,
         mb: 3,
-        alignItems: { xs: 'stretch', md: 'center' },
-        justifyContent: 'space-between',
-        maxHeight: { xs: 'calc(100vh - 200px)', md: 'none' },
-        overflowY: { xs: 'auto', md: 'visible' },
         position: 'relative',
         // Add custom scrollbar styling
         '&::-webkit-scrollbar': {
@@ -991,7 +958,19 @@ const textFieldStyles = {
     '&.Mui-focused': {
       color: '#f97316',
     },
-  }
+  },
+  '&.Mui-disabled': {
+    color: 'rgba(255, 255, 255, 0.7) !important',
+    '& .MuiOutlinedInput-root': {
+      '& input': {
+        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+      },
+      '& input::placeholder': {
+        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+        opacity: 1,
+      },
+    },
+  },
 };
 
 const comboBoxStyles = {
@@ -1015,6 +994,11 @@ const comboBoxStyles = {
     overflowY: 'auto',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
     '& .option-item': {
+
+
+
+
+      
       padding: '8px 16px',
       color: 'white',
       cursor: 'pointer',
