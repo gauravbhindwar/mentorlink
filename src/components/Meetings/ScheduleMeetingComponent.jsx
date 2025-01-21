@@ -218,7 +218,7 @@ const ScheduleMeetingComponent = () => {
         section: selectedSection,
         session: academicSession,
         year: academicYear,
-        meeting_type: isMeetingOnline,
+        isMeetingOnline: isMeetingOnline,
         venue: venue
       });
 
@@ -428,7 +428,7 @@ Meeting Type: ${isMeetingOnline ? 'Online' : 'Offline'}
 ${isMeetingOnline ? 'Meeting Link' : 'Venue'}: ${venue}
 Branch: ${fixedBranch}
 Semester: ${currentSemester}
-Section: ${selectedSection || 'N/A'}
+${selectedSection && `Section: ${selectedSection}`}
 
 Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
 
@@ -447,10 +447,9 @@ const sendEmailToMentees = async (menteeEmails) => {
         subject: `Meeting Scheduled - ${meetingId}`,
         body: getEmailBody()
       });
-      router.push('/pages/mentordashboard');
-
       return response;
     });
+    router.push('/pages/mentordashboard');
 
     await Promise.all(emailPromises);
   } catch (error) {

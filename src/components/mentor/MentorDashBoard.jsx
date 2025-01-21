@@ -327,14 +327,29 @@ const MentorDashBoard = () => {
                                                 }}
                                                 className="bg-white/5 p-4 rounded-lg"
                                             >
+                                                {console.log("meeting:",meeting.meeting.meeting_notes.isMeetingOnline)}
                                                 <div className="text-white flex justify-between">
                                                     <div>
                                                     <p className="font-semibold">
                                                         {meeting?.sections ? `Sections: ${[...new Set(meeting?.sections)].join(', ')}` : `Section: ${meeting.section}`}
                                                         </p>
                                                     <p>Semester: {meeting.semester}</p>
-                                                    <p>Date: {new Date(meeting.meeting.meeting_date).toLocaleDateString()}</p>
+                                                    <p>Date: {new Date(meeting.meeting.meeting_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', ordinal: true }).replace(/(\d+)(?=\s)/, n => n + ['st','nd','rd'][((n%100-20)%10)-1]||'th')}</p>
                                                     <p>Time: {meeting.meeting.meeting_time}</p>
+                                                    {meeting.meeting.meeting_notes.isMeetingOnline ? (
+                                                                                                            <p>
+                                                        {meeting.meeting.meeting_notes.venue.includes('https:') ? (
+                                                            <span>
+                                                                Link: <a href={`${meeting.meeting.meeting_notes.venue}`} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>{meeting.meeting.meeting_notes.venue}</a>
+                                                            </span>
+                                                        ) : (
+                                                            <span>Link: <a href={`https://${meeting.meeting.meeting_notes.venue}`} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>{meeting.meeting.meeting_notes.venue}</a></span>
+                                                        )}
+                                                    </p>
+                                                    ) : (
+                                                        <p>Venue: {meeting.meeting.meeting_notes.venue}</p>
+                                                    )
+                                                    }
                                                     </div>
                                                     <div className='border-r-2 h-full'></div>
                                                     <div className='my-auto'>

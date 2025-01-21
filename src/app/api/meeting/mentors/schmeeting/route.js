@@ -174,6 +174,7 @@ export async function POST(request) {
       !semester ||
       !session ||
       !year ||
+      !isMeetingOnline ||
       !venue
     ) {
       return NextResponse.json(
@@ -265,7 +266,7 @@ export async function POST(request) {
       meeting_id,
       meeting_notes: {
         TopicOfDiscussion,
-        isMeetingOnline,
+        isMeetingOnline: isMeetingOnline ? true : false,
         venue,
       },
       meeting_date,
