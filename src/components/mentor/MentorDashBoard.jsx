@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/subComponents/Navbar'
 import FirstTimeLoginForm from './FirstTimeLoginForm'
 import Image from 'next/image'
@@ -27,6 +27,8 @@ const MentorDashBoard = () => {
     });
     const [isSubmitDisabled, setIsSubmitDisabled] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false); // Add this line
+    const [showToast, setShowToast] = useState(false);
 
     const extractSessionData = (data) => ({
         name: data.name,
@@ -150,6 +152,62 @@ const MentorDashBoard = () => {
             console.log('Error submitting meeting notes:', error);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const getEmailBody = (meeting) => `
+Dear Mentees,
+
+A mentor meeting has been scheduled with the following details:
+
+Meeting ID: ${meeting.meeting.meeting_id}
+Date: ${meeting.meeting.meeting_date}
+Time: ${meeting.meeting.meeting_time}
+Topic: ${meeting.meeting.meeting_notes.TopicOfDiscussion || 'N/A'}
+Meeting Type: ${meeting.meeting.meeting_notes.isMeetingOnline ? 'Online' : 'Offline'}
+${meeting.meeting.meeting_notes.isMeetingOnline ? 'Meeting Link' : 'Venue'}: ${meeting.meeting.meeting_notes.venue}
+Branch: ${'CSE CORE'}
+Semester: ${meeting.semester}
+${meeting.sections ? `Sections: ${[...new Set(meeting.sections)].join(', ')}` : `Section: ${meeting.section}`}
+
+Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
+
+Best regards,
+${mentorData?.name || 'Your Mentor'}
+${mentorData?.designation || 'Faculty Mentor'}
+Department of Computer Science and Engineering
+Manipal University Jaipur
+Contact: ${mentorData?.email || ''}`;
+
+    const sendEmailToMentees = async (meeting) => {
+        setIsLoading(true);
+        try {
+            const responsePromise = fetch(`/api/meeting/mentees?mentorId=${mentorData.MUJid}&semester=${meeting.semester}&section=${meeting.section}&year=${mentorData.academicYear}&session=${mentorData.academicSession}`);
+            const response = await responsePromise;
+            if (response.ok) {
+                const menteesData = await response.json();
+            const menteeEmails = menteesData.map(mentee => mentee.email);
+            
+            const emailPromises = menteeEmails.map(async (email) => {
+                const response = await axios.post('/api/meeting/send-email', {
+                    email,
+                    subject: `Meeting Reminder - ${meeting.meeting.meeting_id}`,
+                    body: getEmailBody(meeting)
+                });
+                return response;
+            });
+            await Promise.all(emailPromises);
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 5000);
+            }else{
+                throw new Error('Failed to fetch mentees');
+            }
+            // alert('Reminder emails sent successfully!');
+        } catch (error) {
+            console.error('Error sending emails:', error);
+            alert('Failed to send reminder emails');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -414,7 +472,19 @@ const MentorDashBoard = () => {
                                                     )}
                                                     </>
                                                     : 
-                                                    <div className="text-red-500">Meeting not held yet</div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="text-red-500 text-center">Meeting not held yet</div>
+                                                        <button
+                                                            onClick={() => sendEmailToMentees(meeting)}
+                                                            className="bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                                                            disabled={isLoading}
+                                                        >
+                                                            {isLoading ? 
+                                                                <div className="m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                                                                : 'Resend Meeting Email'
+                                                            }
+                                                        </button>
+                                                    </div>
                                                     }
                                                     </div>
                                                 </div>
@@ -568,6 +638,18 @@ const MentorDashBoard = () => {
                     </div>
                 </div>
             )}
+            <AnimatePresence>
+                {showToast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 50 }}
+                        className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-black px-6 py-3 rounded-lg shadow-lg z-50 border border-green-500"
+                    >
+                        <span className="text-green-500 font-medium">Emails sent successfully!</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
