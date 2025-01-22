@@ -213,6 +213,7 @@ const MenteeManagement = () => {
     }
     return true;
   });
+  const [showTable] = useState(true); // Add new state for table visibility
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -921,10 +922,10 @@ const handleUpdate = (updatedMentee) => {
 
         {/* Main Content Container */}
         <div className="relative z-10 h-screen flex flex-col pt-[60px]">
-          {/* Header Section */}
-          <div className="flex items-center justify-between px-4 lg:px-6">
+          {/* Header Section - Updated with center alignment */}
+          <div className="flex items-center justify-center px-4 lg:px-6 relative">
             <motion.h1 
-              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
+              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2 text-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -932,46 +933,94 @@ const handleUpdate = (updatedMentee) => {
               Mentee Management
             </motion.h1>
 
+            {/* Position toggle buttons absolutely to maintain header centering */}
             {isSmallScreen && (
-              <IconButton
-                onClick={() => setShowFilters(prev => !prev)}
-                sx={{
-                  color: '#f97316',
-                  bgcolor: 'rgba(249, 115, 22, 0.1)',
-                  '&:hover': {
-                    bgcolor: 'rgba(249, 115, 22, 0.2)',
-                  },
-                  position: 'fixed',
+              <motion.div
+                initial={false}
+                animate={{
+                  position: 'absolute',
                   right: '1rem',
-                  top: '5rem', // Adjust position to be more accessible
-                  zIndex: 1000,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
                 }}
+                transition={{ duration: 0.3 }}
               >
-                <FilterListIcon />
-              </IconButton>
+                <IconButton
+                  onClick={() => setShowFilters(prev => !prev)}
+                  sx={{
+                    color: '#f97316',
+                    bgcolor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(249, 115, 22, 0.3)',
+                    '&:hover': {
+                      bgcolor: 'rgba(249, 115, 22, 0.2)',
+                    },
+                    transition: 'all 0.3s ease',
+                    transform: showFilters ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  <FilterListIcon />
+                </IconButton>
+              </motion.div>
             )}
           </div>
 
+          {/* Add this after the header section */}
+          {isSmallScreen && (
+            <Box sx={{
+              position: 'fixed',
+              left: '1rem',
+              top: '1rem',
+              zIndex: 1000,
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
+            }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: showFilters ? '#f97316' : 'rgba(255, 255, 255, 0.5)',
+                  transition: 'color 0.3s ease',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Filters {showFilters ? 'Shown' : 'Hidden'}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: showTable ? '#f97316' : 'rgba(255, 255, 255, 0.5)',
+                  transition: 'color 0.3s ease',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Table {showTable ? 'Shown' : 'Hidden'}
+              </Typography>
+            </Box>
+          )}
+
           {/* Main Grid Layout - Updated grid and padding */}
-          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ${
+          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ease-in-out ${
             isSmallScreen ? 'grid-cols-1' : 'grid-cols-[400px,1fr] lg:overflow-hidden'
           }`}>
             {/* Filter Panel - Updated width and padding */}
             <motion.div 
-              className={`lg:h-full ${isSmallScreen ? 'w-full' : 'w-[400px]'}`}
+              className={`bg-black/20 backdrop-blur-xl rounded-3xl border border-white/10 transition-all duration-300 ease-in-out ${
+                isSmallScreen ? 'w-full' : 'w-[400px]'
+              }`}
               initial={false}
               animate={{
-                height: showFilters ? 'auto' : 0,
+                height: showFilters ? 'auto' : '0px',
                 opacity: showFilters ? 1 : 0,
-                marginBottom: showFilters ? '12px' : 0
+                marginBottom: showFilters ? '1rem' : '0px'
               }}
               transition={{ duration: 0.3 }}
               style={{
                 display: showFilters ? 'block' : 'none',
                 position: isSmallScreen ? 'relative' : 'sticky',
                 top: isSmallScreen ? 'auto' : '1rem',
-                maxHeight: isSmallScreen ? 'calc(100vh - 200px)' : 'none',
-                overflowY: isSmallScreen ? 'auto' : 'visible',
+                maxHeight: isSmallScreen ? '80vh' : 'calc(100vh - 120px)',
+                overflowY: 'auto',
                 zIndex: isSmallScreen ? 50 : 'auto'
               }}
             >
@@ -994,7 +1043,7 @@ const handleUpdate = (updatedMentee) => {
 
             {/* Table Section - Updated for better responsiveness */}
             <motion.div
-              className={`h-full min-w-0 transition-all duration-300 ${
+              className={`h-full min-w-0 transition-all duration-300 ease-in-out ${
                 !showFilters && isSmallScreen ? 'col-span-full' : ''
               }`}
               animate={{

@@ -647,6 +647,7 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
       display: 'flex',
       flexDirection: 'column',
       transition: 'all 0.3s ease',
+      className: 'custom-scrollbar', // Add custom scrollbar class
     }}>
       {loading && (
         <Box sx={{
@@ -682,6 +683,7 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
           },
           '& .MuiDataGrid-virtualScroller': {
             overflow: 'auto !important',
+            className: 'custom-scrollbar', // Add custom scrollbar class
             '&::-webkit-scrollbar': {
               width: '8px',
               height: '8px',
