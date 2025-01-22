@@ -90,18 +90,9 @@ const MenteeManagement = () => {
   const fetchMenteeData = useCallback(async (params) => {
     if (!params.academicYear || !params.academicSession) return;
     
-    const cacheKey = `${params.academicYear}-${params.academicSession}`;
-    
-    // First try to get from localStorage
-    const localData = localStorage.getItem(cacheKey);
-    if (localData) {
-      const parsedData = JSON.parse(localData);
-      setMentees(parsedData);
-      setTableVisible(true);
-      return parsedData;
-    }
-
+    const storageKey = `${params.academicYear}-${params.academicSession}`;
     setLoadingStates(prev => ({ ...prev, fetching: true }));
+    
     try {
       const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
       const processedData = response.data.map(mentee => ({
@@ -111,10 +102,8 @@ const MenteeManagement = () => {
         mentorMujid: mentee.mentorMujid?.toUpperCase()
       }));
       
-      // Store in localStorage and cache
-      localStorage.setItem(cacheKey, JSON.stringify(processedData));
-      dataCache.current.set(cacheKey, processedData);
-      
+      // Update storage and state together
+      localStorage.setItem(storageKey, JSON.stringify(processedData));
       setMentees(processedData);
       setTableVisible(true);
       return processedData;
@@ -443,79 +432,61 @@ const MenteeManagement = () => {
     setEditDialog(false);
   };
 
-  const handleUpdate = (updatedMentee) => {
-    // Add validation
-    if (!updatedMentee || !updatedMentee.MUJid) {
-      toast.error('Invalid mentee data');
-      return;
-    }
+const handleUpdate = (updatedMentee) => {
+  if (!updatedMentee || !updatedMentee.MUJid) {
+    toast.error('Invalid mentee data');
+    return;
+  }
 
-    // First close any open dialogs
-    handleEditClose();
-    handleConfirmClose();
+  handleEditClose();
+  handleConfirmClose();
 
-    try {
-      // Show loading toast
-      toast.loading('Saving changes...', { id: 'update' });
+  const storageKey = `${filters.academicYear}-${filters.academicSession}`;
+  
+  try {
+    // Get and update current data atomically
+    const currentData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const updatedData = currentData.map(mentee => 
+      mentee.MUJid === updatedMentee.MUJid ? { ...mentee, ...updatedMentee } : mentee
+    );
 
-      // Store the current state for rollback
-      const storageKey = `${filters.academicYear}-${filters.academicSession}`;
-      const previousData = localStorage.getItem(storageKey);
-      
-      // Validate data before updating
-      const updatedMentees = mentees.map(mentee => 
-        mentee?.MUJid === updatedMentee.MUJid ? updatedMentee : mentee
-      ).filter(Boolean); // Remove any null values
-      
-      if (updatedMentees.length === mentees.length) {
-        setMentees(updatedMentees);
-        localStorage.setItem(storageKey, JSON.stringify(updatedMentees));
+    // Update localStorage and state in a single batch
+    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+    
+    // Update local state immediately
+    setMentees(updatedData);
+    
+    // Update current filters to trigger table refresh
+    setCurrentFilters(prev => ({ ...prev, timestamp: Date.now() }));
+    
+    // Show loading state
+    toast.loading('Saving changes...', { id: 'update' });
 
-        // Update cache
+    // Make API call
+    axios.patch('/api/admin/manageUsers/manageMentee', updatedMentee)
+      .then(() => {
+        toast.success('Changes saved successfully', { id: 'update' });
+        
+        // Refresh data cache
         if (dataCache.current.has(storageKey)) {
-          dataCache.current.set(storageKey, updatedMentees);
+          dataCache.current.set(storageKey, updatedData);
         }
+      })
+      .catch(error => {
+        console.error('Update error:', error);
+        // Rollback on API failure
+        const previousData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(previousData));
+        setMentees(previousData);
+        setCurrentFilters(prev => ({ ...prev, timestamp: Date.now() }));
+        toast.error('Failed to save changes. Changes reverted.', { id: 'update' });
+      });
 
-        // Make API call in background
-        axios.patch('/api/admin/manageUsers/manageMentee', updatedMentee)
-          .then(() => {
-            toast.success('Changes saved successfully', { id: 'update' });
-            return axios.get('/api/admin/manageUsers/manageMentee', {
-              params: {
-                academicYear: filters.academicYear,
-                academicSession: filters.academicSession
-              }
-            });
-          })
-          .then(response => {
-            const freshData = response.data.filter(Boolean); // Ensure no null values
-            setMentees(freshData);
-            localStorage.setItem(storageKey, JSON.stringify(freshData));
-            if (dataCache.current.has(storageKey)) {
-              dataCache.current.set(storageKey, freshData);
-            }
-          })
-          .catch(error => {
-            console.error('Update error:', error);
-            // Rollback changes if API call fails
-            if (previousData) {
-              const parsedData = JSON.parse(previousData);
-              setMentees(parsedData);
-              localStorage.setItem(storageKey, JSON.stringify(parsedData));
-              if (dataCache.current.has(storageKey)) {
-                dataCache.current.set(storageKey, parsedData);
-              }
-            }
-            toast.error('Failed to save changes. Changes reverted.', { id: 'update' });
-          });
-      } else {
-        throw new Error('Data integrity check failed');
-      }
-    } catch (error) {
-      console.error('Error in update process:', error);
-      toast.error('Failed to process update', { id: 'update' });
-    }
-  };
+  } catch (error) {
+    console.error('Error updating mentee:', error);
+    toast.error('Failed to update mentee', { id: 'update' });
+  }
+};
 
   const handleConfirmClose = () => {
     setConfirmDialog({ open: false, mentee: null });
@@ -891,12 +862,21 @@ const MenteeManagement = () => {
     try {
       setLoadingStates(prev => ({ ...prev, updating: true }));
       
-      // Call the update function
       if (confirmDialog.mentee) {
         await handleUpdate(confirmDialog.mentee);
+        
+        // Force table refresh by updating filters
+        setCurrentFilters(prev => ({
+          ...prev,
+          timestamp: Date.now()
+        }));
+        
+        // Refresh the data in the table
+        const storageKey = `${filters.academicYear}-${filters.academicSession}`;
+        const updatedData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        setMentees(updatedData);
       }
       
-      // Close the dialog
       handleConfirmClose();
       
     } catch (error) {

@@ -91,7 +91,6 @@ const CustomPagination = () => {
 
 const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, currentFilters }) => {
   const [mounted, setMounted] = useState(false);
-  const [tableData, setTableData] = useState([]);
   const dataCache = useRef(new Map());
   const [filters, setFilters] = useState({
     academicYear: '',
@@ -145,14 +144,6 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
   //   }
   // }, [mentees]);
 
-  useEffect(() => {
-    if (tableData?.length > 0) {
-      setTableData(tableData);
-      console.log("mentees are: ", tableData);
-    }
-  }, [tableData]);
-
-  
   // Initialize component
   useEffect(() => {
     setMounted(true);
@@ -199,40 +190,36 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
         try {
           const parsedData = JSON.parse(storedData);
           setLocalData(parsedData);
+          setBaseData(parsedData); // Also update base data
         } catch (error) {
           console.error('Error parsing stored data:', error);
         }
       }
     }
-  }, [currentFilters]);
+  }, [currentFilters?.academicYear, currentFilters?.academicSession, currentFilters?.timestamp]); // Add timestamp dependency
 
   const handleDeleteClick = (mujid) => {
     setDeleteDialog({ open: true, mujid });
   };
 
-  // Update handleEditClick to check localStorage first
-  const handleEditClick = (rowData) => {
+  // Update handleEditClick to always get fresh data from localStorage
+  const handleEditClick = async (rowData) => {
     if (onEditClick && rowData) {
-      // Check localStorage for most up-to-date data
       const storageKey = `${currentFilters?.academicYear}-${currentFilters?.academicSession}`;
       const storedData = localStorage.getItem(storageKey);
       
-      if (storedData) {
-        try {
+      try {
+        if (storedData) {
           const parsedData = JSON.parse(storedData);
-          const updatedRowData = parsedData.find(item => item.MUJid === rowData.MUJid);
-          if (updatedRowData) {
-            console.log("Using data from localStorage for editing:", updatedRowData);
-            onEditClick(updatedRowData);
+          const freshData = parsedData.find(item => item.MUJid === rowData.MUJid);
+          if (freshData) {
+            onEditClick({ ...freshData, id: rowData.id }); // Preserve the id
             return;
           }
-        } catch (error) {
-          console.error('Error parsing stored data:', error);
         }
+      } catch (error) {
+        console.error('Error accessing stored data:', error);
       }
-      
-      // Fallback to passed data if localStorage fails
-      console.log("Using passed data for editing:", rowData);
       onEditClick(rowData);
     }
   };
@@ -408,16 +395,6 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
     }));
   }, [mounted, localData]);
 
-
-useEffect(() => {
-  if (!currentFilters) {
-    const baseData = localStorage.getItem('mentee data');
-    setLocalData(baseData ? JSON.parse(baseData) : []);
-  } else {
-    const filteredData = localStorage.getItem('menteeFilteredData');
-    setLocalData(filteredData ? JSON.parse(filteredData) : []);
-  }
-}, [currentFilters]); // Only depend on currentFilters
 
   const headerContent = useMemo(() => ({
     title: 'Mentee Management',
