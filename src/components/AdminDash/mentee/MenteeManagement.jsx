@@ -91,10 +91,14 @@ const MenteeManagement = () => {
     if (!params.academicYear || !params.academicSession) return;
     
     const cacheKey = `${params.academicYear}-${params.academicSession}`;
-    if (dataCache.current.has(cacheKey)) {
-      setMentees(dataCache.current.get(cacheKey));
+    
+    // First try to get from localStorage
+    const localData = localStorage.getItem(cacheKey);
+    if (localData) {
+      const parsedData = JSON.parse(localData);
+      setMentees(parsedData);
       setTableVisible(true);
-      return;
+      return parsedData;
     }
 
     setLoadingStates(prev => ({ ...prev, fetching: true }));
@@ -107,14 +111,16 @@ const MenteeManagement = () => {
         mentorMujid: mentee.mentorMujid?.toUpperCase()
       }));
       
+      // Store in localStorage and cache
+      localStorage.setItem(cacheKey, JSON.stringify(processedData));
       dataCache.current.set(cacheKey, processedData);
+      
       setMentees(processedData);
       setTableVisible(true);
+      return processedData;
     } catch (error) {
       console.error('Error fetching mentees:', error);
-      if (error.response?.status !== 400) {
-        showAlert(error.response?.data?.error || 'Error loading data', 'error');
-      }
+      return [];
     } finally {
       setLoadingStates(prev => ({ ...prev, fetching: false }));
     }
@@ -213,7 +219,7 @@ const MenteeManagement = () => {
   const [showFilters, setShowFilters] = useState(() => {
     // Only run on client side
     if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('showFilters');
+      const saved = localStorage.getItem('showFilters');
       return saved !== null ? JSON.parse(saved) : true;
     }
     return true;
@@ -419,23 +425,12 @@ const MenteeManagement = () => {
   };
 
   const handleEditClick = async (mentee) => {
+    console.log("Received mentee for editing:", mentee); // Debug log
     setEditLoading(true);
     try {
-      // Fetch complete mentee details using MUJid
-      const response = await axios.get(`/api/admin/manageUsers/manageMentee`, {
-        params: {
-          academicYear: mentee.academicYear,
-          academicSession: mentee.academicSession,
-          MUJid: mentee.MUJid
-        }
-      });
-      
-      if (response.data && response.data.length > 0) {
-        setSelectedMentee(response.data[0]);
-        setEditDialog(true);
-      } else {
-        showAlert('Mentee details not found', 'error');
-      }
+      // Use the mentee data directly from the table
+      setSelectedMentee(mentee);
+      setEditDialog(true);
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error fetching mentee details', 'error');
     } finally {
@@ -448,56 +443,83 @@ const MenteeManagement = () => {
     setEditDialog(false);
   };
 
-  const handleUpdate = async () => {
-    // Show confirmation dialog instead of updating directly
-    setConfirmDialog({
-      open: true,
-      mentee: selectedMentee
-    });
+  const handleUpdate = (updatedMentee) => {
+    // Add validation
+    if (!updatedMentee || !updatedMentee.MUJid) {
+      toast.error('Invalid mentee data');
+      return;
+    }
+
+    // First close any open dialogs
+    handleEditClose();
+    handleConfirmClose();
+
+    try {
+      // Show loading toast
+      toast.loading('Saving changes...', { id: 'update' });
+
+      // Store the current state for rollback
+      const storageKey = `${filters.academicYear}-${filters.academicSession}`;
+      const previousData = localStorage.getItem(storageKey);
+      
+      // Validate data before updating
+      const updatedMentees = mentees.map(mentee => 
+        mentee?.MUJid === updatedMentee.MUJid ? updatedMentee : mentee
+      ).filter(Boolean); // Remove any null values
+      
+      if (updatedMentees.length === mentees.length) {
+        setMentees(updatedMentees);
+        localStorage.setItem(storageKey, JSON.stringify(updatedMentees));
+
+        // Update cache
+        if (dataCache.current.has(storageKey)) {
+          dataCache.current.set(storageKey, updatedMentees);
+        }
+
+        // Make API call in background
+        axios.patch('/api/admin/manageUsers/manageMentee', updatedMentee)
+          .then(() => {
+            toast.success('Changes saved successfully', { id: 'update' });
+            return axios.get('/api/admin/manageUsers/manageMentee', {
+              params: {
+                academicYear: filters.academicYear,
+                academicSession: filters.academicSession
+              }
+            });
+          })
+          .then(response => {
+            const freshData = response.data.filter(Boolean); // Ensure no null values
+            setMentees(freshData);
+            localStorage.setItem(storageKey, JSON.stringify(freshData));
+            if (dataCache.current.has(storageKey)) {
+              dataCache.current.set(storageKey, freshData);
+            }
+          })
+          .catch(error => {
+            console.error('Update error:', error);
+            // Rollback changes if API call fails
+            if (previousData) {
+              const parsedData = JSON.parse(previousData);
+              setMentees(parsedData);
+              localStorage.setItem(storageKey, JSON.stringify(parsedData));
+              if (dataCache.current.has(storageKey)) {
+                dataCache.current.set(storageKey, parsedData);
+              }
+            }
+            toast.error('Failed to save changes. Changes reverted.', { id: 'update' });
+          });
+      } else {
+        throw new Error('Data integrity check failed');
+      }
+    } catch (error) {
+      console.error('Error in update process:', error);
+      toast.error('Failed to process update', { id: 'update' });
+    }
   };
 
   const handleConfirmClose = () => {
     setConfirmDialog({ open: false, mentee: null });
   };
-
-  const handleConfirmUpdate = async () => {
-    try {
-      const response = await axios.patch('/api/admin/manageUsers/manageMentee', selectedMentee);
-      showAlert('Mentee updated successfully', 'success');
-      setMentees(prevMentees => 
-        prevMentees.map(mentee => 
-          mentee.MUJid === selectedMentee.MUJid ? response.data : mentee
-        )
-      );
-      handleEditClose();
-      handleConfirmClose();
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error updating mentee', 'error');
-    }
-  };
-
-  // const handleEditInputChange = (e, category, subcategory) => {
-  //   if (category && subcategory) {
-  //     // Handle nested parent fields
-  //     setSelectedMentee(prev => ({
-  //       ...prev,
-  //       parents: {
-  //         ...prev.parents,
-  //         [category]: {
-  //           ...prev.parents?.[category],
-  //           [subcategory]: e.target.value
-  //         }
-  //       }
-  //     }));
-  //   } else {
-  //     // Handle top-level fields
-  //     const { name, value } = e.target;
-  //     setSelectedMentee(prev => ({
-  //       ...prev,
-  //       [name]: name === 'MUJid' ? value.toUpperCase() : value
-  //     }));
-  //   }
-  // };
 
   const handleAssignClose = () => {
     setAssignDialog(false);
@@ -566,32 +588,32 @@ const MenteeManagement = () => {
   useEffect(() => {
     // // Clear session storage on mount
     // console.log("Mentee Management Mounted    and removing session storage");
-    // console.log("Session Storage",sessionStorage.getItem('menteeData'));
-    sessionStorage.removeItem('menteeData');
+    // console.log("Session Storage",localStorage.getItem('menteeData'));
+    localStorage.removeItem('mentee data');
     
     setMounted(true);
 
-    // Handle screen size changes
-    if (!isSmallScreen) {
-      setShowFilters(true);
-    }
+    // // Handle screen size changes
+    // if (!isSmallScreen) {
+    //   setShowFilters(true);
+    // }
 
     // Try to get data from session storage
-    const storedData = sessionStorage.getItem('menteeData');
+    const storedData = localStorage.getItem('menteeData');
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData);
         setMentees(parsedData);
       } catch (error) {
         console.log('Error parsing stored data:', error);
-        sessionStorage.removeItem('menteeData');
+        localStorage.removeItem('menteeData');
       }
     }
-  }, [isSmallScreen]);
+  }, []);
 
 
   useEffect(() => {
-    sessionStorage.setItem('showFilters', JSON.stringify(showFilters));
+    localStorage.setItem('showFilters', JSON.stringify(showFilters));
   }, [showFilters]);
 
   const handleSearch = async () => {
@@ -691,7 +713,7 @@ const MenteeManagement = () => {
     });
     setMentees([]); // Clear mentees data
     setTableVisible(false);
-    sessionStorage.removeItem('menteeData');
+    localStorage.removeItem('mentee data');
     setLoading(false); // Ensure loading state is set to false after reset
     // Reset current filters
     setCurrentFilters(null);
@@ -807,83 +829,8 @@ const MenteeManagement = () => {
     mentorMujid: filters.mentorMujid,  // Add setter for mentorMujid,
     mentorEmailid: filters.mentorEmailid
   };
-
-  // const cachedData = useRef(new Map());
-
-  // const handleFilterChange = (name, value) => {
-  //   const setters = {
-  //     academicYear: setAcademicYear,
-  //     academicSession: setAcademicSession,
-  //     semester: setSemester,
-  //     section: setSection,
-  //     menteeMujid: setMenteeMujid, 
-  //     mentorMujid: setMentorMujid,
-  //     mentorEmailid: setMentorEmailid  
-  //   };
-    
-  //   if (typeof setters[name] === 'function') {
-  //     setters[name](value);
-      
-  //     // For base filters, trigger immediate data fetch
-  //     if (['academicYear', 'academicSession'].includes(name)) {
-  //       const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
-  //       const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
-        
-  //       if (updatedYear && updatedSession) {
-  //         fetchData(updatedYear, updatedSession);
-  //       }
-  //     }
-  //     // For other filters, filter existing data
-  //     else if (cachedData.current) {
-  //       const currentKey = `${filterConfig.academicYear}-${filterConfig.academicSession}`;
-  //       const data = cachedData.current.get(currentKey) || [];
-  //       const filteredData = filterData(data, { ...filterConfig, [name]: value });
-  //       setMentees(filteredData);
-  //     }
-  //   }
-  // };
-
-  // const fetchData = async (year, session) => {
-  //   if (!year || !session) return;
-
-  //   const cacheKey = `${year}-${session}`;
-  //   setLoading(true);
-    
-  //   try {
-  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-  //       params: {
-  //         academicYear: year,
-  //         academicSession: session
-  //       }
-  //     });
-
-  //     if (response.status === 200) {
-  //       const normalizedData = response.data.map(mentee => ({
-  //         ...mentee,
-  //         id: mentee._id || mentee.id,
-  //         MUJid: mentee.MUJid?.toUpperCase() || '',
-  //         mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-  //       }));
-        
-  //       // Update cache
-  //       cachedData.current.set(cacheKey, normalizedData);
-        
-  //       // Apply current filters to new data
-  //       const filteredData = filterData(normalizedData, filterConfig);
-  //       setMentees(filteredData);
-  //       setTableVisible(true);
-  //     }
-  //   } catch (error) {
-  //     if (error.response?.status !== 400) {
-  //       showAlert(error.response?.data?.error || 'Error loading data', 'error');
-  //     }
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // Single initialization effect
-  useEffect(() => {
+  
+ useEffect(() => {
     const initializeComponent = async () => {
       if (!mounted) return;
 
@@ -929,7 +876,7 @@ const MenteeManagement = () => {
         : updateFn;
       
       // Update session storage
-      sessionStorage.setItem('menteeData', JSON.stringify(updatedMentees));
+      localStorage.setItem('menteeData', JSON.stringify(updatedMentees));
       return updatedMentees;
     });
   };
@@ -939,6 +886,26 @@ const MenteeManagement = () => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  const handleConfirmUpdate = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, updating: true }));
+      
+      // Call the update function
+      if (confirmDialog.mentee) {
+        await handleUpdate(confirmDialog.mentee);
+      }
+      
+      // Close the dialog
+      handleConfirmClose();
+      
+    } catch (error) {
+      console.error('Error in handleConfirmUpdate:', error);
+      toast.error('Failed to update mentee');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, updating: false }));
+    }
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -1134,11 +1101,31 @@ const MenteeManagement = () => {
             Are you sure you want to update this mentee&apos;s data? This action is non-reversible.          
           </DialogContent>          
           <DialogActions>            
-            <Button onClick={handleConfirmClose} color="primary">              
+            <Button 
+              onClick={handleConfirmClose} 
+              variant="outlined"
+              sx={{
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                }
+              }}
+            >              
               Cancel            
             </Button>            
-            <Button onClick={handleConfirmUpdate} color="secondary">              
-              Confirm            
+            <Button 
+              onClick={handleConfirmUpdate}
+              variant="contained"
+              disabled={loadingStates.updating}
+              sx={{
+                bgcolor: '#f97316',
+                '&:hover': { bgcolor: '#ea580c' },
+                '&:disabled': { bgcolor: 'rgba(249, 115, 22, 0.5)' }
+              }}
+            >              
+              {loadingStates.updating ? 'Updating...' : 'Confirm'}
             </Button>          
           </DialogActions>        
         </Dialog>        

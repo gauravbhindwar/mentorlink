@@ -190,13 +190,50 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
     }
   }, [currentFilters]);
 
+  // Add new effect to sync with localStorage
+  useEffect(() => {
+    if (currentFilters) {
+      const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
+      const storedData = localStorage.getItem(storageKey);
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          setLocalData(parsedData);
+        } catch (error) {
+          console.error('Error parsing stored data:', error);
+        }
+      }
+    }
+  }, [currentFilters]);
+
   const handleDeleteClick = (mujid) => {
     setDeleteDialog({ open: true, mujid });
   };
 
-  const handleEditClick = (menteeData) => {
-    if (onEditClick) {
-      onEditClick(menteeData);
+  // Update handleEditClick to check localStorage first
+  const handleEditClick = (rowData) => {
+    if (onEditClick && rowData) {
+      // Check localStorage for most up-to-date data
+      const storageKey = `${currentFilters?.academicYear}-${currentFilters?.academicSession}`;
+      const storedData = localStorage.getItem(storageKey);
+      
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          const updatedRowData = parsedData.find(item => item.MUJid === rowData.MUJid);
+          if (updatedRowData) {
+            console.log("Using data from localStorage for editing:", updatedRowData);
+            onEditClick(updatedRowData);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing stored data:', error);
+        }
+      }
+      
+      // Fallback to passed data if localStorage fails
+      console.log("Using passed data for editing:", rowData);
+      onEditClick(rowData);
     }
   };
 
@@ -526,6 +563,23 @@ useEffect(() => {
       sortable: false,
       renderCell: (params) => {
         if (!params?.row) return null;
+        const rowData = {
+          ...params.row,
+          _id: params.row._id || params.row.id, // Ensure _id is preserved
+          academicYear: params.row.academicYear,
+          academicSession: params.row.academicSession,
+          // Ensure all necessary fields are included
+          MUJid: params.row.MUJid,
+          name: params.row.name,
+          email: params.row.email,
+          phone: params.row.phone,
+          section: params.row.section,
+          semester: params.row.semester,
+          mentorMujid: params.row.mentorMujid,
+          mentorEmailid: params.row.mentorEmailid,
+          yearOfRegistration: params.row.yearOfRegistration
+        };
+
         return (
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
             <IconButton
@@ -541,7 +595,7 @@ useEffect(() => {
               <InfoIcon fontSize="small" />
             </IconButton>
             <IconButton
-              onClick={() => handleEditClick(params.row)}
+              onClick={() => handleEditClick(rowData)}
               sx={{ 
                 color: '#f97316',
                 '&:hover': {
