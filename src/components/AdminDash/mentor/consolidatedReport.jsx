@@ -55,7 +55,7 @@ const ConsolidatedReport = () => {
       }, {});
       setOriginalRemarks(remarksMap);
     } catch (error) {
-      console.error("Error fetching mentee data:", error);
+      console.log("Error fetching mentee data:", error);
       setMentees([]);
     } finally {
       setLoading(false);
@@ -281,19 +281,19 @@ const ConsolidatedReport = () => {
               <div className="bg-gray-900/95 backdrop-blur-sm z-10">
                 <table className="w-full">
                   <colgroup>
-                    <col className="w-[100px] text-left " /> {/* Sr. No. - increased from 80px */}
-                    <col className="w-[180px] text-left" /> {/* MUJ ID - increased from 140px */}
-                    <col className="w-[250px] text-left" /> {/* Name - increased from 200px */}
-                    <col className="w-[150px] text-left" /> {/* Meetings - increased from 120px */}
-                    <col className="w-[250px] text-left" /> {/* Remarks - fixed width instead of flexible */}
+                    <col className="w-24"/> {/* Sr. No. */}
+                    <col className="w-44"/> {/* Registration No. */}
+                    <col className="w-64"/> {/* Student Name */}
+                    <col className="w-44"/> {/* No. of Meetings */}
+                    <col /> {/* Remarks - takes remaining space */}
                   </colgroup>
                   <thead>
                     <tr className="bg-gray-900/50">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-orange-500">Sr. No.</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-orange-500">MUJ ID</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-orange-500">Name</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-orange-500">Meetings</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-orange-500">Remarks</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-orange-500 text-center">Sr. No.</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-orange-500">Registration No.</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-orange-500">Student Name</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-orange-500 text-center">No. of Meetings Attended</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-orange-500">Mentor Remark/Special Cases</th>
                     </tr>
                   </thead>
                 </table>
@@ -303,11 +303,11 @@ const ConsolidatedReport = () => {
               <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0"> {/* Added min-h-0 */}
                 <table className="w-full">
                   <colgroup>
-                    <col className="w-[100px]" />
-                    <col className="w-[180px]" />
-                    <col className="w-[250px]" />
-                    <col className="w-[150px]" />
-                    <col className="w-[250px]" />
+                    <col className="w-24"/>
+                    <col className="w-44"/>
+                    <col className="w-64"/>
+                    <col className="w-44"/>
+                    <col />
                   </colgroup>
                   <tbody className="divide-y divide-gray-700">
                     {mentees.map((mentee, index) => (
@@ -317,11 +317,11 @@ const ConsolidatedReport = () => {
                           currentFocus === index ? 'bg-gray-700/50 ring-2 ring-orange-500/50' : ''
                         }`}
                       >
-                        <td className="px-6 py-4 text-sm text-gray-300">{index + 1}</td>
-                        <td className="px-6 py-4 text-sm text-gray-300">{mentee.MUJid}</td>
-                        <td className="px-6 py-4 text-sm text-gray-300">{mentee.name}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500">
+                        <td className="px-6 py-4 text-sm  text-gray-300 text-center">{index + 1}</td>
+                        <td className="px-6 py-4 text-sm text-center text-gray-300">{mentee.MUJid}</td>
+                        <td className="px-6 py-4 text-sm text-center text-gray-300">{mentee.name}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500">
                             {mentee.meetingsCount} meetings
                           </span>
                         </td>
