@@ -91,7 +91,7 @@ const Navbar = () => {
     }
 
     return (
-        <nav className="fixed top-0 z-50 w-full bg-gradient-to-r from-orange-500/10 via-orange-400/10 to-pink-500/10 backdrop-blur-md border-b border-orange-200/20 flex justify-center">
+        <nav className=" rounded-lg fixed top-0 z-50 h-15 w-full bg-gradient-to-r from-orange-500/10 via-orange-400/10 to-pink-500/10 backdrop-blur-md border-b border-orange-200/20 flex justify-center">
             <div className="px-4 md:px-6 py-3 flex items-center justify-between w-full">
                 {/* Left Logo Section */}
                 <div className="flex items-center gap-3">
@@ -106,9 +106,9 @@ const Navbar = () => {
                         transition={{ duration: 0.3 }}
                     >
                         <motion.div
-                            whileHover={{ scale: 1.05 }}
+                            whileHover={{ scale: 1.05, boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)' }}
                             whileTap={{ scale: 0.95 }}
-                            className="relative bg-gradient-to-r from-orange-500 to-pink-500 p-1.5 rounded-xl"
+                            className="relative bg-[#fa8634] rounded-md px-5 py-2 transition-all duration-200 ease-in-out" 
                         >
                             <Image 
                                 src="/muj-logo.svg" 
@@ -122,12 +122,12 @@ const Navbar = () => {
                         <motion.div
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="relative bg-white/10 p-1.5 rounded-xl"
+                            className="relative bg-white/5 p-1.5 rounded-xl backdrop-blur-md shadow-md px-6 py-2 transition-all duration-200 ease-in-out"
                         >
                             <Image 
-                                src="/sdc-logo.jpg" 
+                                src="/sdc-logo-black.webp" 
                                 alt="SDC Logo" 
-                                className="h-8 w-auto" 
+                                className="h-8 w-[auto] filter drop-shadow-lg " 
                                 width={32} 
                                 height={32} 
                                 priority 

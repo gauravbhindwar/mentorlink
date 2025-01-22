@@ -1,15 +1,15 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, IconButton, Grid } from '@mui/material';
+import {Grid2, Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, IconButton, CircularProgress } from '@mui/material'; 
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/subComponents/Navbar';
-import MenteeTable from '../AdminDash/mentee/MenteeTable'; 
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
+import { DataGrid } from '@mui/x-data-grid';
 
 const ViewMentee = () => {
     const [mentees, setMentees] = useState([]);
@@ -75,6 +75,10 @@ const ViewMentee = () => {
         },
     });
 
+    // useEffect(() => {
+    //     setMounted(true);
+    // }, []);
+
     useEffect(() => {
         setMounted(true);
     }, []);
@@ -84,31 +88,34 @@ const ViewMentee = () => {
 
         const fetchMentees = async () => {
             setLoading(true);
-            const mentorEmail = sessionStorage.getItem('email'); // Make sure this key matches what you set during login
+            const mentorData = JSON.parse(sessionStorage.getItem('mentorData'));
             
-            console.log("Fetching mentees for mentor email:", mentorEmail);
-            
-            if (!mentorEmail) {
-                console.log("No mentor email found in session");
+            if (!mentorData?.email || !mentorData?.academicYear || !mentorData?.academicSession) {
+                toast.error('Missing required mentor data');
                 setLoading(false);
                 return;
             }
             
             try {
                 const response = await axios.get('/api/mentor/manageMentee', {
-                    params: { mentorEmail }
+                    params: { 
+                        mentorEmail: mentorData.email,
+                        academicYear: mentorData.academicYear,
+                        academicSession: mentorData.academicSession
+                    }
                 });
                 
-                console.log("API Response:", response.data);
-                
                 if (response.data?.success && Array.isArray(response.data.mentees)) {
+                    if (response.data.mentees.length === 0) {
+                        toast.error('No mentees found for the selected criteria');
+                    }
                     setMentees(response.data.mentees);
                 } else {
-                    console.log("No mentees found or invalid response format");
                     setMentees([]);
                 }
             } catch (error) {
-                console.error('Error fetching mentees:', error.response?.data || error.message);
+                console.error('Error fetching mentees:', error);
+                toast.error('Error loading mentees');
                 setMentees([]);
             } finally {
                 setLoading(false);
@@ -131,10 +138,15 @@ const ViewMentee = () => {
 
     const handleEditMode = () => {
         setIsEditing(true);
-        // Ensure all fields including address are properly copied
         setEditedMentee({
             ...selectedMentee,
-            address: selectedMentee.address || '', // Ensure address is initialized
+            address: selectedMentee.address || '',
+            email: selectedMentee.email || '',
+            section: selectedMentee.section || '',
+            semester: selectedMentee.semester || '',
+            yearOfRegistration: selectedMentee.yearOfRegistration || '',
+            academicSession: selectedMentee.academicSession || '',
+            academicYear: selectedMentee.academicYear || '',
             parents: {
                 ...selectedMentee.parents,
                 father: { ...selectedMentee.parents?.father } || {},
@@ -200,6 +212,84 @@ const ViewMentee = () => {
         }
     };
 
+    const columns = [
+        { 
+            field: 'MUJid', 
+            headerName: 'MUJ ID', 
+            flex: 1,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+        },
+        { 
+            field: 'name', 
+            headerName: 'Name', 
+            flex: 1.2,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+        },
+        { 
+            field: 'email', 
+            headerName: 'Email', 
+            flex: 1.5,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+        },
+        { 
+            field: 'phone', 
+            headerName: 'Phone', 
+            flex: 1,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+        },
+        { 
+            field: 'section', 
+            headerName: 'Section', 
+            flex: 0.8,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+        },
+        { 
+            field: 'semester', 
+            headerName: 'Semester', 
+            flex: 0.8,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            flex: 0.7,
+            headerClassName: 'super-app-theme--header',
+            headerAlign: 'center',
+            align: 'center',
+            renderCell: (params) => (
+                <Box sx={{ 
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <IconButton
+                        onClick={() => handleEditClick(params.row)}
+                        sx={{ 
+                            color: '#f97316',
+                            '&:hover': { bgcolor: 'rgba(249, 115, 22, 0.1)' }
+                        }}
+                    >
+                        <EditIcon />
+                    </IconButton>
+                </Box>
+            ),
+        },
+    ];
+
+
     if (!mounted) {
         return null;
     }
@@ -235,22 +325,106 @@ const ViewMentee = () => {
                     >
                         <Box sx={{ 
                             overflowX: 'auto',
-                            minHeight: '150px',
-                            maxHeight: 'calc(100vh - 300px)',
+                            minHeight: '400px',
+                            height: 'calc(100vh - 250px)', // Adjusted height
                             overflowY: 'auto'
                         }}>
-                            {!loading && mentees.length > 0 && (
-                                <MenteeTable 
-                                    mentees={mentees}
-                                    onEditClick={handleEditClick}
-                                    isSmallScreen={false}
-                                    isMentorView={true} // Add this prop to customize table for mentor view
+                            {loading ? (
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'center', 
+                                    alignItems: 'center', 
+                                    height: '400px',
+                                    flexDirection: 'column',
+                                    gap: 2
+                                }}>
+                                    <CircularProgress sx={{ color: '#f97316' }} />
+                                    <Typography sx={{ color: 'white', opacity: 0.7 }}>
+                                        Loading mentees...
+                                    </Typography>
+                                </Box>
+                            ) : mentees.length > 0 ? (
+                                <DataGrid
+                                    rows={mentees}
+                                    columns={columns}
+                                    getRowId={(row) => row.MUJid}
+                                    disableRowSelectionOnClick
+                                    disableSelectionOnClick={true}
+                                    disableColumnMenu={true}
+                                    disableColumnFilter={false}
+                                    // totalRows={mentees.length}
+                                    pageSizeOptions={[5, 10, 25, 50]}
+                                    initialState={{
+                                        pagination: { paginationModel: { pageSize: 10 } },
+                                    }}
+                                    sx={{
+                                        height: '100%', // Fill available height
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        color: 'white',
+                                        '& .MuiDataGrid-cell': {
+                                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                                        },
+                                        '& .MuiDataGrid-columnHeaders': {
+                                            backgroundColor: 'rgba(10, 10, 10, 0.9)',
+                                            color: '#f97316',
+                                            fontWeight: 'bold',
+                                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                                        },
+                                        '& .MuiDataGrid-footerContainer': {
+                                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                                            minHeight: '56px', // Increased footer height
+                                            padding: '8px 0', // Added padding
+                                        },
+                                        '& .MuiDataGrid-row:hover': {
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        },
+                                        '& .MuiDataGrid-menuIcon': {
+                                            color: 'white',
+                                        },
+                                        '& .MuiDataGrid-sortIcon': {
+                                            color: 'white',
+                                        },
+                                        '& .MuiDataGrid-pagination': {
+                                            color: 'white',
+                                        },
+                                        '& .MuiTablePagination-root': {
+                                            color: 'white',
+                                        },
+                                        '& .MuiTablePagination-select': {
+                                            color: 'white',
+                                        },
+                                        '& .MuiTablePagination-selectIcon': {
+                                            color: 'white',
+                                        },
+                                        '& .MuiIconButton-root': {
+                                            color: 'white',
+                                        },
+                                    }}
+                                    className="custom-scrollbar"
                                 />
-                            )}
-                            {!loading && mentees.length === 0 && (
-                                <Typography sx={{ p: 3, textAlign: 'center', color: 'white' }}>
-                                    No mentees assigned yet.
-                                </Typography>
+                            ) : (
+                                <Box sx={{ 
+                                    p: 4, 
+                                    textAlign: 'center', 
+                                    color: 'white',
+                                    backdropFilter: 'blur(8px)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    borderRadius: '1rem',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                }}>
+                                    <Typography variant="h6" sx={{ mb: 2, color: '#f97316' }}>
+                                        No Mentees Found
+                                    </Typography>
+                                    <Typography sx={{ mb: 2, color: 'rgba(255, 255, 255, 0.7)' }}>
+                                        Try adjusting your filters or add new mentees
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                                        Academic Year: {JSON.parse(sessionStorage.getItem('mentorData'))?.academicYear || 'N/A'}<br />
+                                        Session: {JSON.parse(sessionStorage.getItem('mentorData'))?.academicSession || 'N/A'}
+                                    </Typography>
+                                </Box>
                             )}
                         </Box>
                     </motion.div>
@@ -299,13 +473,20 @@ const ViewMentee = () => {
                     </DialogTitle>
                     <DialogContent sx={{ mt: 2 }}>
                         {(isEditing ? editedMentee : selectedMentee) && (
-                            <Grid container spacing={3}>
+                            <Grid2 container spacing={3}>
                                 {/* Personal Information */}
-                                <Grid item xs={12} md={6}>
+                                <Grid2 xs={12} md={6}>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         <Typography variant="subtitle2" color="#f97316">
                                             Personal Information
                                         </Typography>
+                                        <TextField
+                                            label="MUJ ID"
+                                            name="MUJid"
+                                            value={isEditing ? editedMentee.MUJid : selectedMentee.MUJid}
+                                            disabled={true}
+                                            fullWidth
+                                        />
                                         <TextField
                                             label="Name"
                                             name="name"
@@ -332,11 +513,59 @@ const ViewMentee = () => {
                                             disabled={!isEditing}
                                             fullWidth
                                         />
+                                        <TextField
+                                            label="Email"
+                                            name="email"
+                                            value={isEditing ? editedMentee.email : selectedMentee.email}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
                                     </Box>
-                                </Grid>
+                                </Grid2>
+
+                                {/* Academic Information */}
+                                <Grid2 xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Typography variant="subtitle2" color="#f97316">
+                                            Academic Information
+                                        </Typography>
+                                        <TextField
+                                            label="Section"
+                                            name="section"
+                                            value={isEditing ? editedMentee.section : selectedMentee.section}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Semester"
+                                            name="semester"
+                                            type="number"
+                                            value={isEditing ? editedMentee.semester : selectedMentee.semester}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Academic Session"
+                                            name="academicSession"
+                                            value={isEditing ? editedMentee.academicSession : selectedMentee.academicSession}
+                                            disabled={true}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Academic Year"
+                                            name="academicYear"
+                                            value={isEditing ? editedMentee.academicYear : selectedMentee.academicYear}
+                                            disabled={true}
+                                            fullWidth
+                                        />
+                                    </Box>
+                                </Grid2>
 
                                 {/* Father's Details */}
-                                <Grid item xs={12} md={6}>
+                                <Grid2 xs={12} md={6}>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         <Typography variant="subtitle2" color="#f97316">
                                             Father&apos;s Details
@@ -363,10 +592,10 @@ const ViewMentee = () => {
                                             fullWidth
                                         />
                                     </Box>
-                                </Grid>
+                                </Grid2>
 
                                 {/* Mother's Details */}
-                                <Grid item xs={12} md={6}>
+                                <Grid2 xs={12} md={6}>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         <Typography variant="subtitle2" color="#f97316">
                                             Mother&apos;s Details
@@ -388,15 +617,14 @@ const ViewMentee = () => {
                                         <TextField
                                             label="Mother's Phone"
                                             value={isEditing ? editedMentee.parents?.mother?.phone : selectedMentee.parents?.mother?.phone}
-                                            onChange={(e) => handleInputChange(e, 'mother', 'phone')}
                                             disabled={!isEditing}
                                             fullWidth
                                         />
                                     </Box>
-                                </Grid>
+                                </Grid2>
 
                                 {/* Guardian's Details */}
-                                <Grid item xs={12} md={6}>
+                                <Grid2 xs={12} md={6}>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         <Typography variant="subtitle2" color="#f97316">
                                             Guardian&apos;s Details
@@ -430,8 +658,8 @@ const ViewMentee = () => {
                                             fullWidth
                                         />
                                     </Box>
-                                </Grid>
-                            </Grid>
+                                </Grid2>
+                            </Grid2>
                         )}
                     </DialogContent>
                     <DialogActions sx={{ borderTop: '1px solid rgba(100, 100, 100, 0.1)', p: 2, gap: 1 }}>

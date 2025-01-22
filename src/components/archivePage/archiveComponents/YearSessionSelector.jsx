@@ -1,12 +1,17 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { TextField, Box, Button, Typography } from '@mui/material';
 import { 
   getCurrentAcademicYear, 
   generateAcademicSessions, 
   validateAcademicYear 
 } from '@/utils/academicYear';
-import SearchIcon from '@mui/icons-material/Search';
+
+const SearchIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8"/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+);
 
 const YearSessionSelector = ({ onSearch }) => {
   const [academicYear, setAcademicYear] = useState('');
@@ -16,7 +21,6 @@ const YearSessionSelector = ({ onSearch }) => {
   const [sessionError, setSessionError] = useState('');
 
   useEffect(() => {
-    // Set default academic year on mount
     const currentYear = getCurrentAcademicYear();
     setAcademicYear(currentYear.startYear + '-' + currentYear.endYear);
   }, []);
@@ -44,179 +48,161 @@ const YearSessionSelector = ({ onSearch }) => {
   };
 
   return (
-    <Box sx={{
-      height: '100%',
-      backgroundColor: '#1a1a1a',
-      borderRadius: '24px',
-      border: '1px solid rgba(249, 115, 22, 0.2)',
-      p: 3,
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3
-    }}>
-      <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        mb: 1,
-        borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
-        pb: 2
-      }}>
-        <SearchIcon sx={{ color: '#f97316' }} />
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            color: '#f97316',
-            fontWeight: 600,
-            letterSpacing: '0.5px'
-          }}
-        >
-          Archive Filters
-        </Typography>
-      </Box>
+    <div className="year-selector-container">
+      <div className="header">
+        <SearchIcon />
+        <h2>Archive Filters</h2>
+      </div>
       
-      <TextField
-        label="Academic Year"
+      <label className="input-label">Academic Year</label>
+      <input
+        type="text"
         value={academicYear}
-        onChange={(e) => setAcademicYear(e.target.value)}
-        error={!!yearError}
-        helperText={yearError}
-        fullWidth
-        sx={{
-          '& .MuiOutlinedInput-root': {
-            backgroundColor: '#262626',
-            borderRadius: '12px',
-            '& fieldset': {
-              borderColor: 'rgba(249, 115, 22, 0.3)',
-            },
-            '&:hover fieldset': {
-              borderColor: '#f97316',
-            },
-            '&.Mui-focused fieldset': {
-              borderColor: '#f97316',
-              borderWidth: '2px',
-            }
-          },
-          '& .MuiInputLabel-root': {
-            color: '#f97316',
-            '&.Mui-focused': {
-              color: '#f97316',
-            }
-          },
-          '& input': {
-            color: 'white',
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value.length === 4 && /^\d{4}$/.test(value)) {
+            setAcademicYear(`${value}-${parseInt(value) + 1}`);
+          } else if (e.nativeEvent.inputType === 'deleteContentBackward') {
+            setAcademicYear('');
+          } else if (value.length < 4 && !isNaN(parseInt(value))) {
+            setAcademicYear(value);
           }
         }}
+        placeholder="Enter academic year"
+        className={`custom-input ${yearError ? 'error' : ''}`}
       />
-
-      <TextField
-        select
-        label="Academic Session"
+      {yearError && <span className="error-text">{yearError}</span>}
+      
+      <label className="input-label">Academic Session</label>
+      <select
         value={academicSession}
         onChange={(e) => setAcademicSession(e.target.value)}
-        error={!!sessionError}
-        helperText={sessionError}
-        fullWidth
-        SelectProps={{
-          native: true,
-          sx: {
-            '& option': {
-              backgroundColor: '#262626 !important',
-              color: 'white !important',
-              padding: '8px',
-              '&:hover': {
-                backgroundColor: '#333333 !important',
-              }
-            }
-          }
-        }}
-        sx={{
-          '& .MuiOutlinedInput-root': {
-            backgroundColor: '#262626',
-            borderRadius: '12px',
-            '& fieldset': {
-              borderColor: 'rgba(249, 115, 22, 0.3)',
-            },
-            '&:hover fieldset': {
-              borderColor: '#f97316',
-            },
-            '&.Mui-focused fieldset': {
-              borderColor: '#f97316',
-              borderWidth: '2px',
-            }
-          },
-          '& .MuiInputLabel-root': {
-            color: '#f97316',
-            '&.Mui-focused': {
-              color: '#f97316',
-            }
-          },
-          '& .MuiSelect-select': {
-            color: 'white',
-            padding: '12px',
-          },
-          '& .MuiSvgIcon-root': {
-            color: '#f97316',
-          },
-          '& .MuiSelect-nativeInput': {
-            backgroundColor: '#262626',
-          }
-        }}
+        className={`custom-select ${sessionError ? 'error' : ''}`}
+        disabled={!academicYear}
       >
-        <option value="" style={{ 
-          backgroundColor: '#262626', 
-          color: 'white',
-          padding: '12px'
-        }}>
-          Select a session
-        </option>
+        <option value="">Select a session</option>
         {sessions.map((session) => (
-          <option 
-            key={session} 
-            value={session}
-            style={{ 
-              backgroundColor: '#262626', 
-              color: 'white',
-              padding: '12px'
-            }}
-          >
+          <option key={session} value={session}>
             {session}
           </option>
         ))}
-      </TextField>
+      </select>
+      {sessionError && <span className="error-text">{sessionError}</span>}
 
-      <Button
-        fullWidth
-        variant="contained"
+      <button
+        className={`search-button ${(!academicYear || !academicSession) ? 'disabled' : ''}`}
         onClick={handleSearch}
         disabled={!academicYear || !academicSession}
-        startIcon={<SearchIcon />}
-        sx={{
-          mt: 2,
-          bgcolor: '#f97316',
-          color: 'white',
-          borderRadius: '12px',
-          py: 1.5,
-          textTransform: 'none',
-          fontSize: '1rem',
-          fontWeight: 600,
-          boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
-          '&:hover': {
-            bgcolor: '#ea580c',
-            transform: 'translateY(-1px)',
-            boxShadow: '0 6px 16px rgba(249, 115, 22, 0.4)',
-          },
-          '&.Mui-disabled': {
-            bgcolor: '#262626',
-            color: 'rgba(255, 255, 255, 0.3)',
-          },
-          transition: 'all 0.2s ease',
-        }}
       >
-        Search Archives
-      </Button>
-    </Box>
+        <SearchIcon />
+        <span>Search Archives</span>
+      </button>
+
+      <style jsx>{`
+        .year-selector-container {
+          height: 100%;
+          border-radius: 24px;
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          padding: 24px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .header {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 8px;
+          border-bottom: 2px dashed rgba(249, 115, 22, 0.4);
+          padding-bottom: 16px;
+          color: #f97316;
+        }
+
+        .header h2 {
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          margin: 0;
+        }
+
+        .input-label {
+          color: #f97316;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          font-size: 0.875rem;
+        }
+
+        .custom-input, .custom-select {
+          width: 100%;
+          padding: 13px 14px;
+          border-radius: 12px;
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          background-color: #e0e0e0; /* Redesigned color */
+          font-size: 1.1rem;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          transition: all 0.3s ease;
+          color: #000000;
+          &::placeholder {
+            color: rgba(49, 49, 49, 0.5);
+          }
+        }
+
+        .custom-input:hover, .custom-select:hover {
+          border-color: #f97316;
+        }
+
+        .custom-input:focus, .custom-select:focus {
+          border-color: #f97316;
+          border-width: 2px;
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+          outline: none;
+        }
+
+        .error {
+          border-color: #dc2626;
+        }
+
+        .error-text {
+          color: #dc2626;
+          font-size: 0.75rem;
+          margin-top: 4px;
+        }
+
+        .search-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          padding: 12px;
+          border-radius: 12px;
+          background-color: #f97316;
+          color: white;
+          border: none;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          margin-top: 16px;
+          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .search-button:hover:not(.disabled) {
+          background-color: #ea580c;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+        }
+
+        .search-button.disabled {
+          background-color: #262626;
+          color: rgba(255, 255, 255, 0.3);
+          cursor: not-allowed;
+        }
+      `}</style>
+    </div>
   );
 };
 
