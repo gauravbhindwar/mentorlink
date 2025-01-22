@@ -8,8 +8,8 @@ import {
   Document,
   StyleSheet,
   Image,
-  BlobProvider,
   Font,
+  pdf,
 } from "@react-pdf/renderer";
 
 // Add font registration before styles
@@ -429,8 +429,8 @@ export const MOMDocument = ({
 // consolidated document template
 export const ConsolidatedDocument = ({
   meetings,
-  academicYear,
-  semester,
+  // academicYear,
+  // semester,
   mentorName,
   mentees,
   selectedSemester  // Add this parameter
@@ -640,25 +640,41 @@ export const generateConsolidatedPdf = (
 
 // Add new export for PDF download
 export const PDFDownloadComponent = ({
-  document,
+  document: pdfDocument,  // renamed to avoid confusion with global document
   fileName,
   children,
   page,
 }) => {
   const [isClient, setIsClient] = useState(false);
-  const [key, setKey] = useState(0); // Add this line
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Add this effect to reset BlobProvider when document changes
-  useEffect(() => {
-    setKey(prev => prev + 1);
-  }, [document]);
+  const downloadPDF = async () => {
+    if (typeof window === 'undefined') return; // Guard against server-side execution
+    
+    try {
+      setIsLoading(true);
+      const blob = await pdf(pdfDocument).toBlob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Return null or loading state on server-side
-  if (!isClient) {
+  // Don't render anything on server-side
+  if (typeof window === 'undefined' || !isClient) {
     return page && page === "MentorDashboard" ? (
       <div className='flex items-center justify-center'>
         <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
@@ -668,38 +684,21 @@ export const PDFDownloadComponent = ({
     );
   }
 
-  // Only render BlobProvider on client-side
   return (
-    <BlobProvider key={key} document={document}>
-      {({ url, loading, error }) => {
-        if (error) {
-          console.warn("PDF generation error:", error);
-          return null;
-        }
-
-        if (loading) {
-          return page && page === "MentorDashboard" ? (
-            <div className='flex items-center justify-center'>
-              <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
-            </div>
-          ) : (
-            <button disabled>Loading...</button>
-          );
-        }
-
-        return (
-          <a
-            href={url}
-            download={fileName}
-            className={`${
-              page && page === "MentorDashboard"
-                ? ""
-                : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
-            }`}>
-            {children || "Download PDF"}
-          </a>
-        );
-      }}
-    </BlobProvider>
+    <button
+      onClick={downloadPDF}
+      disabled={isLoading}
+      className={`${
+        page && page === "MentorDashboard"
+          ? ""
+          : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
+      }`}
+    >
+      {isLoading ? (
+        <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
+      ) : (
+        children || "Download PDF"
+      )}
+    </button>
   );
 };

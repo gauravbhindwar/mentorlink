@@ -1,5 +1,5 @@
 import React from 'react'
-import ConsolidatedReport from '@/components/AdminDash/mentor/consolidatedReport'
+import ConsolidatedReport from '../../../../components/Meetings/consolidatedReport'
 
 const page = () => {
   return (

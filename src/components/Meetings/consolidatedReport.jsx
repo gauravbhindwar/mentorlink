@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import RemarksDialog from "./RemarksDialog";
 import ConfirmDialog from './ConfirmDialog';
-import { PDFDownloadComponent, ConsolidatedDocument } from "../../../components/Meetings/PDFGenerator";
+import { PDFDownloadComponent, ConsolidatedDocument } from "./PDFGenerator";
 
 const ConsolidatedReport = () => {
   const [mentorId, setMentorId] = useState("");
@@ -425,13 +425,13 @@ const ConsolidatedReport = () => {
               {/* Fixed Header */}
               <div className="bg-gray-900/95 backdrop-blur-sm z-10">
                 <table className="w-full">
-                  <colgroup>
-                    <col className="w-24"/> {/* Sr. No. */}
-                    <col className="w-44"/> {/* Registration No. */}
-                    <col className="w-64"/> {/* Student Name */}
-                    <col className="w-44"/> {/* No. of Meetings */}
-                    <col /> {/* Remarks - takes remaining space */}
-                  </colgroup>
+                  <colgroup
+                  ><col className="w-24"
+                  /><col className="w-44"
+                  /><col className="w-64"
+                  /><col className="w-44"
+                  /><col
+                  /></colgroup>
                   <thead>
                     <tr className="bg-gray-900/50">
                       <th className="px-6 py-4 text-sm font-semibold text-orange-500 text-center">Sr. No.</th>
@@ -447,13 +447,13 @@ const ConsolidatedReport = () => {
               {/* Scrollable Body */}
               <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0"> {/* Added min-h-0 */}
                 <table className="w-full">
-                  <colgroup>
-                    <col className="w-24"/>
-                    <col className="w-44"/>
-                    <col className="w-64"/>
-                    <col className="w-44"/>
-                    <col />
-                  </colgroup>
+                  <colgroup
+                  ><col className="w-24"
+                  /><col className="w-44"
+                  /><col className="w-64"
+                  /><col className="w-44"
+                  /><col
+                  /></colgroup>
                   <tbody className="divide-y divide-gray-700">
                     {mentees
                       .filter((mentee) => mentee.semester === selectedSemester)
