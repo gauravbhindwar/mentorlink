@@ -432,137 +432,150 @@ export const ConsolidatedDocument = ({
   academicYear,
   semester,
   mentorName,
-  mentees
+  mentees,
+  selectedSemester  // Add this parameter
 }) => {
-  // Split mentees into chunks of 12
-  const chunkedMentees = mentees?.reduce((resultArray, item, index) => { 
+  // Ensure we have valid arrays to work with
+  const safeMentees = mentees || [];
+  const filteredMentees = safeMentees.filter(mentee => 
+    mentee && mentee.semester === selectedSemester
+  );
+  
+  // Ensure we have valid chunks even with empty array
+  const chunkedMentees = filteredMentees.length ? filteredMentees.reduce((resultArray, item, index) => {
     const chunkIndex = Math.floor(index/12);
     if(!resultArray[chunkIndex]) {
       resultArray[chunkIndex] = [];
     }
     resultArray[chunkIndex].push(item);
     return resultArray;
-  }, []) || [];
+  }, []) : [[]];
 
-  return (
-    <Document>
-      {chunkedMentees.map((menteeGroup, pageIndex) => (
-        <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
-          <Header />
-          <View style={styles.section}>
-            {pageIndex === 0 && ( // Only render on first page
-              <>
-                <Text style={styles.detailItem}>
-                  Name of Mentor: {mentorName || "N/A"}
-                </Text>
-                <Text style={[styles.detailItem, { marginBottom: 20 , marginTop: 10 }]}>
-                  Number of Meetings Taken: {meetings?.length || 0}
-                </Text>
-              </>
-            )}
+  // Wrap the return in error boundary
+  try {
+    return (
+      <Document>
+        {chunkedMentees.map((menteeGroup, pageIndex) => (
+          <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
+            <Header />
+            <View style={styles.section}>
+              {pageIndex === 0 && ( // Only render on first page
+                <>
+                  <Text style={styles.detailItem}>
+                    Name of Mentor: {mentorName || "N/A"}
+                  </Text>
+                  <Text style={[styles.detailItem, { marginBottom: 20 , marginTop: 10 }]}>
+                    Number of Meetings Taken: {meetings?.length || 0}
+                  </Text>
+                </>
+              )}
 
-            {/* Table header */}
-            <View style={styles.tableRow}>
-              <View
-                style={[
-                  styles.tableCol,
-                  { flex: "0.05",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1 }
-                ]}
-              >
-                <Text>Sr No.</Text>
+              {/* Table header */}
+              <View style={styles.tableRow}>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.05",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Sr No.</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.15",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Registration No.</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.30",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Student Name</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.13",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>No. of Meeting Attended</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.50", borderTopWidth: 1,borderBottomWidth: 1,borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Mentor Remark/Special Cases</Text>
+                </View>
               </View>
-              <View
-                style={[
-                  styles.tableCol,
-                  { flex: "0.15",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
-                ]}
-              >
-                <Text>Registration No.</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableCol,
-                  { flex: "0.30",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
-                ]}
-              >
-                <Text>Student Name</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableCol,
-                  { flex: "0.13",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
-                ]}
-              >
-                <Text>No. of Meeting Attended</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableCol,
-                  { flex: "0.50", borderTopWidth: 1,borderBottomWidth: 1,borderLeftWidth: 0, borderRightWidth: 1 }
-                ]}
-              >
-                <Text>Mentor Remark/Special Cases</Text>
-              </View>
+
+              {/* Table body - now using menteeGroup instead of mentees */}
+              {menteeGroup.map((mentee, index) => (
+                <View style={styles.tableRow} key={index}>
+                  <View style={[styles.tableCol, { flex: "0.05", borderTopWidth: 0, borderLeftWidth: 1, borderRightWidth: 1 }]}>
+                    <Text>{pageIndex * 12 + index + 1}</Text>
+                  </View>
+                  <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.15",borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                    <Text>{mentee.MUJid}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      { flex: "0.30", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                    ]}
+                  >
+                    <Text>{mentee.name}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      { flex: "0.13", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                    ]}
+                  >
+                    <Text>{mentee.meetingsCount || 0}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      { flex: "0.50", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                    ]}
+                  >
+                    <Text>{mentee.mentorRemarks || "N/A"}</Text>
+                  </View>
+                </View>
+              ))}
+
+              {pageIndex === chunkedMentees.length - 1 && (
+                <View style={[styles.signatureSection, { marginTop: 30, marginLeft: 0 }]}>
+                  <Text style={[styles.signatureDate, {marginLeft: 0}]}>
+              ___________________________
+            </Text>
+                  <Text style={styles.signatureText}>Signature with Date</Text>
+                  {/* <Text style={styles.signatureDate}>
+                    Date: {new Date().toLocaleDateString()}
+                  </Text> */}
+                </View>
+              )}
             </View>
-
-            {/* Table body - now using menteeGroup instead of mentees */}
-            {menteeGroup.map((mentee, index) => (
-              <View style={styles.tableRow} key={index}>
-                <View style={[styles.tableCol, { flex: "0.05", borderTopWidth: 0, borderLeftWidth: 1, borderRightWidth: 1 }]}>
-                  <Text>{pageIndex * 12 + index + 1}</Text>
-                </View>
-                <View
-                style={[
-                  styles.tableCol,
-                  { flex: "0.15",borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                ]}
-              >
-                  <Text>{mentee.MUJid}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    { flex: "0.30", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
-                  <Text>{mentee.name}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    { flex: "0.13", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
-                  <Text>{mentee.meetingsCount || 0}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    { flex: "0.50", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
-                  <Text>{mentee.mentorRemarks || "N/A"}</Text>
-                </View>
-              </View>
-            ))}
-
-            {pageIndex === chunkedMentees.length - 1 && (
-              <View style={[styles.signatureSection, { marginTop: 30, marginLeft: 0 }]}>
-                <Text style={[styles.signatureDate, {marginLeft: 0}]}>
-            ___________________________
-          </Text>
-                <Text style={styles.signatureText}>Signature with Date</Text>
-                {/* <Text style={styles.signatureDate}>
-                  Date: {new Date().toLocaleDateString()}
-                </Text> */}
-              </View>
-            )}
-          </View>
-          <Footer pageNumber={pageIndex + 1} totalPages={chunkedMentees.length} />
-        </Page>
-      ))}
-    </Document>
-  );
+            <Footer pageNumber={pageIndex + 1} totalPages={chunkedMentees.length} />
+          </Page>
+        ))}
+      </Document>
+    );
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    return <Document><Page size="A4"><View><Text>Error generating report</Text></View></Page></Document>;
+  }
 };
 
 // mom report pdf generator
@@ -633,10 +646,16 @@ export const PDFDownloadComponent = ({
   page,
 }) => {
   const [isClient, setIsClient] = useState(false);
+  const [key, setKey] = useState(0); // Add this line
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Add this effect to reset BlobProvider when document changes
+  useEffect(() => {
+    setKey(prev => prev + 1);
+  }, [document]);
 
   // Return null or loading state on server-side
   if (!isClient) {
@@ -651,7 +670,7 @@ export const PDFDownloadComponent = ({
 
   // Only render BlobProvider on client-side
   return (
-    <BlobProvider document={document}>
+    <BlobProvider key={key} document={document}>
       {({ url, loading, error }) => {
         if (error) {
           console.warn("PDF generation error:", error);
