@@ -314,11 +314,10 @@ Contact: ${mentorData?.email || ""}`;
     {
       title: "Consolidated Meeting Report",
       icon: "📊",
-      // description: "Generate Consolidated meeting reports",
-      description: "To Be Implemented",
+      description: "Generate Consolidated meeting reports",
       gradient: "from-purple-500 via-violet-500 to-indigo-500",
       shadowColor: "rgba(147, 51, 234, 0.4)",
-      // onClick: () => router.push("/pages/mentordashboard/consolidatedReport"), // Updated path
+      onClick: () => router.push("/pages/mentordashboard/consolidatedReport"), // Updated path
     },
 
     //DISABLED CURRENTLY
