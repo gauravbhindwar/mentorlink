@@ -1,211 +1,448 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { dialogStyles } from '../menteeStyle';
+import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
+  const [editedMentee, setEditedMentee] = useState(mentee);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [confirmDialog, setConfirmDialog] = useState(false);
 
-//   const generateYearSuggestions = (input) => {
-//     if (!input) return [];
-//     const currentYear = new Date().getFullYear();
-//     const suggestions = [];
-//     for (let i = 0; i < 5; i++) {
-//       const year = currentYear - i;
-//       const academicYear = `${year}-${year + 1}`;
-//       if (academicYear.startsWith(input)) {
-//         suggestions.push(academicYear);
-//       }
-//     }
-//     return suggestions;
-//   };
+  // Initialize editedMentee when mentee prop changes
+  useEffect(() => {
+    if (mentee) {
+      console.log("Initializing edit dialog with mentee:", mentee); // Debug log
+      setEditedMentee({
+        ...mentee,
+        // Ensure all required fields are present with proper values
+        MUJid: mentee.MUJid || '',
+        name: mentee.name || '',
+        email: mentee.email || '',
+        phone: mentee.phone || '',
+        section: mentee.section || '',
+        semester: mentee.semester || '',
+        academicYear: mentee.academicYear || '',
+        academicSession: mentee.academicSession || '',
+        mentorMujid: mentee.mentorMujid || '',
+        mentorEmailid: mentee.mentorEmailid || '',
+        yearOfRegistration: mentee.yearOfRegistration || ''
+      });
+      setHasChanges(false);
+      setErrors({});
+    }
+  }, [mentee]);
+
+  // Modified validateField function to only validate editable fields
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'name':
+        return value?.trim() ? '' : 'Name is required';
+      case 'email':
+        return value ? (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? '' : 'Invalid email format') : 'Email is required';
+      case 'phone':
+        return value ? (/^\d{10}$/.test(value) ? '' : 'Invalid phone number') : '';
+      case 'yearOfRegistration':
+        return value ? (value >= 2000 && value <= new Date().getFullYear() ? '' : 'Invalid year') : '';
+      case 'section':
+        return value?.trim() ? (/^[A-Z]$/.test(value.toUpperCase()) ? '' : 'Section must be a single letter') : 'Section is required';
+      case 'semester':
+        return value ? (value >= 1 && value <= 8 ? '' : 'Semester must be between 1 and 8') : 'Semester is required';
+      default:
+        return '';
+    }
+  };
 
   const handleEditInputChange = (e, category, subcategory) => {
+    const { name, value } = e.target;
+    let updatedValue = value;
+    let updatedMentee;
+
+    // Format specific fields
+    if (name === 'MUJid' || name === 'mentorMujid') {
+      updatedValue = value.toUpperCase();
+    } else if (name === 'section') {
+      updatedValue = value.toUpperCase().slice(0, 1);
+    } else if (name === 'phone') {
+      updatedValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+
+    // Update nested or regular fields
     if (category && subcategory) {
-      onUpdate({
-        ...mentee,
+      updatedMentee = {
+        ...editedMentee,
         parents: {
-          ...mentee.parents,
+          ...editedMentee.parents,
           [category]: {
-            ...mentee.parents?.[category],
-            [subcategory]: e.target.value
+            ...editedMentee.parents?.[category],
+            [subcategory]: updatedValue
           }
         }
-      });
+      };
     } else {
-      const { name, value } = e.target;
-      onUpdate({
-        ...mentee,
-        [name]: name === 'MUJid' ? value.toUpperCase() : value
+      updatedMentee = {
+        ...editedMentee,
+        [name]: updatedValue
+      };
+    }
+
+    // Validate the field
+    const error = validateField(name, updatedValue);
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+
+    setEditedMentee(updatedMentee);
+    setHasChanges(true);
+
+    // Only show toast for errors other than email validation
+    if (error && name !== 'email') {
+      toast.error(error, {
+        duration: 3000,
+        position: 'top-right'
       });
     }
   };
 
+  // Modified handleUpdate function
+  const handleUpdate = () => {
+    const editableFields = ['name', 'email', 'phone', 'yearOfRegistration', 'section', 'semester'];
+    const newErrors = {};
+    let hasErrors = false;
+
+    editableFields.forEach(field => {
+      const error = validateField(field, editedMentee?.[field]);
+      if (error) {
+        newErrors[field] = error;
+        hasErrors = true;
+      }
+    });
+
+    setErrors(newErrors);
+    
+    if (hasErrors) {
+      toast.error('Please fix all errors before updating');
+      return;
+    }
+
+    // Show confirmation dialog
+    setConfirmDialog(true);
+  };
+
+  const handleConfirmUpdate = () => {
+    try {
+      // Add null check
+      if (!editedMentee || !editedMentee.MUJid) {
+        throw new Error('Invalid mentee data');
+      }
+
+      // Close confirmation dialog first
+      setConfirmDialog(false);
+      
+      // Call parent's onUpdate with edited data
+      if (onUpdate) {
+        onUpdate(editedMentee);
+      }
+      
+      // Reset states and close dialog
+      setErrors({});
+      setHasChanges(false);
+      onClose();
+    } catch (error) {
+      console.error('Error in handleConfirmUpdate:', error);
+      toast.error('Failed to update mentee: Invalid data');
+    }
+  };
+
+  // Rest of the component remains the same, just update the DialogActions
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{ sx: dialogStyles.paper }}
-    >
-      <DialogTitle sx={dialogStyles.title}>
-        <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-          Edit Mentee Details
-        </Typography>
-        <IconButton
-          onClick={onClose}
-          sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: 'rgba(255, 255, 255, 0.7)',
-            '&:hover': { color: '#f97316' }
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent sx={dialogStyles.content}>
-        {mentee && (
-          <Box sx={{ 
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-            gap: 3,
-            py: 2
-          }}>
-            {/* Student Information */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                Student Information
-              </Typography>
-              <TextField
-                label="MUJid"
-                name="MUJid"
-                value={mentee.MUJid || ''}
-                disabled
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Name"
-                name="name"
-                value={mentee.name || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Email"
-                name="email"
-                type="email"
-                value={mentee.email || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Phone"
-                name="phone"
-                value={mentee.phone || ''}
-                onChange={handleEditInputChange}
-                sx={dialogStyles.textField}
-              />
-            </Box>
+    <>
+      <Dialog 
+        open={open} 
+        onClose={() => {
+          if (hasChanges) {
+            toast('You have unsaved changes', {
+              icon: '⚠️',
+              duration: 3000,
+            });
+          } else {
+            onClose();
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: dialogStyles.paper }}
+      >
+        <DialogTitle sx={dialogStyles.title}>
+          <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+            Edit Mentee Details
+          </Typography>
+          <IconButton
+            onClick={onClose}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': { color: '#f97316' }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={dialogStyles.content}>
+          {mentee && (
+            <Box sx={{ 
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+              gap: 3,
+              py: 2
+            }}>
+              {/* Student Information */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                  Student Information
+                </Typography>
+                <TextField
+                  label="MUJid"
+                  name="MUJid"
+                  value={editedMentee?.MUJid || ''} // Changed from mentee to editedMentee
+                  disabled
+                  sx={dialogStyles.textField}
+                />
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={editedMentee?.name || ''} // Changed from mentee to editedMentee
+                  onChange={handleEditInputChange}
+                  required
+                  error={!!errors.name}
+                  helperText={errors.name}
+                  sx={dialogStyles.textField}
+                />
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={editedMentee?.email || ''} // Changed from mentee to editedMentee
+                  onChange={handleEditInputChange}
+                  required
+                  error={!!errors.email}
+                  helperText={errors.email || ' '} // Added space to maintain consistent height
+                  sx={{
+                    ...dialogStyles.textField,
+                    '& .MuiFormHelperText-root': {
+                      color: errors.email ? '#ef4444' : 'inherit',
+                      margin: '4px 0 0 0',
+                      lineHeight: '1.2',
+                      fontSize: '0.75rem'
+                    }
+                  }}
+                />
+                <TextField
+                  label="Phone"
+                  name="phone"
+                  value={editedMentee?.phone || ''} // Changed from mentee to editedMentee
+                  onChange={handleEditInputChange}
+                  error={!!errors.phone}
+                  helperText={errors.phone}
+                  sx={dialogStyles.textField}
+                />
+              </Box>
 
-            {/* Academic Information */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                Academic Information
-              </Typography>
-              <TextField
-                label="Year of Registration"
-                name="yearOfRegistration"
-                type="number"
-                value={mentee.yearOfRegistration || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Section"
-                name="section"
-                value={mentee.section || ''}
-                onChange={handleEditInputChange}
-                required
-                inputProps={{ maxLength: 1, style: { textTransform: 'uppercase' } }}
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Semester"
-                name="semester"
-                type="number"
-                value={mentee.semester || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Academic Year"
-                name="academicYear"
-                value={mentee.academicYear || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-              <TextField
-                label="Academic Session"
-                name="academicSession"
-                value={mentee.academicSession || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
-            </Box>
+              {/* Academic Information */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                  Academic Information
+                </Typography>
+                <TextField
+                  label="Year of Registration"
+                  name="yearOfRegistration"
+                  type="number"
+                  value={editedMentee?.yearOfRegistration || ''} // Changed from mentee to editedMentee
+                  onChange={handleEditInputChange}
+                  required
+                  error={!!errors.yearOfRegistration}
+                  helperText={errors.yearOfRegistration}
+                  sx={dialogStyles.textField}
+                />
+                <TextField
+                  label="Section"
+                  name="section"
+                  value={editedMentee?.section || ''} // Changed from mentee to editedMentee
+                  onChange={handleEditInputChange}
+                  required
+                  error={!!errors.section}
+                  helperText={errors.section}
+                  inputProps={{ maxLength: 1, style: { textTransform: 'uppercase' } }}
+                  sx={dialogStyles.textField}
+                />
+                <TextField
+                  label="Semester"
+                  name="semester"
+                  type="number"
+                  value={editedMentee?.semester || ''} // Changed from mentee to editedMentee
+                  onChange={handleEditInputChange}
+                  required
+                  error={!!errors.semester}
+                  helperText={errors.semester}
+                  sx={dialogStyles.textField}
+                />
+                <TextField
+                  label="Academic Year"
+                  name="academicYear"
+                  value={editedMentee?.academicYear || ''} // Changed from mentee to editedMentee
+                  disabled
+                  sx={{
+                    ...dialogStyles.textField,
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                    }
+                  }}
+                />
+                <TextField
+                  label="Academic Session"
+                  name="academicSession"
+                  value={editedMentee?.academicSession || ''} // Changed from mentee to editedMentee
+                  disabled
+                  sx={{
+                    ...dialogStyles.textField,
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                    }
+                  }}
+                />
+              </Box>
 
-            {/* Mentor Information */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                Mentor Information
-              </Typography>
-              <TextField
-                label="Mentor MUJid"
-                name="mentorMujid"
-                value={mentee.mentorMujid || ''}
-                onChange={handleEditInputChange}
-                required
-                sx={dialogStyles.textField}
-              />
+              {/* Mentor Information - Updated Layout */}
+              <Box sx={{ 
+                gridColumn: '1 / -1', // Span full width
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2
+              }}>
+                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                  Mentor Information
+                </Typography>
+                <Box sx={{ 
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                  gap: 2
+                }}>
+                  <TextField
+                    label="Mentor MUJid"
+                    name="mentorMujid"
+                    value={editedMentee?.mentorMujid || ''}
+                    disabled
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                      }
+                    }}
+                  />
+                  <TextField
+                    label="Mentor Email"
+                    name="mentorEmailid"
+                    value={editedMentee?.mentorEmailid || ''}
+                    disabled
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
             </Box>
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions sx={dialogStyles.actions}>
-        <Button 
-          onClick={onClose}
-          variant="outlined"
-          sx={{
-            borderColor: 'rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            '&:hover': {
-              borderColor: 'rgba(255, 255, 255, 0.5)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            },
-          }}
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={() => onUpdate(mentee)}
-          variant="contained"
-          sx={{
-            bgcolor: '#f97316',
-            '&:hover': {
-              bgcolor: '#ea580c',
-            },
-          }}
-        >
-          Update
-        </Button>
-      </DialogActions>
-    </Dialog>
+          )}
+        </DialogContent>
+        <DialogActions sx={dialogStyles.actions}>
+          <Button 
+            onClick={onClose}
+            variant="outlined"
+            sx={{
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUpdate}
+            variant="contained"
+            // Modified disabled logic to check only validation errors
+            disabled={Object.values(errors).some(error => error !== '')}
+            sx={{
+              bgcolor: '#f97316',
+              '&:hover': {
+                bgcolor: '#ea580c',
+              },
+              '&:disabled': {
+                bgcolor: 'rgba(249, 115, 22, 0.5)',
+              }
+            }}
+          >
+            Update
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog}
+        onClose={() => setConfirmDialog(false)}
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '1rem',
+            color: 'white'
+          }
+        }}
+      >
+        <DialogTitle>
+          Confirm Update
+        </DialogTitle>
+        <DialogContent>
+          Are you sure you want to update this mentee&apos;s information?
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmDialog(false)}
+            variant="outlined"
+            sx={{
+              color: 'white',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmUpdate}
+            variant="contained"
+            sx={{
+              bgcolor: '#f97316',
+              '&:hover': { bgcolor: '#ea580c' }
+            }}
+          >
+            Update
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

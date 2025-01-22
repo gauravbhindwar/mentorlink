@@ -39,6 +39,7 @@ const menteesSchema = new mongoose.Schema({
   section: { type: String, required: true },
   semester: { type: Number, required: true, min: 1, max: 8 },
   meetingsAttended: { type: [String] },
+  mentorRemarks: { type: String, default: "" },
   academicYear: { type: String, required: true },
   academicSession: { type: String, required: true },
   parents: {

@@ -90,14 +90,9 @@ const MenteeManagement = () => {
   const fetchMenteeData = useCallback(async (params) => {
     if (!params.academicYear || !params.academicSession) return;
     
-    const cacheKey = `${params.academicYear}-${params.academicSession}`;
-    if (dataCache.current.has(cacheKey)) {
-      setMentees(dataCache.current.get(cacheKey));
-      setTableVisible(true);
-      return;
-    }
-
+    const storageKey = `${params.academicYear}-${params.academicSession}`;
     setLoadingStates(prev => ({ ...prev, fetching: true }));
+    
     try {
       const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
       const processedData = response.data.map(mentee => ({
@@ -107,14 +102,14 @@ const MenteeManagement = () => {
         mentorMujid: mentee.mentorMujid?.toUpperCase()
       }));
       
-      dataCache.current.set(cacheKey, processedData);
+      // Update storage and state together
+      localStorage.setItem(storageKey, JSON.stringify(processedData));
       setMentees(processedData);
       setTableVisible(true);
+      return processedData;
     } catch (error) {
       console.error('Error fetching mentees:', error);
-      if (error.response?.status !== 400) {
-        showAlert(error.response?.data?.error || 'Error loading data', 'error');
-      }
+      return [];
     } finally {
       setLoadingStates(prev => ({ ...prev, fetching: false }));
     }
@@ -213,11 +208,12 @@ const MenteeManagement = () => {
   const [showFilters, setShowFilters] = useState(() => {
     // Only run on client side
     if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('showFilters');
+      const saved = localStorage.getItem('showFilters');
       return saved !== null ? JSON.parse(saved) : true;
     }
     return true;
   });
+  const [showTable] = useState(true); // Add new state for table visibility
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -419,23 +415,12 @@ const MenteeManagement = () => {
   };
 
   const handleEditClick = async (mentee) => {
+    console.log("Received mentee for editing:", mentee); // Debug log
     setEditLoading(true);
     try {
-      // Fetch complete mentee details using MUJid
-      const response = await axios.get(`/api/admin/manageUsers/manageMentee`, {
-        params: {
-          academicYear: mentee.academicYear,
-          academicSession: mentee.academicSession,
-          MUJid: mentee.MUJid
-        }
-      });
-      
-      if (response.data && response.data.length > 0) {
-        setSelectedMentee(response.data[0]);
-        setEditDialog(true);
-      } else {
-        showAlert('Mentee details not found', 'error');
-      }
+      // Use the mentee data directly from the table
+      setSelectedMentee(mentee);
+      setEditDialog(true);
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error fetching mentee details', 'error');
     } finally {
@@ -448,56 +433,65 @@ const MenteeManagement = () => {
     setEditDialog(false);
   };
 
-  const handleUpdate = async () => {
-    // Show confirmation dialog instead of updating directly
-    setConfirmDialog({
-      open: true,
-      mentee: selectedMentee
-    });
-  };
+const handleUpdate = (updatedMentee) => {
+  if (!updatedMentee || !updatedMentee.MUJid) {
+    toast.error('Invalid mentee data');
+    return;
+  }
+
+  handleEditClose();
+  handleConfirmClose();
+
+  const storageKey = `${filters.academicYear}-${filters.academicSession}`;
+  
+  try {
+    // Get and update current data atomically
+    const currentData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const updatedData = currentData.map(mentee => 
+      mentee.MUJid === updatedMentee.MUJid ? { ...mentee, ...updatedMentee } : mentee
+    );
+
+    // Update localStorage and state in a single batch
+    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+    
+    // Update local state immediately
+    setMentees(updatedData);
+    
+    // Update current filters to trigger table refresh
+    setCurrentFilters(prev => ({ ...prev, timestamp: Date.now() }));
+    
+    // Show loading state
+    toast.loading('Saving changes...', { id: 'update' });
+
+    // Make API call
+    axios.patch('/api/admin/manageUsers/manageMentee', updatedMentee)
+      .then(() => {
+        toast.success('Changes saved successfully', { id: 'update' });
+        
+        // Refresh data cache
+        if (dataCache.current.has(storageKey)) {
+          dataCache.current.set(storageKey, updatedData);
+        }
+      })
+      .catch(error => {
+        console.error('Update error:', error);
+        // Rollback on API failure
+        const previousData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(previousData));
+        setMentees(previousData);
+        setCurrentFilters(prev => ({ ...prev, timestamp: Date.now() }));
+        toast.error('Failed to save changes. Changes reverted.', { id: 'update' });
+      });
+
+  } catch (error) {
+    console.error('Error updating mentee:', error);
+    toast.error('Failed to update mentee', { id: 'update' });
+  }
+};
 
   const handleConfirmClose = () => {
     setConfirmDialog({ open: false, mentee: null });
   };
-
-  const handleConfirmUpdate = async () => {
-    try {
-      const response = await axios.patch('/api/admin/manageUsers/manageMentee', selectedMentee);
-      showAlert('Mentee updated successfully', 'success');
-      setMentees(prevMentees => 
-        prevMentees.map(mentee => 
-          mentee.MUJid === selectedMentee.MUJid ? response.data : mentee
-        )
-      );
-      handleEditClose();
-      handleConfirmClose();
-    } catch (error) {
-      showAlert(error.response?.data?.error || 'Error updating mentee', 'error');
-    }
-  };
-
-  // const handleEditInputChange = (e, category, subcategory) => {
-  //   if (category && subcategory) {
-  //     // Handle nested parent fields
-  //     setSelectedMentee(prev => ({
-  //       ...prev,
-  //       parents: {
-  //         ...prev.parents,
-  //         [category]: {
-  //           ...prev.parents?.[category],
-  //           [subcategory]: e.target.value
-  //         }
-  //       }
-  //     }));
-  //   } else {
-  //     // Handle top-level fields
-  //     const { name, value } = e.target;
-  //     setSelectedMentee(prev => ({
-  //       ...prev,
-  //       [name]: name === 'MUJid' ? value.toUpperCase() : value
-  //     }));
-  //   }
-  // };
 
   const handleAssignClose = () => {
     setAssignDialog(false);
@@ -566,32 +560,32 @@ const MenteeManagement = () => {
   useEffect(() => {
     // // Clear session storage on mount
     // console.log("Mentee Management Mounted    and removing session storage");
-    // console.log("Session Storage",sessionStorage.getItem('menteeData'));
-    sessionStorage.removeItem('menteeData');
+    // console.log("Session Storage",localStorage.getItem('menteeData'));
+    localStorage.removeItem('mentee data');
     
     setMounted(true);
 
-    // Handle screen size changes
-    if (!isSmallScreen) {
-      setShowFilters(true);
-    }
+    // // Handle screen size changes
+    // if (!isSmallScreen) {
+    //   setShowFilters(true);
+    // }
 
     // Try to get data from session storage
-    const storedData = sessionStorage.getItem('menteeData');
+    const storedData = localStorage.getItem('menteeData');
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData);
         setMentees(parsedData);
       } catch (error) {
         console.log('Error parsing stored data:', error);
-        sessionStorage.removeItem('menteeData');
+        localStorage.removeItem('menteeData');
       }
     }
-  }, [isSmallScreen]);
+  }, []);
 
 
   useEffect(() => {
-    sessionStorage.setItem('showFilters', JSON.stringify(showFilters));
+    localStorage.setItem('showFilters', JSON.stringify(showFilters));
   }, [showFilters]);
 
   const handleSearch = async () => {
@@ -691,7 +685,7 @@ const MenteeManagement = () => {
     });
     setMentees([]); // Clear mentees data
     setTableVisible(false);
-    sessionStorage.removeItem('menteeData');
+    localStorage.removeItem('mentee data');
     setLoading(false); // Ensure loading state is set to false after reset
     // Reset current filters
     setCurrentFilters(null);
@@ -807,83 +801,8 @@ const MenteeManagement = () => {
     mentorMujid: filters.mentorMujid,  // Add setter for mentorMujid,
     mentorEmailid: filters.mentorEmailid
   };
-
-  // const cachedData = useRef(new Map());
-
-  // const handleFilterChange = (name, value) => {
-  //   const setters = {
-  //     academicYear: setAcademicYear,
-  //     academicSession: setAcademicSession,
-  //     semester: setSemester,
-  //     section: setSection,
-  //     menteeMujid: setMenteeMujid, 
-  //     mentorMujid: setMentorMujid,
-  //     mentorEmailid: setMentorEmailid  
-  //   };
-    
-  //   if (typeof setters[name] === 'function') {
-  //     setters[name](value);
-      
-  //     // For base filters, trigger immediate data fetch
-  //     if (['academicYear', 'academicSession'].includes(name)) {
-  //       const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
-  //       const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
-        
-  //       if (updatedYear && updatedSession) {
-  //         fetchData(updatedYear, updatedSession);
-  //       }
-  //     }
-  //     // For other filters, filter existing data
-  //     else if (cachedData.current) {
-  //       const currentKey = `${filterConfig.academicYear}-${filterConfig.academicSession}`;
-  //       const data = cachedData.current.get(currentKey) || [];
-  //       const filteredData = filterData(data, { ...filterConfig, [name]: value });
-  //       setMentees(filteredData);
-  //     }
-  //   }
-  // };
-
-  // const fetchData = async (year, session) => {
-  //   if (!year || !session) return;
-
-  //   const cacheKey = `${year}-${session}`;
-  //   setLoading(true);
-    
-  //   try {
-  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-  //       params: {
-  //         academicYear: year,
-  //         academicSession: session
-  //       }
-  //     });
-
-  //     if (response.status === 200) {
-  //       const normalizedData = response.data.map(mentee => ({
-  //         ...mentee,
-  //         id: mentee._id || mentee.id,
-  //         MUJid: mentee.MUJid?.toUpperCase() || '',
-  //         mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
-  //       }));
-        
-  //       // Update cache
-  //       cachedData.current.set(cacheKey, normalizedData);
-        
-  //       // Apply current filters to new data
-  //       const filteredData = filterData(normalizedData, filterConfig);
-  //       setMentees(filteredData);
-  //       setTableVisible(true);
-  //     }
-  //   } catch (error) {
-  //     if (error.response?.status !== 400) {
-  //       showAlert(error.response?.data?.error || 'Error loading data', 'error');
-  //     }
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // Single initialization effect
-  useEffect(() => {
+  
+ useEffect(() => {
     const initializeComponent = async () => {
       if (!mounted) return;
 
@@ -929,7 +848,7 @@ const MenteeManagement = () => {
         : updateFn;
       
       // Update session storage
-      sessionStorage.setItem('menteeData', JSON.stringify(updatedMentees));
+      localStorage.setItem('menteeData', JSON.stringify(updatedMentees));
       return updatedMentees;
     });
   };
@@ -939,6 +858,35 @@ const MenteeManagement = () => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  const handleConfirmUpdate = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, updating: true }));
+      
+      if (confirmDialog.mentee) {
+        await handleUpdate(confirmDialog.mentee);
+        
+        // Force table refresh by updating filters
+        setCurrentFilters(prev => ({
+          ...prev,
+          timestamp: Date.now()
+        }));
+        
+        // Refresh the data in the table
+        const storageKey = `${filters.academicYear}-${filters.academicSession}`;
+        const updatedData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        setMentees(updatedData);
+      }
+      
+      handleConfirmClose();
+      
+    } catch (error) {
+      console.error('Error in handleConfirmUpdate:', error);
+      toast.error('Failed to update mentee');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, updating: false }));
+    }
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -974,10 +922,10 @@ const MenteeManagement = () => {
 
         {/* Main Content Container */}
         <div className="relative z-10 h-screen flex flex-col pt-[60px]">
-          {/* Header Section */}
-          <div className="flex items-center justify-between px-4 lg:px-6">
+          {/* Header Section - Updated with center alignment */}
+          <div className="flex items-center justify-center px-4 lg:px-6 relative">
             <motion.h1 
-              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
+              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2 text-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -985,46 +933,94 @@ const MenteeManagement = () => {
               Mentee Management
             </motion.h1>
 
+            {/* Position toggle buttons absolutely to maintain header centering */}
             {isSmallScreen && (
-              <IconButton
-                onClick={() => setShowFilters(prev => !prev)}
-                sx={{
-                  color: '#f97316',
-                  bgcolor: 'rgba(249, 115, 22, 0.1)',
-                  '&:hover': {
-                    bgcolor: 'rgba(249, 115, 22, 0.2)',
-                  },
-                  position: 'fixed',
+              <motion.div
+                initial={false}
+                animate={{
+                  position: 'absolute',
                   right: '1rem',
-                  top: '5rem', // Adjust position to be more accessible
-                  zIndex: 1000,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
                 }}
+                transition={{ duration: 0.3 }}
               >
-                <FilterListIcon />
-              </IconButton>
+                <IconButton
+                  onClick={() => setShowFilters(prev => !prev)}
+                  sx={{
+                    color: '#f97316',
+                    bgcolor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(249, 115, 22, 0.3)',
+                    '&:hover': {
+                      bgcolor: 'rgba(249, 115, 22, 0.2)',
+                    },
+                    transition: 'all 0.3s ease',
+                    transform: showFilters ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  <FilterListIcon />
+                </IconButton>
+              </motion.div>
             )}
           </div>
 
+          {/* Add this after the header section */}
+          {isSmallScreen && (
+            <Box sx={{
+              position: 'fixed',
+              left: '1rem',
+              top: '1rem',
+              zIndex: 1000,
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
+            }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: showFilters ? '#f97316' : 'rgba(255, 255, 255, 0.5)',
+                  transition: 'color 0.3s ease',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Filters {showFilters ? 'Shown' : 'Hidden'}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: showTable ? '#f97316' : 'rgba(255, 255, 255, 0.5)',
+                  transition: 'color 0.3s ease',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Table {showTable ? 'Shown' : 'Hidden'}
+              </Typography>
+            </Box>
+          )}
+
           {/* Main Grid Layout - Updated grid and padding */}
-          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ${
+          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ease-in-out ${
             isSmallScreen ? 'grid-cols-1' : 'grid-cols-[400px,1fr] lg:overflow-hidden'
           }`}>
             {/* Filter Panel - Updated width and padding */}
             <motion.div 
-              className={`lg:h-full ${isSmallScreen ? 'w-full' : 'w-[400px]'}`}
+              className={`bg-black/20 backdrop-blur-xl rounded-3xl border border-white/10 transition-all duration-300 ease-in-out ${
+                isSmallScreen ? 'w-full' : 'w-[400px]'
+              }`}
               initial={false}
               animate={{
-                height: showFilters ? 'auto' : 0,
+                height: showFilters ? 'auto' : '0px',
                 opacity: showFilters ? 1 : 0,
-                marginBottom: showFilters ? '12px' : 0
+                marginBottom: showFilters ? '1rem' : '0px'
               }}
               transition={{ duration: 0.3 }}
               style={{
                 display: showFilters ? 'block' : 'none',
                 position: isSmallScreen ? 'relative' : 'sticky',
                 top: isSmallScreen ? 'auto' : '1rem',
-                maxHeight: isSmallScreen ? 'calc(100vh - 200px)' : 'none',
-                overflowY: isSmallScreen ? 'auto' : 'visible',
+                maxHeight: isSmallScreen ? '80vh' : 'calc(100vh - 120px)',
+                overflowY: 'auto',
                 zIndex: isSmallScreen ? 50 : 'auto'
               }}
             >
@@ -1047,7 +1043,7 @@ const MenteeManagement = () => {
 
             {/* Table Section - Updated for better responsiveness */}
             <motion.div
-              className={`h-full min-w-0 transition-all duration-300 ${
+              className={`h-full min-w-0 transition-all duration-300 ease-in-out ${
                 !showFilters && isSmallScreen ? 'col-span-full' : ''
               }`}
               animate={{
@@ -1134,11 +1130,31 @@ const MenteeManagement = () => {
             Are you sure you want to update this mentee&apos;s data? This action is non-reversible.          
           </DialogContent>          
           <DialogActions>            
-            <Button onClick={handleConfirmClose} color="primary">              
+            <Button 
+              onClick={handleConfirmClose} 
+              variant="outlined"
+              sx={{
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                }
+              }}
+            >              
               Cancel            
             </Button>            
-            <Button onClick={handleConfirmUpdate} color="secondary">              
-              Confirm            
+            <Button 
+              onClick={handleConfirmUpdate}
+              variant="contained"
+              disabled={loadingStates.updating}
+              sx={{
+                bgcolor: '#f97316',
+                '&:hover': { bgcolor: '#ea580c' },
+                '&:disabled': { bgcolor: 'rgba(249, 115, 22, 0.5)' }
+              }}
+            >              
+              {loadingStates.updating ? 'Updating...' : 'Confirm'}
             </Button>          
           </DialogActions>        
         </Dialog>        

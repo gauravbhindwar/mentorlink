@@ -23,45 +23,56 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-// import { debounce } from 'lodash';
 
 const buttonStyles = {
   actionButton: {
     width: '100%',
     borderRadius: '12px',
-    padding: '10px 16px',
+    padding: '8px 16px',
     fontSize: '0.875rem',
     fontWeight: 600,
     textTransform: 'none',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    transition: 'all 0.2s ease',
-    marginBottom: '8px',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
     '&:hover': {
       transform: 'translateY(-2px)',
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+      boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)',
+    },
+    '&:active': {
+      transform: 'translateY(0)',
+    },
+    '&:disabled': {
+      backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      color: 'rgba(255, 255, 255, 0.3)',
     }
   },
   primary: {
-    background: 'linear-gradient(45deg, #f97316 30%, #fb923c 90%)',
+    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
     color: 'white',
+    boxShadow: '0 4px 12px rgba(249, 115, 22, 0.2)',
     '&:hover': {
-      background: 'linear-gradient(45deg, #ea580c 30%, #f97316 90%)',
+      background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
     }
   },
   secondary: {
-    background: 'rgba(255, 255, 255, 0.05)',
+    background: 'rgba(249, 115, 22, 0.1)',
+    color: '#f97316',
+    border: '1px solid rgba(249, 115, 22, 0.2)',
     backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    color: 'white',
     '&:hover': {
-      background: 'rgba(255, 255, 255, 0.1)',
+      background: 'rgba(249, 115, 22, 0.15)',
+      borderColor: 'rgba(249, 115, 22, 0.3)',
     }
   },
   danger: {
-    background: 'linear-gradient(45deg, #ef4444 30%, #f87171 90%)',
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
     color: 'white',
+    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
     '&:hover': {
-      background: 'linear-gradient(45deg, #dc2626 30%, #ef4444 90%)',
+      background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
     }
   }
 };
@@ -77,12 +88,12 @@ const FilterSection = ({
   isLoading,
   filterData
 }) => {
+  const sessionRef = useRef(null);
+  const yearRef = useRef(null);
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
-  const yearRef = useRef(null);
-  const sessionRef = useRef(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mujidsToDelete, setMujidsToDelete] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -667,35 +678,39 @@ const FilterSection = ({
       onClick: handleSearch,
       color: 'primary',
       disabled: !filters.academicYear?.trim() || !filters.academicSession?.trim() || isLoading,
-      icon: <SearchIcon />
+      icon: <SearchIcon sx={{ fontSize: '1.2rem' }} />,
+      fullWidth: true
     },
     { 
-      label: isLoading.add ? 'Adding...' : 'Add New Mentee',
+      label: 'Add Mentee',
       onClick: () => onAddNew(handleAddMentee),
       color: 'primary',
       disabled: isLoading.add,
-      icon: <AddIcon />
+      icon: <AddIcon sx={{ fontSize: '1.2rem' }} />,
+      fullWidth: true
     },
     { 
       label: 'Reset',
       onClick: handleReset,
-      color: 'default',
-      disabled: false,
-      icon: <RefreshIcon />
+      color: 'secondary',
+      icon: <RefreshIcon sx={{ fontSize: '1.2rem' }} />,
+      fullWidth: false
     },
     { 
-      label: isLoading.bulkAdd ? 'Uploading...' : 'File Upload',
+      label: 'Upload',
       onClick: () => onBulkUpload(handleBulkAddMentees),
       color: 'secondary',
       disabled: isLoading.bulkAdd,
-      icon: <UploadFileIcon />
+      icon: <UploadFileIcon sx={{ fontSize: '1.2rem' }} />,
+      fullWidth: false
     },
     { 
-      label: deleteLoading ? 'Deleting...' : 'Delete Mentees',
+      label: 'Delete',
       onClick: () => setDeleteDialog(true),
-      color: 'error',
+      color: 'danger',
       disabled: deleteLoading,
-      icon: <DeleteIcon />
+      icon: <DeleteIcon sx={{ fontSize: '1.2rem' }} />,
+      fullWidth: false
     }
   ];
 
@@ -737,203 +752,190 @@ const FilterSection = ({
   }
 
   return (
-    <>
+    <Box sx={{ 
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 3,
+      p: { xs: 2, sm: 3 },
+      height: '100%',
+      maxHeight: { xs: '70vh', sm: 'calc(100vh - 180px)' },
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      // Use custom scrollbar class from globals.css
+      className: 'custom-scrollbar'
+    }}>
+      {/* Filter Controls - Improved mobile layout */}
       <Box sx={{ 
-        display: 'flex',
-        flexDirection: { xs: 'column', md: 'row' },
+        display: 'grid',
+        gridTemplateColumns: { 
+          xs: '1fr',
+          sm: 'repeat(auto-fill, minmax(200px, 1fr))'
+        },
         gap: 2,
-        mb: 3,
-        position: 'relative',
-        // Add custom scrollbar styling
-        '&::-webkit-scrollbar': {
-          width: '8px'
-        },
-        '&::-webkit-scrollbar-track': {
-          background: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '4px'
-        },
-        '&::-webkit-scrollbar-thumb': {
-          background: 'rgba(249, 115, 22, 0.5)',
-          borderRadius: '4px',
-          '&:hover': {
-            background: 'rgba(249, 115, 22, 0.7)'
-          }
-        }
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 2, 
-          flexDirection: { xs: 'column', sm: 'row' },
-          flexWrap: 'wrap'
-        }}>
-          {filterControls.map((control) => (
-            <Box key={control.name}>
-              {control.customRender || (
-                <FormControl 
-                  size="small" 
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      color: 'white',
-                      backgroundColor: '#1a1a1a', // Solid dark background
-                      // Remove backdropFilter
-                      borderRadius: '12px',
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#f97316',
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#f97316',
-                      },
+        {filterControls.map((control) => (
+          <Box key={control.name} sx={{ width: '100%' }}>
+            {control.customRender || (
+              <FormControl 
+                size="small" 
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    backgroundColor: '#1a1a1a', // Solid dark background
+                    // Remove backdropFilter
+                    borderRadius: '12px',
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#f97316',
                     },
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#f97316',
                     },
-                    '& .MuiInputLabel-root': {
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      '&.Mui-focused': {
-                        color: '#f97316',
-                      },
-                    },
-                    '& .MuiSelect-icon': {
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&.Mui-focused': {
                       color: '#f97316',
                     },
-                    '& .MuiMenuItem-root': {
-                      color: 'white',
-                    }
-                  }}
-                >
-                  <InputLabel>{control.label}</InputLabel>
-                  <Select
-                    value={filters[control.name] || ''}
-                    label={control.label}
-                    onChange={(e) => handleFilterChange(control.name, e.target.value)}
-                    disabled={control.disabled}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: 'white',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: '#f97316',
+                  },
+                  '& .MuiMenuItem-root': {
+                    color: 'white',
+                  }
+                }}
+              >
+                <InputLabel>{control.label}</InputLabel>
+                <Select
+                  value={filters[control.name] || ''}
+                  label={control.label}
+                  onChange={(e) => handleFilterChange(control.name, e.target.value)}
+                  disabled={control.disabled}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#1a1a1a', // Solid dark background
+                        // Remove backdropFilter
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        '& .MuiMenuItem-root': {
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: '#2a2a2a', // Darker solid color for hover
+                          },
+                          '&.Mui-selected': {
+                            bgcolor: '#333333', // Even darker for selected
                             '&:hover': {
-                              bgcolor: '#2a2a2a', // Darker solid color for hover
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#333333', // Even darker for selected
-                              '&:hover': {
-                                bgcolor: '#404040',
-                              }
+                              bgcolor: '#404040',
                             }
                           }
                         }
                       }
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
+                    }
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  {(control.getDynamicOptions 
+                    ? control.getDynamicOptions(filters.academicSession)
+                    : control.options
+                  ).map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {typeof option === 'string' 
+                        ? option.charAt(0).toUpperCase() + option.slice(1) 
+                        : `${control.label} ${option}`
+                      }
                     </MenuItem>
-                    {(control.getDynamicOptions 
-                      ? control.getDynamicOptions(filters.academicSession)
-                      : control.options
-                    ).map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {typeof option === 'string' 
-                          ? option.charAt(0).toUpperCase() + option.slice(1) 
-                          : `${control.label} ${option}`
-                        }
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            </Box>
-          ))}
-        </Box>
-        
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {buttons.map(button => (
-            <Button 
-              key={button.label}
-              variant="contained" 
-              color={button.color}
-              onClick={button.onClick}
-              disabled={button.disabled || isLoading}
-              startIcon={isLoading && button.label === 'Search' ? 
-                <CircularProgress size={20} sx={{ color: 'white' }} /> : 
-                button.icon
-              }
-              sx={{ 
-                borderRadius: '50px',
-                px: { xs: 2, sm: 3 },
-                py: { xs: 0.5, sm: 1 },
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                background: button.color === 'primary' ? '#f97316' : 
-                           button.color === 'secondary' ? '#ea580c' : 
-                           'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: 'white',
-                '&:hover': {
-                  transform: button.disabled ? 'none' : 'scale(1.05)',
-                  transition: 'transform 0.2s',
-                  background: button.color === 'primary' ? '#ea580c' : 
-                             button.color === 'secondary' ? '#c2410c' : 
-                             'rgba(255, 255, 255, 0.2)',
-                },
-                '&:disabled': {
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: 'rgba(255, 255, 255, 0.3)',
-                }
-              }}
-            >
-              {isLoading && button.label === 'Search' ? 'Loading...' : button.label}
-            </Button>
-          ))}
-        </Box>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+        ))}
       </Box>
 
-      <Dialog 
-        open={deleteDialog} 
-        onClose={() => setDeleteDialog(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{ sx: dialogStyles.paper }}
-      >
-        <DialogTitle sx={dialogStyles.title}>Delete Mentees</DialogTitle>
-        <DialogContent sx={dialogStyles.content}>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={mujidsToDelete}
-            onChange={(e) => setMujidsToDelete(e.target.value)}
-            placeholder="Enter MUJIDs separated by commas"
-            sx={textFieldStyles}
-          />
-        </DialogContent>
-        <DialogActions sx={dialogStyles.actions}>
+      {/* Action Buttons - Improved mobile layout */}
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: { 
+          xs: 'repeat(2, 1fr)',
+          sm: 'repeat(auto-fit, minmax(120px, 1fr))'
+        },
+        gap: 1,
+        mt: 'auto',
+        pt: 2,
+      }}>
+        {buttons.map(button => (
           <Button 
-            onClick={() => setDeleteDialog(false)}
-            variant="outlined"
-            sx={buttonStyles.outlined}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleBulkDelete}
-            variant="contained"
-            disabled={deleteLoading}
-            sx={{
-              bgcolor: '#ef4444',
-              '&:hover': { bgcolor: '#dc2626' }
+            key={button.label}
+            variant={button.color === 'secondary' ? 'outlined' : 'contained'}
+            onClick={button.onClick}
+            disabled={button.disabled}
+            startIcon={
+              isLoading && button.label === 'Search' ? (
+                <CircularProgress size={20} sx={{ color: 'white' }} />
+              ) : button.icon
+            }
+            sx={{ 
+              ...buttonStyles.actionButton,
+              ...(button.color === 'primary' ? buttonStyles.primary : 
+                  button.color === 'secondary' ? buttonStyles.secondary : 
+                  buttonStyles.danger),
+              gridColumn: button.fullWidth ? { sm: 'span 2', md: 'auto' } : 'auto',
             }}
           >
-            {deleteLoading ? 'Deleting...' : 'Delete'}
+            <span className={button.fullWidth ? 'block' : 'hidden sm:block'}>
+              {isLoading && button.label === 'Search' ? 'Searching...' : button.label}
+            </span>
           </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+        ))}
+      </Box>
+    </Box>
   );
+
+  <Dialog 
+    open={deleteDialog} 
+    onClose={() => setDeleteDialog(false)}
+    maxWidth="sm"
+    fullWidth
+    PaperProps={{ sx: dialogStyles.paper }}
+  >
+    <DialogTitle sx={dialogStyles.title}>Delete Mentees</DialogTitle>
+    <DialogContent sx={dialogStyles.content}>
+      <TextField
+        fullWidth
+        multiline
+        rows={4}
+        value={mujidsToDelete}
+        onChange={(e) => setMujidsToDelete(e.target.value)}
+        placeholder="Enter MUJIDs separated by commas"
+        sx={textFieldStyles}
+      />
+    </DialogContent>
+    <DialogActions sx={dialogStyles.actions}>
+      <Button 
+        onClick={() => setDeleteDialog(false)}
+        variant="outlined"
+        sx={buttonStyles.outlined}
+      >
+        Cancel
+      </Button>
+      <Button 
+        onClick={handleBulkDelete}
+        variant="contained"
+        disabled={deleteLoading}
+        sx={{
+          bgcolor: '#ef4444',
+          '&:hover': { bgcolor: '#dc2626' }
+        }}
+      >
+        {deleteLoading ? 'Deleting...' : 'Delete'}
+      </Button>
+    </DialogActions>
+  </Dialog>
 };
 
 const textFieldStyles = {
@@ -1014,8 +1016,7 @@ const dialogStyles = {
   paper: {
     backgroundColor: '#1a1a1a',
     color: 'white',
-    borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',    border: '1px solid rgba(255, 255, 255, 0.1)',
   },
   title: {
     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',

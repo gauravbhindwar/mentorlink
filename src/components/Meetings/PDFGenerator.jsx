@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import {
   Page,
@@ -6,8 +8,8 @@ import {
   Document,
   StyleSheet,
   Image,
-  BlobProvider,
   Font,
+  pdf,
 } from "@react-pdf/renderer";
 
 // Add font registration before styles
@@ -126,6 +128,29 @@ const styles = StyleSheet.create({
   tableBottomBorder: {
     borderBottom: "1pt solid black",
   },
+  reportTable: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: 10,
+  },
+  tableHeader: {
+    backgroundColor: "#f0f0f0",
+    borderBottom: "1pt solid black",
+  },
+  tableCellLast: {
+    padding: 8,
+    fontSize: 10,
+    textAlign: "left",
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 15,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 12,
+    color: 'grey',
+  },
 });
 
 const Header = () => (
@@ -150,7 +175,14 @@ const Header = () => (
         }}
       />
     </View>
+    <Text style={styles.pageTitle}>Mentor Consolidated Feedback Sheet</Text>
   </>
+);
+
+const Footer = ({ pageNumber, totalPages }) => (
+  <View style={styles.footer} fixed>
+    <Text>Page {pageNumber} of {totalPages}</Text>
+  </View>
 );
 
 // mom document template
@@ -334,6 +366,7 @@ export const MOMDocument = ({
             {/* Add bottom border after the last student */}
           </View>
         </View>
+        <Footer pageNumber={1} totalPages={2} />
       </Page>
 
       {/* Page 2 - Meeting Notes */}
@@ -387,6 +420,7 @@ export const MOMDocument = ({
             Date: ___________________________
           </Text>
         </View>
+        <Footer pageNumber={2} totalPages={2} />
       </Page>
     </Document>
   );
@@ -395,46 +429,154 @@ export const MOMDocument = ({
 // consolidated document template
 export const ConsolidatedDocument = ({
   meetings,
-  academicYear,
-  semester,
-  section,
+  // academicYear,
+  // semester,
   mentorName,
-}) => (
-  <Document>
-    <Page size='A4' style={styles.page}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Consolidated Mentoring Report</Text>
-      </View>
+  mentees,
+  selectedSemester  // Add this parameter
+}) => {
+  // Ensure we have valid arrays to work with
+  const safeMentees = mentees || [];
+  const filteredMentees = safeMentees.filter(mentee => 
+    mentee && mentee.semester === selectedSemester
+  );
+  
+  // Ensure we have valid chunks even with empty array
+  const chunkedMentees = filteredMentees.length ? filteredMentees.reduce((resultArray, item, index) => {
+    const chunkIndex = Math.floor(index/12);
+    if(!resultArray[chunkIndex]) {
+      resultArray[chunkIndex] = [];
+    }
+    resultArray[chunkIndex].push(item);
+    return resultArray;
+  }, []) : [[]];
 
-      {/* Basic Info */}
-      <View style={styles.section}>
-        <Text style={{ fontSize: 12 }}>Academic Year: {academicYear}</Text>
-        <Text style={{ fontSize: 12 }}>Semester: {semester}</Text>
-        <Text style={{ fontSize: 12 }}>Section: {section}</Text>
-        <Text style={{ fontSize: 12 }}>Mentor: {mentorName}</Text>
-        <Text style={{ fontSize: 12 }}>Total Meetings: {meetings.length}</Text>
-      </View>
+  // Wrap the return in error boundary
+  try {
+    return (
+      <Document>
+        {chunkedMentees.map((menteeGroup, pageIndex) => (
+          <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
+            <Header />
+            <View style={styles.section}>
+              {pageIndex === 0 && ( // Only render on first page
+                <>
+                  <Text style={styles.detailItem}>
+                    Name of Mentor: {mentorName || "N/A"}
+                  </Text>
+                  <Text style={[styles.detailItem, { marginBottom: 20 , marginTop: 10 }]}>
+                    Number of Meetings Taken: {meetings?.length || 0}
+                  </Text>
+                </>
+              )}
 
-      {/* Meetings Summary */}
-      {meetings.map((meeting, index) => (
-        <View key={index} style={[styles.table, { marginTop: 10 }]}>
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, { fontWeight: "bold" }]}>
-              Meeting {index + 1} -{" "}
-              {new Date(meeting.meeting_date).toLocaleDateString()}
+              {/* Table header */}
+              <View style={styles.tableRow}>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.05",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Sr No.</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.15",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Registration No.</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.30",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Student Name</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.13",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>No. of Meeting Attended</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.50", borderTopWidth: 1,borderBottomWidth: 1,borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                  <Text>Mentor Remark/Special Cases</Text>
+                </View>
+              </View>
+
+              {/* Table body - now using menteeGroup instead of mentees */}
+              {menteeGroup.map((mentee, index) => (
+                <View style={styles.tableRow} key={index}>
+                  <View style={[styles.tableCol, { flex: "0.05", borderTopWidth: 0, borderLeftWidth: 1, borderRightWidth: 1 }]}>
+                    <Text>{pageIndex * 12 + index + 1}</Text>
+                  </View>
+                  <View
+                  style={[
+                    styles.tableCol,
+                    { flex: "0.15",borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                  ]}
+                >
+                    <Text>{mentee.MUJid}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      { flex: "0.30", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                    ]}
+                  >
+                    <Text>{mentee.name}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      { flex: "0.13", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                    ]}
+                  >
+                    <Text>{mentee.meetingsCount || 0}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      { flex: "0.50", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
+                    ]}
+                  >
+                    <Text>{mentee.mentorRemarks || "N/A"}</Text>
+                  </View>
+                </View>
+              ))}
+
+              {pageIndex === chunkedMentees.length - 1 && (
+                <View style={[styles.signatureSection, { marginTop: 30, marginLeft: 0 }]}>
+                  <Text style={[styles.signatureDate, {marginLeft: 0}]}>
+              ___________________________
             </Text>
-          </View>
-          <View style={styles.tableRow}>
-            <Text style={styles.tableCell}>
-              {meeting.meeting_notes?.TopicOfDiscussion || "No topic recorded"}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </Page>
-  </Document>
-);
+                  <Text style={styles.signatureText}>Signature with Date</Text>
+                  {/* <Text style={styles.signatureDate}>
+                    Date: {new Date().toLocaleDateString()}
+                  </Text> */}
+                </View>
+              )}
+            </View>
+            <Footer pageNumber={pageIndex + 1} totalPages={chunkedMentees.length} />
+          </Page>
+        ))}
+      </Document>
+    );
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    return <Document><Page size="A4"><View><Text>Error generating report</Text></View></Page></Document>;
+  }
+};
 
 // mom report pdf generator
 export const generateMOMPdf = (meeting, mentorName) => {
@@ -442,7 +584,8 @@ export const generateMOMPdf = (meeting, mentorName) => {
     console.error("No meeting data available");
     return null;
   }
-  // console.log("MUJid of mentees Present:", meeting.present_mentees);
+  // console.log("MUJid of mentees Present:", meeting.pre</View>sent_mentees);
+
 
   // Filter menteeDetails to only include present mentees
   if (meeting.menteeDetails && meeting?.menteeDetails.length > 0) {
@@ -478,7 +621,8 @@ export const generateConsolidatedPdf = (
   academicYear,
   semester,
   section,
-  mentorName
+  mentorName,
+  mentees // add mentees prop
 ) => {
   return React.createElement(
     Document,
@@ -489,25 +633,48 @@ export const generateConsolidatedPdf = (
       semester,
       section,
       mentorName,
+      mentees // pass mentees prop
     })
   );
 };
 
 // Add new export for PDF download
 export const PDFDownloadComponent = ({
-  document,
+  document: pdfDocument,  // renamed to avoid confusion with global document
   fileName,
   children,
   page,
 }) => {
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Return null or loading state on server-side
-  if (!isClient) {
+  const downloadPDF = async () => {
+    if (typeof window === 'undefined') return; // Guard against server-side execution
+    
+    try {
+      setIsLoading(true);
+      const blob = await pdf(pdfDocument).toBlob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Don't render anything on server-side
+  if (typeof window === 'undefined' || !isClient) {
     return page && page === "MentorDashboard" ? (
       <div className='flex items-center justify-center'>
         <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
@@ -517,38 +684,21 @@ export const PDFDownloadComponent = ({
     );
   }
 
-  // Only render BlobProvider on client-side
   return (
-    <BlobProvider document={document}>
-      {({ url, loading, error }) => {
-        if (error) {
-          console.warn("PDF generation error:", error);
-          return null;
-        }
-
-        if (loading) {
-          return page && page === "MentorDashboard" ? (
-            <div className='flex items-center justify-center'>
-              <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
-            </div>
-          ) : (
-            <button disabled>Loading...</button>
-          );
-        }
-
-        return (
-          <a
-            href={url}
-            download={fileName}
-            className={`${
-              page && page === "MentorDashboard"
-                ? ""
-                : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
-            }`}>
-            {children || "Download PDF"}
-          </a>
-        );
-      }}
-    </BlobProvider>
+    <button
+      onClick={downloadPDF}
+      disabled={isLoading}
+      className={`${
+        page && page === "MentorDashboard"
+          ? ""
+          : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
+      }`}
+    >
+      {isLoading ? (
+        <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
+      ) : (
+        children || "Download PDF"
+      )}
+    </button>
   );
 };

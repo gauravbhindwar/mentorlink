@@ -91,7 +91,6 @@ const CustomPagination = () => {
 
 const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, currentFilters }) => {
   const [mounted, setMounted] = useState(false);
-  const [tableData, setTableData] = useState([]);
   const dataCache = useRef(new Map());
   const [filters, setFilters] = useState({
     academicYear: '',
@@ -145,14 +144,6 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
   //   }
   // }, [mentees]);
 
-  useEffect(() => {
-    if (tableData?.length > 0) {
-      setTableData(tableData);
-      console.log("mentees are: ", tableData);
-    }
-  }, [tableData]);
-
-  
   // Initialize component
   useEffect(() => {
     setMounted(true);
@@ -190,13 +181,46 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
     }
   }, [currentFilters]);
 
+  // Add new effect to sync with localStorage
+  useEffect(() => {
+    if (currentFilters) {
+      const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
+      const storedData = localStorage.getItem(storageKey);
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          setLocalData(parsedData);
+          setBaseData(parsedData); // Also update base data
+        } catch (error) {
+          console.error('Error parsing stored data:', error);
+        }
+      }
+    }
+  }, [currentFilters?.academicYear, currentFilters?.academicSession, currentFilters?.timestamp]); // Add timestamp dependency
+
   const handleDeleteClick = (mujid) => {
     setDeleteDialog({ open: true, mujid });
   };
 
-  const handleEditClick = (menteeData) => {
-    if (onEditClick) {
-      onEditClick(menteeData);
+  // Update handleEditClick to always get fresh data from localStorage
+  const handleEditClick = async (rowData) => {
+    if (onEditClick && rowData) {
+      const storageKey = `${currentFilters?.academicYear}-${currentFilters?.academicSession}`;
+      const storedData = localStorage.getItem(storageKey);
+      
+      try {
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          const freshData = parsedData.find(item => item.MUJid === rowData.MUJid);
+          if (freshData) {
+            onEditClick({ ...freshData, id: rowData.id }); // Preserve the id
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error accessing stored data:', error);
+      }
+      onEditClick(rowData);
     }
   };
 
@@ -372,16 +396,6 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
   }, [mounted, localData]);
 
 
-useEffect(() => {
-  if (!currentFilters) {
-    const baseData = localStorage.getItem('mentee data');
-    setLocalData(baseData ? JSON.parse(baseData) : []);
-  } else {
-    const filteredData = localStorage.getItem('menteeFilteredData');
-    setLocalData(filteredData ? JSON.parse(filteredData) : []);
-  }
-}, [currentFilters]); // Only depend on currentFilters
-
   const headerContent = useMemo(() => ({
     title: 'Mentee Management',
     count: processedMentees?.length || 0
@@ -526,6 +540,23 @@ useEffect(() => {
       sortable: false,
       renderCell: (params) => {
         if (!params?.row) return null;
+        const rowData = {
+          ...params.row,
+          _id: params.row._id || params.row.id, // Ensure _id is preserved
+          academicYear: params.row.academicYear,
+          academicSession: params.row.academicSession,
+          // Ensure all necessary fields are included
+          MUJid: params.row.MUJid,
+          name: params.row.name,
+          email: params.row.email,
+          phone: params.row.phone,
+          section: params.row.section,
+          semester: params.row.semester,
+          mentorMujid: params.row.mentorMujid,
+          mentorEmailid: params.row.mentorEmailid,
+          yearOfRegistration: params.row.yearOfRegistration
+        };
+
         return (
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
             <IconButton
@@ -541,7 +572,7 @@ useEffect(() => {
               <InfoIcon fontSize="small" />
             </IconButton>
             <IconButton
-              onClick={() => handleEditClick(params.row)}
+              onClick={() => handleEditClick(rowData)}
               sx={{ 
                 color: '#f97316',
                 '&:hover': {
@@ -616,6 +647,7 @@ useEffect(() => {
       display: 'flex',
       flexDirection: 'column',
       transition: 'all 0.3s ease',
+      className: 'custom-scrollbar', // Add custom scrollbar class
     }}>
       {loading && (
         <Box sx={{
@@ -651,6 +683,7 @@ useEffect(() => {
           },
           '& .MuiDataGrid-virtualScroller': {
             overflow: 'auto !important',
+            className: 'custom-scrollbar', // Add custom scrollbar class
             '&::-webkit-scrollbar': {
               width: '8px',
               height: '8px',
