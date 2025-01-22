@@ -39,10 +39,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
   const statsCache = useRef({}); // Add cache using useRef
 
   useEffect(() => {
-
     const fetchMeetingStats = async () => {
       if (mentee?.MUJid) {
-        // Check if stats exist in cache
         if (statsCache.current[mentee.MUJid]) {
           setMeetingStats(statsCache.current[mentee.MUJid]);
           return;
@@ -55,22 +53,21 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
             completed: response.data.completed || 0,
             pending: response.data.scheduled || 0
           };
-          // Store in cache
           statsCache.current[mentee.MUJid] = stats;
           setMeetingStats(stats);
         } catch (error) {
           console.error('Error fetching meeting stats:', error);
-          console.log("Meeting stats not found",meetingStats);
-          setMeetingStats({ total: 0, completed: 0, pending: 0 });
+          const defaultStats = { total: 0, completed: 0, pending: 0 };
+          statsCache.current[mentee.MUJid] = defaultStats;
+          setMeetingStats(defaultStats);
         }
       }
     };
 
-    // Only fetch when dialog opens and stats aren't cached
     if (open && mentee && !statsCache.current[mentee.MUJid]) {
       fetchMeetingStats();
     }
-  }, [open, mentee]); // Remove activeTab dependency
+  }, [open, mentee, meetingStats]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);

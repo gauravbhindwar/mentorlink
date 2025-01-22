@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/subComponents/Navbar";
@@ -137,15 +137,6 @@ const ScheduleMeetingComponent = () => {
 
         if (response.data) {
           const meetingsHeld = response.data?.meetings;
-
-          console.log("Mentor meetings:", meetingsHeld);
-          // console.log('Meeting count:', meetingCount);
-          //MEETING LIMIT CURRENTLY DISABLED
-          // if(meetingsHeld.length >= 4){
-          //   setMeetingId('You have already scheduled 4 meetings for this section')
-          //   setCustomAlert('You have already scheduled 4 meetings for this section')
-          //   setDisabled(true);
-          // }else{
           setMeetingId(
             `${mentorId}${currentSemester}-M${selectedSection}${
               meetingsHeld.length + 1
@@ -153,10 +144,8 @@ const ScheduleMeetingComponent = () => {
           );
           setCustomAlert("");
           setDisabled(false);
-          // }
         }
       } catch (error) {
-        // console.log('Error fetching meetings:', error.response?.data || error.message);
         setMeetingId(error.response?.data.error);
         setCustomAlert(error.response?.data.error);
         setDisabled(true);
@@ -171,17 +160,14 @@ const ScheduleMeetingComponent = () => {
     } catch (error) {
       console.log("Error in useEffect:", error);
     }
-  }, [currentSemester, selectedSection]); // Add proper dependencies
-
-  // useEffect(() => {
-  //   if (customAlert) {
-  //     const timer = setTimeout(() => {
-  //       setCustomAlert('');
-  //     }, 5000);
-
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [customAlert]);
+  }, [
+    currentSemester,
+    selectedSection,
+    mentorId,
+    academicSession,
+    academicYear,
+    getMentees,
+  ]);
 
   // Calculate current semester based on date
   useEffect(() => {
@@ -202,7 +188,7 @@ const ScheduleMeetingComponent = () => {
 
     calculateSemester();
     // console.log('Current semester:', currentSemester);
-  }, [academicSession]);
+  }, [academicSession, academicYear]);
 
   const handleMeetingScheduled = async () => {
     if (!mentorId || !currentSemester || !dateTime || !venue || !meetingTopic) {
@@ -248,29 +234,32 @@ const ScheduleMeetingComponent = () => {
   };
 
   // Add new function to get mentees
-  const getMentees = async (mentorId, semester, section) => {
-    setIsLoading(true); // Start loading
-    try {
-      const response = await fetch(
-        `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}&year=${academicYear}&session=${academicSession}`
-      );
-      if (!response.ok) {
-        console.log("Failed to fetch mentees");
+  const getMentees = useCallback(
+    async (mentorId, semester, section) => {
+      setIsLoading(true); // Start loading
+      try {
+        const response = await fetch(
+          `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}&year=${academicYear}&session=${academicSession}`
+        );
+        if (!response.ok) {
+          console.log("Failed to fetch mentees");
+          setDisabled(true);
+        } else {
+          const menteesData = await response.json();
+          setMentees(menteesData);
+          setDisabled(menteesData.length === 0);
+        }
+        // console.log(mentees, "mentees");
+      } catch (error) {
+        console.log("Error fetching mentees:", error);
         setDisabled(true);
-      } else {
-        const menteesData = await response.json();
-        setMentees(menteesData);
-        setDisabled(menteesData.length === 0);
+        throw error;
+      } finally {
+        setIsLoading(false); // End loading
       }
-      console.log(mentees, "mentees");
-    } catch (error) {
-      console.log("Error fetching mentees:", error);
-      setDisabled(true);
-      throw error;
-    } finally {
-      setIsLoading(false); // End loading
-    }
-  };
+    },
+    [academicYear, academicSession]
+  ); // Only depend on these two values
 
   // Add helper functions
   const generateAcademicSessions = (year) => {

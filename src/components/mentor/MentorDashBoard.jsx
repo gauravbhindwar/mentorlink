@@ -160,11 +160,14 @@ const MentorDashBoard = () => {
           const data = await response.json();
           const mergedMeetings = mergeMeetings(data.meetings);
 
-          if(mergedMeetings.length > 0) {
-            if(sessionStorage.getItem("meetingData")){
+          if (mergedMeetings.length > 0) {
+            if (sessionStorage.getItem("meetingData")) {
               sessionStorage.removeItem("meetingData");
             }
-            sessionStorage.setItem("meetingData", JSON.stringify(mergedMeetings));
+            sessionStorage.setItem(
+              "meetingData",
+              JSON.stringify(mergedMeetings)
+            );
             setMeetings(mergedMeetings);
           }
           setMeetingsLoading(false);
@@ -536,13 +539,13 @@ Contact: ${mentorData?.email || ""}`;
                                           .TopicOfDiscussion
                                       }
                                     </p>
-                                    <p className='font-semibold'>
+                                    {/* <p className='font-semibold'>
                                       {meeting?.sections
                                         ? `Sections: ${[
                                             ...new Set(meeting?.sections),
                                           ].join(", ")}`
                                         : `Section: ${meeting.section}`}
-                                    </p>
+                                    </p> */}
                                     <p>Semester: {meeting.semester}</p>
                                     <p>
                                       Date:{" "}

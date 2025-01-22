@@ -1,78 +1,98 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
 // Remove lodash import
-import { 
-  Box, 
-  Typography, 
-  useMediaQuery, 
-  IconButton, 
+import {
+  Box,
+  Typography,
+  useMediaQuery,
+  IconButton,
   CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
-} from '@mui/material';
-import { ThemeProvider } from '@mui/material/styles';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import MenteeTable from './MenteeTable';
-import FilterSection from './FilterSection';
-import { motion } from 'framer-motion';
-import axios from 'axios';
-import BulkUploadPreview from '../common/BulkUploadPreview';
-import toast, { Toaster } from 'react-hot-toast';
-import { theme } from './menteeStyle';
-import AddMenteeDialog from './menteeSubComponents/AddMenteeDialog';
-import EditMenteeDialog from './menteeSubComponents/EditMenteeDialog';
-import AssignMentorDialog from './menteeSubComponents/AssignMentorDialog';
-import BulkUploadDialog from './menteeSubComponents/BulkUploadDialog';
-import { calculateCurrentSemester, getCurrentAcademicYear, generateAcademicSessions } from './utils/academicUtils';
+  Button,
+} from "@mui/material";
+import { ThemeProvider } from "@mui/material/styles";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import MenteeTable from "./MenteeTable";
+import FilterSection from "./FilterSection";
+import { motion } from "framer-motion";
+import axios from "axios";
+import BulkUploadPreview from "../common/BulkUploadPreview";
+import toast, { Toaster } from "react-hot-toast";
+import { theme } from "./menteeStyle";
+import AddMenteeDialog from "./menteeSubComponents/AddMenteeDialog";
+import EditMenteeDialog from "./menteeSubComponents/EditMenteeDialog";
+import AssignMentorDialog from "./menteeSubComponents/AssignMentorDialog";
+import BulkUploadDialog from "./menteeSubComponents/BulkUploadDialog";
+import {
+  calculateCurrentSemester,
+  getCurrentAcademicYear,
+  generateAcademicSessions,
+} from "./utils/academicUtils";
 
 // Move filterData function up before it's used
 const filterData = (data, filters) => {
   if (!data || !filters) return [];
-  
-  return data.filter(mentee => {
-    const matchesMentorMujid = !filters.mentorMujid || (
-      mentee.mentorMujid && 
-      mentee.mentorMujid.toString().toLowerCase().includes(filters.mentorMujid.toLowerCase())
+
+  return data.filter((mentee) => {
+    const matchesMentorMujid =
+      !filters.mentorMujid ||
+      (mentee.mentorMujid &&
+        mentee.mentorMujid
+          .toString()
+          .toLowerCase()
+          .includes(filters.mentorMujid.toLowerCase()));
+
+    const matchesMenteeMujid =
+      !filters.menteeMujid ||
+      (mentee.MUJid &&
+        mentee.MUJid.toString()
+          .toLowerCase()
+          .includes(filters.menteeMujid.toLowerCase()));
+
+    const matchesMentorEmail =
+      !filters.mentorEmailid ||
+      (mentee.mentorEmailid &&
+        mentee.mentorEmailid
+          .toString()
+          .toLowerCase()
+          .includes(filters.mentorEmailid.toLowerCase()));
+
+    const matchesSemester =
+      !filters.semester ||
+      mentee.semester ===
+        (typeof filters.semester === "string"
+          ? parseInt(filters.semester)
+          : filters.semester);
+
+    const matchesSection =
+      !filters.section ||
+      (mentee.section &&
+        mentee.section.toString().toUpperCase() ===
+          filters.section.toUpperCase());
+
+    return (
+      matchesSemester &&
+      matchesSection &&
+      matchesMenteeMujid &&
+      matchesMentorMujid &&
+      matchesMentorEmail
     );
-
-    const matchesMenteeMujid = !filters.menteeMujid || (
-      mentee.MUJid && 
-      mentee.MUJid.toString().toLowerCase().includes(filters.menteeMujid.toLowerCase())
-    );
-
-    const matchesMentorEmail = !filters.mentorEmailid || (
-      mentee.mentorEmailid && 
-      mentee.mentorEmailid.toString().toLowerCase().includes(filters.mentorEmailid.toLowerCase())
-    );
-
-    const matchesSemester = !filters.semester || 
-      mentee.semester === (typeof filters.semester === 'string' ? 
-        parseInt(filters.semester) : filters.semester);
-    
-    const matchesSection = !filters.section || 
-      (mentee.section && mentee.section.toString().toUpperCase() === filters.section.toUpperCase());
-
-    return matchesSemester && 
-           matchesSection && 
-           matchesMenteeMujid && 
-           matchesMentorMujid && 
-           matchesMentorEmail;
   });
 };
 
 const MenteeManagement = () => {
   const [mentees, setMentees] = useState([]);
   const [filters, setFilters] = useState({
-    academicYear: '',
-    academicSession: '',
-    semester: '',
-    section: '',
-    mentorMujid: '',
-    menteeMujid: '',
-    mentorEmailid: ''
+    academicYear: "",
+    academicSession: "",
+    semester: "",
+    section: "",
+    mentorMujid: "",
+    menteeMujid: "",
+    mentorEmailid: "",
   });
   const dataCache = useRef(new Map());
 
@@ -80,7 +100,7 @@ const MenteeManagement = () => {
   const [loadingStates, setLoadingStates] = useState({
     initial: true,
     fetching: false,
-    updating: false
+    updating: false,
   });
 
   // Add currentFilters state
@@ -89,7 +109,7 @@ const MenteeManagement = () => {
   // Replace debounce with simple delay using setTimeout
   const fetchMenteeData = useCallback(async (params) => {
     if (!params.academicYear || !params.academicSession) return;
-    
+
     const cacheKey = `${params.academicYear}-${params.academicSession}`;
     if (dataCache.current.has(cacheKey)) {
       setMentees(dataCache.current.get(cacheKey));
@@ -97,48 +117,55 @@ const MenteeManagement = () => {
       return;
     }
 
-    setLoadingStates(prev => ({ ...prev, fetching: true }));
+    setLoadingStates((prev) => ({ ...prev, fetching: true }));
     try {
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
-      const processedData = response.data.map(mentee => ({
+      const response = await axios.get("/api/admin/manageUsers/manageMentee", {
+        params,
+      });
+      const processedData = response.data.map((mentee) => ({
         ...mentee,
         id: mentee._id || mentee.id,
         MUJid: mentee.MUJid?.toUpperCase(),
-        mentorMujid: mentee.mentorMujid?.toUpperCase()
+        mentorMujid: mentee.mentorMujid?.toUpperCase(),
       }));
-      
+
       dataCache.current.set(cacheKey, processedData);
       setMentees(processedData);
       setTableVisible(true);
     } catch (error) {
-      console.error('Error fetching mentees:', error);
+      console.error("Error fetching mentees:", error);
       if (error.response?.status !== 400) {
-        showAlert(error.response?.data?.error || 'Error loading data', 'error');
+        showAlert(error.response?.data?.error || "Error loading data", "error");
       }
     } finally {
-      setLoadingStates(prev => ({ ...prev, fetching: false }));
+      setLoadingStates((prev) => ({ ...prev, fetching: false }));
     }
   }, []);
 
   // Handle filter changes with timeout
   const filterTimeout = useRef(null);
-  const handleFilterChange = useCallback((name, value) => {
-    setFilters(prev => ({ ...prev, [name]: value }));
+  const handleFilterChange = useCallback(
+    (name, value) => {
+      setFilters((prev) => ({ ...prev, [name]: value }));
 
-    // For base filters, fetch new data with a small delay
-    if (['academicYear', 'academicSession'].includes(name)) {
-      if (filterTimeout.current) {
-        clearTimeout(filterTimeout.current);
+      // For base filters, fetch new data with a small delay
+      if (["academicYear", "academicSession"].includes(name)) {
+        if (filterTimeout.current) {
+          clearTimeout(filterTimeout.current);
+        }
+
+        filterTimeout.current = setTimeout(() => {
+          fetchMenteeData({
+            academicYear:
+              name === "academicYear" ? value : filters.academicYear,
+            academicSession:
+              name === "academicSession" ? value : filters.academicSession,
+          });
+        }, 300);
       }
-      
-      filterTimeout.current = setTimeout(() => {
-        fetchMenteeData({
-          academicYear: name === 'academicYear' ? value : filters.academicYear,
-          academicSession: name === 'academicSession' ? value : filters.academicSession
-        });
-      }, 300);
-    }
-  }, [filters.academicYear, filters.academicSession, fetchMenteeData]);
+    },
+    [filters.academicYear, filters.academicSession, fetchMenteeData]
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -154,53 +181,56 @@ const MenteeManagement = () => {
   const [mounted, setMounted] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
-    name: '',
-    email: '',
-    MUJid: '',
-    phone: '',
-    yearOfRegistration: '',
-    section: '',
-    semester: '',
-    startYear: '',
-    endYear: '',
-    academicYear: '', // Changed from AcademicYear
-    academicSession: '', // Changed from AcademicSession
+    name: "",
+    email: "",
+    MUJid: "",
+    phone: "",
+    yearOfRegistration: "",
+    section: "",
+    semester: "",
+    startYear: "",
+    endYear: "",
+    academicYear: "", // Changed from AcademicYear
+    academicSession: "", // Changed from AcademicSession
     // mentorMujid: '',
-    mentorEmailid: '',
+    mentorEmailid: "",
     parents: {
       father: {
-        name: '',
-        email: '',
-        phone: '',
-        alternatePhone: ''
+        name: "",
+        email: "",
+        phone: "",
+        alternatePhone: "",
       },
       mother: {
-        name: '',
-        email: '',
-        phone: '',
-        alternatePhone: ''
+        name: "",
+        email: "",
+        phone: "",
+        alternatePhone: "",
       },
       guardian: {
-        name: '',
-        email: '',
-        phone: '',
-        relation: ''
-      }
-    }
+        name: "",
+        email: "",
+        phone: "",
+        relation: "",
+      },
+    },
   });
-  
+
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMentee, setSelectedMentee] = useState(null);
-  const [confirmDialog, setConfirmDialog] = useState({ open: false, mentee: null });
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    mentee: null,
+  });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [assignDialog, setAssignDialog] = useState(false);
   const [assignmentDetails, setAssignmentDetails] = useState({
     // mentor_MUJid: '',
-    mentorEmailid: '',
-    mentee_MUJid: '',
-    session: '',
-    semester: '',
-    section: ''
+    mentorEmailid: "",
+    mentee_MUJid: "",
+    session: "",
+    semester: "",
+    section: "",
   });
 
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
@@ -212,8 +242,8 @@ const MenteeManagement = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(() => {
     // Only run on client side
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('showFilters');
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("showFilters");
       return saved !== null ? JSON.parse(saved) : true;
     }
     return true;
@@ -222,39 +252,48 @@ const MenteeManagement = () => {
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
     if (!file) return;
-  
+
     const validTypes = [
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
-  
+
     if (!validTypes.includes(file.type)) {
-      showAlert('Please upload only Excel files (.xls or .xlsx)', 'error');
+      showAlert("Please upload only Excel files (.xls or .xlsx)", "error");
       return;
     }
-  
+
     setUploading(true);
     setBulkUploadDialog(false);
-    
+
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', 'mentee'); 
-  
+    formData.append("file", file);
+    formData.append("type", "mentee");
+
     try {
-      const previewResponse = await axios.post('/api/admin/manageUsers/previewUpload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
+      const previewResponse = await axios.post(
+        "/api/admin/manageUsers/previewUpload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(percentCompleted);
+          },
         }
-      });
-  
+      );
+
       setPreviewData(previewResponse.data);
       setShowPreview(true);
     } catch (error) {
-      showAlert(error.response?.data?.error || error.message || 'Error processing file', 'error');
+      showAlert(
+        error.response?.data?.error || error.message || "Error processing file",
+        "error"
+      );
     } finally {
       setUploading(false);
     }
@@ -263,38 +302,35 @@ const MenteeManagement = () => {
   const handleConfirmUpload = async () => {
     setUploading(true);
     try {
-      const response = await axios.post('/api/admin/manageUsers/bulkUpload', {
+      const response = await axios.post("/api/admin/manageUsers/bulkUpload", {
         data: previewData.data,
-        type: 'assignMentee'
+        type: "assignMentee",
       });
 
       const { errors, savedCount } = response.data;
 
       // Show success message
       if (savedCount > 0) {
-        showAlert(`Successfully uploaded ${savedCount} mentees`, 'success');
+        showAlert(`Successfully uploaded ${savedCount} mentees`, "success");
       }
 
       // Show errors if any
       if (errors && errors.length > 0) {
-        const errorMessages = errors.map(err => {
+        const errorMessages = errors.map((err) => {
           if (err.error) {
             return `${err.mujid}: ${err.error}`;
           }
           return `${err.mujid}: ${err.details}`;
         });
 
-        const errorMessage = errorMessages.join('\n');
+        const errorMessage = errorMessages.join("\n");
 
-        showAlert(
-          `Some records failed to upload\n${errorMessage}`,
-          'warning'
-        );
+        showAlert(`Some records failed to upload\n${errorMessage}`, "warning");
       }
 
       setShowPreview(false);
       handleBulkUploadClose();
-      
+
       // Refresh the table if any records were saved
       if (savedCount > 0) {
         handleSearch([]);
@@ -311,10 +347,7 @@ const MenteeManagement = () => {
         errorMessages.push(error.response.data.error);
       }
 
-      showAlert(
-        `Error uploading file\n${errorMessages.join('\n')}`,
-        'error'
-      );
+      showAlert(`Error uploading file\n${errorMessages.join("\n")}`, "error");
     } finally {
       setUploading(false);
     }
@@ -334,15 +367,18 @@ const MenteeManagement = () => {
   const showAlert = (message, severity, options = {}) => {
     // Dismiss all existing toasts
     toast.dismiss();
-    
+
     // If message is a bulk error, format it
-    if (typeof message === 'string' && message.includes('Some records failed to upload')) {
-      const errorLines = message.split('\n');
+    if (
+      typeof message === "string" &&
+      message.includes("Some records failed to upload")
+    ) {
+      const errorLines = message.split("\n");
       const totalErrors = errorLines.length - 1; // Subtract header line
-      
+
       // Group duplicate errors
       const errorGroups = errorLines.slice(1).reduce((acc, line) => {
-        const [mujid, error] = line.split(': ');
+        const [mujid, error] = line.split(": ");
         if (!acc[error]) {
           acc[error] = { count: 0, mujids: [] };
         }
@@ -358,27 +394,27 @@ const MenteeManagement = () => {
           const lastMujid = mujids[mujids.length - 1];
           return `${error} (${count} records, ${firstMujid} to ${lastMujid})`;
         })
-        .join('\n');
+        .join("\n");
 
       // Show single toast with grouped errors
       return toast(
         <div>
-          <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+          <div style={{ fontWeight: 600, marginBottom: "4px" }}>
             Upload Errors ({totalErrors} issues)
           </div>
-          <div style={{ fontSize: '0.9em', whiteSpace: 'pre-line' }}>
+          <div style={{ fontSize: "0.9em", whiteSpace: "pre-line" }}>
             {condensedMessage}
           </div>
         </div>,
         {
           duration: 5000,
           style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            maxWidth: '400px',
-            padding: '16px',
+            background: "#fee2e2",
+            color: "#991b1b",
+            maxWidth: "400px",
+            padding: "16px",
           },
-          id: 'upload-error' // Add unique ID to prevent duplicates
+          id: "upload-error", // Add unique ID to prevent duplicates
         }
       );
     }
@@ -388,31 +424,40 @@ const MenteeManagement = () => {
       duration: 3000,
       id: `toast-${Date.now()}`, // Add unique ID
       style: {
-        background: severity === 'error' ? '#fee2e2' : 
-                   severity === 'success' ? '#dcfce7' : 
-                   severity === 'warning' ? '#fff3cd' : '#ffffff',
-        color: '#1a1a1a',
+        background:
+          severity === "error"
+            ? "#fee2e2"
+            : severity === "success"
+            ? "#dcfce7"
+            : severity === "warning"
+            ? "#fff3cd"
+            : "#ffffff",
+        color: "#1a1a1a",
         border: `1px solid ${
-          severity === 'error' ? '#f87171' : 
-          severity === 'success' ? '#86efac' : 
-          severity === 'warning' ? '#fbbf24' : '#e5e7eb'
+          severity === "error"
+            ? "#f87171"
+            : severity === "success"
+            ? "#86efac"
+            : severity === "warning"
+            ? "#fbbf24"
+            : "#e5e7eb"
         }`,
-        padding: '16px',
-        borderRadius: '8px',
-        maxWidth: '400px',
-        ...options?.style
+        padding: "16px",
+        borderRadius: "8px",
+        maxWidth: "400px",
+        ...options?.style,
       },
-      ...options
+      ...options,
     };
 
     // Show only one toast based on severity
     switch (severity) {
-      case 'error':
+      case "error":
         return toast.error(message, toastOptions);
-      case 'success':
+      case "success":
         return toast.success(message, toastOptions);
-      case 'warning':
-        return toast(message, { ...toastOptions, icon: '⚠️' });
+      case "warning":
+        return toast(message, { ...toastOptions, icon: "⚠️" });
       default:
         return toast(message, toastOptions);
     }
@@ -426,18 +471,21 @@ const MenteeManagement = () => {
         params: {
           academicYear: mentee.academicYear,
           academicSession: mentee.academicSession,
-          MUJid: mentee.MUJid
-        }
+          MUJid: mentee.MUJid,
+        },
       });
-      
+
       if (response.data && response.data.length > 0) {
         setSelectedMentee(response.data[0]);
         setEditDialog(true);
       } else {
-        showAlert('Mentee details not found', 'error');
+        showAlert("Mentee details not found", "error");
       }
     } catch (error) {
-      showAlert(error.response?.data?.error || 'Error fetching mentee details', 'error');
+      showAlert(
+        error.response?.data?.error || "Error fetching mentee details",
+        "error"
+      );
     } finally {
       setEditLoading(false);
     }
@@ -452,7 +500,7 @@ const MenteeManagement = () => {
     // Show confirmation dialog instead of updating directly
     setConfirmDialog({
       open: true,
-      mentee: selectedMentee
+      mentee: selectedMentee,
     });
   };
 
@@ -462,17 +510,23 @@ const MenteeManagement = () => {
 
   const handleConfirmUpdate = async () => {
     try {
-      const response = await axios.patch('/api/admin/manageUsers/manageMentee', selectedMentee);
-      showAlert('Mentee updated successfully', 'success');
-      setMentees(prevMentees => 
-        prevMentees.map(mentee => 
+      const response = await axios.patch(
+        "/api/admin/manageUsers/manageMentee",
+        selectedMentee
+      );
+      showAlert("Mentee updated successfully", "success");
+      setMentees((prevMentees) =>
+        prevMentees.map((mentee) =>
           mentee.MUJid === selectedMentee.MUJid ? response.data : mentee
         )
       );
       handleEditClose();
       handleConfirmClose();
     } catch (error) {
-      showAlert(error.response?.data?.error || 'Error updating mentee', 'error');
+      showAlert(
+        error.response?.data?.error || "Error updating mentee",
+        "error"
+      );
     }
   };
 
@@ -502,43 +556,55 @@ const MenteeManagement = () => {
   const handleAssignClose = () => {
     setAssignDialog(false);
     setAssignmentDetails({
-        mentor_MUJid: '',
-        mentee_MUJid: '',
-        session: '',
-        semester: '',
-        section: ''
+      mentor_MUJid: "",
+      mentee_MUJid: "",
+      session: "",
+      semester: "",
+      section: "",
     });
   };
 
   const handleAssignInputChange = (e) => {
     const { name, value } = e.target;
-    setAssignmentDetails(prev => ({
-        ...prev,
-        [name]: value
+    setAssignmentDetails((prev) => ({
+      ...prev,
+      [name]: value,
     }));
   };
 
   const handleAssignSubmit = async () => {
     try {
-        await axios.post('/api/admin/manageUsers/assignMentor', assignmentDetails);
-        showAlert('Mentor assigned successfully', 'success');
-        handleAssignClose();
+      await axios.post(
+        "/api/admin/manageUsers/assignMentor",
+        assignmentDetails
+      );
+      showAlert("Mentor assigned successfully", "success");
+      handleAssignClose();
     } catch (error) {
-        showAlert(error.response?.data?.error || 'Error assigning mentor', 'error');
+      showAlert(
+        error.response?.data?.error || "Error assigning mentor",
+        "error"
+      );
     }
   };
 
   const handleDelete = async (mujids) => {
     try {
-      const response = await axios.delete('/api/admin/manageUsers/manageMentee', {
-        data: { MUJids: mujids }
-      });
-      
-      showAlert(`Successfully deleted ${response.data.deletedCount} mentee(s)`, 'success');
-      
+      const response = await axios.delete(
+        "/api/admin/manageUsers/manageMentee",
+        {
+          data: { MUJids: mujids },
+        }
+      );
+
+      showAlert(
+        `Successfully deleted ${response.data.deletedCount} mentee(s)`,
+        "success"
+      );
+
       // Update local state immediately
-      setMentees(prevMentees => 
-        prevMentees.filter(m => !mujids.includes(m.MUJid))
+      setMentees((prevMentees) =>
+        prevMentees.filter((m) => !mujids.includes(m.MUJid))
       );
 
       // Update cache
@@ -547,28 +613,30 @@ const MenteeManagement = () => {
       if (cachedData) {
         dataCache.current.set(
           cacheKey,
-          cachedData.filter(m => !mujids.includes(m.MUJid))
+          cachedData.filter((m) => !mujids.includes(m.MUJid))
         );
       }
-
     } catch (error) {
-      showAlert(error.response?.data?.error || 'Error deleting mentees', 'error');
+      showAlert(
+        error.response?.data?.error || "Error deleting mentees",
+        "error"
+      );
       // Optionally refresh data from server if delete failed
       await fetchMenteeData({
         academicYear: filters.academicYear,
-        academicSession: filters.academicSession
+        academicSession: filters.academicSession,
       });
     }
   };
 
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     // // Clear session storage on mount
     // console.log("Mentee Management Mounted    and removing session storage");
     // console.log("Session Storage",sessionStorage.getItem('menteeData'));
-    sessionStorage.removeItem('menteeData');
-    
+    sessionStorage.removeItem("menteeData");
+
     setMounted(true);
 
     // Handle screen size changes
@@ -577,25 +645,25 @@ const MenteeManagement = () => {
     }
 
     // Try to get data from session storage
-    const storedData = sessionStorage.getItem('menteeData');
+    const storedData = sessionStorage.getItem("menteeData");
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData);
         setMentees(parsedData);
       } catch (error) {
-        console.log('Error parsing stored data:', error);
-        sessionStorage.removeItem('menteeData');
+        console.log("Error parsing stored data:", error);
+        sessionStorage.removeItem("menteeData");
       }
     }
   }, [isSmallScreen]);
 
-
   useEffect(() => {
-    sessionStorage.setItem('showFilters', JSON.stringify(showFilters));
+    sessionStorage.setItem("showFilters", JSON.stringify(showFilters));
   }, [showFilters]);
 
   const handleSearch = async () => {
-    if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) return;
+    if (!filters.academicYear?.trim() || !filters.academicSession?.trim())
+      return;
 
     setLoading(true);
 
@@ -610,13 +678,22 @@ const MenteeManagement = () => {
     try {
       let data;
       const localData = localStorage.getItem(storageKey);
-      
+
       // Check if we need to fetch new data
-      if (!localData || (!filters.semester && !filters.section && !filters.menteeMujid && !filters.mentorEmailid)) {
+      if (
+        !localData ||
+        (!filters.semester &&
+          !filters.section &&
+          !filters.menteeMujid &&
+          !filters.mentorEmailid)
+      ) {
         // Fetch new data from API
-        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-          params: baseParams
-        });
+        const response = await axios.get(
+          "/api/admin/manageUsers/manageMentee",
+          {
+            params: baseParams,
+          }
+        );
         data = response.data;
 
         // Store base data
@@ -630,48 +707,66 @@ const MenteeManagement = () => {
         } else if (dataCache.current.has(storageKey)) {
           sourceData = dataCache.current.get(storageKey);
         } else {
-          const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-            params: baseParams
-          });
-          sourceData = response.data.map(item => ({
+          const response = await axios.get(
+            "/api/admin/manageUsers/manageMentee",
+            {
+              params: baseParams,
+            }
+          );
+          sourceData = response.data.map((item) => ({
             ...item,
             MUJid: item.MUJid?.toUpperCase(),
             mentorMujid: item.mentorMujid?.toUpperCase(),
-            section: item.section?.toUpperCase()
+            section: item.section?.toUpperCase(),
           }));
           localStorage.setItem(storageKey, JSON.stringify(sourceData));
           dataCache.current.set(storageKey, sourceData);
         }
 
         // Apply filters
-        data = sourceData.filter(item => {
-          const matchSemester = !filters.semester || 
+        data = sourceData.filter((item) => {
+          const matchSemester =
+            !filters.semester ||
             parseInt(item.semester) === parseInt(filters.semester);
 
-          const matchSection = !filters.section || 
+          const matchSection =
+            !filters.section ||
             item.section?.toUpperCase() === filters.section.toUpperCase();
 
-          const matchMenteeMujid = !filters.menteeMujid || 
-            item.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
+          const matchMenteeMujid =
+            !filters.menteeMujid ||
+            item.MUJid?.toUpperCase().includes(
+              filters.menteeMujid.toUpperCase()
+            );
 
-          const matchMentorMujid = !filters.mentorMujid || 
-            item.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
+          const matchMentorMujid =
+            !filters.mentorMujid ||
+            item.mentorMujid
+              ?.toUpperCase()
+              .includes(filters.mentorMujid.toUpperCase());
 
-          const matchMentorEmail = !filters.mentorEmailid || 
-            item.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
+          const matchMentorEmail =
+            !filters.mentorEmailid ||
+            item.mentorEmailid
+              ?.toLowerCase()
+              .includes(filters.mentorEmailid.toLowerCase());
 
-          return matchSemester && matchSection && matchMenteeMujid && 
-                 matchMentorMujid && matchMentorEmail;
+          return (
+            matchSemester &&
+            matchSection &&
+            matchMenteeMujid &&
+            matchMentorMujid &&
+            matchMentorEmail
+          );
         });
       }
 
       setMentees(data);
       setTableVisible(true);
       setCurrentFilters({ ...filters, key: storageKey });
-
     } catch (error) {
-      console.error('Search error:', error);
-      showAlert('Error searching mentees', 'error');
+      console.error("Search error:", error);
+      showAlert("Error searching mentees", "error");
       setMentees([]);
       setTableVisible(false);
     } finally {
@@ -681,17 +776,17 @@ const MenteeManagement = () => {
 
   const handleReset = () => {
     setFilters({
-      academicYear: '',
-      academicSession: '',
-      semester: '',
-      section: '',
-      mentorMujid: '',
-      menteeMujid: '',
-      mentorEmailid: ''
+      academicYear: "",
+      academicSession: "",
+      semester: "",
+      section: "",
+      mentorMujid: "",
+      menteeMujid: "",
+      mentorEmailid: "",
     });
     setMentees([]); // Clear mentees data
     setTableVisible(false);
-    sessionStorage.removeItem('menteeData');
+    sessionStorage.removeItem("menteeData");
     setLoading(false); // Ensure loading state is set to false after reset
     // Reset current filters
     setCurrentFilters(null);
@@ -707,29 +802,29 @@ const MenteeManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'academicYear') {
+    if (name === "academicYear") {
       const sessions = generateAcademicSessions(value);
       setAcademicSessions(sessions);
-      setMenteeDetails(prev => ({
+      setMenteeDetails((prev) => ({
         ...prev,
         [name]: value,
-        academicSession: sessions[0] // Set first session by default
+        academicSession: sessions[0], // Set first session by default
       }));
-    } else if (name === 'academicSession') {
-      setMenteeDetails(prev => ({
+    } else if (name === "academicSession") {
+      setMenteeDetails((prev) => ({
         ...prev,
         [name]: value,
-        semester: '' // Reset semester when academic session changes
+        semester: "", // Reset semester when academic session changes
       }));
-    } else if (name === 'MUJid') {
-      setMenteeDetails(prev => ({
+    } else if (name === "MUJid") {
+      setMenteeDetails((prev) => ({
         ...prev,
-        [name]: value.toUpperCase() // Ensure MUJid is uppercase
+        [name]: value.toUpperCase(), // Ensure MUJid is uppercase
       }));
     } else {
-      setMenteeDetails(prev => ({
+      setMenteeDetails((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
   };
@@ -737,41 +832,49 @@ const MenteeManagement = () => {
   // this submits add new mentee dialogue box
   const handleFormSubmit = async () => {
     const requiredFields = [
-      'name',
-      'email',
-      'MUJid',
-      'yearOfRegistration',
-      'section',
-      'semester',
-      'academicYear',
-      'academicSession', 
-      'mentorMujid'
+      "name",
+      "email",
+      "MUJid",
+      "yearOfRegistration",
+      "section",
+      "semester",
+      "academicYear",
+      "academicSession",
+      "mentorMujid",
     ];
 
-    const missingFields = requiredFields.filter(field => !menteeDetails[field]);
+    const missingFields = requiredFields.filter(
+      (field) => !menteeDetails[field]
+    );
     if (missingFields.length > 0) {
-      showAlert(`Missing required fields: ${missingFields.join(', ')}`, 'error');
+      showAlert(
+        `Missing required fields: ${missingFields.join(", ")}`,
+        "error"
+      );
       return;
     }
 
     try {
-      const response = await axios.post('/api/admin/manageUsers/manageMentee', menteeDetails);
+      const response = await axios.post(
+        "/api/admin/manageUsers/manageMentee",
+        menteeDetails
+      );
       if (response.status === 201) {
-        showAlert('Mentee added successfully', 'success');
+        showAlert("Mentee added successfully", "success");
         handleDialogClose();
         handleSearch();
       }
     } catch (error) {
-      showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
+      showAlert(error.response?.data?.error || "Error adding mentee", "error");
     }
   };
 
   useEffect(() => {
     const updateSemesters = () => {
-      setMentees(prevMentees => 
-        prevMentees.map(mentee => ({
+      setMentees((prevMentees) =>
+        prevMentees.map((mentee) => ({
           ...mentee,
-          semester: calculateCurrentSemester(mentee.yearOfRegistration)
+          semester: calculateCurrentSemester(mentee.yearOfRegistration),
         }))
       );
     };
@@ -784,7 +887,9 @@ const MenteeManagement = () => {
       now.getFullYear(),
       now.getMonth(),
       now.getDate() + 1, // tomorrow
-      0, 0, 0 // midnight
+      0,
+      0,
+      0 // midnight
     );
     const msToMidnight = night.getTime() - now.getTime();
 
@@ -804,8 +909,8 @@ const MenteeManagement = () => {
     semester: filters.semester,
     section: filters.section,
     menteeMujid: filters.menteeMujid, // Add setter for menteeMujid
-    mentorMujid: filters.mentorMujid,  // Add setter for mentorMujid,
-    mentorEmailid: filters.mentorEmailid
+    mentorMujid: filters.mentorMujid, // Add setter for mentorMujid,
+    mentorEmailid: filters.mentorEmailid,
   };
 
   // const cachedData = useRef(new Map());
@@ -816,19 +921,19 @@ const MenteeManagement = () => {
   //     academicSession: setAcademicSession,
   //     semester: setSemester,
   //     section: setSection,
-  //     menteeMujid: setMenteeMujid, 
+  //     menteeMujid: setMenteeMujid,
   //     mentorMujid: setMentorMujid,
-  //     mentorEmailid: setMentorEmailid  
+  //     mentorEmailid: setMentorEmailid
   //   };
-    
+
   //   if (typeof setters[name] === 'function') {
   //     setters[name](value);
-      
+
   //     // For base filters, trigger immediate data fetch
   //     if (['academicYear', 'academicSession'].includes(name)) {
   //       const updatedYear = name === 'academicYear' ? value : filterConfig.academicYear;
   //       const updatedSession = name === 'academicSession' ? value : filterConfig.academicSession;
-        
+
   //       if (updatedYear && updatedSession) {
   //         fetchData(updatedYear, updatedSession);
   //       }
@@ -848,7 +953,7 @@ const MenteeManagement = () => {
 
   //   const cacheKey = `${year}-${session}`;
   //   setLoading(true);
-    
+
   //   try {
   //     const response = await axios.get('/api/admin/manageUsers/manageMentee', {
   //       params: {
@@ -864,10 +969,10 @@ const MenteeManagement = () => {
   //         MUJid: mentee.MUJid?.toUpperCase() || '',
   //         mentorMujid: mentee.mentorMujid?.toUpperCase() || ''
   //       }));
-        
+
   //       // Update cache
   //       cachedData.current.set(cacheKey, normalizedData);
-        
+
   //       // Apply current filters to new data
   //       const filteredData = filterData(normalizedData, filterConfig);
   //       setMentees(filteredData);
@@ -890,46 +995,49 @@ const MenteeManagement = () => {
       const currentAcadYear = getCurrentAcademicYear();
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
-      const [startYear] = currentAcadYear.split('-');
-      
-      const currentSession = currentMonth >= 7 && currentMonth <= 12
-        ? `JULY-DECEMBER ${startYear}`
-        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+      const [startYear] = currentAcadYear.split("-");
+
+      const currentSession =
+        currentMonth >= 7 && currentMonth <= 12
+          ? `JULY-DECEMBER ${startYear}`
+          : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
 
       // Update filters instead of using setAcademicYear
-      setFilters(prev => ({
+      setFilters((prev) => ({
         ...prev,
         academicYear: currentAcadYear,
-        academicSession: currentSession
+        academicSession: currentSession,
       }));
 
       try {
-        setLoadingStates(prev => ({ ...prev, fetching: true }));
+        setLoadingStates((prev) => ({ ...prev, fetching: true }));
         await fetchMenteeData({
           academicYear: currentAcadYear,
-          academicSession: currentSession
+          academicSession: currentSession,
         });
         setTableVisible(true);
       } catch (error) {
         if (error.response?.status !== 400) {
-          showAlert(error.response?.data?.error || 'Error loading data', 'error');
+          showAlert(
+            error.response?.data?.error || "Error loading data",
+            "error"
+          );
         }
       } finally {
-        setLoadingStates(prev => ({ ...prev, fetching: false }));
+        setLoadingStates((prev) => ({ ...prev, fetching: false }));
       }
     };
 
     initializeComponent();
-  }, [mounted]);
+  }, [mounted, fetchMenteeData]); // Added fetchMenteeData to dependency array
 
   const handleDataUpdate = (updateFn) => {
-    setMentees(prevMentees => {
-      const updatedMentees = typeof updateFn === 'function' 
-        ? updateFn(prevMentees)
-        : updateFn;
-      
+    setMentees((prevMentees) => {
+      const updatedMentees =
+        typeof updateFn === "function" ? updateFn(prevMentees) : updateFn;
+
       // Update session storage
-      sessionStorage.setItem('menteeData', JSON.stringify(updatedMentees));
+      sessionStorage.setItem("menteeData", JSON.stringify(updatedMentees));
       return updatedMentees;
     });
   };
@@ -942,94 +1050,94 @@ const MenteeManagement = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
+      <div className='fixed inset-0 bg-gray-900 text-white overflow-hidden'>
         {/* Single Toaster instance with updated configuration */}
-        <Toaster 
-          position="bottom-right"
+        <Toaster
+          position='bottom-right'
           containerStyle={{
             bottom: 40,
             right: 20,
-            maxWidth: '100%'
+            maxWidth: "100%",
           }}
           toastOptions={{
-            className: '',
+            className: "",
             duration: 3000,
             style: {
-              maxWidth: '400px',
-              background: '#1a1a1a',
-              color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '0.875rem',
-              whiteSpace: 'pre-line'
+              maxWidth: "400px",
+              background: "#1a1a1a",
+              color: "#ffffff",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              fontSize: "0.875rem",
+              whiteSpace: "pre-line",
             },
           }}
         />
 
         {/* Background Effects */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
-          <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl" />
-          <div className="absolute inset-0 backdrop-blur-3xl" />
+        <div className='absolute inset-0 z-0'>
+          <div className='absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient' />
+          <div className='absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl' />
+          <div className='absolute inset-0 backdrop-blur-3xl' />
         </div>
 
         {/* Main Content Container */}
-        <div className="relative z-10 h-screen flex flex-col pt-[60px]">
+        <div className='relative z-10 h-screen flex flex-col pt-[60px]'>
           {/* Header Section */}
-          <div className="flex items-center justify-between px-4 lg:px-6">
-            <motion.h1 
-              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
+          <div className='flex items-center justify-between px-4 lg:px-6'>
+            <motion.h1
+              className='text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2'
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
+              transition={{ delay: 0.2 }}>
               Mentee Management
             </motion.h1>
 
             {isSmallScreen && (
               <IconButton
-                onClick={() => setShowFilters(prev => !prev)}
+                onClick={() => setShowFilters((prev) => !prev)}
                 sx={{
-                  color: '#f97316',
-                  bgcolor: 'rgba(249, 115, 22, 0.1)',
-                  '&:hover': {
-                    bgcolor: 'rgba(249, 115, 22, 0.2)',
+                  color: "#f97316",
+                  bgcolor: "rgba(249, 115, 22, 0.1)",
+                  "&:hover": {
+                    bgcolor: "rgba(249, 115, 22, 0.2)",
                   },
-                  position: 'fixed',
-                  right: '1rem',
-                  top: '5rem', // Adjust position to be more accessible
+                  position: "fixed",
+                  right: "1rem",
+                  top: "5rem", // Adjust position to be more accessible
                   zIndex: 1000,
-                }}
-              >
+                }}>
                 <FilterListIcon />
               </IconButton>
             )}
           </div>
 
           {/* Main Grid Layout - Updated grid and padding */}
-          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ${
-            isSmallScreen ? 'grid-cols-1' : 'grid-cols-[400px,1fr] lg:overflow-hidden'
-          }`}>
+          <div
+            className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ${
+              isSmallScreen
+                ? "grid-cols-1"
+                : "grid-cols-[400px,1fr] lg:overflow-hidden"
+            }`}>
             {/* Filter Panel - Updated width and padding */}
-            <motion.div 
-              className={`lg:h-full ${isSmallScreen ? 'w-full' : 'w-[400px]'}`}
+            <motion.div
+              className={`lg:h-full ${isSmallScreen ? "w-full" : "w-[400px]"}`}
               initial={false}
               animate={{
-                height: showFilters ? 'auto' : 0,
+                height: showFilters ? "auto" : 0,
                 opacity: showFilters ? 1 : 0,
-                marginBottom: showFilters ? '12px' : 0
+                marginBottom: showFilters ? "12px" : 0,
               }}
               transition={{ duration: 0.3 }}
               style={{
-                display: showFilters ? 'block' : 'none',
-                position: isSmallScreen ? 'relative' : 'sticky',
-                top: isSmallScreen ? 'auto' : '1rem',
-                maxHeight: isSmallScreen ? 'calc(100vh - 200px)' : 'none',
-                overflowY: isSmallScreen ? 'auto' : 'visible',
-                zIndex: isSmallScreen ? 50 : 'auto'
-              }}
-            >
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full">
-                <FilterSection 
+                display: showFilters ? "block" : "none",
+                position: isSmallScreen ? "relative" : "sticky",
+                top: isSmallScreen ? "auto" : "1rem",
+                maxHeight: isSmallScreen ? "calc(100vh - 200px)" : "none",
+                overflowY: isSmallScreen ? "auto" : "visible",
+                zIndex: isSmallScreen ? 50 : "auto",
+              }}>
+              <div className='bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full'>
+                <FilterSection
                   filters={filterConfig}
                   onFilterChange={handleFilterChange}
                   onSearch={handleSearch}
@@ -1048,21 +1156,20 @@ const MenteeManagement = () => {
             {/* Table Section - Updated for better responsiveness */}
             <motion.div
               className={`h-full min-w-0 transition-all duration-300 ${
-                !showFilters && isSmallScreen ? 'col-span-full' : ''
+                !showFilters && isSmallScreen ? "col-span-full" : ""
               }`}
               animate={{
-                gridColumn: (!showFilters && isSmallScreen) ? 'span 2' : 'auto'
-              }}
-            >
-              <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
-                <div className="h-full flex flex-col p-4 pb-2">
+                gridColumn: !showFilters && isSmallScreen ? "span 2" : "auto",
+              }}>
+              <div className='bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full'>
+                <div className='h-full flex flex-col p-4 pb-2'>
                   {loading ? (
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className='flex-1 flex items-center justify-center'>
                       <CircularProgress sx={{ color: "#f97316" }} />
                     </div>
                   ) : mentees.length > 0 ? (
-                    <div className="h-full">
-                      <MenteeTable 
+                    <div className='h-full'>
+                      <MenteeTable
                         mentees={mentees}
                         onEditClick={handleEditClick}
                         onDeleteClick={handleDelete}
@@ -1073,19 +1180,23 @@ const MenteeManagement = () => {
                       />
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {tableVisible ? 'No mentees found' : 'Select filters to load data'}
+                    <div className='flex-1 flex items-center justify-center'>
+                      <Typography
+                        variant='h6'
+                        sx={{ color: "rgba(255, 255, 255, 0.5)" }}>
+                        {tableVisible
+                          ? "No mentees found"
+                          : "Select filters to load data"}
                       </Typography>
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
-          </div> 
+          </div>
         </div>
 
-        <AddMenteeDialog 
+        <AddMenteeDialog
           open={openDialog}
           onClose={handleDialogClose}
           menteeDetails={menteeDetails}
@@ -1118,30 +1229,31 @@ const MenteeManagement = () => {
           uploadProgress={uploadProgress}
         />
 
-        <Dialog 
-          open={confirmDialog.open}           
-          onClose={handleConfirmClose}          
-          PaperProps={{           
-             style: {              
-              background: 'rgba(0, 0, 0, 0.8)',              
-              backdropFilter: 'blur(10px)',              
-              border: '1px solid rgba(255, 255, 255, 0.1)',              
-              borderRadius: '1rem',            
-            },          
-          }}>          
-          <DialogTitle>Confirm Update</DialogTitle>          
-          <DialogContent>            
-            Are you sure you want to update this mentee&apos;s data? This action is non-reversible.          
-          </DialogContent>          
-          <DialogActions>            
-            <Button onClick={handleConfirmClose} color="primary">              
-              Cancel            
-            </Button>            
-            <Button onClick={handleConfirmUpdate} color="secondary">              
-              Confirm            
-            </Button>          
-          </DialogActions>        
-        </Dialog>        
+        <Dialog
+          open={confirmDialog.open}
+          onClose={handleConfirmClose}
+          PaperProps={{
+            style: {
+              background: "rgba(0, 0, 0, 0.8)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "1rem",
+            },
+          }}>
+          <DialogTitle>Confirm Update</DialogTitle>
+          <DialogContent>
+            Are you sure you want to update this mentee&apos;s data? This action
+            is non-reversible.
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleConfirmClose} color='primary'>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmUpdate} color='secondary'>
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
         <BulkUploadPreview
           open={showPreview}
           onClose={() => setShowPreview(false)}
@@ -1149,31 +1261,29 @@ const MenteeManagement = () => {
           errors={previewData.errors}
           onConfirm={handleConfirmUpload}
           isUploading={uploading}
-          type="mentee" // Specify the type as mentee
+          type='mentee' // Specify the type as mentee
         />
-        {/* Toast notifications */}        
+        {/* Toast notifications */}
         {editLoading && (
           <Box
             sx={{
-              position: 'fixed',
+              position: "fixed",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
               zIndex: 9999,
-              backdropFilter: 'blur(5px)',
-            }}
-          >
-            <CircularProgress sx={{ color: '#f97316' }} />
+              backdropFilter: "blur(5px)",
+            }}>
+            <CircularProgress sx={{ color: "#f97316" }} />
           </Box>
         )}
-
-      </div>    
-    </ThemeProvider>  
+      </div>
+    </ThemeProvider>
   );
 };
 export default MenteeManagement;
