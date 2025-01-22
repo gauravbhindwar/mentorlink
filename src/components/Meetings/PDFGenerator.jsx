@@ -402,36 +402,60 @@ export const ConsolidatedDocument = ({
 }) => (
   <Document>
     <Page size='A4' style={styles.page}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Consolidated Mentoring Report</Text>
-      </View>
+      <Header />
 
-      {/* Basic Info */}
       <View style={styles.section}>
-        <Text style={{ fontSize: 12 }}>Academic Year: {academicYear}</Text>
-        <Text style={{ fontSize: 12 }}>Semester: {semester}</Text>
-        <Text style={{ fontSize: 12 }}>Section: {section}</Text>
-        <Text style={{ fontSize: 12 }}>Mentor: {mentorName}</Text>
-        <Text style={{ fontSize: 12 }}>Total Meetings: {meetings.length}</Text>
+        <Text style={styles.pageTitle}>Consolidated Mentoring Report</Text>
+
+        <View style={styles.detailsRow}>
+          <Text style={styles.detailItem}>Academic Year: {academicYear}</Text>
+          <Text style={styles.detailItem}>Semester: {semester}</Text>
+        </View>
+
+        <View style={styles.detailsRow}>
+          <Text style={styles.detailItem}>Section: {section}</Text>
+          <Text style={styles.detailItem}>Mentor: {mentorName}</Text>
+        </View>
+
+        <Text style={[styles.detailItem, { marginTop: 10 }]}>
+          Total Meetings Conducted: {meetings.length}
+        </Text>
       </View>
 
-      {/* Meetings Summary */}
-      {meetings.map((meeting, index) => (
-        <View key={index} style={[styles.table, { marginTop: 10 }]}>
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, { fontWeight: "bold" }]}>
-              Meeting {index + 1} -{" "}
+      <View style={styles.table}>
+        <View style={[styles.tableRow, { backgroundColor: "#f0f0f0" }]}>
+          <Text style={[styles.tableCol, { width: "20%", fontWeight: "bold" }]}>
+            Date
+          </Text>
+          <Text style={[styles.tableCol, { width: "20%", fontWeight: "bold" }]}>
+            Meeting ID
+          </Text>
+          <Text style={[styles.tableCol, { width: "60%", fontWeight: "bold" }]}>
+            Topic
+          </Text>
+        </View>
+
+        {meetings.map((meeting, index) => (
+          <View key={index} style={styles.tableRow}>
+            <Text style={[styles.tableCol, { width: "20%" }]}>
               {new Date(meeting.meeting_date).toLocaleDateString()}
             </Text>
-          </View>
-          <View style={styles.tableRow}>
-            <Text style={styles.tableCell}>
+            <Text style={[styles.tableCol, { width: "20%" }]}>
+              {meeting.meeting_id}
+            </Text>
+            <Text style={[styles.tableCol, { width: "60%" }]}>
               {meeting.meeting_notes?.TopicOfDiscussion || "No topic recorded"}
             </Text>
           </View>
-        </View>
-      ))}
+        ))}
+      </View>
+
+      <View style={styles.signatureSection}>
+        <Text style={styles.signatureText}>Mentor's Signature</Text>
+        <Text style={styles.signatureDate}>
+          Date: {new Date().toLocaleDateString()}
+        </Text>
+      </View>
     </Page>
   </Document>
 );

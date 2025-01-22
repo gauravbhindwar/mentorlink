@@ -174,7 +174,6 @@ export async function POST(request) {
       !semester ||
       !session ||
       !year ||
-      !isMeetingOnline ||
       !venue
     ) {
       return NextResponse.json(

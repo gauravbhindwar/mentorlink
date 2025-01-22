@@ -1,5 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import {
+  generateConsolidatedPdf,
+  PDFDownloadComponent,
+} from "@/components/Meetings/PDFGenerator";
 
 const ConsolidatedReport = () => {
   const [mentorId, setMentorId] = useState("");
@@ -7,12 +11,16 @@ const ConsolidatedReport = () => {
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingChanges, setPendingChanges] = useState({});
+  const [meetings, setMeetings] = useState([]);
+  const [mentorName, setMentorName] = useState("");
 
   useEffect(() => {
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData"));
     if (mentorData && mentorData.MUJid) {
       setMentorId(mentorData.MUJid);
+      setMentorName(mentorData.name);
       fetchMenteeData(mentorData.MUJid);
+      fetchMeetingsData(mentorData.MUJid);
     }
   }, []);
 
@@ -21,12 +29,45 @@ const ConsolidatedReport = () => {
       const response = await fetch(
         `/api/mentee/meetings-attended?mentor_id=${mentor_id}`
       );
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse JSON:", text);
+        throw new Error("Invalid JSON response");
+      }
       setMentees(data);
     } catch (error) {
       console.error("Error fetching mentee data:", error);
+      setMentees([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMeetingsData = async (mentor_id) => {
+    try {
+      const response = await fetch(`/api/meetings?mentor_id=${mentor_id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse JSON:", text);
+        throw new Error("Invalid JSON response");
+      }
+
+      setMeetings(data);
+    } catch (error) {
+      console.error("Error fetching meetings data:", error);
+      setMeetings([]);
     }
   };
 
@@ -128,16 +169,32 @@ const ConsolidatedReport = () => {
           </tbody>
         </table>
       </div>
-      {hasChanges && (
-        <div className='fixed bottom-8 left-1/2 transform -translate-x-1/2'>
+      <div className='fixed bottom-8 right-8 flex gap-4'>
+        {hasChanges && (
           <button
             onClick={saveAllChanges}
             className='bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg shadow-lg transition-all duration-300'
             disabled={loading}>
             {loading ? "Saving..." : "Save Changes"}
           </button>
-        </div>
-      )}
+        )}
+
+        {meetings.length > 0 && (
+          <PDFDownloadComponent
+            document={generateConsolidatedPdf(
+              meetings,
+              new Date().getFullYear().toString(),
+              meetings[0]?.semester || "",
+              meetings[0]?.section || "",
+              mentorName
+            )}
+            fileName='consolidated-report.pdf'>
+            <div className='bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white px-6 py-2 rounded-lg shadow-lg transition-all duration-300'>
+              Download Report
+            </div>
+          </PDFDownloadComponent>
+        )}
+      </div>
     </div>
   );
 };
