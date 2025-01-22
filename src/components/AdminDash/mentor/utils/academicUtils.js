@@ -1,18 +1,22 @@
-export const getCurrentAcademicYear = () => {
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1;
-  const currentYear = currentDate.getFullYear();
-  const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
-  const endYear = startYear + 1;
-  return `${startYear}-${endYear}`;
+// Import everything from mentee's academicUtils
+import {
+  determineAcademicPeriod,
+  determineAcademicPeriodServer,
+  clearAcademicPeriodCache,
+  generateAcademicSessions,
+  getCurrentAcademicYear
+} from '../../mentee/utils/academicUtils';
+
+// Re-export all the utilities
+export {
+  determineAcademicPeriod,
+  determineAcademicPeriodServer,
+  clearAcademicPeriodCache,
+  generateAcademicSessions,
+  getCurrentAcademicYear
 };
 
-export const generateAcademicSessions = (academicYear) => {
-  if (!academicYear) return [];
-  const [startYear, endYear] = academicYear.split("-");
-  return [`JULY-DECEMBER ${startYear}`, `JANUARY-JUNE ${endYear}`];
-};
-
+// Keep only mentor-specific utilities if needed
 export const validateAcademicYear = (value) => {
   if (!value || typeof value !== 'string') return false;
   const regex = /^(\d{4})-(\d{4})$/;

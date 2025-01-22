@@ -44,3 +44,45 @@ export const generateSemesterOptions = (academicSession) => {
   }
   return [];
 };
+
+export const determineAcademicPeriodServer = () => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // JavaScript months are 0-based
+
+  let academicYear;
+  let academicSession;
+
+  // Determine academic year
+  if (currentMonth >= 7) {
+    academicYear = `${currentYear}-${currentYear + 1}`;
+  } else {
+    academicYear = `${currentYear - 1}-${currentYear}`;
+  }
+
+  // Determine session
+  if (currentMonth >= 7 && currentMonth <= 12) {
+    academicSession = `JULY-DECEMBER ${currentYear}`;
+  } else {
+    academicSession = `JANUARY-JUNE ${currentYear}`;
+  }
+
+  return { academicYear, academicSession };
+};
+
+export const determineAcademicPeriod = () => {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    const storedPeriod = localStorage.getItem('academicPeriod');
+    if (storedPeriod) {
+      return JSON.parse(storedPeriod);
+    }
+  }
+  
+  // Fallback to server-side determination
+  return determineAcademicPeriodServer();
+};
+
+export const clearAcademicPeriodCache = () => {
+  localStorage.removeItem('academicPeriod');
+};

@@ -147,7 +147,7 @@ const EmailConfirmationDialog = ({ isOpen, onClose, mentees, emailData, onConfir
                 onClick={() => confirmationState.handler?.(true)}
                 className="btn-orange"
               >
-                Continue
+                {currentBatch === totalBatches ? 'Finish' : `Confirm to ${currentBatch + 1}`}
               </button>
             </div>
           </div>

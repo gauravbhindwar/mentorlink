@@ -16,7 +16,7 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // Get target mentor by email with academic year/session restrictions
+    // Get target mentor
     const toMentor = await Mentor.findOne({ 
       email: toMentorEmail,
       academicYear,
@@ -30,7 +30,7 @@ export async function POST(req) {
       }, { status: 404 });
     }
 
-    // Update mentees assigned to the source mentor within same academic year/session
+    // Simply update mentorMujid and mentorEmailid for all relevant mentees
     const updateResult = await Mentee.updateMany(
       { 
         mentorMujid: fromMentorId,

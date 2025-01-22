@@ -1,17 +1,15 @@
 'use client';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Typography } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenteeDetailsDialog from './MenteeDetailsDialog';
 import axios from 'axios';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-
-const BATCH_SIZE = 50;
-const BACKGROUND_BATCH_SIZE = 100;
 
 const CustomLoadingOverlay = () => (
   <Box sx={{
@@ -44,15 +42,56 @@ const CustomNoRowsOverlay = () => (
   </Box>
 );
 
-const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoading }) => {
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
-  const [loading, setLoading] = useState(false);
-  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
+const StyledPaginationItem = styled(IconButton)(() => ({
+  padding: '4px',
+  color: 'rgba(249, 115, 22, 0.7)',
+  '&:hover': {
+    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+    color: '#f97316',
+  },
+  '&.Mui-disabled': {
+    color: 'rgba(255, 255, 255, 0.3)',
+  },
+  transition: 'all 0.2s ease',
+}));
+
+const CustomPagination = () => {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        '& .MuiTablePagination-root': {
+          color: 'rgba(255, 255, 255, 0.7)',
+        },
+        '& .MuiTablePagination-selectIcon': {
+          color: '#f97316',
+        },
+        '& .MuiTablePagination-select': {
+          color: 'rgba(255, 255, 255, 0.9)',
+        },
+      }}
+    >
+      <StyledPaginationItem
+        size="small"
+        onClick={() => document.querySelector('.MuiTablePagination-actions button:first-of-type').click()}
+      >
+        <ArrowBackIosNewIcon sx={{ fontSize: '1rem' }} />
+      </StyledPaginationItem>
+      <StyledPaginationItem
+        size="small"
+        onClick={() => document.querySelector('.MuiTablePagination-actions button:last-of-type').click()}
+      >
+        <ArrowForwardIosIcon sx={{ fontSize: '1rem' }} />
+      </StyledPaginationItem>
+    </Box>
+  );
+};
+
+const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, currentFilters }) => {
   const [mounted, setMounted] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
-  const cachedData = useRef(new Map());
-  const batchKey = useRef('');
+  const dataCache = useRef(new Map());
   const [filters, setFilters] = useState({
     academicYear: '',
     academicSession: '',
@@ -62,170 +101,126 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     menteeMujid: '',
     mentorEmailid: ''
   });
-  // const [page, setPage] = useState(0);
-  // const [pageSize, setPageSize] = useState(10); // Change rowsPerPage to pageSize
-  // const [orderBy, setOrderBy] = useState('name');
-  // const [order, setOrder] = useState('asc');
+
+  // Update filters when currentFilters changes
+  useEffect(() => {
+    if (currentFilters) {
+      setFilters(currentFilters);
+    }
+  }, [currentFilters]);
+
+  // Simplified data fetching
+  // const fetchData = useCallback(async (params) => {
+  //   const cacheKey = `${params.academicYear}-${params.academicSession}`;
+    
+  //   if (dataCache.current.has(cacheKey)) {
+  //     return dataCache.current.get(cacheKey);
+  //   }
+
+  //   setLoadingState(prev => ({ ...prev, initial: true }));
+  //   try {
+  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
+  //     const processedData = response.data.map(mentee => ({
+  //       ...mentee,
+  //       id: mentee._id || `temp-${Math.random().toString(36).substr(2, 9)}`
+  //     }));
+      
+  //     dataCache.current.set(cacheKey, processedData);
+  //     return processedData;
+  //   } catch (error) {
+  //     console.error('Error fetching data:', error);
+  //     return [];
+  //   } finally {
+  //     setLoadingState(prev => ({ ...prev, initial: false }));
+  //   }
+  // }, []);
+  // console.log("fetchData:", fetchData);
+
+
+  // Handle data updates
+  // useEffect(() => {
+  //   if (mentees?.length > 0) {
+  //     setTableData(mentees);
+  //   }
+  // }, [mentees]);
+
+  // Initialize component
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
+  const [loading, setLoading] = useState(false);
+  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
+  const cachedData = useRef(new Map());
+  // const batchKey = useRef('');
+  // const [filters, setFilters] = useState({
+  //   academicYear: '',
+  //   academicSession: '',
+  //   semester: '',
+  //   section: '',
+  //   mentorMujid: '',
+  //   menteeMujid: '',
+  //   mentorEmailid: ''
+  // });
   const [localData, setLocalData] = useState([]);
-  // const [isUsingCache, setIsUsingCache] = useState(false);
   const [baseData, setBaseData] = useState([]); // Add this new state to store initial data
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Add this function near the top of the component
-  // const logCacheContents = () => {
-  //   console.log('MenteeTable Cache Status:', {
-  //     totalCacheEntries: cachedData.current.size,
-  //     cacheKeys: Array.from(cachedData.current.keys()),
-  //     cacheEntrySizes: Array.from(cachedData.current.entries()).map(([key, value]) => ({
-  //       key,
-  //       size: value?.length || 0
-  //     }))
-  //   });
-  // };
-
   useEffect(() => {
-    const fetchDataInBatches = async () => {
-      if (!mentees || mentees.length === 0) {
-        const currentKey = `${filters.academicYear}-${filters.academicSession}`;
-        if (cachedData.current.has(currentKey)) {
-          return cachedData.current.get(currentKey);
-        }
+    if (!currentFilters) {
+      const baseData = localStorage.getItem('mentee data');
+      setLocalData(baseData ? JSON.parse(baseData) : []);
+    } else {
+      const filteredData = localStorage.getItem('menteeFilteredData');
+      setLocalData(filteredData ? JSON.parse(filteredData) : []);
+    }
+  }, [currentFilters]);
 
+  // Add new effect to sync with localStorage
+  useEffect(() => {
+    if (currentFilters) {
+      const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
+      const storedData = localStorage.getItem(storageKey);
+      if (storedData) {
         try {
-          const initialResponse = await axios.get('/api/admin/manageUsers/manageMentee', {
-            params: {
-              ...filters,
-              batchSize: BATCH_SIZE,
-              offset: 0
-            }
-          });
-
-          const initialData = initialResponse.data;
-          setLoadingProgress(80);
-          
-          cachedData.current.set(currentKey, initialData);
-          batchKey.current = currentKey;
-
-          setIsBackgroundLoading(true);
-          const remainingResponse = await axios.get('/api/admin/manageUsers/manageMentee', {
-            params: {
-              ...filters,
-              batchSize: BACKGROUND_BATCH_SIZE,
-              offset: BATCH_SIZE
-            }
-          });
-
-          const allData = [...initialData, ...remainingResponse.data];
-          cachedData.current.set(currentKey, allData);
-          setLoadingProgress(100);
-          setIsBackgroundLoading(false);
-
-          return allData;
+          const parsedData = JSON.parse(storedData);
+          setLocalData(parsedData);
+          setBaseData(parsedData); // Also update base data
         } catch (error) {
-          console.error('Error fetching data:', error);
-          setLoadingProgress(100);
-          return [];
+          console.error('Error parsing stored data:', error);
         }
       }
-    };
-
-    fetchDataInBatches();
-  }, [filters.academicYear, filters.academicSession]);
-
-  useEffect(() => {
-    const fetchAndCacheData = async () => {
-      const currentKey = `${filters.academicYear}-${filters.academicSession}`;
-      
-      // Log cache contents before check
-      // logCacheContents();
-      
-      // Check if data exists in cache
-      if (cachedData.current.has(currentKey)) {
-        // console.log("Cache hit for:", currentKey, {
-        //   dataSize: cachedData.current.get(currentKey)?.length || 0
-        // });
-        // setIsUsingCache(true);
-        const cachedResult = cachedData.current.get(currentKey);
-        setBaseData(cachedResult); // Store the base data
-        setLocalData(cachedResult);
-        return;
-      }
-
-      // console.log("Cache miss for:", currentKey);
-      // setIsUsingCache(false);
-      
-      try {
-        const initialResponse = await axios.get('/api/admin/manageUsers/manageMentee', {
-          params: {
-            academicYear: filters.academicYear,
-            academicSession: filters.academicSession,
-            batchSize: BATCH_SIZE,
-            offset: 0
-          }
-        });
-
-        const initialData = initialResponse.data;
-        cachedData.current.set(currentKey, initialData);
-        setBaseData(initialData); // Store the base data
-        setLocalData(initialData);
-        // ...rest of fetch logic...
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-
-    if (filters.academicYear && filters.academicSession) {
-      fetchAndCacheData();
     }
-  }, [filters.academicYear, filters.academicSession]);
-
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth() + 1;
-        
-        const academicYear = `${currentYear}-${currentYear + 1}`;
-        const academicSession = currentMonth >= 7 ? 
-          `JULY-DECEMBER ${currentYear}` : 
-          `JANUARY-JUNE ${currentYear + 1}`;
-
-        const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-          params: {
-            academicYear,
-            academicSession
-          }
-        });
-
-        if (response.data) {
-          const processedData = response.data.map(mentee => ({
-            ...mentee,
-            id: mentee._id || mentee.id || `temp-${Math.random().toString(36).substr(2, 9)}`
-          }));
-          onDataUpdate(processedData);
-        }
-      } catch (error) {
-        console.log('Error fetching initial data:', error);
-        toast.error('Error fetching initial data. Please try again later.');
-      }
-    };
-
-    if (!mentees || mentees.length === 0) {
-      fetchInitialData();
-    }
-  }, [mentees, onDataUpdate]);
+  }, [currentFilters?.academicYear, currentFilters?.academicSession, currentFilters?.timestamp]); // Add timestamp dependency
 
   const handleDeleteClick = (mujid) => {
     setDeleteDialog({ open: true, mujid });
   };
 
-  const handleEditClick = (menteeData) => {
-    if (onEditClick) {
-      onEditClick(menteeData);
+  // Update handleEditClick to always get fresh data from localStorage
+  const handleEditClick = async (rowData) => {
+    if (onEditClick && rowData) {
+      const storageKey = `${currentFilters?.academicYear}-${currentFilters?.academicSession}`;
+      const storedData = localStorage.getItem(storageKey);
+      
+      try {
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          const freshData = parsedData.find(item => item.MUJid === rowData.MUJid);
+          if (freshData) {
+            onEditClick({ ...freshData, id: rowData.id }); // Preserve the id
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error accessing stored data:', error);
+      }
+      onEditClick(rowData);
     }
   };
 
@@ -234,11 +229,44 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
       setLoading(true);
       try {
         await onDeleteClick([deleteDialog.mujid]);
+        
+        // Update local data immediately
+        setLocalData(prevData => 
+          prevData.filter(m => m.MUJid !== deleteDialog.mujid)
+        );
+        
+        // Update baseData to maintain consistency
+        setBaseData(prevData => 
+          prevData.filter(m => m.MUJid !== deleteDialog.mujid)
+        );
+        
+        // Update cache
+        const currentKey = `${filters.academicYear}-${filters.academicSession}`;
+        const cachedData = dataCache.current.get(currentKey);
+        if (cachedData) {
+          dataCache.current.set(
+            currentKey, 
+            cachedData.filter(m => m.MUJid !== deleteDialog.mujid)
+          );
+        }
+
+        // Update local storage
+        const localData = localStorage.getItem(currentKey);
+        if (localData) {
+          const parsedData = JSON.parse(localData);
+          const updatedData = parsedData.filter(m => m.MUJid !== deleteDialog.mujid);
+          localStorage.setItem(currentKey, JSON.stringify(updatedData));
+        }
+
+        // Notify parent component if needed
         if (onDataUpdate) {
           onDataUpdate(prevMentees => 
             prevMentees.filter(m => m.MUJid !== deleteDialog.mujid)
           );
         }
+      } catch (error) {
+        // Add error handling if needed
+        console.error('Delete failed:', error);
       } finally {
         setLoading(false);
         setDeleteDialog({ open: false, mujid: null });
@@ -312,16 +340,42 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
                matchesMentorMujid && matchesMentorEmail;
       });
 
-      // console.log("Filter results:", {
-      //   filtered: filteredResults.length,
-      //   appliedFilters: filters
-      // });
 
       setLocalData(filteredResults);
     };
 
     applyFilters();
   }, [filters, baseData]);
+
+  // Add new effect to handle filter changes
+  useEffect(() => {
+    const updateTableData = () => {
+      if (filters && Object.keys(filters).some(key => filters[key])) {
+        const filteredResults = baseData.filter(mentee => {
+          const matchesSemester = !filters.semester || 
+            mentee.semester === (typeof filters.semester === 'string' ? 
+              parseInt(filters.semester) : filters.semester);
+          const matchesSection = !filters.section || 
+            mentee.section?.toUpperCase() === filters.section.toUpperCase();
+          const matchesMenteeMujid = !filters.menteeMujid || 
+            mentee.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
+          const matchesMentorMujid = !filters.mentorMujid || 
+            mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
+          const matchesMentorEmail = !filters.mentorEmailid || 
+            mentee.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
+
+          return matchesSemester && matchesSection && matchesMenteeMujid && 
+                matchesMentorMujid && matchesMentorEmail;
+        });
+        
+        setLocalData(filteredResults);
+      } else {
+        setLocalData(baseData);
+      }
+    };
+
+    updateTableData();
+  }, [filters, baseData]); // Add dependency on filters and baseData
 
   // Modify processedMentees to use localData directly
   const processedMentees = useMemo(() => {
@@ -341,33 +395,6 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     }));
   }, [mounted, localData]);
 
-  useEffect(() => {
-    const initializeFilters = () => {
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear();
-      const currentMonth = currentDate.getMonth() + 1;
-      
-      const academicYear = `${currentYear}-${currentYear + 1}`;
-      const academicSession = currentMonth >= 7 ? 
-        `JULY-DECEMBER ${currentYear}` : 
-        `JANUARY-JUNE ${currentYear + 1}`;
-
-      setFilters(prev => ({
-        ...prev,
-        academicYear,
-        academicSession
-      }));
-
-      if (mentees?.length > 0) {
-        const cacheKey = `${academicYear}-${academicSession}`;
-        cachedData.current.set(cacheKey, mentees);
-      }
-    };
-
-    if (mounted) {
-      initializeFilters();
-    }
-  }, [mounted, mentees]);
 
   const headerContent = useMemo(() => ({
     title: 'Mentee Management',
@@ -463,48 +490,75 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
-      width: 50,
+      flex: 0.4,
       renderCell: (params) => {
         const index = processedMentees.findIndex(mentee => mentee.id === params.row.id);
         return index + 1;
       },
-      sortable: false,
+      sortable: true,
       headerAlign: 'center',
       align: 'center',
     },
     {
       field: 'MUJid',
-      headerName: 'MUJ ID',
-      width: 150,
+      headerName: 'MUJ ID', 
+      flex: 0.8,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
     },
     {
       field: 'name',
       headerName: 'Name',
-      width: 200,
+      flex: 1,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
     },
     {
       field: 'email',
       headerName: 'Email',
-      width: 250,
+      flex: 1.2,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
     },
     {
       field: 'mentorEmailid',
       headerName: 'Mentor Email',
-      width: 250,
+      flex: 1.2,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 200,
+      headerAlign: 'center',
+      align: 'center',
+      flex: 0.8,
       sortable: false,
       renderCell: (params) => {
         if (!params?.row) return null;
+        const rowData = {
+          ...params.row,
+          _id: params.row._id || params.row.id, // Ensure _id is preserved
+          academicYear: params.row.academicYear,
+          academicSession: params.row.academicSession,
+          // Ensure all necessary fields are included
+          MUJid: params.row.MUJid,
+          name: params.row.name,
+          email: params.row.email,
+          phone: params.row.phone,
+          section: params.row.section,
+          semester: params.row.semester,
+          mentorMujid: params.row.mentorMujid,
+          mentorEmailid: params.row.mentorEmailid,
+          yearOfRegistration: params.row.yearOfRegistration
+        };
+
         return (
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
             <IconButton
               onClick={() => setDetailsDialog({ open: true, mentee: params.row })}
               sx={{ 
@@ -518,7 +572,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
               <InfoIcon fontSize="small" />
             </IconButton>
             <IconButton
-              onClick={() => handleEditClick(params.row)}
+              onClick={() => handleEditClick(rowData)}
               sx={{ 
                 color: '#f97316',
                 '&:hover': {
@@ -549,44 +603,18 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
     ...col,
     headerAlign: 'center',
     align: 'center',
-    flex: 0,
-    minWidth: col.width || 100,
-    sortable: col.field !== 'serialNumber' && col.field !== 'actions',
-    // Add sort icons configuration
+    sortable: col.field !== 'actions',
     renderHeader: (params) => (
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center',
-        gap: 0.5,
-        color: '#f97316',
+        justifyContent: 'center',
+        color: 'rgba(255, 255, 255, 0.9)',
         fontSize: '0.95rem',
         fontWeight: 600,
+        width: '100%'
       }}>
         {params.colDef.headerName}
-        {params.colDef.sortable && (
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center',
-            ml: 0.5
-          }}>
-            <ArrowUpwardIcon 
-              sx={{ 
-                fontSize: '0.75rem',
-                opacity: params.sortDirection === 'asc' ? 1 : 0.3,
-                transition: 'opacity 0.2s'
-              }} 
-            />
-            <ArrowDownwardIcon 
-              sx={{ 
-                fontSize: '0.75rem',
-                opacity: params.sortDirection === 'desc' ? 1 : 0.3,
-                marginTop: '-2px',
-                transition: 'opacity 0.2s'
-              }} 
-            />
-          </Box>
-        )}
       </Box>
     ),
   }));
@@ -607,10 +635,6 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         zIndex: 1,
       }}
     >
-      <CircularProgress variant="determinate" value={loadingProgress} sx={{ color: '#f97316' }} />
-      <Typography sx={{ mt: 2, color: 'white' }}>
-        {loadingProgress < 100 ? `Loading ${loadingProgress}%` : 'Finalizing...'}
-      </Typography>
     </Box>
   );
 
@@ -623,6 +647,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
       display: 'flex',
       flexDirection: 'column',
       transition: 'all 0.3s ease',
+      className: 'custom-scrollbar', // Add custom scrollbar class
     }}>
       {loading && (
         <Box sx={{
@@ -646,7 +671,6 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         rows={processedMentees || []}
         columns={columns}
         getRowId={(row) => row._id || row.id}
-        autoHeight={false}
         sx={{
           height: { xs: '500px', lg: '100%' },
           width: '100%',
@@ -659,6 +683,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           },
           '& .MuiDataGrid-virtualScroller': {
             overflow: 'auto !important',
+            className: 'custom-scrollbar', // Add custom scrollbar class
             '&::-webkit-scrollbar': {
               width: '8px',
               height: '8px',
@@ -678,11 +703,9 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
             minHeight: { xs: '300px', lg: '200px' },
             maxHeight: { xs: '500px', lg: 'unset !important' },
             scrollBehavior: 'smooth',
-            // Add smooth scroll animation
             '@media (prefers-reduced-motion: no-preference)': {
               scrollBehavior: 'smooth',
             },
-            // Simplified fade animation
             animation: 'fadeIn 0.2s ease-out',
           },
           '& .MuiDataGrid-virtualScrollerContent': {
@@ -756,19 +779,16 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           '& .MuiDataGrid-columnHeaderTitle': {
             fontWeight: 600,
           },
-          // Add keyframes for animations
           '@keyframes fadeIn': {
             from: { opacity: 0.8 },
             to: { opacity: 1 }
           },
-          // Remove distracting animations
           '& .MuiIconButton-root': {
             transition: 'background-color 0.2s ease',
             '&:hover': {
               backgroundColor: 'rgba(249, 115, 22, 0.08)',
             }
           },
-          // Smooth but subtle transitions
           '& .MuiDataGrid-columnHeader': {
             transition: 'background-color 0.2s ease',
           },
@@ -778,12 +798,49 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           '& .MuiDataGrid-footerContainer': {
             transition: 'opacity 0.2s ease',
           },
-          // Remove pulse and slide animations
           animation: 'none',
-          // Remove other distracting transitions
           '& *': {
             animation: 'none !important',
-          }
+          },
+          '& .MuiTablePagination-root': {
+            color: 'rgba(255, 255, 255, 0.7)',
+            '& .MuiTablePagination-select': {
+              color: 'rgba(255, 255, 255, 0.9)',
+              backgroundColor: 'rgba(249, 115, 22, 0.2)',
+              borderRadius: 1,
+              padding: '4px 8px',
+              '&:focus': {
+                backgroundColor: 'rgba(249, 115, 22, 0.2)',
+              },
+              '& .MuiSelect-select': {
+                color: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'transparent', // Ensure dropdown has no opaque color
+              },
+            },
+            '& .MuiTablePagination-selectIcon': {
+              color: '#f97316',
+            },
+            '& .MuiTablePagination-displayedRows': {
+              color: 'rgba(255, 255, 255, 0.7)',
+            },
+            '& .MuiTablePagination-actions .MuiIconButton-root': {
+              color: '#f97316',
+              '&:hover': {
+                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+              },
+            },
+            '& .MuiTablePagination-menuItem': {
+              color: 'rgba(255, 255, 255, 0.9)',
+              backgroundColor: 'transparent', // Remove transparency from menu item
+            },
+            '& .MuiButtonBase-root.MuiMenuItem-root.MuiMenuItem-gutters.MuiMenuItem-root.MuiMenuItem-gutters.MuiTablePagination-menuItem': {
+              backgroundColor: 'transparent',
+            },
+          },
+          '& .MuiDataGrid-footerContainer': {
+            borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+          },
         }}
         components={{
           Toolbar: GridToolbar,
@@ -791,6 +848,7 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
           NoRowsOverlay: CustomNoRowsOverlay,
           Header: CustomHeaderComponent,
           Footer: CustomFooterComponent,
+          Pagination: CustomPagination,
         }}
         componentsProps={{
           columnHeaders: {
@@ -811,14 +869,14 @@ const MenteeTable = ({ mentees, onDeleteClick, onDataUpdate, onEditClick, isLoad
         pageSize={10}
         rowsPerPageOptions={[10, 25, 50]}
         pagination
-        disableSelectionOnClick
-        disableColumnMenu={false}
+        disableSelectionOnClick={true}
+        disableColumnMenu={true}
         disableColumnFilter={false}
       />
 
       <CustomFooterComponent />
 
-      {(isLoading || isBackgroundLoading) && <LoadingOverlay />}
+      {(isLoading) && <LoadingOverlay />}
 
       <MenteeDetailsDialog
         open={detailsDialog.open}

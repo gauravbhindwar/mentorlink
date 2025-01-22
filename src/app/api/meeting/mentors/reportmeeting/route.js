@@ -106,10 +106,27 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    // Ensure database connection is established
     await connect();
 
-    const { mentor_id, meeting_id, meeting_notes } = await request.json();
+    const { mentor_id, meeting_id, meeting_notes, presentMentees } =
+      await request.json();
+
+    const filteredPresentMentees = presentMentees.filter(
+      (mentee) => mentee !== ""
+    );
+    // Validate required fields (feedback is optional)
+    if (
+      !meeting_notes.TopicOfDiscussion ||
+      !meeting_notes.TypeOfInformation ||
+      !meeting_notes.NotesToStudent ||
+      !meeting_notes.outcome ||
+      !meeting_notes.closureRemarks
+    ) {
+      return NextResponse.json(
+        { error: "Required fields are missing" },
+        { status: 400 }
+      );
+    }
 
     const academicSession = await AcademicSession.findOneAndUpdate(
       {
@@ -121,9 +138,10 @@ export async function POST(request) {
           "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].meeting_notes":
             meeting_notes,
           "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].isReportFilled": true,
+          "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].present_mentees":
+            filteredPresentMentees,
         },
       },
-
       {
         arrayFilters: [
           { "session.semesters.sections.meetings.meeting_id": meeting_id },

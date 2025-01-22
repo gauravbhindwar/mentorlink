@@ -6,6 +6,7 @@ import LoadingComponent from '@/components/LoadingComponent';
 import { DataGrid } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { toast } from 'react-hot-toast';
+import { determineAcademicPeriod, generateAcademicSessions } from '../mentee/utils/academicUtils';
 
 const darkTheme = createTheme({
   palette: {
@@ -22,73 +23,52 @@ const ManageMeeting = () => {
   const [loading, setLoading] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
   const [academicSessions, setAcademicSessions] = useState([]);
-
-  const getCurrentAcademicYear = () => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    const startYear = currentMonth > 6 ? currentYear : currentYear - 1;
-    const endYear = startYear + 1;
-    return `${startYear}-${endYear}`;
-  };
-
-  const generateAcademicSessions = (academicYear) => {
-    if (!academicYear) return [];
-    const [startYear, endYear] = academicYear.split('-');
-    return [
-        `JULY-DECEMBER ${startYear}`,
-        `JANUARY-JUNE ${endYear}`
-    ];
-  };
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
+  const [totalRows, setTotalRows] = useState(0);
+  const [showTable, setShowTable] = useState(false);
 
   useEffect(() => {
-    const currentAcadYear = getCurrentAcademicYear();
-    const sessions = generateAcademicSessions(currentAcadYear);
-    setAcademicYear(currentAcadYear);
-    setAcademicSession(sessions[0]);
-    setAcademicYears([
-      currentAcadYear,
-      `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
-      `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
-    ]);
-    setAcademicSessions(sessions);
-    
-    // Clear mentor meetings data on component mount
-    setMentorMeetings([]);
-    sessionStorage.removeItem('mentorMeetings');
-
-    // Cleanup on component unmount
-    return () => {
-      sessionStorage.removeItem('mentorMeetings');
+    const init = async () => {
+      const { academicYear: currentAcadYear, academicSession: currentSession } = determineAcademicPeriod();
+      const sessions = generateAcademicSessions(currentAcadYear);
+      
+      // Set initial values
+      setAcademicYear(currentAcadYear);
+      setAcademicSession(currentSession);
+      setAcademicYears([
+        currentAcadYear,
+        `${parseInt(currentAcadYear.split('-')[0]) - 1}-${parseInt(currentAcadYear.split('-')[1]) - 1}`,
+        `${parseInt(currentAcadYear.split('-')[0]) - 2}-${parseInt(currentAcadYear.split('-')[1]) - 2}`
+      ]);
+      setAcademicSessions(sessions);
     };
+
+    init();
   }, []);
 
-  const fetchMentorMeetings = async () => {
+  const fetchMentorMeetings = async (year = academicYear, session = academicSession, sem = semester, sec = section, pg = page, size = pageSize) => {
     setLoading(true);
-    if (!academicYear || !academicSession || !semester) {
-      toast.error('Please select all required fields.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Get the correct year based on session type
-      const isJulyDecember = academicSession.includes('JULY-DECEMBER');
-      const [startYear] = academicYear.split('-');
+      const isJulyDecember = session.includes('JULY-DECEMBER');
+      const [startYear] = year.split('-');
       const queryYear = isJulyDecember ? startYear : parseInt(startYear) + 1;
 
       const params = {
         year: queryYear,
-        session: academicSession,
-        semester,
-        ...(section && { section })
+        session: session,
+        semester: sem,
+        ...(sec && { section: sec }),
+        page: pg,
+        limit: size
       };
       
       const response = await axios.get('/api/admin/manageMeeting', { params });
       
       if (response.data) {
-        setMentorMeetings(response.data);
-        sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data));
+        setMentorMeetings(response.data.meetings);
+        setTotalRows(response.data.total);
+        sessionStorage.setItem('mentorMeetings', JSON.stringify(response.data.meetings));
       }
     } catch (error) {
       console.error('Error:', error.response?.data || error);
@@ -97,6 +77,17 @@ const ManageMeeting = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    fetchMentorMeetings(academicYear, academicSession, semester, section, newPage, pageSize);
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    setPageSize(newPageSize);
+    setPage(0);
+    fetchMentorMeetings(academicYear, academicSession, semester, section, 0, newPageSize);
   };
 
   const handleAcademicYearChange = (e) => {
@@ -118,7 +109,11 @@ const ManageMeeting = () => {
   };
 
   const handleSemesterChange = (e) => {
-    setSemester(e.target.value);
+    const value = e.target.value;
+    // Only allow numbers 1-8
+    if (value === '' || (/^[1-8]$/.test(value))) {
+      setSemester(value);
+    }
   };
 
   const handleSectionChange = (e) => {
@@ -130,16 +125,32 @@ const ManageMeeting = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    fetchMentorMeetings();
+    setPage(0); // Reset to first page
+    setShowTable(true); // Show table when fetching
+    fetchMentorMeetings(academicYear, academicSession, semester, section, 0, pageSize);
   };
 
   const sendEmail = async (mentorEmail) => {
-    try {
-        // Implement email sending logic
-        window.location.href = `mailto:${mentorEmail}`;
-    } catch{
-        alert('Failed to send email');
-    }
+        
+        const subject = 'Mentor Meeting Follow-up';
+        const body = `Dear Mentor,
+
+        I hope this email finds you well.
+        ${mentorMeetings.find(m => m.mentorEmail === mentorEmail)?.meetingCount >= 3 
+          ? 'Congratulations on completing all required mentor meetings!' 
+          : 'This is a reminder that you still need to complete the required mentor meetings.'}
+
+        Current Status:
+        - Meetings Completed: ${mentorMeetings.find(m => m.mentorEmail === mentorEmail)?.meetingCount || 0}
+        - Required Meetings: 3
+
+        Please ensure all meeting details are properly documented in the system.
+
+        Best regards,
+        Admin Team`;
+
+        window.location.href = `mailto:${mentorEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  
   };
 
   const generateReport = async (mentorMUJid) => {
@@ -194,15 +205,18 @@ const ManageMeeting = () => {
   };
 
   const columns = [
-    { field: 'MUJid', headerName: 'MUJ ID', width: 130 },
-    { field: 'mentorName', headerName: 'Name', width: 180 },
-    { field: 'mentorEmail', headerName: 'Email', width: 220 },
-    { field: 'mentorPhone', headerName: 'Phone', width: 130 },
-    { field: 'meetingCount', headerName: 'Meetings', width: 100 },
+    { field: 'MUJid', headerName: 'MUJ ID',flex:0.7, width: 130, sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'mentorName', headerName: 'Name',flex:0.8, width: 180,sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'mentorEmail', headerName: 'Email',flex:1, width: 220 ,sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'mentorPhone', headerName: 'Phone',flex:0.8, width: 130 ,sortable: true,headerAlign: 'center',align: 'center' },
+    { field: 'meetingCount', headerName: 'Meetings',flex:0.5, width: 100,sortable: true,headerAlign: 'center',align: 'center' },
     {
         field: 'actions',
         headerName: 'Actions',
         width: 300,
+        headerAlign: 'center',
+        align: 'center',
+
         renderCell: (params) => (
             <div className="flex gap-2 mt-2 justify-center">
                 <button
@@ -283,7 +297,6 @@ const ManageMeeting = () => {
                     <option key={index} value={session} />
                   ))}
                 </datalist>
-                <small className="text-green-500">Type &apos;JUL&apos; or &apos;JAN&apos; for quick selection</small>
               </div>
             </div>
 
@@ -291,11 +304,20 @@ const ManageMeeting = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Semester</label>
                 <input
-                  type="text"
-                  placeholder="Enter Semester"
+                  type="number"
+                  min="1"
+                  max="8"
+                  placeholder="Enter Semester (1-8)"
                   value={semester}
                   onChange={handleSemesterChange}
-                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
+                  onKeyDown={(e) => {
+                    // Prevent typing non-numeric characters
+                    if (!/[0-9]|\Backspace|\Tab/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  maxLength={1}
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
@@ -324,27 +346,49 @@ const ManageMeeting = () => {
             
           </form>
 
-          {loading ? (
-            <LoadingComponent />
-          ) : (
-            mentorMeetings.length > 0 && (
-              <div className="mt-6 h-[400px] w-full">
-                <ThemeProvider theme={darkTheme}>
-                  <DataGrid
-                    rows={rows}
-                    columns={columns}
-                    initialState={{
-                      pagination: {
-                        paginationModel: { pageSize: 5 },
+          {loading && showTable && <LoadingComponent />}
+        
+          {!loading && showTable && mentorMeetings.length > 0 && (
+            <div className="mt-6 h-[400px] w-full custom-scrollbar">
+              <ThemeProvider theme={darkTheme}>
+                <DataGrid
+                  rows={rows}
+                  columns={columns}
+                  rowCount={totalRows}
+                  page={page}
+                  pageSize={pageSize}
+                  paginationMode="server"
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                  pageSizeOptions={[5, 10, 20]}
+                  loading={loading}
+                  disableRowSelectionOnClick
+                  disableColumnMenu={true}
+                  disableColumnFilter={false}
+                  sx={{
+                    '& .MuiDataGrid-virtualScroller': {
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      '&::-webkit-scrollbar': {
+                        width: '8px',
+                        height: '8px'
                       },
-                    }}
-                    pageSizeOptions={[5, 10, 20]}
-                    checkboxSelection
-                    disableRowSelectionOnClick
-                  />
-                </ThemeProvider>
-              </div>
-            )
+                      '&::-webkit-scrollbar-track': {
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '4px'
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: 'rgba(249, 115, 22, 0.5)',
+                        borderRadius: '4px',
+                        '&:hover': {
+                          background: 'rgba(249, 115, 22, 0.7)'
+                        }
+                      }
+                    }
+                  }}
+                />
+              </ThemeProvider>
+            </div>
           )}
         </div>
       </div>

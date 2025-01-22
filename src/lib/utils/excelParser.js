@@ -23,9 +23,9 @@ const parseExcelFile = (buffer) => {
 
       // Validate required columns
       const requiredColumns = [
-        'name', 'email', 'MUJid', 'yearOfRegistration',
-        'section', 'semester', 'academicYear', 'academicSession',
-        'mentorMujid'
+      'Mentee Name', 'Mentee Email', 'Mentee MUJid', 'Year Of Registration',
+      'Section', 'Semester', 'Academic Year', 'Academic Session',
+      'Assigned Mentor Email'
       ];
 
       const missingColumns = requiredColumns.filter(col => 

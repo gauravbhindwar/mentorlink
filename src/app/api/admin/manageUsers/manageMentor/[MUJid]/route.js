@@ -3,11 +3,12 @@ import { Mentor } from "@/lib/db/mentorSchema";
 import { Admin } from "@/lib/db/adminSchema";
 import { NextResponse } from "next/server";
 
-export async function PATCH(req, context) {
+export async function PATCH(request, { params }) {
   try {
-    // Properly await the params
-    const params = await Promise.resolve(context.params);
-    const MUJid = params.MUJid;
+    await connect();
+    
+    // Get MUJid from params directly
+    const { MUJid } = params;
     
     if (!MUJid) {
       return NextResponse.json({
@@ -15,13 +16,21 @@ export async function PATCH(req, context) {
       }, { status: 400 });
     }
 
-    await connect();
-    const updateData = await req.json();
+    const updateData = await request.json();
 
-    if (!updateData || Object.keys(updateData).length === 0) {
-      return NextResponse.json({
-        error: "Update data is required"
-      }, { status: 400 });
+    // Check for duplicate email first
+    if (updateData.email) {
+      const existingMentorWithEmail = await Mentor.findOne({ 
+        email: updateData.email,
+        MUJid: { $ne: MUJid } // Exclude current mentor
+      });
+
+      if (existingMentorWithEmail) {
+        return NextResponse.json({ 
+          error: "Email already exists for another mentor",
+          status: 'DUPLICATE_EMAIL'
+        }, { status: 409 });
+      }
     }
 
     // Clean the update data
@@ -42,72 +51,52 @@ export async function PATCH(req, context) {
       { new: true }
     );
 
-    // Handle admin roles
-    const wasAdmin = currentMentor.role.some(r => ['admin', 'superadmin'].includes(r));
-    const isNowAdmin = updateData.role?.some(r => ['admin', 'superadmin'].includes(r));
+    // Handle admin roles if role is being updated
+    if (updateData.role) {
+      const wasAdmin = currentMentor.role.some(r => ['admin', 'superadmin'].includes(r));
+      const isNowAdmin = updateData.role.some(r => ['admin', 'superadmin'].includes(r));
+      const adminRoles = updateData.role.filter(r => ['admin', 'superadmin'].includes(r));
 
-    if (isNowAdmin) {
-      try {
-        // First check if admin exists
-        const existingAdmin = await Admin.findOne({ MUJid });
-        const adminRoles = updateData.role.filter(r => ['admin', 'superadmin'].includes(r));
-
-        if (existingAdmin) {
-          // Update existing admin
-          await Admin.findOneAndUpdate(
-            { MUJid },
-            { 
-              $set: {
-                ...updateData,
-                role: adminRoles
-              }
-            },
-            { new: true }
-          );
-        } else {
-          // Check for email duplicate before creating
-          const emailExists = await Admin.findOne({ email: updateData.email });
-          if (emailExists) {
-            return NextResponse.json({
-              error: "Email already exists in admin collection"
-            }, { status: 409 });
-          }
-          // Create new admin
-          await Admin.create({
-            ...updateData,
-            role: adminRoles
-          });
-        }
-      } catch (adminError) {
-        console.error("Admin update error:", adminError);
-        return NextResponse.json({
-          error: "Error updating admin record",
-          details: adminError.message
-        }, { status: 500 });
+      if (isNowAdmin) {
+        // Update or create admin record
+        await Admin.findOneAndUpdate(
+          { MUJid },
+          { 
+            ...cleanedData,
+            role: adminRoles 
+          },
+          { upsert: true, new: true }
+        );
+      } else if (wasAdmin && !isNowAdmin) {
+        // Remove from Admin collection if admin roles were removed
+        await Admin.deleteOne({ MUJid });
       }
-    } else if (wasAdmin && !isNowAdmin) {
-      // Remove from Admin collection if admin roles were removed
-      await Admin.deleteOne({ MUJid });
     }
 
     return NextResponse.json({
+      success: true,
       message: "Mentor updated successfully",
       mentor: updatedMentor
-    }, { status: 200 });
+    });
 
   } catch (error) {
     console.error("Error updating mentor:", error);
+    if (error.code === 11000) {
+      return NextResponse.json({ 
+        error: "Email already exists for another mentor",
+        status: 'DUPLICATE_EMAIL'
+      }, { status: 409 });
+    }
     return NextResponse.json({
-      error: "Error updating mentor: " + (error.message || "Unknown error")
+      error: error.message || "Error updating mentor"
     }, { status: 500 });
   }
 }
 
-export async function GET(req, context) {
+// Update GET handler to use params correctly
+export async function GET(request, { params }) {
   try {
-    // Properly await the params
-    const params = await Promise.resolve(context.params);
-    const MUJid = params.MUJid;
+    const { MUJid } = params;
     
     if (!MUJid) {
       return NextResponse.json(
@@ -126,7 +115,7 @@ export async function GET(req, context) {
       );
     }
 
-    return NextResponse.json({ mentor }, { status: 200 });
+    return NextResponse.json({ mentor });
   } catch (error) {
     console.error("Error fetching mentor:", error);
     return NextResponse.json(

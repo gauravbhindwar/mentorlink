@@ -25,7 +25,7 @@ export async function GET(req) {
       section,
       academicYear,
       academicSession
-    }).select('name MUJid email section semester mentorMujid');
+    }).select('name MUJid email section semester mentorMujid mentorEmailid phone');
 
     // Get mentor details for assigned mentees
     const mentorsDetails = await Mentor.find({
