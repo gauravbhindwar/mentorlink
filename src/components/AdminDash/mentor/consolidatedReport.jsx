@@ -10,7 +10,6 @@ const ConsolidatedReport = () => {
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingChanges, setPendingChanges] = useState({});
-  const [meetings, setMeetings] = useState([]);
   const [mentorName, setMentorName] = useState("");
   const [originalRemarks, setOriginalRemarks] = useState({});
   const [dialogState, setDialogState] = useState({
@@ -21,65 +20,175 @@ const ConsolidatedReport = () => {
   const [changeCount, setChangeCount] = useState(0);  // Add this new state
   const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
   const [currentFocus, setCurrentFocus] = useState(-1);
+  const [meetingsBySemester, setMeetingsBySemester] = useState({});
+  const [parsedMeetingdata, setParsedMeetingdata] = useState([]);
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    const currentMonth = new Date().getMonth();
+    return currentMonth >= 0 && currentMonth <= 5 ? 4 : 3; // Default to 4 for even, 3 for odd
+  });
+  const [meetingsCount, setMeetingsCount] = useState({});
+  const [meetings, setMeetings] = useState([]);  // Ensure meetings state is properly initialized
 
   useEffect(() => {
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData"));
     if (mentorData && mentorData.MUJid) {
       setMentorId(mentorData.MUJid);
       setMentorName(mentorData.name);
-      fetchMenteeData(mentorData.MUJid);
-      fetchMeetingsData(mentorData.MUJid);
+      fetchLocalMeetingData();
     }
   }, []);
 
-  const fetchMenteeData = async (mentor_id) => {
+  useEffect(() => {
+    console.log("Fetching meeting data from session storage on mount");
+    fetchLocalMeetingData();  
+  }, []);
+
+  const fetchLocalMeetingData = async () => {
+    console.log("Fetching meeting data from session storage");
     try {
-      const response = await fetch(
-        `/api/mentee/meetings-attended?mentor_id=${mentor_id}`
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const meetingData = sessionStorage.getItem('meetingData');
+      if (!meetingData) {
+        throw new Error("No meeting data found in session storage");
       }
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (error) {
-        console.log("Failed to parse JSON:", error);
-        throw new Error("Invalid JSON response");
-      }
-      setMentees(data);
-      const remarksMap = data.reduce((acc, mentee) => {
+      const parsedData = JSON.parse(meetingData);
+      setParsedMeetingdata(parsedData);
+      
+      // Extract meetings data from parsedData
+      const allMeetings = parsedData.flatMap(entry => ({
+        ...entry.meeting,
+        semester: entry.semester,
+        section: entry.section,
+        sessionName: entry.sessionName
+      }));
+      setMeetings(allMeetings);
+
+      // Process meetings and attendance
+      const attendanceCount = {};
+      const processedMentees = new Map();
+      const meetingsBySemester = {};
+
+      // Process each meeting entry
+      parsedData.forEach(meetingEntry => {
+        const { meeting, menteeDetails, semester } = meetingEntry;
+        const presentMentees = meeting.present_mentees || [];
+
+        // Initialize meetingsBySemester if not already
+        if (!meetingsBySemester[semester]) {
+          meetingsBySemester[semester] = [];
+        }
+        meetingsBySemester[semester].push(meetingEntry);
+
+        // Count attendance for present mentees
+        presentMentees.forEach(menteeMUJid => {
+          attendanceCount[menteeMUJid] = (attendanceCount[menteeMUJid] || 0) + 1;
+        });
+
+        // Process all mentees in the meeting
+        if (Array.isArray(menteeDetails)) {
+          menteeDetails.forEach(mentee => {
+            if (!processedMentees.has(mentee.MUJid)) {
+              processedMentees.set(mentee.MUJid, {
+                ...mentee,
+                meetingsCount: 0,
+                meetingsTotal: 0 // will be updated later
+              });
+            }
+          });
+        }
+      });
+
+      // Update meetings count for each mentee
+      processedMentees.forEach((mentee, MUJid) => {
+        mentee.meetingsCount = attendanceCount[MUJid] || 0;
+        mentee.meetingsTotal = meetingsBySemester[mentee.semester]?.length || 0;
+      });
+
+      // Convert processed mentees to array
+      const uniqueMentees = Array.from(processedMentees.values());
+      setMentees(uniqueMentees);
+      setMeetingsBySemester(meetingsBySemester);
+
+      // Set remarks map
+      const remarksMap = uniqueMentees.reduce((acc, mentee) => {
         acc[mentee.MUJid] = mentee.mentorRemarks || '';
         return acc;
       }, {});
       setOriginalRemarks(remarksMap);
+      setMeetingsCount(attendanceCount);
+
     } catch (error) {
-      console.log("Error fetching mentee data:", error);
+      console.error("Error fetching mentee data from session storage:", error);
+      console.error("Error details:", error.stack);
       setMentees([]);
+      setMeetings([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchMeetingsData = async (mentor_id) => {
+  const saveAllChanges = async () => {
+    setLoading(true);
     try {
-      const response = await fetch(`/api/meetings?mentor_id=${mentor_id}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (error) {
-        console.log("Failed to parse JSON:", error);
-        throw new Error("Invalid JSON response");
-      }
-      setMeetings(data);
+      const promises = Object.entries(pendingChanges).map(([MUJid, remarks]) =>
+        fetch("/api/mentee/meetings-attended", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ MUJid, mentorRemarks: remarks }),
+        })
+      );
+
+      await Promise.all(promises);
+
+      // Update local state
+      const updatedMentees = mentees.map((mentee) => ({
+        ...mentee,
+        mentorRemarks: pendingChanges[mentee.MUJid] || mentee.mentorRemarks,
+      }));
+
+      setMentees(updatedMentees);
+
+      setOriginalRemarks((prev) => ({
+        ...prev,
+        ...pendingChanges
+      }));
+
+      // Update session storage
+      const updatedParsedMeetingdata = parsedMeetingdata.map((meetingEntry) => {
+        const updatedMenteeDetails = meetingEntry.menteeDetails.map((mentee) => {
+          if (pendingChanges[mentee.MUJid]) {
+            return {
+              ...mentee,
+              mentorRemarks: pendingChanges[mentee.MUJid],
+            };
+          }
+          return mentee;
+        });
+
+        return {
+          ...meetingEntry,
+          menteeDetails: updatedMenteeDetails,
+        };
+      });
+
+      sessionStorage.setItem('meetingData', JSON.stringify(updatedParsedMeetingdata));
+
+      // Make API call to save updated data to the database
+      await fetch("/api/mentee/meetings-attended", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ updatedParsedMeetingdata }),
+      });
+
+      setPendingChanges({});
+      setHasChanges(false);
     } catch (error) {
-      console.log("Error fetching meetings data:", error);
-      setMeetings([]);
+      console.error("Error updating remarks:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,42 +210,6 @@ const ConsolidatedReport = () => {
       
       return newChanges;
     });
-  };
-
-  const saveAllChanges = async () => {
-    setLoading(true);
-    try {
-      const promises = Object.entries(pendingChanges).map(([MUJid, remarks]) =>
-        fetch("/api/mentee/meetings-attended", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ MUJid, mentorRemarks: remarks }),
-        })
-      );
-
-      await Promise.all(promises);
-
-      // Update local state
-      setMentees(
-        mentees.map((mentee) => ({
-          ...mentee,
-          mentorRemarks: pendingChanges[mentee.MUJid] || mentee.mentorRemarks,
-        }))
-      );
-
-      setOriginalRemarks((prev) => ({
-        ...prev,
-        ...pendingChanges
-      }));
-      setPendingChanges({});
-      setHasChanges(false);
-    } catch (error) {
-      console.error("Error updating remarks:", error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDiscardAll = () => {
@@ -222,22 +295,94 @@ const ConsolidatedReport = () => {
     }
   };
 
-  // Add new function to generate PDF document
+  // Add TableRow component
+  const TableRow = ({ mentee, index }) => {
+    return (
+      <tr 
+        className={`hover:bg-gray-700/30 transition-colors ${
+          currentFocus === index ? 'bg-gray-700/50 ring-2 ring-orange-500/50' : ''
+        }`}
+      >
+        <td className="px-6 py-4 text-sm text-gray-300 text-center">{index + 1}</td>
+        <td className="px-6 py-4 text-sm text-center text-gray-300">{mentee.MUJid}</td>
+        <td className="px-6 py-4 text-sm text-center text-gray-300">{mentee.name}</td>
+        <td className="px-6 py-4 text-center">
+          <div className="flex flex-col gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500">
+              {mentee.meetingsCount} / {mentee.meetingsTotal} meetings
+            </span>
+            <span className="text-xs text-gray-400">
+              {Math.round((mentee.meetingsCount / mentee.meetingsTotal) * 100) || 0}% attendance
+            </span>
+          </div>
+        </td>
+        <td className="px-6 py-4">
+          <div 
+            tabIndex={0}
+            role="button"
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            onClick={() => handleRemarksClick(mentee.MUJid, pendingChanges[mentee.MUJid] || mentee.mentorRemarks)}
+            className={`w-full border rounded-lg px-4 py-2 text-sm cursor-pointer transition-all min-h-[2.5rem] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-orange-500
+            ${isRemarkModified(mentee.MUJid) 
+              ? 'bg-orange-500/10 border-orange-500/50 hover:bg-orange-500/20 text-red-300' 
+              : 'bg-gray-700/50 border-gray-600 hover:bg-gray-600/50 text-white'
+            }`}
+            aria-label={`Edit remarks for ${mentee.name}`}
+          >
+            <div className="line-clamp-3">
+              {pendingChanges[mentee.MUJid] || mentee.mentorRemarks || 
+                <span className="text-gray-400">Click to add remarks...</span>}
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  // Update generatePDFDocument function
   const generatePDFDocument = () => {
+    if (!mentees || !meetings) return null;
+
     const currentDate = new Date();
     const academicYear = `${currentDate.getFullYear()}-${currentDate.getFullYear() + 1}`;
-    const semester = currentDate.getMonth() < 6 ? "Even" : "Odd"; // Basic logic for semester
+    const semester = currentDate.getMonth() < 6 ? "Even" : "Odd";
+    
+    try {
+      // Filter meetings for the selected semester
+      const semesterMeetings = meetings.filter(meeting => 
+        meeting && meeting.semester === selectedSemester
+      );
 
-    return (
-      <ConsolidatedDocument
-        meetings={meetings}
-        academicYear={academicYear}
-        semester={semester}
-        section={mentees[0]?.section || ""}
-        mentorName={mentorName}
-        mentees={mentees} // pass mentees array here
-      />
-    );
+      return (
+        <ConsolidatedDocument
+          meetings={semesterMeetings}
+          academicYear={academicYear}
+          semester={semester}
+          section={mentees[0]?.section || ""}
+          mentorName={mentorName}
+          mentees={mentees}
+          selectedSemester={selectedSemester}
+        />
+      );
+    } catch (error) {
+      console.error('Error in generatePDFDocument:', error);
+      return null;
+    }
+  };
+
+  const handleSemesterChange = (sem) => {
+    try {
+      setSelectedSemester(sem);
+      // Force regeneration of PDF document
+      if (!hasChanges) {
+        const doc = generatePDFDocument();
+        if (doc === null) {
+          console.error('Failed to generate PDF document');
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleSemesterChange:', error);
+    }
   };
 
   if (loading) {
@@ -310,42 +455,11 @@ const ConsolidatedReport = () => {
                     <col />
                   </colgroup>
                   <tbody className="divide-y divide-gray-700">
-                    {mentees.map((mentee, index) => (
-                      <tr 
-                        key={mentee.MUJid} 
-                        className={`hover:bg-gray-700/30 transition-colors ${
-                          currentFocus === index ? 'bg-gray-700/50 ring-2 ring-orange-500/50' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4 text-sm  text-gray-300 text-center">{index + 1}</td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-300">{mentee.MUJid}</td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-300">{mentee.name}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500">
-                            {mentee.meetingsCount} meetings
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div 
-                            tabIndex={0}
-                            role="button"
-                            onKeyDown={(e) => handleKeyDown(e, index)}
-                            onClick={() => handleRemarksClick(mentee.MUJid, pendingChanges[mentee.MUJid] || mentee.mentorRemarks)}
-                            className={`w-full border rounded-lg px-4 py-2 text-sm cursor-pointer transition-all min-h-[2.5rem] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-orange-500
-                              ${isRemarkModified(mentee.MUJid) 
-                                ? 'bg-orange-500/10 border-orange-500/50 hover:bg-orange-500/20 text-red-300' 
-                                : 'bg-gray-700/50 border-gray-600 hover:bg-gray-600/50 text-white'
-                              }`}
-                            aria-label={`Edit remarks for ${mentee.name}`}
-                          >
-                            <div className="line-clamp-3">
-                              {pendingChanges[mentee.MUJid] || mentee.mentorRemarks || 
-                                <span className="text-gray-400">Click to add remarks...</span>}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {mentees
+                      .filter((mentee) => mentee.semester === selectedSemester)
+                      .map((mentee, index) => (
+                        <TableRow key={mentee.MUJid} mentee={mentee} index={index} />
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -354,6 +468,46 @@ const ConsolidatedReport = () => {
 
           {/* Right Side Actions - Updated Logic */}
           <div className="w-60 space-y-4 flex-shrink-0 overflow-y-auto">
+            {/* Semester Selection Chips */}
+            <div className="bg-gray-800/50 p-4 rounded-xl shadow-lg">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">Select Semester</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {new Date().getMonth() >= 0 && new Date().getMonth() <= 5 ? (
+                  <>
+                    {[2, 4, 6, 8].map((sem) => (
+                      <button
+                        key={sem}
+                        onClick={() => handleSemesterChange(sem)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all
+                          ${selectedSemester === sem
+                            ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700 hover:text-white'
+                          }`}
+                      >
+                        Sem {sem}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {[1, 3, 5, 7].map((sem) => (
+                      <button
+                        key={sem}
+                        onClick={() => handleSemesterChange(sem)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all
+                          ${selectedSemester === sem
+                            ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700 hover:text-white'
+                          }`}
+                      >
+                        Sem {sem}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
+
             {hasChanges ? (
               // Show Save and Discard buttons when there are changes
               <div className="space-y-2">
@@ -400,7 +554,7 @@ const ConsolidatedReport = () => {
               // Show PDF Download button when there are no changes
               <PDFDownloadComponent
                 document={generatePDFDocument()}
-                fileName={`consolidated_report_${mentorName.replace(/\s+/g, '_')}.pdf`}
+                fileName={`consolidated_report_${mentorName.replace(/\s+/g, '_')}_sem${selectedSemester}.pdf`}
               >
                 <div className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl text-white font-medium shadow-lg transition-all duration-300">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

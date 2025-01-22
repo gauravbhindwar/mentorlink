@@ -151,7 +151,6 @@ const MentorDashBoard = () => {
         !mentorData.academicSession
       )
         return;
-
       setMeetingsLoading(true);
       try {
         const response = await fetch(
@@ -160,7 +159,15 @@ const MentorDashBoard = () => {
         if (response.ok) {
           const data = await response.json();
           const mergedMeetings = mergeMeetings(data.meetings);
-          setMeetings(mergedMeetings);
+
+          if(mergedMeetings.length > 0) {
+            if(sessionStorage.getItem("meetingData")){
+              sessionStorage.removeItem("meetingData");
+            }
+            sessionStorage.setItem("meetingData", JSON.stringify(mergedMeetings));
+            setMeetings(mergedMeetings);
+          }
+          setMeetingsLoading(false);
         }
       } catch (error) {
         console.error("Error fetching meetings:", error);
