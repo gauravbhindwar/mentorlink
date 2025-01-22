@@ -10,6 +10,42 @@ import axios from "axios";
 import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
 
+// Add this new memoized component outside the main component
+const MemoizedPDFDownload = React.memo(
+  ({ meeting, mentorData }) => {
+    return (
+      <PDFDownloadComponent
+        page='MentorDashboard'
+        document={generateMOMPdf(
+          {
+            ...meeting.meeting,
+            section: meeting.section,
+            semester: meeting.semester,
+            academicYear: mentorData.academicYear,
+            menteeDetails: meeting?.menteeDetails,
+          },
+          mentorData.name
+        )}
+        fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
+        <button className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+          Download MOM Report
+        </button>
+      </PDFDownloadComponent>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function to prevent unnecessary re-renders
+    return (
+      prevProps.meeting.meeting.meeting_id ===
+        nextProps.meeting.meeting.meeting_id &&
+      prevProps.mentorData.name === nextProps.mentorData.name
+    );
+  }
+);
+
+// Add display name
+MemoizedPDFDownload.displayName = "MemoizedPDFDownload";
+
 const MentorDashBoard = () => {
   const router = useRouter();
   const [mentorData, setMentorData] = useState({});
@@ -165,19 +201,19 @@ const MentorDashBoard = () => {
     }));
   };
 
-  const handleMenteeCheck = (e, index, MUJid) => {
-    if (e.target.checked) {
-      setMeetingNotes((prevNotes) => ({
-        ...prevNotes,
-        presentMentees: [...prevNotes.presentMentees, MUJid],
-      }));
-    } else {
-      setMeetingNotes((prevNotes) => ({
-        ...prevNotes,
-        presentMentees: prevNotes.presentMentees.filter((id) => id !== MUJid),
-      }));
-    }
-  };
+  // const handleMenteeCheck = (e, index, MUJid) => {
+  //   if (e.target.checked) {
+  //     setMeetingNotes((prevNotes) => ({
+  //       ...prevNotes,
+  //       presentMentees: [...prevNotes.presentMentees, MUJid],
+  //     }));
+  //   } else {
+  //     setMeetingNotes((prevNotes) => ({
+  //       ...prevNotes,
+  //       presentMentees: prevNotes.presentMentees.filter((id) => id !== MUJid),
+  //     }));
+  //   }
+  // };
 
   // Update the handleMeetingSubmit function
   const handleMeetingSubmit = async () => {
@@ -663,31 +699,15 @@ Contact: ${mentorData?.email || ""}`;
                                               className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
                                               Edit Report
                                             </button>
-                                            {console.log(
+                                            {/* {console.log(
                                               "meeting1234:",
                                               meeting?.menteeDetails
-                                            )}
+                                            )} */}
                                             {isClientSide && (
-                                              <PDFDownloadComponent
-                                                key={meeting.meeting.meeting_id}
-                                                page={`MentorDashboard`}
-                                                document={generateMOMPdf(
-                                                  {
-                                                    ...meeting.meeting,
-                                                    section: meeting.section,
-                                                    semester: meeting.semester,
-                                                    academicYear:
-                                                      mentorData.academicYear,
-                                                    menteeDetails:
-                                                      meeting?.menteeDetails,
-                                                  },
-                                                  mentorData.name
-                                                )}
-                                                fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
-                                                <button className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
-                                                  Download MOM Report
-                                                </button>
-                                              </PDFDownloadComponent>
+                                              <MemoizedPDFDownload
+                                                meeting={meeting}
+                                                mentorData={mentorData}
+                                              />
                                             )}
                                           </div>
                                         )}
