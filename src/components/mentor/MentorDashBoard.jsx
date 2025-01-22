@@ -94,6 +94,18 @@ const MentorDashBoard = () => {
     }, []);
   };
 
+  // Add this helper function before the component
+  const groupBySemester = (meetings) => {
+    return meetings.reduce((acc, meeting) => {
+      const semester = meeting.semester;
+      if (!acc[semester]) {
+        acc[semester] = [];
+      }
+      acc[semester].push(meeting);
+      return acc;
+    }, {});
+  };
+
   // Replace the meetings fetch useEffect with this updated version
   useEffect(() => {
     const fetchMeetings = async () => {
@@ -447,211 +459,265 @@ Contact: ${mentorData?.email || ""}`;
                     <h2 className='text-2xl font-bold text-white mb-4'>
                       Upcoming Meetings
                     </h2>
-                    <div className='space-y-4'>
-                      {meetings.map((meeting, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                            transition: { delay: index * 0.1 },
-                          }}
-                          className='bg-white/5 p-4 rounded-lg'>
-                          {console.log(
-                            "meeting:",
-                            meeting.meeting.meeting_notes.isMeetingOnline
-                          )}
-                          <div className='text-white flex justify-between'>
-                            <div>
-                              <p>
-                                Meeting Topic:{" "}
-                                {
-                                  meeting.meeting.meeting_notes
-                                    .TopicOfDiscussion
-                                }
-                              </p>
-                              <p className='font-semibold'>
-                                {meeting?.sections
-                                  ? `Sections: ${[
-                                      ...new Set(meeting?.sections),
-                                    ].join(", ")}`
-                                  : `Section: ${meeting.section}`}
-                              </p>
-                              <p>Semester: {meeting.semester}</p>
-                              <p>
-                                Date:{" "}
-                                {new Date(meeting.meeting.meeting_date)
-                                  .toLocaleDateString("en-IN", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                    ordinal: true,
-                                  })
-                                  .replace(
-                                    /(\d+)(?=\s)/,
-                                    (n) =>
-                                      n +
-                                        ["st", "nd", "rd"][
-                                          (((n % 100) - 20) % 10) - 1
-                                        ] || "th"
-                                  )}
-                              </p>
-                              <p>Time: {meeting.meeting.meeting_time}</p>
-                              {meeting.meeting.meeting_notes.isMeetingOnline ? (
-                                <p>
-                                  {meeting.meeting.meeting_notes.venue.includes(
-                                    "https:"
-                                  ) ? (
-                                    <span>
-                                      Link:{" "}
-                                      <a
-                                        href={`${meeting.meeting.meeting_notes.venue}`}
-                                        target='_blank'
-                                        rel='noopener noreferrer'
-                                        style={{
-                                          color: "blue",
-                                          textDecoration: "underline",
-                                        }}>
-                                        {meeting.meeting.meeting_notes.venue}
-                                      </a>
-                                    </span>
-                                  ) : (
-                                    <span>
-                                      Link:{" "}
-                                      <a
-                                        href={`https://${meeting.meeting.meeting_notes.venue}`}
-                                        target='_blank'
-                                        rel='noopener noreferrer'
-                                        style={{
-                                          color: "blue",
-                                          textDecoration: "underline",
-                                        }}>
-                                        {meeting.meeting.meeting_notes.venue}
-                                      </a>
-                                    </span>
-                                  )}
-                                </p>
-                              ) : (
-                                <p>
-                                  Venue: {meeting.meeting.meeting_notes.venue}
-                                </p>
-                              )}
-                            </div>
-                            <div className='border-r-2 h-full'></div>
-                            <div className='my-auto'>
-                              {new Date(meeting.meeting.meeting_date) <=
-                              new Date() ? (
-                                <>
-                                  {!meeting.meeting.isReportFilled &&
-                                    new Date(meeting.meeting.meeting_date) <=
-                                      new Date() && (
-                                      <button
-                                        onClick={() => {
-                                          setSelectedMeeting(meeting);
-                                          setMeetingNotes({
-                                            TopicOfDiscussion:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.TopicOfDiscussion || "",
-                                            TypeOfInformation: "",
-                                            NotesToStudent: "",
-                                            issuesRaisedByMentee: "",
-                                            feedbackFromMentee: "",
-                                            outcome: "",
-                                            closureRemarks: "",
-                                            presentMentees: [],
-                                          });
-                                        }}
-                                        className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
-                                        Submit Report
-                                      </button>
-                                    )}
-                                  {meeting.meeting.isReportFilled && (
-                                    <div className=''>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedMeeting(meeting);
-                                          setMeetingNotes({
-                                            TopicOfDiscussion:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.TopicOfDiscussion || "",
-                                            TypeOfInformation:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.TypeOfInformation || "",
-                                            NotesToStudent:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.NotesToStudent || "",
-                                            issuesRaisedByMentee:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.issuesRaisedByMentee || "",
-                                            feedbackFromMentee:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.feedbackFromMentee || "",
-                                            outcome:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.outcome || "",
-                                            closureRemarks:
-                                              meeting?.meeting?.meeting_notes
-                                                ?.closureRemarks || "",
-                                            presentMentees:
-                                              meeting?.meeting
-                                                ?.present_mentees || [],
-                                          });
-                                        }}
-                                        className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
-                                        Edit Report
-                                      </button>
-                                      {console.log(
-                                        "meeting1234:",
-                                        meeting?.menteeDetails
-                                      )}
-                                      {isClientSide && (
-                                        <PDFDownloadComponent
-                                          key={meeting.meeting.meeting_id}
-                                          page={`MentorDashboard`}
-                                          document={generateMOMPdf(
-                                            {
-                                              ...meeting.meeting,
-                                              section: meeting.section,
-                                              semester: meeting.semester,
-                                              academicYear:
-                                                mentorData.academicYear,
-                                              menteeDetails:
-                                                meeting?.menteeDetails,
-                                            },
-                                            mentorData.name
-                                          )}
-                                          fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
-                                          <button className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
-                                            Download MOM Report
-                                          </button>
-                                        </PDFDownloadComponent>
-                                      )}
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <div className='flex flex-col gap-2'>
-                                  <div className='text-red-500 text-center'>
-                                    Meeting not held yet
-                                  </div>
-                                  <button
-                                    onClick={() => sendEmailToMentees(meeting)}
-                                    className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
-                                    disabled={isLoading}>
-                                    {isLoading ? (
-                                      <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
+                    {Object.entries(groupBySemester(meetings))
+                      .sort(([semA], [semB]) => semA - semB)
+                      .map(([semester, semesterMeetings]) => (
+                        <div key={semester} className='mb-6'>
+                          <h3 className='text-xl font-semibold text-white mb-3 border-b border-white/20 pb-2'>
+                            Semester {semester}
+                          </h3>
+                          <div className='space-y-4'>
+                            {semesterMeetings.map((meeting, index) => (
+                              // ... existing meeting card code ...
+                              // Keep the existing meeting card code unchanged
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{
+                                  opacity: 1,
+                                  y: 0,
+                                  transition: { delay: index * 0.1 },
+                                }}
+                                className='bg-white/5 p-4 rounded-lg'>
+                                {/* Keep the existing meeting card content */}
+                                {console.log(
+                                  "meeting:",
+                                  meeting.meeting.meeting_notes.isMeetingOnline
+                                )}
+                                <div className='text-white flex justify-between'>
+                                  <div>
+                                    <p>
+                                      Meeting Topic:{" "}
+                                      {
+                                        meeting.meeting.meeting_notes
+                                          .TopicOfDiscussion
+                                      }
+                                    </p>
+                                    <p className='font-semibold'>
+                                      {meeting?.sections
+                                        ? `Sections: ${[
+                                            ...new Set(meeting?.sections),
+                                          ].join(", ")}`
+                                        : `Section: ${meeting.section}`}
+                                    </p>
+                                    <p>Semester: {meeting.semester}</p>
+                                    <p>
+                                      Date:{" "}
+                                      {new Date(meeting.meeting.meeting_date)
+                                        .toLocaleDateString("en-IN", {
+                                          day: "numeric",
+                                          month: "long",
+                                          year: "numeric",
+                                          ordinal: true,
+                                        })
+                                        .replace(
+                                          /(\d+)(?=\s)/,
+                                          (n) =>
+                                            n +
+                                              ["st", "nd", "rd"][
+                                                (((n % 100) - 20) % 10) - 1
+                                              ] || "th"
+                                        )}
+                                    </p>
+                                    <p>Time: {meeting.meeting.meeting_time}</p>
+                                    {meeting.meeting.meeting_notes
+                                      .isMeetingOnline ? (
+                                      <p className='flex items-center space-x-2'>
+                                        <span className='text-gray-300'>
+                                          Link:{" "}
+                                        </span>
+                                        {meeting.meeting.meeting_notes.venue.includes(
+                                          "https:"
+                                        ) ? (
+                                          <a
+                                            href={`${meeting.meeting.meeting_notes.venue}`}
+                                            target='_blank'
+                                            rel='noopener noreferrer'
+                                            className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
+                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                            <span className='truncate max-w-[200px]'>
+                                              {
+                                                meeting.meeting.meeting_notes
+                                                  .venue
+                                              }
+                                            </span>
+                                            <svg
+                                              className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
+                                              fill='none'
+                                              viewBox='0 0 24 24'
+                                              stroke='currentColor'>
+                                              <path
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                                strokeWidth={2}
+                                                d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'
+                                              />
+                                            </svg>
+                                          </a>
+                                        ) : (
+                                          <a
+                                            href={`https://${meeting.meeting.meeting_notes.venue}`}
+                                            target='_blank'
+                                            rel='noopener noreferrer'
+                                            className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
+                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                            <span className='truncate max-w-[200px]'>
+                                              {
+                                                meeting.meeting.meeting_notes
+                                                  .venue
+                                              }
+                                            </span>
+                                            <svg
+                                              className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
+                                              fill='none'
+                                              viewBox='0 0 24 24'
+                                              stroke='currentColor'>
+                                              <path
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                                strokeWidth={2}
+                                                d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'
+                                              />
+                                            </svg>
+                                          </a>
+                                        )}
+                                      </p>
                                     ) : (
-                                      "Resend Meeting Email"
+                                      <p>
+                                        Venue:{" "}
+                                        {meeting.meeting.meeting_notes.venue}
+                                      </p>
                                     )}
-                                  </button>
+                                  </div>
+                                  <div className='border-r-2 h-full'></div>
+                                  <div className='my-auto'>
+                                    {new Date(meeting.meeting.meeting_date) <=
+                                    new Date() ? (
+                                      <>
+                                        {!meeting.meeting.isReportFilled &&
+                                          new Date(
+                                            meeting.meeting.meeting_date
+                                          ) <= new Date() && (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedMeeting(meeting);
+                                                setMeetingNotes({
+                                                  TopicOfDiscussion:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.TopicOfDiscussion || "",
+                                                  TypeOfInformation: "",
+                                                  NotesToStudent: "",
+                                                  issuesRaisedByMentee: "",
+                                                  feedbackFromMentee: "",
+                                                  outcome: "",
+                                                  closureRemarks: "",
+                                                  presentMentees: [],
+                                                });
+                                              }}
+                                              className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+                                              Submit Report
+                                            </button>
+                                          )}
+                                        {meeting.meeting.isReportFilled && (
+                                          <div className=''>
+                                            <button
+                                              onClick={() => {
+                                                setSelectedMeeting(meeting);
+                                                setMeetingNotes({
+                                                  TopicOfDiscussion:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.TopicOfDiscussion || "",
+                                                  TypeOfInformation:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.TypeOfInformation || "",
+                                                  NotesToStudent:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.NotesToStudent || "",
+                                                  issuesRaisedByMentee:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.issuesRaisedByMentee ||
+                                                    "",
+                                                  feedbackFromMentee:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.feedbackFromMentee ||
+                                                    "",
+                                                  outcome:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.outcome || "",
+                                                  closureRemarks:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.closureRemarks || "",
+                                                  presentMentees:
+                                                    meeting?.meeting
+                                                      ?.present_mentees || [],
+                                                });
+                                              }}
+                                              className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
+                                              Edit Report
+                                            </button>
+                                            {console.log(
+                                              "meeting1234:",
+                                              meeting?.menteeDetails
+                                            )}
+                                            {isClientSide && (
+                                              <PDFDownloadComponent
+                                                key={meeting.meeting.meeting_id}
+                                                page={`MentorDashboard`}
+                                                document={generateMOMPdf(
+                                                  {
+                                                    ...meeting.meeting,
+                                                    section: meeting.section,
+                                                    semester: meeting.semester,
+                                                    academicYear:
+                                                      mentorData.academicYear,
+                                                    menteeDetails:
+                                                      meeting?.menteeDetails,
+                                                  },
+                                                  mentorData.name
+                                                )}
+                                                fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
+                                                <button className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+                                                  Download MOM Report
+                                                </button>
+                                              </PDFDownloadComponent>
+                                            )}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <div className='flex flex-col gap-2'>
+                                        <div className='text-red-500 text-center'>
+                                          Meeting not held yet
+                                        </div>
+                                        <button
+                                          onClick={() =>
+                                            sendEmailToMentees(meeting)
+                                          }
+                                          className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
+                                          disabled={isLoading}>
+                                          {isLoading ? (
+                                            <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
+                                          ) : (
+                                            "Resend Meeting Email"
+                                          )}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
+                              </motion.div>
+                            ))}
                           </div>
-                        </motion.div>
+                        </div>
                       ))}
-                    </div>
                   </>
                 ) : (
                   <div className='flex flex-col items-center justify-center space-y-4'></div>
@@ -666,7 +732,7 @@ Contact: ${mentorData?.email || ""}`;
           className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4'
           onClick={() => setSelectedMeeting(null)}>
           <div
-            className='bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-xl w-full max-w-4xl relative border border-gray-700 shadow-2xl'
+            className='bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
             onClick={(e) => e.stopPropagation()}>
             <div className='max-h-[80vh] overflow-y-auto custom-scrollbar px-2'>
               <button
@@ -679,7 +745,7 @@ Contact: ${mentorData?.email || ""}`;
                 Meeting Notes
               </h2>
 
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+              <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
                 <div className='space-y-4'>
                   <div className='space-y-2'>
                     <label className='block text-sm font-medium text-gray-300'>
@@ -767,9 +833,79 @@ Contact: ${mentorData?.email || ""}`;
                     />
                   </div>
                 </div>
+
+                {selectedMeeting?.menteeDetails?.length > 0 && (
+                  <div className='space-y-4'>
+                    <h3 className='text-lg font-medium text-white mb-3'>
+                      Attendees
+                    </h3>
+                    <div className='space-y-2 max-h-[330px] overflow-y-auto custom-scrollbar'>
+                      {selectedMeeting.menteeDetails.map((mentee, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            const isPresent =
+                              meetingNotes.presentMentees.includes(
+                                mentee.MUJid
+                              );
+                            if (isPresent) {
+                              setMeetingNotes((prev) => ({
+                                ...prev,
+                                presentMentees: prev.presentMentees.filter(
+                                  (id) => id !== mentee.MUJid
+                                ),
+                              }));
+                            } else {
+                              setMeetingNotes((prev) => ({
+                                ...prev,
+                                presentMentees: [
+                                  ...prev.presentMentees,
+                                  mentee.MUJid,
+                                ],
+                              }));
+                            }
+                          }}
+                          className='flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors'>
+                          <div className='flex flex-col'>
+                            <span className='text-white font-medium'>
+                              {mentee.name}
+                            </span>
+                            <span className='text-gray-400 text-sm'>
+                              Section: {mentee.section}
+                            </span>
+                          </div>
+                          <div className='flex items-center space-x-3'>
+                            <input
+                              type='checkbox'
+                              className='w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500'
+                              checked={meetingNotes?.presentMentees.includes(
+                                mentee.MUJid
+                              )}
+                              onChange={(e) => e.stopPropagation()} // Prevent double-firing of click event
+                            />
+                            <span
+                              className={`text-sm font-medium ${
+                                meetingNotes?.presentMentees.includes(
+                                  mentee.MUJid
+                                )
+                                  ? "text-green-500"
+                                  : "text-red-500"
+                              }`}>
+                              {meetingNotes?.presentMentees.includes(
+                                mentee.MUJid
+                              )
+                                ? "Present"
+                                : "Absent"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className='space-y-2'>
+              <div className='space-y-2 mt-6'>
                 <label className='block text-sm font-medium text-gray-300'>
                   Feedback from Mentee (Optional)
                 </label>
@@ -782,34 +918,6 @@ Contact: ${mentorData?.email || ""}`;
                   placeholder='Enter mentee feedback (optional)...'
                 />
               </div>
-
-              {selectedMeeting?.menteeDetails?.length > 0 && (
-                <div className='mt-6'>
-                  <h3 className='text-lg font-medium text-white mb-3'>
-                    Attendees
-                  </h3>
-                  <div className='flex flex-wrap gap-3'>
-                    {selectedMeeting.menteeDetails.map((mentee, index) => (
-                      <div
-                        key={index}
-                        className='flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2'>
-                        {console.log("mentee MUJid:", mentee.MUJid)}
-                        <input
-                          type='checkbox'
-                          className='w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500'
-                          checked={meetingNotes?.presentMentees.includes(
-                            mentee.MUJid
-                          )}
-                          onChange={(e) =>
-                            handleMenteeCheck(e, index, mentee.MUJid)
-                          }
-                        />
-                        <span className='text-gray-300'>{mentee.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <button
                 onClick={handleMeetingSubmit}
