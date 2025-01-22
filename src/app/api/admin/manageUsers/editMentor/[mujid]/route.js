@@ -2,10 +2,13 @@ import { connect } from "../../../../../../lib/dbConfig";
 import { Mentor, Admin } from "../../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request) {
   try {
     await connect();
-    const { mujid } = params;
+    const url = new URL(request.url);
+    const segments = url.pathname.split("/");
+    const mujid = segments[segments.length - 1];
+
     const data = await request.json();
 
     // Remove MUJid from update data if present
