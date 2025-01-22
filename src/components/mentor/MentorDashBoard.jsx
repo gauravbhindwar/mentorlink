@@ -172,19 +172,19 @@ const MentorDashBoard = () => {
     }));
   };
 
-  const handleMenteeCheck = (e, index, MUJid) => {
-    if (e.target.checked) {
-      setMeetingNotes((prevNotes) => ({
-        ...prevNotes,
-        presentMentees: [...prevNotes.presentMentees, MUJid],
-      }));
-    } else {
-      setMeetingNotes((prevNotes) => ({
-        ...prevNotes,
-        presentMentees: prevNotes.presentMentees.filter((id) => id !== MUJid),
-      }));
-    }
-  };
+  // const handleMenteeCheck = (e, index, MUJid) => {
+  //   if (e.target.checked) {
+  //     setMeetingNotes((prevNotes) => ({
+  //       ...prevNotes,
+  //       presentMentees: [...prevNotes.presentMentees, MUJid],
+  //     }));
+  //   } else {
+  //     setMeetingNotes((prevNotes) => ({
+  //       ...prevNotes,
+  //       presentMentees: prevNotes.presentMentees.filter((id) => id !== MUJid),
+  //     }));
+  //   }
+  // };
 
   // Update the handleMeetingSubmit function
   const handleMeetingSubmit = async () => {

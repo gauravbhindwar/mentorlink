@@ -5,7 +5,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { PDFDownloadComponent, ConsolidatedDocument } from "./PDFGenerator";
 
 const ConsolidatedReport = () => {
-  const [mentorId, setMentorId] = useState("");
+  // const [mentorId, setMentorId] = useState("");
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
@@ -20,19 +20,19 @@ const ConsolidatedReport = () => {
   const [changeCount, setChangeCount] = useState(0);  // Add this new state
   const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
   const [currentFocus, setCurrentFocus] = useState(-1);
-  const [meetingsBySemester, setMeetingsBySemester] = useState({});
+  // const [meetingsBySemester, setMeetingsBySemester] = useState({});
   const [parsedMeetingdata, setParsedMeetingdata] = useState([]);
   const [selectedSemester, setSelectedSemester] = useState(() => {
     const currentMonth = new Date().getMonth();
     return currentMonth >= 0 && currentMonth <= 5 ? 4 : 3; // Default to 4 for even, 3 for odd
   });
-  const [meetingsCount, setMeetingsCount] = useState({});
+  // const [meetingsCount, setMeetingsCount] = useState({});
   const [meetings, setMeetings] = useState([]);  // Ensure meetings state is properly initialized
 
   useEffect(() => {
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData"));
     if (mentorData && mentorData.MUJid) {
-      setMentorId(mentorData.MUJid);
+      // setMentorId(mentorData.MUJid);
       setMentorName(mentorData.name);
       fetchLocalMeetingData();
     }
@@ -106,7 +106,7 @@ const ConsolidatedReport = () => {
       // Convert processed mentees to array
       const uniqueMentees = Array.from(processedMentees.values());
       setMentees(uniqueMentees);
-      setMeetingsBySemester(meetingsBySemester);
+      // setMeetingsBySemester(meetingsBySemester);
 
       // Set remarks map
       const remarksMap = uniqueMentees.reduce((acc, mentee) => {
@@ -114,7 +114,7 @@ const ConsolidatedReport = () => {
         return acc;
       }, {});
       setOriginalRemarks(remarksMap);
-      setMeetingsCount(attendanceCount);
+      // setMeetingsCount(attendanceCount);
 
     } catch (error) {
       console.error("Error fetching mentee data from session storage:", error);
