@@ -143,13 +143,13 @@ const styles = StyleSheet.create({
     textAlign: "left",
   },
   footer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 15,
     left: 0,
     right: 0,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 12,
-    color: 'grey',
+    color: "grey",
   },
 });
 
@@ -181,7 +181,9 @@ const Header = () => (
 
 const Footer = ({ pageNumber, totalPages }) => (
   <View style={styles.footer} fixed>
-    <Text>Page {pageNumber} of {totalPages}</Text>
+    <Text>
+      Page {pageNumber} of {totalPages}
+    </Text>
   </View>
 );
 
@@ -433,38 +435,48 @@ export const ConsolidatedDocument = ({
   // semester,
   mentorName,
   mentees,
-  selectedSemester  // Add this parameter
+  selectedSemester, // Add this parameter
 }) => {
   // Ensure we have valid arrays to work with
   const safeMentees = mentees || [];
-  const filteredMentees = safeMentees.filter(mentee => 
-    mentee && mentee.semester === selectedSemester
+  const filteredMentees = safeMentees.filter(
+    (mentee) => mentee && mentee.semester === selectedSemester
   );
-  
+
   // Ensure we have valid chunks even with empty array
-  const chunkedMentees = filteredMentees.length ? filteredMentees.reduce((resultArray, item, index) => {
-    const chunkIndex = Math.floor(index/12);
-    if(!resultArray[chunkIndex]) {
-      resultArray[chunkIndex] = [];
-    }
-    resultArray[chunkIndex].push(item);
-    return resultArray;
-  }, []) : [[]];
+  const chunkedMentees = filteredMentees.length
+    ? filteredMentees.reduce((resultArray, item, index) => {
+        const chunkIndex = Math.floor(index / 12);
+        if (!resultArray[chunkIndex]) {
+          resultArray[chunkIndex] = [];
+        }
+        resultArray[chunkIndex].push(item);
+        return resultArray;
+      }, [])
+    : [[]];
 
   // Wrap the return in error boundary
   try {
     return (
       <Document>
         {chunkedMentees.map((menteeGroup, pageIndex) => (
-          <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
+          <Page
+            key={pageIndex}
+            size='A4'
+            orientation='landscape'
+            style={styles.page}>
             <Header />
             <View style={styles.section}>
               {pageIndex === 0 && ( // Only render on first page
                 <>
                   <Text style={styles.detailItem}>
-                    Name of Mentor: {mentorName || "N/A"}
+                    Name of Mentor: {mentorName || "Not specified"}
                   </Text>
-                  <Text style={[styles.detailItem, { marginBottom: 20 , marginTop: 10 }]}>
+                  <Text
+                    style={[
+                      styles.detailItem,
+                      { marginBottom: 20, marginTop: 10 },
+                    ]}>
                     Number of Meetings Taken: {meetings?.length || 0}
                   </Text>
                 </>
@@ -475,41 +487,66 @@ export const ConsolidatedDocument = ({
                 <View
                   style={[
                     styles.tableCol,
-                    { flex: "0.05",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1 }
-                  ]}
-                >
+                    {
+                      flex: "0.05",
+                      borderTopWidth: 1,
+                      borderBottomWidth: 1,
+                      borderLeftWidth: 1,
+                      borderRightWidth: 1,
+                    },
+                  ]}>
                   <Text>Sr No.</Text>
                 </View>
                 <View
                   style={[
                     styles.tableCol,
-                    { flex: "0.15",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
+                    {
+                      flex: "0.15",
+                      borderTopWidth: 1,
+                      borderBottomWidth: 1,
+                      borderLeftWidth: 0,
+                      borderRightWidth: 1,
+                    },
+                  ]}>
                   <Text>Registration No.</Text>
                 </View>
                 <View
                   style={[
                     styles.tableCol,
-                    { flex: "0.30",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
+                    {
+                      flex: "0.30",
+                      borderTopWidth: 1,
+                      borderBottomWidth: 1,
+                      borderLeftWidth: 0,
+                      borderRightWidth: 1,
+                    },
+                  ]}>
                   <Text>Student Name</Text>
                 </View>
                 <View
                   style={[
                     styles.tableCol,
-                    { flex: "0.13",borderTopWidth: 1,borderBottomWidth: 1, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
+                    {
+                      flex: "0.13",
+                      borderTopWidth: 1,
+                      borderBottomWidth: 1,
+                      borderLeftWidth: 0,
+                      borderRightWidth: 1,
+                    },
+                  ]}>
                   <Text>No. of Meeting Attended</Text>
                 </View>
                 <View
                   style={[
                     styles.tableCol,
-                    { flex: "0.50", borderTopWidth: 1,borderBottomWidth: 1,borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
+                    {
+                      flex: "0.50",
+                      borderTopWidth: 1,
+                      borderBottomWidth: 1,
+                      borderLeftWidth: 0,
+                      borderRightWidth: 1,
+                    },
+                  ]}>
                   <Text>Mentor Remark/Special Cases</Text>
                 </View>
               </View>
@@ -517,49 +554,78 @@ export const ConsolidatedDocument = ({
               {/* Table body - now using menteeGroup instead of mentees */}
               {menteeGroup.map((mentee, index) => (
                 <View style={styles.tableRow} key={index}>
-                  <View style={[styles.tableCol, { flex: "0.05", borderTopWidth: 0, borderLeftWidth: 1, borderRightWidth: 1 }]}>
+                  <View
+                    style={[
+                      styles.tableCol,
+                      {
+                        flex: "0.05",
+                        borderTopWidth: 0,
+                        borderLeftWidth: 1,
+                        borderRightWidth: 1,
+                      },
+                    ]}>
                     <Text>{pageIndex * 12 + index + 1}</Text>
                   </View>
                   <View
-                  style={[
-                    styles.tableCol,
-                    { flex: "0.15",borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                  ]}
-                >
+                    style={[
+                      styles.tableCol,
+                      {
+                        flex: "0.15",
+                        borderTopWidth: 0,
+                        borderLeftWidth: 0,
+                        borderRightWidth: 1,
+                      },
+                    ]}>
                     <Text>{mentee.MUJid}</Text>
                   </View>
                   <View
                     style={[
                       styles.tableCol,
-                      { flex: "0.30", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                    ]}
-                  >
+                      {
+                        flex: "0.30",
+                        borderTopWidth: 0,
+                        borderLeftWidth: 0,
+                        borderRightWidth: 1,
+                      },
+                    ]}>
                     <Text>{mentee.name}</Text>
                   </View>
                   <View
                     style={[
                       styles.tableCol,
-                      { flex: "0.13", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                    ]}
-                  >
+                      {
+                        flex: "0.13",
+                        borderTopWidth: 0,
+                        borderLeftWidth: 0,
+                        borderRightWidth: 1,
+                      },
+                    ]}>
                     <Text>{mentee.meetingsCount || 0}</Text>
                   </View>
                   <View
                     style={[
                       styles.tableCol,
-                      { flex: "0.50", borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 1 }
-                    ]}
-                  >
-                    <Text>{mentee.mentorRemarks || "N/A"}</Text>
+                      {
+                        flex: "0.50",
+                        borderTopWidth: 0,
+                        borderLeftWidth: 0,
+                        borderRightWidth: 1,
+                      },
+                    ]}>
+                    <Text>{mentee.mentorRemarks || ""}</Text>
                   </View>
                 </View>
               ))}
 
               {pageIndex === chunkedMentees.length - 1 && (
-                <View style={[styles.signatureSection, { marginTop: 30, marginLeft: 0 }]}>
-                  <Text style={[styles.signatureDate, {marginLeft: 0}]}>
-              ___________________________
-            </Text>
+                <View
+                  style={[
+                    styles.signatureSection,
+                    { marginTop: 30, marginLeft: 0 },
+                  ]}>
+                  <Text style={[styles.signatureDate, { marginLeft: 0 }]}>
+                    ___________________________
+                  </Text>
                   <Text style={styles.signatureText}>Signature with Date</Text>
                   {/* <Text style={styles.signatureDate}>
                     Date: {new Date().toLocaleDateString()}
@@ -567,14 +633,25 @@ export const ConsolidatedDocument = ({
                 </View>
               )}
             </View>
-            <Footer pageNumber={pageIndex + 1} totalPages={chunkedMentees.length} />
+            <Footer
+              pageNumber={pageIndex + 1}
+              totalPages={chunkedMentees.length}
+            />
           </Page>
         ))}
       </Document>
     );
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    return <Document><Page size="A4"><View><Text>Error generating report</Text></View></Page></Document>;
+    console.error("Error generating PDF:", error);
+    return (
+      <Document>
+        <Page size='A4'>
+          <View>
+            <Text>Error generating report</Text>
+          </View>
+        </Page>
+      </Document>
+    );
   }
 };
 
@@ -585,7 +662,6 @@ export const generateMOMPdf = (meeting, mentorName) => {
     return null;
   }
   // console.log("MUJid of mentees Present:", meeting.pre</View>sent_mentees);
-
 
   // Filter menteeDetails to only include present mentees
   if (meeting.menteeDetails && meeting?.menteeDetails.length > 0) {
@@ -633,14 +709,14 @@ export const generateConsolidatedPdf = (
       semester,
       section,
       mentorName,
-      mentees // pass mentees prop
+      mentees, // pass mentees prop
     })
   );
 };
 
 // Add new export for PDF download
 export const PDFDownloadComponent = ({
-  document: pdfDocument,  // renamed to avoid confusion with global document
+  document: pdfDocument, // renamed to avoid confusion with global document
   fileName,
   children,
   page,
@@ -653,13 +729,13 @@ export const PDFDownloadComponent = ({
   }, []);
 
   const downloadPDF = async () => {
-    if (typeof window === 'undefined') return; // Guard against server-side execution
-    
+    if (typeof window === "undefined") return; // Guard against server-side execution
+
     try {
       setIsLoading(true);
       const blob = await pdf(pdfDocument).toBlob();
       const url = window.URL.createObjectURL(blob);
-      const link = window.document.createElement('a');
+      const link = window.document.createElement("a");
       link.href = url;
       link.download = fileName;
       document.body.appendChild(link);
@@ -667,14 +743,14 @@ export const PDFDownloadComponent = ({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error("Error generating PDF:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Don't render anything on server-side
-  if (typeof window === 'undefined' || !isClient) {
+  if (typeof window === "undefined" || !isClient) {
     return page && page === "MentorDashboard" ? (
       <div className='flex items-center justify-center'>
         <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
@@ -689,11 +765,10 @@ export const PDFDownloadComponent = ({
       onClick={downloadPDF}
       disabled={isLoading}
       className={`${
-        page && page === "MentorDashboard"
+        page && (page === "MentorDashboard" || page === "consolidatedReport")
           ? ""
           : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
-      }`}
-    >
+      }`}>
       {isLoading ? (
         <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
       ) : (
