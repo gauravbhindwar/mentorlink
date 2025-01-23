@@ -415,7 +415,7 @@ const MenteeManagement = () => {
   };
 
   const handleEditClick = async (mentee) => {
-    console.log("Received mentee for editing:", mentee); // Debug log
+    // console.log("Received mentee for editing:", mentee); // Debug log
     setEditLoading(true);
     try {
       // Use the mentee data directly from the table

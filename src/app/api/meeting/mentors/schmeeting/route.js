@@ -23,14 +23,15 @@ export async function GET(request) {
 
   try {
     const [startYear, endYear] = year.split("-").map(Number);
-    console.log("Parsing params:", {
-      startYear,
-      endYear,
-      session,
-      semester,
-      section,
-      mentor_id,
-    });
+    // console.log("Parsing params:", {
+    //   startYear,
+    //   endYear,
+    //   session,
+    //   semester,
+    //   section,
+    //   mentor_id,
+    // });
+    console.log("Academic Years:", startYear, " - " , endYear);
 
     // First find academic session
     let academicSession;

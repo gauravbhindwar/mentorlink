@@ -138,7 +138,7 @@ const ScheduleMeetingComponent = () => {
         if (response.data) {
           const meetingsHeld = response.data?.meetings;
 
-          console.log("Mentor meetings:", meetingsHeld);
+          // console.log("Mentor meetings:", meetingsHeld);
           // console.log('Meeting count:', meetingCount);
           //MEETING LIMIT CURRENTLY DISABLED
           // if(meetingsHeld.length >= 4){
@@ -231,7 +231,7 @@ const ScheduleMeetingComponent = () => {
       if (response.status === 200) {
         // Then send emails to all mentees
         const menteeEmails = mentees.map((mentee) => mentee.email);
-        console.log("Mentee emails:", menteeEmails);
+        // console.log("Mentee emails:", menteeEmails);
         try {
           await sendEmailToMentees(menteeEmails);
         } catch (error) {
@@ -262,7 +262,7 @@ const ScheduleMeetingComponent = () => {
         setMentees(menteesData);
         setDisabled(menteesData.length === 0);
       }
-      console.log(mentees, "mentees");
+      // console.log(mentees, "mentees");
     } catch (error) {
       console.log("Error fetching mentees:", error);
       setDisabled(true);
@@ -450,12 +450,12 @@ Contact: ${mentorData?.email || ""}`;
   const sendEmailToMentees = async (menteeEmails) => {
     try {
       const emailPromises = menteeEmails.map(async (email) => {
-        const response = await axios.post("/api/meeting/send-email", {
+      const response = await axios.post("/api/meeting/send-email", {
           email,
           subject: `Meeting Scheduled - ${meetingId}`,
           body: getEmailBody(),
         });
-        return response;
+      return response;
       });
       router.push("/pages/mentordashboard");
 

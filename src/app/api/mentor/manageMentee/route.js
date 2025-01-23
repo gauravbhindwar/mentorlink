@@ -147,7 +147,7 @@ export async function GET(req) {
       }, { status: 400 });
     }
 
-    console.log("Searching for mentees with mentor email:", mentorEmail);
+    // console.log("Searching for mentees with mentor email:", mentorEmail);
 
     // Find all mentees assigned to this mentor using mentorEmailid field
     const mentees = await Mentee.find({ 
@@ -156,7 +156,7 @@ export async function GET(req) {
     .select('-password -otp -otpExpires -isOtpUsed')
     .lean();
 
-    console.log("Found mentees:", mentees.length);
+    // console.log("Found mentees:", mentees.length);
 
     return NextResponse.json({
       success: true,
@@ -188,7 +188,7 @@ export async function PUT(req) {
       }, { status: 400 });
     }
 
-    console.log('Received update data:', data); // Debug log
+    // console.log('Received update data:', data); // Debug log
 
     const allowedUpdates = {
       name: data.name,
@@ -208,7 +208,7 @@ export async function PUT(req) {
       }
     });
 
-    console.log('Processed updates:', allowedUpdates); // Debug log
+    // console.log('Processed updates:', allowedUpdates); // Debug log
 
     const updatedMentee = await Mentee.findOneAndUpdate(
       { 

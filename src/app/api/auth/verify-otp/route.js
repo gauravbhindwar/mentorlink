@@ -67,7 +67,7 @@ export async function POST(req) {
   try {
     await connect();
     const { email, role, otp } = await req.json();
-    console.log("Verifying OTP for:", email, "Role:", role);
+    // console.log("Verifying OTP for:", email, "Role:", role);
 
     if (!email || !role || !otp) {
       return NextResponse.json(

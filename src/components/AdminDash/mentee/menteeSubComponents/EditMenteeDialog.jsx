@@ -13,7 +13,7 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
   // Initialize editedMentee when mentee prop changes
   useEffect(() => {
     if (mentee) {
-      console.log("Initializing edit dialog with mentee:", mentee); // Debug log
+      // console.log("Initializing edit dialog with mentee:", mentee); // Debug log
       setEditedMentee({
         ...mentee,
         // Ensure all required fields are present with proper values

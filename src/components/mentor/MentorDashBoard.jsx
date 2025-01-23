@@ -464,7 +464,7 @@ Contact: ${mentorData?.email || ""}`;
                 ) : meetings.length > 0 ? (
                   <>
                     <h2 className='text-2xl font-bold text-white mb-4'>
-                      Upcoming Meetings
+                      Meetings
                     </h2>
                     {Object.entries(groupBySemester(meetings))
                       .sort(([semA], [semB]) => semA - semB)
@@ -533,9 +533,8 @@ Contact: ${mentorData?.email || ""}`;
                                         <span className='text-gray-300'>
                                           Link:{" "}
                                         </span>
-                                        {meeting.meeting.meeting_notes.venue.includes(
-                                          "https:"
-                                        ) ? (
+                                        {meeting.meeting?.meeting_notes?.venue && 
+                                         meeting.meeting.meeting_notes.venue.toString().includes("https:") ? (
                                           <a
                                             href={`${meeting.meeting.meeting_notes.venue}`}
                                             target='_blank'
@@ -620,6 +619,14 @@ Contact: ${mentorData?.email || ""}`;
                                                   outcome: "",
                                                   closureRemarks: "",
                                                   presentMentees: [],
+                                                  isMeetingOnline:
+                                                  meeting?.meeting
+                                                  ?.meeting_notes
+                                                  ?.isMeetingOnline,
+                                                  venue:
+                                                  meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.venue || "",
                                                 });
                                               }}
                                               className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
@@ -665,6 +672,14 @@ Contact: ${mentorData?.email || ""}`;
                                                   presentMentees:
                                                     meeting?.meeting
                                                       ?.present_mentees || [],
+                                                      isMeetingOnline:
+                                                  meeting?.meeting
+                                                  ?.meeting_notes
+                                                  ?.isMeetingOnline,
+                                                  venue:
+                                                  meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.venue,
                                                 });
                                               }}
                                               className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>

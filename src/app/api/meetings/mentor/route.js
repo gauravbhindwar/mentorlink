@@ -70,8 +70,8 @@ export async function GET(request) {
         const meetings = await AcademicSession.aggregate(pipeline);
 
         // Log for debugging
-        console.log('Query params:', { year, session, semester, section, mentorMUJid });
-        console.log('Found meetings:', meetings.length);
+        // console.log('Query params:', { year, session, semester, section, mentorMUJid });
+        // console.log('Found meetings:', meetings.length);
 
         if (meetings.length === 0) {
             return NextResponse.json(

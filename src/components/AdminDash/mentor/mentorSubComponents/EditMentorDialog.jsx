@@ -9,7 +9,7 @@ import {
   Typography,
   IconButton,
   TextField,
-  Grid,
+  Grid2,
   MenuItem,
   FormControlLabel,
   Switch,
@@ -108,8 +108,8 @@ const EditMentorDialog = ({
       </DialogTitle>
       <DialogContent sx={dialogStyles.content}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Grid2 container spacing={3}>
+            <Grid2 item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="MUJid"
@@ -126,8 +126,8 @@ const EditMentorDialog = ({
                   },
                 }}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Name"
@@ -137,8 +137,8 @@ const EditMentorDialog = ({
                 required
                 sx={dialogStyles.textField}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Email"
@@ -149,8 +149,8 @@ const EditMentorDialog = ({
                 required
                 sx={dialogStyles.textField}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Phone Number"
@@ -160,8 +160,8 @@ const EditMentorDialog = ({
                 required
                 sx={dialogStyles.textField}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 item xs={12} md={6}>
               <TextField
                 fullWidth
                 select
@@ -176,8 +176,8 @@ const EditMentorDialog = ({
                 <MenuItem value="admin">Admin</MenuItem>
                 <MenuItem value="superadmin">Super Admin</MenuItem>
               </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 item xs={12} md={6}>
               <FormControlLabel
                 control={
                   <Switch
@@ -201,8 +201,8 @@ const EditMentorDialog = ({
                 label="Active Status"
                 sx={{ color: 'white' }}
               />
-            </Grid>
-          </Grid>
+            </Grid2>
+          </Grid2>
         </Box>
       </DialogContent>
       <DialogActions sx={dialogStyles.actions}>
@@ -220,18 +220,24 @@ const EditMentorDialog = ({
         >
           Cancel
         </Button>
+        <span className={!selectedMentor.name || !selectedMentor.email || !selectedMentor.phone_number || !selectedMentor.role ? 'pointer-events-none' : ''}>
         <Button
           onClick={handleSubmit}
           variant="contained"
           sx={{
-            bgcolor: "#f97316",
+            bgcolor: !selectedMentor.name || !selectedMentor.email || !selectedMentor.phone_number || !selectedMentor.role ? "#808080" : "#f97316",
             "&:hover": {
               bgcolor: "#ea580c",
             },
+            // bgcolor: "#f97316",
+            // "&:hover": {
+            //   bgcolor: "#ea580c",
+            // },
           }}
         >
-          Update
+         {!selectedMentor.name || !selectedMentor.email || !selectedMentor.phone_number || !selectedMentor.role ? 'Please Fill All Required Fields' : 'Update'} 
         </Button>
+        </span>
       </DialogActions>
     </Dialog>
   );

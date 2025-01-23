@@ -16,7 +16,7 @@ const AddMeetingInfo = () => {
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
   const [semesterSuggestions, setSemesterSuggestions] = useState([]);
-  console.log(semesterSuggestions);
+  console.log("semester Suggestions : ",semesterSuggestions);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const [showSemesterOptions, setShowSemesterOptions] = useState(false);
@@ -462,7 +462,7 @@ const AddMeetingInfo = () => {
                                 });
                               }}
                             >
-                              {console.log("meeting: ",meeting)}
+                              {/* {console.log("meeting: ",meeting)} */}
                               <div className="flex items-center space-x-2">
                                 {/* {console.log("meeting: ",meeting)} */}
                                 <div>

@@ -194,12 +194,12 @@ const MeetingReportGenerator = () => {
     }));
   };
 
-  const handleGenerateMOM = () => {
-    const selectedMeeting = meetings.find(m => m.meeting_id === momDetails.meetingId);
-    if (selectedMeeting) {
-      console.log('Generating MOM Report:', { selectedMeeting, momDetails });
-    }
-  };
+  // const handleGenerateMOM = () => {
+  //   const selectedMeeting = meetings.find(m => m.meeting_id === momDetails.meetingId);
+  //   if (selectedMeeting) {
+  //     console.log('Generating MOM Report:', { selectedMeeting, momDetails });
+  //   }
+  // };
 
   const handleGenerateConsolidate = async () => {
     try {
@@ -321,7 +321,7 @@ const MeetingReportGenerator = () => {
     </div>
   );
 
-  console.log('Meetings:', selectedMeeting?.meeting_notes);
+  // console.log('Meetings:', selectedMeeting?.meeting_notes);
   // Add new helper function for MOM buttons
   const getMOMButtonLabel = (meetingIndex) => {
     return `MOM ${meetingIndex + 1}`; // Now returns MOM button label for all meetings

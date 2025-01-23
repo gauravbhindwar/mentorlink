@@ -42,7 +42,7 @@ const AboutUs = () => {
       name: 'Garv Kundnani',
       role: 'Developer',
       image: '/Peoples/Developer/garv.png',
-      description: 'Full Stack Developer',
+      description: 'Frontend Developer',
       github: 'https://github.com/garvkundnani',
       linkedin: 'https://linkedin.com/in/garvkundnani',
       email: 'garv.kundnani@muj.manipal.edu',

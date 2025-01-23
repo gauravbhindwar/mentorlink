@@ -24,10 +24,10 @@ export async function GET(req) {
     if (section) filters.section = section;
     if (mentorMujid) filters.mentorMujid = mentorMujid;
 
-    console.log('Filters applied:', filters); // Log the filters
+    // console.log('Filters applied:', filters); // Log the filters
 
     const mentees = await Mentee.find(filters);
-    console.log('Mentees found:', mentees); // Log the mentees found
+    // console.log('Mentees found:', mentees); // Log the mentees found
     if (!mentees.length) {
       return createErrorResponse("No mentees found", 404);
     }
