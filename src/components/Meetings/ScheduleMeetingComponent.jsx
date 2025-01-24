@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/subComponents/Navbar";
 import axios from "axios";
 import EmailProgress from '../EmailProgress/EmailProgress';
+import { FaVideo, FaBuilding } from 'react-icons/fa'; // Add this import at the top
 
 const ScheduleMeetingComponent = () => {
   const router = useRouter();
@@ -35,6 +36,7 @@ const ScheduleMeetingComponent = () => {
   console.log(semesterSuggestions);
   const semesterRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false); // Add this new state
+  const [submitting, setSubmitting] = useState(false);
 
   const fixedBranch = "CSE CORE";
 
@@ -184,7 +186,9 @@ const ScheduleMeetingComponent = () => {
     }
 
     setLoading(true);
+    setSubmitting(true);
     setPreventReload(true);
+    
     try {
       // First schedule the meeting
       const response = await axios.post("/api/meeting/mentors/schmeeting", {
@@ -200,21 +204,24 @@ const ScheduleMeetingComponent = () => {
         venue: venue,
       });
 
-      if (response.status === 200) {
-        // Then send emails to all mentees
-        const menteeEmails = mentees.map((mentee) => mentee.email);
-        console.log("Mentee emails:", menteeEmails);
-        try {
-          await sendEmailToMentees(menteeEmails);
-        } catch (error) {
-          console.log("Error sending emails to mentees:", error);
+        if (response.status === 200) {
+        // Filter out invalid emails and send
+        const validEmails = mentees
+          .filter(mentee => mentee.email && mentee.email.includes('@'))
+          .map(mentee => mentee.email);
+          
+        if (validEmails.length === 0) {
+          throw new Error("No valid email addresses found");
         }
+
+        await sendEmailToMentees(validEmails);
       }
     } catch (error) {
-      console.log("Error scheduling meeting:", error);
-      setCustomAlert("Failed to schedule meeting or send emails");
+      console.error("Error scheduling meeting:", error);
+      setCustomAlert(error.message || "Failed to schedule meeting or send emails");
     } finally {
       setLoading(false);
+      setSubmitting(false);
       setPreventReload(false);
     }
   };
@@ -344,7 +351,10 @@ const ScheduleMeetingComponent = () => {
   const handleSemesterInput = (e) => {
     let value = e.target.value.toUpperCase();
 
-    if (value.length > 0) {
+    // Auto-hide dropdown if a valid semester is entered
+    if (availableSemesters.includes(parseInt(value))) {
+      setShowSemesterOptions(false);
+    } else if (value.length > 0) {
       setSemesterSuggestions(generateSemesterSuggestions(value));
       setShowSemesterOptions(true);
     } else {
@@ -420,27 +430,47 @@ Contact: ${mentorData?.email || ""}`;
 
   const sendEmailToMentees = async (menteeEmails) => {
     try {
+      // Validate email array
+      if (!Array.isArray(menteeEmails) || menteeEmails.length === 0) {
+        throw new Error("No valid email recipients found");
+      }
+
+      // Start progress
       setEmailProgress({ current: 0, total: menteeEmails.length, show: true });
       
+      // Send emails
       const response = await axios.post("/api/meeting/send-email", {
         emails: menteeEmails,
         subject: `Meeting Scheduled - ${meetingId}`,
         body: getEmailBody(),
+        meetingId: meetingId // Ensure meetingId is included
       });
 
       if (response.data.success) {
-        // Immediately show all emails as sent since we send them all at once
-        setEmailProgress({ current: menteeEmails.length, total: menteeEmails.length, show: true });
+        setEmailProgress({ 
+          current: menteeEmails.length, 
+          total: menteeEmails.length, 
+          show: true 
+        });
         
         setTimeout(() => {
           setEmailProgress({ current: 0, total: 0, show: false });
           router.push("/pages/mentordashboard");
         }, 2000);
+      } else {
+        throw new Error(response.data.message || "Failed to send emails");
       }
     } catch (error) {
       console.error("Error sending emails:", error);
-      setCustomAlert("Failed to send meeting notification emails");
+      setCustomAlert(error.message || "Failed to send meeting notification emails");
+      setEmailProgress({ current: 0, total: 0, show: false });
     }
+  };
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 10); // Add 10 minutes buffer
+    return now.toISOString().slice(0, 16); // Format as YYYY-MM-DDTHH:mm
   };
 
   return (
@@ -614,7 +644,11 @@ Contact: ${mentorData?.email || ""}`;
                           handleSemesterInput(e);
                         }
                       }}
-                      onClick={() => setShowSemesterOptions(true)}
+                      onClick={() => {
+                        if (!currentSemester) {
+                          setShowSemesterOptions(true);
+                        }
+                      }}
                       disabled={!academicYear}
                       className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50'
                     />
@@ -673,61 +707,110 @@ Contact: ${mentorData?.email || ""}`;
                       <input
                         type='datetime-local'
                         value={dateTime}
+                        min={getMinDateTime()}
                         onChange={(e) => {
+                          const selectedDate = new Date(e.target.value);
+                          const now = new Date();
+                          
+                          if (selectedDate < now) {
+                            setCustomAlert("Please select a future date and time");
+                            return;
+                          }
+                          
                           setDateTime(e.target.value);
                           formatDateTime(e.target.value);
+                          setCustomAlert("");
+                          e.target.blur(); // Autoclose after selecting time
                         }}
-                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm [&::-webkit-calendar-picker-indicator]:invert'
-                        step='1800'
+                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm 
+                                  [&::-webkit-calendar-picker-indicator]:invert hover:border-orange-500 
+                                  focus:border-orange-500 transition-colors'
                       />
                     </div>
                   </div>
 
-                  {/* Meeting Type Selection */}
+                  {/* Replace the Meeting Type Selection div with this new version */}
                   <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
+                    <label className='block text-sm font-medium text-gray-300 mb-2'>
                       Meeting Type
                     </label>
-                    <select
-                      value={isMeetingOnline ? "online" : "offline"}
-                      onChange={(e) => {
-                        setIsMeetingOnline(e.target.value === "online");
-                        setVenue(""); // Reset venue when changing meeting type
-                      }}
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'>
-                      <option value='offline'>Offline</option>
-                      <option value='online'>Online</option>
-                    </select>
+                    <div className='grid grid-cols-2 gap-3'>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setIsMeetingOnline(false);
+                          setVenue('');
+                        }}
+                        className={`flex items-center justify-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
+                          !isMeetingOnline
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-black/20 text-gray-400 hover:bg-black/30'
+                        }`}
+                      >
+                        <FaBuilding className="text-lg" />
+                        <span>Offline</span>
+                      </button>
+                      
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setIsMeetingOnline(true);
+                          setVenue('');
+                        }}
+                        className={`flex items-center justify-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
+                          isMeetingOnline
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-black/20 text-gray-400 hover:bg-black/30'
+                        }`}
+                      >
+                        <FaVideo className="text-lg" />
+                        <span>Online</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Conditional Venue/Link Field */}
+                  {/* Update the Venue/Link Field with icons */}
                   <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
+                    <label className='block text-sm font-medium text-gray-300 mb-2'>
                       {isMeetingOnline ? "Meeting Link" : "Venue"}
                     </label>
-                    <input
-                      type='text'
-                      value={venue}
-                      onChange={(e) => setVenue(e.target.value)}
-                      placeholder={
-                        isMeetingOnline
-                          ? "Enter meeting link"
-                          : "Enter venue location"
-                      }
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
-                    />
+                    <div className='relative'>
+                      <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
+                        {isMeetingOnline ? (
+                          <FaVideo className="text-gray-400" />
+                        ) : (
+                          <FaBuilding className="text-gray-400" />
+                        )}
+                      </div>
+                      <input
+                        type='text'
+                        value={venue}
+                        onChange={(e) => setVenue(e.target.value)}
+                        placeholder={
+                          isMeetingOnline
+                            ? "Enter meeting link (e.g., Zoom, Teams)"
+                            : "Enter venue location"
+                        }
+                        className='w-full bg-black/20 border border-white/10 rounded-lg pl-10 p-2 text-white text-sm focus:border-orange-500 transition-colors'
+                      />
+                    </div>
                   </div>
 
                   <button
                     type='submit'
-                    className='w-full btn-orange disabled:opacity-50'
-                    disabled={loading || isDisabled}
+                    className='w-full btn-orange disabled:opacity-50 relative'
+                    disabled={loading || isDisabled || submitting}
                     onClick={handleMeetingScheduled}>
-                    {loading ? (
-                      <div className='animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-500'></div>
-                    ) : (
-                      "Schedule Meeting"
-                    )}
+                    <div className='flex items-center justify-center space-x-2'>
+                      {submitting ? (
+                        <>
+                          <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
+                          <span>Scheduling Meeting...</span>
+                        </>
+                      ) : (
+                        <span>Schedule Meeting</span>
+                      )}
+                    </div>
                   </button>
                   {customAlert && (
                     <p className='text-md text-red-600 font-semibold w-[100%] flex justify-center'>

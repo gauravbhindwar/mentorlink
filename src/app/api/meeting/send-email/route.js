@@ -21,21 +21,59 @@ export async function POST(req) {
   try {
     const { emails, subject, body, meetingId } = await req.json();
 
-    if (!Array.isArray(emails) || !subject || !body || !meetingId) {
+    // Enhanced validation
+    if (!emails || !Array.isArray(emails)) {
       return NextResponse.json(
         { 
           success: false, 
-          message: "Invalid input: emails, subject, body, and meetingId are required" 
+          message: "Invalid input: emails must be an array" 
         },
         { status: 400 }
       );
     }
 
-    if (emails.length === 0) {
+    // Validate email format
+    const validEmails = emails.filter(email => 
+      typeof email === 'string' && 
+      email.includes('@') && 
+      email.includes('.')
+    );
+
+    if (validEmails.length === 0) {
       return NextResponse.json(
         { 
           success: false, 
-          message: "No email recipients provided" 
+          message: "No valid email addresses provided" 
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!subject || typeof subject !== 'string') {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Subject is required and must be a string" 
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!body || typeof body !== 'string') {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Body is required and must be a string" 
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!meetingId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Meeting ID is required" 
         },
         { status: 400 }
       );
