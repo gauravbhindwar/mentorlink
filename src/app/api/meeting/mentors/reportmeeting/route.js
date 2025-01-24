@@ -1,7 +1,6 @@
-import { AcademicSession } from "@/lib/db/academicSessionSchema";
 import { NextResponse } from "next/server";
-import { connect } from "../../../../../lib/dbConfig";
-
+import { connect } from "@/lib/dbConfig";
+import { Meeting } from "@/lib/db/meetingSchema";
 export async function GET(request) {
   try {
     await connect();
@@ -107,67 +106,46 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await connect();
+    
+    const { mentor_id, meeting_id, meeting_notes, presentMentees } = await request.json();
 
-    const { mentor_id, meeting_id, meeting_notes, presentMentees } =
-      await request.json();
-
-    const filteredPresentMentees = presentMentees.filter(
-      (mentee) => mentee !== ""
-    );
-    // Validate required fields (feedback is optional)
-    if (
-      !meeting_notes.TopicOfDiscussion ||
-      !meeting_notes.TypeOfInformation ||
-      !meeting_notes.NotesToStudent ||
-      !meeting_notes.outcome ||
-      !meeting_notes.closureRemarks
-    ) {
-      return NextResponse.json(
-        { error: "Required fields are missing" },
-        { status: 400 }
-      );
-    }
-
-    const academicSession = await AcademicSession.findOneAndUpdate(
+    // Find the meeting document and update the specific meeting
+    const updatedMeeting = await Meeting.findOneAndUpdate(
       {
-        "sessions.semesters.sections.meetings.meeting_id": meeting_id,
-        "sessions.semesters.sections.meetings.mentorMUJid": mentor_id,
+        mentorMUJid: mentor_id,
+        'meetings.meeting_id': meeting_id
       },
       {
         $set: {
-          "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].meeting_notes":
-            meeting_notes,
-          "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].isReportFilled": true,
-          "sessions.$[session].semesters.$[semester].sections.$[section].meetings.$[meeting].present_mentees":
-            filteredPresentMentees,
-        },
+          'meetings.$.meeting_notes': meeting_notes,
+          'meetings.$.present_mentees': presentMentees,
+          'meetings.$.isReportFilled': true
+        }
       },
-      {
-        arrayFilters: [
-          { "session.semesters.sections.meetings.meeting_id": meeting_id },
-          { "semester.sections.meetings.meeting_id": meeting_id },
-          { "section.meetings.meeting_id": meeting_id },
-          { "meeting.meeting_id": meeting_id },
-        ],
-        new: true,
-      }
+      { new: true }
     );
 
-    if (!academicSession) {
+    if (!updatedMeeting) {
       return NextResponse.json(
-        { error: "Meeting not found or update failed" },
+        { error: "Meeting not found" },
         { status: 404 }
       );
     }
 
+    // Get the updated meeting details
+    const updatedMeetingDetails = updatedMeeting.meetings.find(
+      m => m.meeting_id === meeting_id
+    );
+
     return NextResponse.json(
-      { message: "Meeting notes updated successfully" },
+      { message: "Meeting notes updated successfully", meeting: updatedMeetingDetails },
       { status: 200 }
     );
+
   } catch (error) {
     console.error("Error updating meeting notes:", error);
     return NextResponse.json(
-      { error: "Error updating meeting notes", details: error.message },
+      { error: "Failed to update meeting notes" },
       { status: 500 }
     );
   }

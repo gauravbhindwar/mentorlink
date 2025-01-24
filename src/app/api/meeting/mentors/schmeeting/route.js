@@ -1,324 +1,98 @@
-import { connect } from "../../../../../lib/dbConfig";
-import { AcademicSession } from "../../../../../lib/db/academicSessionSchema";
-import { Mentor } from "../../../../../lib/db/mentorSchema";
-import { Mentee } from "../../../../../lib/db/menteeSchema";
 import { NextResponse } from "next/server";
+import { connect } from "@/lib/dbConfig";
+import { Meeting } from "@/lib/db/meetingSchema";
 
 export async function GET(request) {
-  await connect();
-
-  const { searchParams } = new URL(request.url);
-  const year = searchParams.get("year");
-  const session = searchParams.get("session");
-  const semester = searchParams.get("semester");
-  const mentor_id = searchParams.get("mentor_id");
-  const section = searchParams.get("section");
-
-  if (!year || !session || !semester || !mentor_id) {
-    return NextResponse.json(
-      { error: "Year, session, semester and mentor_id are required" },
-      { status: 400 }
-    );
-  }
-
   try {
-    const [startYear, endYear] = year.split("-").map(Number);
-    // console.log("Parsing params:", {
-    //   startYear,
-    //   endYear,
-    //   session,
-    //   semester,
-    //   section,
-    //   mentor_id,
-    // });
-    console.log("Academic Years:", startYear, " - " , endYear);
+    await connect();
+    const { searchParams } = new URL(request.url);
+    const mentorId = searchParams.get("mentor_id");
+    const semester = searchParams.get("semester");
+    const session = searchParams.get("session");
+    const year = searchParams.get("year");
 
-    // First find academic session
-    let academicSession;
-
-    if (section) {
-      // If section is provided, use the existing query
-      academicSession = await AcademicSession.findOne({
-        start_year: startYear,
-      }).select({
-        sessions: {
-          $elemMatch: {
-            name: session,
-            semesters: {
-              $elemMatch: {
-                semester_number: parseInt(semester),
-                sections: {
-                  $elemMatch: {
-                    name: section,
-                    "meetings.mentorMUJid": mentor_id,
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-    } else {
-      // If no section is provided, search across all sections in the semester
-      academicSession = await AcademicSession.findOne({
-        start_year: startYear,
-      }).select({
-        sessions: {
-          $elemMatch: {
-            name: session,
-            semesters: {
-              $elemMatch: {
-                semester_number: parseInt(semester),
-              },
-            },
-          },
-        },
-      });
-    }
-
-    if (
-      !academicSession ||
-      !academicSession.sessions ||
-      !academicSession.sessions.length
-    ) {
-      // Check if mentor exists
-      const mentorExists = await Mentor.findOne({ MUJid: mentor_id });
-
-      if (!mentorExists) {
-        return NextResponse.json(
-          {
-            error: "Mentor not found",
-            meetings: [],
-            totalMeetings: 0,
-          },
-          { status: 404 }
-        );
-      }
-
+    if (!mentorId || !semester || !session || !year) {
       return NextResponse.json(
-        {
-          meetings: [],
-          totalMeetings: 0,
-        },
-        { status: 200 }
-      );
-    }
-
-    // Get the relevant sessions data
-    const targetSession = academicSession.sessions[0];
-    const targetSemester = targetSession.semesters?.find(
-      (s) => s.semester_number === parseInt(semester)
-    );
-    // console.log("Target semester:", targetSemester.sections[0]);
-    // console.log("isSection:", section.trim() !== "");
-    // console.log("Section1:", section);
-    // console.log("Target section:", typeof section);
-    let meetings = [];
-
-    if (section && section.trim() !== "") {
-      // If section is provided, get meetings for that specific section
-      const targetSection = targetSemester?.sections?.find(
-        (s) => s.name === section
-      );
-      // console.log("Target sections:", targetSection);
-      meetings =
-        targetSection?.meetings?.filter((m) => m.mentorMUJid === mentor_id) ||
-        [];
-    } else {
-      // If no section is provided, collect meetings from all sections
-      meetings =
-        targetSemester?.sections?.reduce((allMeetings, section) => {
-          const sectionMeetings =
-            section.meetings?.filter((m) => m.mentorMUJid === mentor_id) || [];
-          return [...allMeetings, ...sectionMeetings];
-        }, []) || [];
-    }
-
-    return NextResponse.json(
-      {
-        meetings,
-        totalMeetings: meetings.length,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error fetching mentor meetings:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function POST(request) {
-  await connect();
-
-  try {
-    const body = await request.json();
-    const {
-      mentor_id,
-      meeting_id,
-      TopicOfDiscussion,
-      meeting_date,
-      meeting_time,
-      semester,
-      section,
-      session,
-      year,
-      isMeetingOnline,
-      venue,
-    } = body;
-
-    if (
-      !mentor_id ||
-      !meeting_id ||
-      !TopicOfDiscussion ||
-      !meeting_date ||
-      !meeting_time ||
-      !semester ||
-      !session ||
-      !year ||
-      !venue
-    ) {
-      return NextResponse.json(
-        { error: "All fields except section are required" },
+        { error: "Missing required parameters" },
         { status: 400 }
       );
     }
 
-    const mentorExists = await Mentor.findOne({ MUJid: mentor_id });
-
-    if (!mentorExists) {
-      return NextResponse.json(
-        {
-          error: "Mentor not found",
-          meetings: [],
-          totalMeetings: 0,
-        },
-        { status: 404 }
-      );
-    }
-
-    // Get mentees based on whether section is provided or not
-    let mentees;
-    if (section) {
-      mentees = await Mentee.find({
-        mentorMujid: mentor_id,
-        semester: parseInt(semester),
-        academicSession: session,
-        academicYear: year,
-        section: section,
-      });
-    } else {
-      // Get all mentees for this mentor across all sections
-      mentees = await Mentee.find({
-        mentorMujid: mentor_id,
-        semester: parseInt(semester),
-        academicSession: session,
-        academicYear: year,
-      });
-    }
-
-    if (!mentees || mentees.length === 0) {
-      return NextResponse.json(
-        { error: "No mentees found for given criteria" },
-        { status: 404 }
-      );
-    }
-
-    // Get unique sections from mentees
-    const uniqueSections = [
-      ...new Set(mentees.map((mentee) => mentee.section)),
-    ];
-    const mentee_ids = mentees.map((mentee) => mentee.MUJid);
-
-    const [startYear, endYear] = year.split("-").map(Number);
-
-    // Find the academic session
-    const academicSession = await AcademicSession.findOne({
-      start_year: startYear,
-      end_year: endYear,
+    // Find meetings for this mentor and semester
+    const mentorMeetings = await Meeting.findOne({
+      mentorMUJid: mentorId,
+      "academicDetails.academicYear": year,
+      "academicDetails.academicSession": session,
     });
 
-    if (!academicSession) {
-      return NextResponse.json(
-        { error: "Academic session not found" },
-        { status: 404 }
-      );
-    }
+    // Get meetings for specific semester
+    const semesterMeetings =
+      mentorMeetings?.meetings?.filter(
+        (meeting) => meeting.semester === parseInt(semester)
+      ) || [];
 
-    const targetSession = academicSession.sessions.find(
-      (s) => s.name === session
+    return NextResponse.json({ meetings: semesterMeetings });
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch meetings" },
+      { status: 500 }
     );
-    if (!targetSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
-    }
+  }
+}
 
-    const targetSemester = targetSession.semesters.find(
-      (s) => s.semester_number === parseInt(semester)
+export async function POST(request) {
+  try {
+    await connect();
+    const data = await request.json();
+
+    // Find or create mentor's meetings document
+    const mentorMeetings = await Meeting.findOrCreateMentorMeetings(
+      data.mentor_id,
+      {
+        academicYear: data.year,
+        academicSession: data.session,
+      }
     );
-    if (!targetSemester) {
-      return NextResponse.json(
-        { error: "Semester not found" },
-        { status: 404 }
-      );
-    }
 
-    // Create the new meeting object
+    // Create new meeting data
     const newMeeting = {
-      meeting_id,
+      meeting_id: data.meeting_id,
+      semester: parseInt(data.semester),
+      meeting_date: new Date(data.meeting_date),
+      meeting_time: data.meeting_time,
       meeting_notes: {
-        TopicOfDiscussion,
-        isMeetingOnline: isMeetingOnline ? true : false,
-        venue,
+        TopicOfDiscussion: data.TopicOfDiscussion,
+        isMeetingOnline: data.isMeetingOnline,
+        venue: data.venue,
       },
-      meeting_date,
-      meeting_time,
-      semester,
-      sections: uniqueSections, // Store all sections involved
-      session,
-      year,
-      mentorMUJid: mentor_id,
-      mentee_ids,
+      scheduledAT: {
+        scheduleDate: new Date(),
+        scheduleTime: new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+      },
     };
 
-    // Add the meeting to all involved sections
-    for (const sectionName of uniqueSections) {
-      const targetSection = targetSemester.sections.find(
-        (s) => s.name === sectionName
-      );
+    // Add meeting to mentor's meetings array
+    await mentorMeetings.addMeeting(newMeeting);
 
-      if (targetSection) {
-        targetSection.meetings.push({
-          ...newMeeting,
-          section: sectionName, // Add section-specific identifier
-        });
-
-        await AcademicSession.findOneAndUpdate(
-          { start_year: startYear },
-          {
-            $set: {
-              "sessions.$[session].semesters.$[semester].sections.$[section]":
-                targetSection,
-            },
-          },
-          {
-            arrayFilters: [
-              { "session.name": session },
-              { "semester.semester_number": parseInt(semester) },
-              { "section.name": sectionName },
-            ],
-          }
-        );
-      }
-    }
-
+    return NextResponse.json({
+      success: true,
+      message: "Meeting scheduled successfully",
+      meetingId: data.meeting_id,
+    });
+  } catch (error) {
+    console.error("Error scheduling meeting:", error);
     return NextResponse.json(
       {
-        message: "Meeting scheduled successfully",
-        sections: uniqueSections,
+        success: false,
+        message: "Failed to schedule meeting",
+        error: error.message,
       },
-      { status: 200 }
+      { status: 500 }
     );
-  } catch (error) {
-    console.error("Error adding meeting:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

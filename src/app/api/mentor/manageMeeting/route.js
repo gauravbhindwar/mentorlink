@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AcademicSession } from "../../../../lib/db/academicSessionSchema";
+import { Meeting } from "../../../../lib/db/meetingSchema";
 import { Mentee } from "../../../../lib/db/menteeSchema";
 import { connect } from "../../../../lib/dbConfig";
 
@@ -7,11 +7,11 @@ export async function GET(request) {
   try {
     await connect();
 
-    // Get mentorId from query params
     const { searchParams } = new URL(request.url);
     const mentorId = searchParams.get("mentorId");
     const academicYear = searchParams.get("academicYear");
     const session = searchParams.get("session");
+    const semester = searchParams.get("semester");
 
     if (!mentorId || !academicYear || !session) {
       return NextResponse.json(
@@ -20,94 +20,71 @@ export async function GET(request) {
       );
     }
 
-    // Find academic session
-    const academicSessionDoc = await AcademicSession.findOne({
-      "sessions.name": session,
-      start_year: parseInt(academicYear),
+    // Find all mentees for this mentor first
+    const mentees = await Mentee.find({
+      mentorMujid: mentorId,
+      academicYear: academicYear,
+      academicSession: session,
+      ...(semester && { semester: parseInt(semester) })
     });
 
-    if (!academicSessionDoc) {
-      return NextResponse.json(
-        { error: "Academic session not found" },
-        { status: 404 }
+    // Create base query for meetings
+    const query = {
+      mentorMUJid: mentorId,
+      'academicDetails.academicYear': academicYear,
+      'academicDetails.academicSession': session,
+    };
+
+    // Find meetings document
+    const meetingsDoc = await Meeting.findOne(query);
+    
+    if (!meetingsDoc) {
+      return NextResponse.json({ meetings: [] }, { status: 200 });
+    }
+
+    // Filter meetings by semester if provided
+    let filteredMeetings = meetingsDoc.meetings;
+    if (semester) {
+      filteredMeetings = meetingsDoc.meetings.filter(
+        meeting => meeting.semester === parseInt(semester)
       );
     }
 
-    // Aggregate meetings for the mentor
-    const meetings = await AcademicSession.aggregate([
-      { $unwind: "$sessions" },
-      { $unwind: "$sessions.semesters" },
-      { $unwind: "$sessions.semesters.sections" },
-      { $unwind: "$sessions.semesters.sections.meetings" },
-      {
-        $match: {
-          "sessions.name": session,
-          start_year: parseInt(academicYear),
-          "sessions.semesters.sections.meetings.mentorMUJid": mentorId,
+    // Update mentee_ids for each meeting based on semester and sections
+    const updatedMeetings = filteredMeetings.map(meeting => {
+      const semesterMentees = mentees.filter(mentee => 
+        mentee.semester === meeting.semester && 
+        (meeting.sections.length === 0 || meeting.sections.includes(mentee.section))
+      );
+
+      // Update the meeting's mentee_ids in the database
+      Meeting.updateOne(
+        { 
+          'mentorMUJid': mentorId,
+          'meetings._id': meeting._id 
         },
-      },
-      {
-        $project: {
-          _id: 0,
-          meeting: "$sessions.semesters.sections.meetings",
-          section: "$sessions.semesters.sections.name",
-          semester: "$sessions.semesters.semester_number",
-          sessionName: "$sessions.name",
+        { 
+          $set: { 
+            'meetings.$.mentee_ids': semesterMentees.map(m => m.MUJid)
+          } 
+        }
+      ).exec();
+
+      return {
+        meeting: {
+          ...meeting.toObject(),
+          mentee_ids: semesterMentees.map(m => m.MUJid)
         },
-      },
-    ]);
+        sections: meeting.sections || [],
+        semester: meeting.semester,
+        sessionName: meetingsDoc.academicDetails.academicSession,
+        menteeDetails: semesterMentees
+      };
+    });
 
-    // Now enhance each meeting with mentee details
-    const meetingsWithMenteeDetails = await Promise.all(
-      meetings.map(async (meeting) => {
-        const menteeDetails = await Promise.all(
-          meeting.meeting.mentee_ids.map(async (menteeId) => {
-            const mentee = await Mentee.findOne(
-              { MUJid: menteeId },
-              {
-                name: 1,
-                email: 1,
-                MUJid: 1,
-                phone: 1,
-                section: 1,
-                semester: 1,
-                academicYear: 1,
-                academicSession: 1,
-                _id: 0,
-              }
-            ).lean();
-
-            return (
-              mentee || {
-                MUJid: menteeId,
-                name: "Not Found",
-                email: "Not Found",
-                phone: "Not Found",
-                section: "Not Found",
-                semester: "Not Found",
-                academicYear: "Not Found",
-                academicSession: "Not Found",
-              }
-            );
-          })
-        );
-
-        return {
-          ...meeting,
-          menteeDetails,
-        };
-      })
-    );
-
-    return NextResponse.json(
-      { meetings: meetingsWithMenteeDetails },
-      { status: 200 }
-    );
+    return NextResponse.json({ meetings: updatedMeetings }, { status: 200 });
   } catch (error) {
     console.error("Error fetching meetings:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

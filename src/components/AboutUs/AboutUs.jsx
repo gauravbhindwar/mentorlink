@@ -25,8 +25,8 @@ const AboutUs = () => {
       description: "Full Stack Developer",
       github: "https://github.com/gauravkumar",
       linkedin: "https://linkedin.com/in/gauravkumar",
-      email: "gaurav.kumar@muj.manipal.edu",
-      phone: "+91-XXXXXXXXXX",
+      email: "bhindwargaurav@gmail.com",
+      phone: "+91-9006045930",
     },
     {
       name: "Shivank Goel",
