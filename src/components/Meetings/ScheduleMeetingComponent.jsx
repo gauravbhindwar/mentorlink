@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/subComponents/Navbar";
 import axios from "axios";
+import EmailProgress from '../EmailProgress/EmailProgress';
 
 const ScheduleMeetingComponent = () => {
   const router = useRouter();
   const [mentorData, setMentorData] = useState(null);
   const [isDisabled, setDisabled] = useState(true);
   const [currentSemester, setCurrentSemester] = useState(1);
-  const [selectedSection, setSelectedSection] = useState("");
   const [mentorId, setMentorId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
@@ -41,6 +41,7 @@ const ScheduleMeetingComponent = () => {
   const [preventReload, setPreventReload] = useState(false);
   const [isMeetingOnline, setIsMeetingOnline] = useState(false);
   const [venue, setVenue] = useState("");
+  const [emailProgress, setEmailProgress] = useState({ current: 0, total: 0, show: false });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -70,21 +71,6 @@ const ScheduleMeetingComponent = () => {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [preventReload]);
-
-  const handleSectionChange = (e) => {
-    let value = e.target.value.toUpperCase();
-
-    // Allow only format like A1, B2, etc.
-    if (value.length > 2) return;
-
-    // First character must be a letter
-    if (value.length === 1 && !/^[A-Z]$/.test(value)) return;
-
-    // Second character must be a number 1-9
-    if (value.length === 2 && !/^[A-Z][1-9]$/.test(value)) return;
-
-    setSelectedSection(value);
-  };
 
   const handleMeetingTopicChange = (e) => {
     let value = e.target.value;
@@ -129,7 +115,6 @@ const ScheduleMeetingComponent = () => {
           params: {
             mentor_id: mentorId,
             semester: currentSemester,
-            section: selectedSection,
             session: academicSession,
             year: academicYear,
           },
@@ -147,9 +132,7 @@ const ScheduleMeetingComponent = () => {
           //   setDisabled(true);
           // }else{
           setMeetingId(
-            `${mentorId}${currentSemester}-M${selectedSection}${
-              meetingsHeld.length + 1
-            }`
+            `${mentorId}${currentSemester}-M${meetingsHeld.length + 1}`
           );
           setCustomAlert("");
           setDisabled(false);
@@ -166,22 +149,12 @@ const ScheduleMeetingComponent = () => {
     try {
       if (mentorId && currentSemester && academicSession && academicYear) {
         generateMeetingId();
-        getMentees(mentorId, currentSemester, selectedSection);
+        getMentees(mentorId, currentSemester);
       }
     } catch (error) {
       console.log("Error in useEffect:", error);
     }
-  }, [currentSemester, selectedSection]); // Add proper dependencies
-
-  // useEffect(() => {
-  //   if (customAlert) {
-  //     const timer = setTimeout(() => {
-  //       setCustomAlert('');
-  //     }, 5000);
-
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [customAlert]);
+  }, [currentSemester]); // Add proper dependencies
 
   // Calculate current semester based on date
   useEffect(() => {
@@ -221,7 +194,6 @@ const ScheduleMeetingComponent = () => {
         meeting_date: formattedDate,
         meeting_time: formattedTime,
         semester: currentSemester,
-        section: selectedSection,
         session: academicSession,
         year: academicYear,
         isMeetingOnline: isMeetingOnline,
@@ -248,11 +220,11 @@ const ScheduleMeetingComponent = () => {
   };
 
   // Add new function to get mentees
-  const getMentees = async (mentorId, semester, section) => {
+  const getMentees = async (mentorId, semester) => {
     setIsLoading(true); // Start loading
     try {
       const response = await fetch(
-        `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&section=${section}&year=${academicYear}&session=${academicSession}`
+        `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&year=${academicYear}&session=${academicSession}`
       );
       if (!response.ok) {
         console.log("Failed to fetch mentees");
@@ -436,7 +408,6 @@ Meeting Type: ${isMeetingOnline ? "Online" : "Offline"}
 ${isMeetingOnline ? "Meeting Link" : "Venue"}: ${venue}
 Branch: ${fixedBranch}
 Semester: ${currentSemester}
-${selectedSection && `Section: ${selectedSection}`}
 
 Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
 
@@ -449,20 +420,26 @@ Contact: ${mentorData?.email || ""}`;
 
   const sendEmailToMentees = async (menteeEmails) => {
     try {
-      const emailPromises = menteeEmails.map(async (email) => {
-        const response = await axios.post("/api/meeting/send-email", {
-          email,
-          subject: `Meeting Scheduled - ${meetingId}`,
-          body: getEmailBody(),
-        });
-        return response;
+      setEmailProgress({ current: 0, total: menteeEmails.length, show: true });
+      
+      const response = await axios.post("/api/meeting/send-email", {
+        emails: menteeEmails,
+        subject: `Meeting Scheduled - ${meetingId}`,
+        body: getEmailBody(),
       });
-      router.push("/pages/mentordashboard");
 
-      await Promise.all(emailPromises);
+      if (response.data.success) {
+        // Immediately show all emails as sent since we send them all at once
+        setEmailProgress({ current: menteeEmails.length, total: menteeEmails.length, show: true });
+        
+        setTimeout(() => {
+          setEmailProgress({ current: 0, total: 0, show: false });
+          router.push("/pages/mentordashboard");
+        }, 2000);
+      }
     } catch (error) {
       console.error("Error sending emails:", error);
-      throw error;
+      setCustomAlert("Failed to send meeting notification emails");
     }
   };
 
@@ -657,20 +634,6 @@ Contact: ${mentorData?.email || ""}`;
                       </div>
                     )}
                   </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Section (Optional)
-                    </label>
-                    <input
-                      type='text'
-                      value={selectedSection}
-                      onChange={handleSectionChange}
-                      placeholder='Enter section (e.g., A, B, C)'
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
-                      maxLength={2}
-                    />
-                  </div>
                 </div>
                 {/* Middle Column */}
                 <div className='space-y-3'>
@@ -816,6 +779,13 @@ Contact: ${mentorData?.email || ""}`;
             </div>
           </motion.div>
         </div>
+        {emailProgress.show && (
+          <EmailProgress 
+            current={emailProgress.current}
+            total={emailProgress.total}
+            onClose={() => setEmailProgress({ current: 0, total: 0, show: false })}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );

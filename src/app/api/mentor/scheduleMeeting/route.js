@@ -1,89 +1,51 @@
 import { NextResponse } from "next/server";
-// import { AcademicSession } from "@/lib/db/academicSessionSchema";
-import { MongoClient } from "mongodb";
-
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
+import { Meeting } from "@/lib/db/meetingSchema";
+import { connect } from "@/lib/dbConfig";
 
 export async function POST(request) {
   try {
+    await connect();
     const data = await request.json();
 
-    // Connect to the database
-    await client.connect();
-    const database = client.db("mentorlink");
-    const academicSessions = database.collection("academicsessions");
-
-    // Find the appropriate session, semester, and section
-    const session = await academicSessions.findOne({
-      start_year: data.year.split("-")[0],
-      end_year: data.year.split("-")[1],
-      "sessions.name": data.session,
-      "sessions.semesters.semester_number": data.semester,
-      "sessions.semesters.sections.name": data.section,
-    });
-
-    if (!session) {
-      throw new Error("Session, semester, or section not found");
-    }
-
-    // Add the meeting to the appropriate section
-    const result = await academicSessions.updateOne(
+    // Find or create mentor's meetings document
+    const mentorMeetings = await Meeting.findOrCreateMentorMeetings(
+      data.mentor_id,
       {
-        start_year: data.year.split("-")[0],
-        end_year: data.year.split("-")[1],
-        "sessions.name": data.session,
-        "sessions.semesters.semester_number": data.semester,
-        "sessions.semesters.sections.name": data.section,
-      },
-      {
-        $push: {
-          "sessions.$[session].semesters.$[semester].sections.$[section].meetings":
-            {
-              meeting_id: data.meeting_id,
-              mentor_id: data.mentor_id,
-              mentee_ids: data.mentee_ids || [],
-              meeting_date: new Date(data.meeting_date),
-              meeting_time: data.meeting_time,
-              meeting_notes: {
-                TopicOfDiscussion: data.TopicOfDiscussion,
-                TypeOfInformation: data.TypeOfInformation,
-                NotesToStudent: data.NotesToStudent,
-                feedbackFromMentee: data.feedbackFromMentee,
-                outcome: data.outcome,
-                closureRemarks: data.closureRemarks,
-              },
-              scheduledAT: {
-                scheduleDate: new Date(),
-                scheduleTime: new Date()
-                  .toLocaleTimeString("en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })
-                  .toUpperCase(),
-              },
-              created_at: new Date(),
-              updated_at: new Date(),
-            },
-        },
-      },
-      {
-        arrayFilters: [
-          { "session.name": data.session },
-          { "semester.semester_number": data.semester },
-          { "section.name": data.section },
-        ],
+        academicYear: data.year,
+        academicSession: data.session
       }
     );
 
-    if (result.modifiedCount === 0) {
-      throw new Error("Failed to add meeting");
-    }
+    // Add new meeting without sections
+    await mentorMeetings.addMeeting({
+      meeting_id: data.meeting_id,
+      semester: data.semester,
+      meeting_date: new Date(data.meeting_date),
+      meeting_time: data.meeting_time,
+      mentee_ids: data.mentee_ids || [],
+      meeting_notes: {
+        TopicOfDiscussion: data.TopicOfDiscussion,
+        TypeOfInformation: data.TypeOfInformation,
+        NotesToStudent: data.NotesToStudent,
+        feedbackFromMentee: data.feedbackFromMentee,
+        outcome: data.outcome,
+        closureRemarks: data.closureRemarks,
+        isMeetingOnline: data.isMeetingOnline,
+        venue: data.venue
+      },
+      scheduledAT: {
+        scheduleDate: new Date(),
+        scheduleTime: new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      message: "Meeting scheduled successfully",
+      message: "Meeting scheduled successfully"
     });
   } catch (error) {
     console.error("API Error:", error);
@@ -91,7 +53,37 @@ export async function POST(request) {
       { success: false, message: "Failed to schedule meeting" },
       { status: 500 }
     );
-  } finally {
-    await client.close();
+  }
+}
+
+export async function GET(request) {
+  try {
+    await connect();
+    
+    const { searchParams } = new URL(request.url);
+    const mentorId = searchParams.get("mentor_id");
+    const semester = searchParams.get("semester");
+    const session = searchParams.get("session");
+    const year = searchParams.get("year");
+
+    if (!mentorId || !semester || !session || !year) {
+      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
+    }
+
+    // Find meetings without section requirement
+    const meetings = await Meeting.find({
+      mentorMUJid: mentorId,
+      semester: parseInt(semester),
+      'academicDetails.academicYear': year,
+      'academicDetails.academicSession': session,
+    });
+
+    return NextResponse.json({ meetings });
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch meetings" },
+      { status: 500 }
+    );
   }
 }

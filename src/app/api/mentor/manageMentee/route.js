@@ -1,7 +1,10 @@
-import { connect } from "../../../../lib/dbConfig";
 import { Mentee, Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
+import { NextResponse } from "next/server";
+import { connect } from "@/lib/dbConfig";
+import { Meeting } from "@/lib/db/meetingSchema";
+
 
 // Define the Joi schema for validation
 const menteeSchema = Joi.object({
@@ -316,5 +319,60 @@ export async function DELETE(req) {
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
+  }
+}
+
+export async function PUT(request) {
+  try {
+    await connect();
+    const menteeData = await request.json();
+    // const mentorEmail = request.headers.get('mentor-email');
+
+    if (!menteeData.MUJid) {
+      return NextResponse.json({ error: "MUJid is required" }, { status: 400 });
+    }
+
+    // Update mentee in database
+    const updatedMentee = await Mentee.findOneAndUpdate(
+      { MUJid: menteeData.MUJid },
+      {
+        ...menteeData,
+        updated_at: new Date()
+      },
+      { new: true }
+    );
+
+    if (!updatedMentee) {
+      return NextResponse.json({ error: "Mentee not found" }, { status: 404 });
+    }
+
+    // Update mentee details in meetings collection
+    await Meeting.updateMany(
+      { "meetings.mentee_ids": menteeData.MUJid },
+      {
+        $set: {
+          "meetings.$[meeting].menteeDetails.$[mentee]": updatedMentee
+        }
+      },
+      {
+        arrayFilters: [
+          { "meeting.mentee_ids": menteeData.MUJid },
+          { "mentee.MUJid": menteeData.MUJid }
+        ]
+      }
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: "Mentee updated successfully",
+      mentee: updatedMentee
+    });
+
+  } catch (error) {
+    console.error("Error updating mentee:", error);
+    return NextResponse.json(
+      { error: "Failed to update mentee" },
+      { status: 500 }
+    );
   }
 }

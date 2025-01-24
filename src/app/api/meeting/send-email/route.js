@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import smtpTransport from "nodemailer-smtp-transport";
 import { NextResponse } from "next/server";
+import { connect } from "../../../../lib/dbConfig";
+import { Meeting } from "../../../../lib/db/meetingSchema";
 
 const transporter = nodemailer.createTransport(
   smtpTransport({
@@ -17,18 +19,58 @@ const transporter = nodemailer.createTransport(
 
 export async function POST(req) {
   try {
-    const { email, subject, body } = await req.json();
+    const { emails, subject, body, meetingId } = await req.json();
 
-    if (!email || !subject || !body) {
+    if (!Array.isArray(emails) || !subject || !body || !meetingId) {
       return NextResponse.json(
-        { success: false, message: "Email, subject, and body are required" },
+        { 
+          success: false, 
+          message: "Invalid input: emails, subject, body, and meetingId are required" 
+        },
         { status: 400 }
       );
     }
 
-    await transporter.sendMail({
+    if (emails.length === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "No email recipients provided" 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Connect to database
+    await connect();
+
+    // Find and update the meeting using updateOne
+    const result = await Meeting.updateOne(
+      { "meetings.meeting_id": meetingId },
+      { 
+        $inc: { "meetings.$.emailsSentCount": 1 }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { success: false, message: "Meeting not found" },
+        { status: 404 }
+      );
+    }
+
+    // Get the updated meeting to return the count
+    const updatedMeeting = await Meeting.findOne(
+      { "meetings.meeting_id": meetingId },
+      { "meetings.$": 1 }
+    );
+    
+    const currentCount = updatedMeeting.meetings[0].emailsSentCount || 0;
+
+    // Send a single email with all recipients in BCC
+    const emailResult = await transporter.sendMail({
       from: `"MentorLink" <${process.env.EMAIL_USER}>`,
-      to: email,
+      bcc: emails, // All recipients in BCC
       subject: subject,
       text: body,
       html: `
@@ -89,12 +131,20 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: "Email sent successfully",
+      message: "Emails sent successfully",
+      sentCount: emails.length,
+      totalEmailsSent: currentCount,
+      messageId: emailResult.messageId
     });
+
   } catch (error) {
     console.error("Error sending email:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Error sending email" },
+      { 
+        success: false, 
+        message: `Email sending failed: ${error.message}`,
+        error: error.toString()
+      },
       { status: 500 }
     );
   }

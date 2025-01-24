@@ -25,8 +25,8 @@ const AboutUs = () => {
       description: 'Full Stack Developer',
       github: 'https://github.com/gauravkumar',
       linkedin: 'https://linkedin.com/in/gauravkumar',
-      email: 'gaurav.kumar@muj.manipal.edu',
-      phone: '+91-XXXXXXXXXX'
+      email: 'bhindwargaurav@gmail.com',
+      phone: '+91-9006045930'
     },
     {
       name: 'Shivank Goel',
@@ -61,21 +61,21 @@ const AboutUs = () => {
       phone: '+91-XXXXXXXXXX'
     },
     {
-      name: 'Dr. Satpal Kushwaha',
-      role: 'Faculty Guide',
-      image: '/Peoples/Faculty/Satpal-Singh.jpeg',
-      description: 'Computer Science Department',
-      linkedin: 'https://linkedin.com/in/satypalkushwaha',
-      email: 'satypal.kushwaha@muj.manipal.edu',
-      phone: '+91-XXXXXXXXXX'
-    },
-    {
       name: 'Dr. Amit Garg',
       role: 'Faculty Guide',
       image: '/Peoples/Faculty/Amit-Garg.webp',
       description: 'Computer Science Department',
       linkedin: 'https://linkedin.com/in/amitgarg',
       email: 'amit.garg@muj.manipal.edu',
+      phone: '+91-XXXXXXXXXX'
+    },
+    {
+      name: 'Dr. Satpal Kushwaha',
+      role: 'Faculty Guide',
+      image: '/Peoples/Faculty/Satpal-Singh.jpeg',
+      description: 'Computer Science Department',
+      linkedin: 'https://linkedin.com/in/satypalkushwaha',
+      email: 'satypal.kushwaha@muj.manipal.edu',
       phone: '+91-XXXXXXXXXX'
     }
   ];

@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import { DataGrid } from '@mui/x-data-grid';
+import SearchIcon from '@mui/icons-material/Search';
 
 const ViewMentee = () => {
     const [mentees, setMentees] = useState([]);
@@ -19,6 +20,8 @@ const ViewMentee = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedMentee, setEditedMentee] = useState(null);
     const [mounted, setMounted] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredMentees, setFilteredMentees] = useState([]);
 
     // Complete theme configuration
     const theme = createTheme({
@@ -81,49 +84,58 @@ const ViewMentee = () => {
 
     useEffect(() => {
         setMounted(true);
+        try {
+            // Get mentor data and meeting data from session storage
+            const storedMeetingData = sessionStorage.getItem("meetingData");
+            if (storedMeetingData) {
+                const meetings = JSON.parse(storedMeetingData);
+                
+                // Extract unique mentees from all meetings
+                const allMentees = meetings.reduce((acc, meeting) => {
+                    if (meeting.menteeDetails) {
+                        meeting.menteeDetails.forEach(mentee => {
+                            if (!acc.find(m => m.MUJid === mentee.MUJid)) {
+                                acc.push(mentee);
+                            }
+                        });
+                    }
+                    return acc;
+                }, []);
+
+                setMentees(allMentees);
+                setLoading(false);
+            } else {
+                toast.error('No meeting data found');
+                setMentees([]);
+            }
+        } catch (error) {
+            console.error('Error loading mentee data:', error);
+            toast.error('Error loading mentee data');
+            setMentees([]);
+        }
     }, []);
 
     useEffect(() => {
-        if (!mounted) return;
+        if (!searchQuery.trim()) {
+            setFilteredMentees(mentees);
+            return;
+        }
 
-        const fetchMentees = async () => {
-            setLoading(true);
-            const mentorData = JSON.parse(sessionStorage.getItem('mentorData'));
-            
-            if (!mentorData?.email || !mentorData?.academicYear || !mentorData?.academicSession) {
-                toast.error('Missing required mentor data');
-                setLoading(false);
-                return;
-            }
-            
-            try {
-                const response = await axios.get('/api/mentor/manageMentee', {
-                    params: { 
-                        mentorEmail: mentorData.email,
-                        academicYear: mentorData.academicYear,
-                        academicSession: mentorData.academicSession
-                    }
-                });
-                
-                if (response.data?.success && Array.isArray(response.data.mentees)) {
-                    if (response.data.mentees.length === 0) {
-                        toast.error('No mentees found for the selected criteria');
-                    }
-                    setMentees(response.data.mentees);
-                } else {
-                    setMentees([]);
-                }
-            } catch (error) {
-                console.error('Error fetching mentees:', error);
-                toast.error('Error loading mentees');
-                setMentees([]);
-            } finally {
-                setLoading(false);
-            }
-        };
+        const query = searchQuery.toLowerCase();
+        const filtered = mentees.filter(mentee => 
+            mentee.name?.toLowerCase().includes(query) ||
+            mentee.MUJid?.toLowerCase().includes(query) ||
+            mentee.email?.toLowerCase().includes(query) ||
+            mentee.phone?.includes(query) ||
+            mentee.section?.toLowerCase().includes(query) ||
+            String(mentee.semester)?.includes(query)
+        );
+        setFilteredMentees(filtered);
+    }, [searchQuery, mentees]);
 
-        fetchMentees();
-    }, [mounted]);
+    useEffect(() => {
+        setFilteredMentees(mentees);
+    }, [mentees]);
 
     const handleEditClick = (mentee) => {
         setSelectedMentee(mentee);
@@ -183,32 +195,53 @@ const ViewMentee = () => {
     // Make sure to include MUJid in the update
     const handleUpdate = async () => {
         try {
-            const mentorEmail = sessionStorage.getItem('email'); // Get mentor email from session
+            const mentorData = JSON.parse(sessionStorage.getItem('mentorData'));
+            if (!mentorData?.email) {
+                toast.error('Mentor email not found');
+                return;
+            }
+
+            setLoading(true);
+            
             const updateData = {
                 ...editedMentee,
-                MUJid: selectedMentee.MUJid  // Include MUJid for identification
+                MUJid: selectedMentee.MUJid
             };
             
             const response = await axios.put('/api/mentor/manageMentee', 
                 updateData,
                 {
                     headers: {
-                        'mentor-email': mentorEmail
+                        'mentor-email': mentorData.email
                     }
                 }
             );
             
             if (response.data.success) {
-                toast.success('Mentee details updated successfully');
-                // Update the mentees list with new data
+                // Update mentee in local state
                 setMentees(prev => prev.map(m => 
                     m.MUJid === editedMentee.MUJid ? editedMentee : m
                 ));
+
+                // Update mentee in session storage
+                const meetingData = JSON.parse(sessionStorage.getItem('meetingData') || '[]');
+                const updatedMeetingData = meetingData.map(meeting => ({
+                    ...meeting,
+                    menteeDetails: meeting.menteeDetails?.map(mentee => 
+                        mentee.MUJid === editedMentee.MUJid ? editedMentee : mentee
+                    )
+                }));
+                sessionStorage.setItem('meetingData', JSON.stringify(updatedMeetingData));
+
+                toast.success('Mentee details updated successfully');
                 setIsEditing(false);
                 handleEditClose();
             }
         } catch (error) {
+            console.error('Error updating mentee:', error);
             toast.error(error.response?.data?.message || 'Error updating mentee');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -323,6 +356,37 @@ const ViewMentee = () => {
                         animate={{ opacity: 1 }}
                         className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden"
                     >
+                        <Box sx={{ mb: 3 }}>
+                            <TextField
+                                fullWidth
+                                variant="outlined"
+                                placeholder="Search mentees by name, ID, email, phone, section, or semester..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <SearchIcon sx={{ 
+                                            mr: 1, 
+                                            color: 'rgba(255, 255, 255, 0.7)'
+                                        }} />
+                                    ),
+                                }}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: '1rem',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        backdropFilter: 'blur(10px)',
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                        },
+                                        '&.Mui-focused': {
+                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                        }
+                                    }
+                                }}
+                            />
+                        </Box>
                         <Box sx={{ 
                             overflowX: 'auto',
                             minHeight: '400px',
@@ -343,9 +407,9 @@ const ViewMentee = () => {
                                         Loading mentees...
                                     </Typography>
                                 </Box>
-                            ) : mentees.length > 0 ? (
+                            ) : filteredMentees.length > 0 ? (
                                 <DataGrid
-                                    rows={mentees}
+                                    rows={filteredMentees}
                                     columns={columns}
                                     getRowId={(row) => row.MUJid}
                                     disableRowSelectionOnClick

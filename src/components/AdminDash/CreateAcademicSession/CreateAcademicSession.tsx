@@ -17,8 +17,6 @@ const CreateAcademicSession = () => {
   const sessionRef = useRef<HTMLDivElement>(null);
   const [semesters, setSemesters] = useState('');
   const [semesterError, setSemesterError] = useState('');
-  const [semesterSections, setSemesterSections] = useState<{ [key: string]: string }>({});
-  const [sectionErrors, setSectionErrors] = useState<{ [key: string]: string }>({});
 
 
   const validateAndParseSemesters = (input: string): number[] | null => {
@@ -37,37 +35,12 @@ const CreateAcademicSession = () => {
     return semesterArray;
   };
 
-  interface SectionValidationResult {
-    sectionArray: string[];
-    error: string | null;
-  }
-
-  const validateAndParseSections = (input: string): SectionValidationResult | null => {
-    const sectionArray = formatSections(input);
-    
-    if (sectionArray.length === 0) {
-      setSectionErrors((prev) => ({
-        ...prev,
-        general: 'Invalid sections. Must be comma-separated letters A-Z'
-      }));
-      return null;
-    }
-    
-    setSectionErrors({});
-    return { sectionArray, error: null };
-  };
-
   const handleCreateAcademicSession = async () => {
     setLoading(true);
     try {
       const semesterArray = validateAndParseSemesters(semesters);
       
-      // Validate all sections for each semester
-      const hasValidSections = Object.entries(semesterSections).every(([, sections]) => {
-        return validateAndParseSections(sections as string);
-      });
-      
-      if (!semesterArray || !hasValidSections) {
+      if (!semesterArray) {
         setLoading(false);
         return;
       }
@@ -80,10 +53,7 @@ const CreateAcademicSession = () => {
           name: academicSession,
           semesters: semesterArray.map(semester_number => ({
             semester_number,
-            sections: (semesterSections[semester_number] as string).split(',').map(name => ({
-              name,
-              meetings: []
-            }))
+            meetings: [] // Remove sections array
           }))
         }],
         created_at: new Date(),
@@ -98,7 +68,6 @@ const CreateAcademicSession = () => {
         setAcademicYear('');
         setAcademicSession('');
         setSemesters('');
-        setSemesterSections({});
       } else {
         setCustomAlert('Failed to create academic session');
       }
@@ -201,21 +170,6 @@ const CreateAcademicSession = () => {
     return validNumbers.join(',');
   };
 
-  const formatSections = (input: string): string[] => {
-    // Split by commas and clean up
-    const sectionArray = input
-      .split(',')
-      .map(s => s.trim().toUpperCase())
-      .filter(s => s !== '');
-
-    // Filter valid sections and remove duplicates
-    const uniqueSections = [...new Set(sectionArray)]
-      .filter(s => /^[A-Z]$/.test(s))
-      .sort(); // Sort A-Z
-
-    return uniqueSections;
-  };
-
   const handleSemesterInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
     // Allow commas in input
@@ -225,55 +179,8 @@ const CreateAcademicSession = () => {
     const formatted = formatSemesters(value);
     setSemesters(formatted);
     
-    // Initialize sections for each semester
-    const newSemesterSections: { [key: string]: string } = {};
-    formatted.split(',').forEach(sem => {
-      if (!semesterSections[sem]) {
-        newSemesterSections[sem] = '';
-      } else {
-        newSemesterSections[sem] = semesterSections[sem];
-      }
-    });
-    setSemesterSections(newSemesterSections);
-    
     const showError = value.length > 0 && formatted.length === 0;
     setSemesterError(showError ? 'Invalid semesters' : '');
-  };
-
-  interface SectionErrors {
-    [key: string]: string;
-  }
-
-  interface SemesterSections {
-    [key: string]: string;
-  }
-
-  const handleSectionInputForSemester = (semester: string, value: string) => {
-    // Remove any existing commas and spaces
-    const cleanInput = value.replace(/[^A-Za-z]/g, '').toUpperCase();
-    
-    // Convert string to array of single characters
-    const letters = [...cleanInput];
-    
-    // Filter valid letters and remove duplicates
-    const uniqueSections = [...new Set(letters)]
-      .filter(s => /^[A-Z]$/.test(s))
-      .sort();
-    
-    // Join with commas
-    const displayValue = uniqueSections.join(',');
-    
-    setSemesterSections((prev: SemesterSections) => ({
-      ...prev,
-      [semester]: displayValue
-    }));
-    
-    setSectionErrors((prev: SectionErrors) => ({
-      ...prev,
-      [semester]: value.length > 0 && uniqueSections.length === 0 
-        ? 'Only letters A-Z are allowed' 
-        : ''
-    }));
   };
 
   useEffect(() => {
@@ -300,7 +207,7 @@ const CreateAcademicSession = () => {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-6xl mx-auto"
+              className="max-w-2xl mx-auto" // Changed from max-w-6xl to make form narrower
             >
               <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mb-4">
                 Create Academic Session
@@ -309,7 +216,7 @@ const CreateAcademicSession = () => {
               <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/5">
                 <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                   {/* Year and Session Inputs Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {/* Academic Year Input */}
                     <div ref={yearRef} className="relative">
                       <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -373,7 +280,6 @@ const CreateAcademicSession = () => {
                                   setShowSessionOptions(false);
                                   // Clear any existing semester and section data
                                   setSemesters('');
-                                  setSemesterSections({});
                                 }}
                               >
                                 {session}
@@ -404,46 +310,6 @@ const CreateAcademicSession = () => {
                       )}
                     </div>
                   </div>
-
-                  {/* Sections Grid */}
-                  {semesters && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-300 mb-2">
-                        Sections per Semester <span className="text-gray-400">(Type letters A-Z, commas added automatically)</span>
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {semesters.split(',').map((semester) => (
-                          <div key={semester} className="bg-white/5 rounded-lg p-3">
-                            <label className="block text-xs font-medium text-gray-400 mb-1">
-                              Semester {semester}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Type ABCD..."
-                              value={semesterSections[semester] || ''}
-                              onChange={(e) => handleSectionInputForSemester(semester, e.target.value)}
-                              className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all"
-                            />
-                            {semesterSections[semester] && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {semesterSections[semester].split(',').map((section) => (
-                                  <span 
-                                    key={section} 
-                                    className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-orange-500/20 text-orange-400"
-                                  >
-                                    Section {section}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {sectionErrors[semester] && (
-                              <p className="text-red-500 text-xs mt-1">{sectionErrors[semester]}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Submit Button */}
                   <div className="pt-2">
