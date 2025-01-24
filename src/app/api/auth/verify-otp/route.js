@@ -4,26 +4,14 @@ import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
-const verifyOtpForUser = async (email, role, otp) => {
+const verifyOtpForUser = async (email, otp) => {
   let User;
-  switch (role) {
-    case "mentor":
-      User = Mentor;
-      break;
-    case "mentee":
-      User = Mentee;
-      break;
-    case "admin":
-    case "superadmin":
-      User = Admin;
-      break;
-    default:
-      return { success: false, message: "Invalid role" };
-  }
+
+  User = Mentor;
 
   const user = await User.findOne({ email });
   if (!user) {
-    return { success: false, message: `${role} not found` };
+    return { success: false, message: `${email} not found` };
   }
 
   // Check if already verified
@@ -59,6 +47,7 @@ const verifyOtpForUser = async (email, role, otp) => {
   return {
     success: true,
     message: "Verified successfully",
+    role: user.role,
     MUJid: user.MUJid, // Changed from mujid to MUJid
   };
 };
@@ -66,28 +55,39 @@ const verifyOtpForUser = async (email, role, otp) => {
 export async function POST(req) {
   try {
     await connect();
-    const { email, role, otp } = await req.json();
-    // console.log("Verifying OTP for:", email, "Role:", role);
+    const { email, otp } = await req.json();
 
-    if (!email || !role || !otp) {
+    if (!email || !otp) {
+      if (!otp) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Missing OTP",
+            verified: false,
+          },
+          { status: 200 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: "Missing required fields",
+          message: "Missing email field",
           verified: false,
         },
         { status: 200 }
-      ); // Changed to 200 for NextAuth
+      );
     }
 
-    const result = await verifyOtpForUser(email, role, otp);
+    const result = await verifyOtpForUser(email, otp);
 
     return NextResponse.json(
       {
         success: result.success,
         message: result.message,
         verified: result.success,
-        MUJid: result.MUJid, // Changed from mujid to MUJid
+        MUJid: result.MUJid,
+        role: result.role,
       },
       { status: 200 }
     ); // Always return 200 for NextAuth
