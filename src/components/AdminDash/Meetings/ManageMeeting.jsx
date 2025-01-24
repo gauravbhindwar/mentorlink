@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import Navbar from '@/components/subComponents/Navbar';
+import Navbar from '@/components/subComponents/NavbarNewNew';
 import axios from 'axios';
 import LoadingComponent from '@/components/LoadingComponent';
 import { DataGrid } from '@mui/x-data-grid';
@@ -253,7 +253,7 @@ const ManageMeeting = () => {
         <div className="absolute inset-0 backdrop-blur-3xl" />
       </div>
 
-      <Navbar />
+      <NavbarNew />
 
       <div className="relative z-10 container mx-auto px-4 pt-24 max-w-7xl">
         <div className="text-center mb-8">

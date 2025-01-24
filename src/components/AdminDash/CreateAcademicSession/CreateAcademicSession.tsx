@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import Navbar from '@/components/subComponents/Navbar';
+import NavbarNew from '@/components/subComponents/NavbarNewNew';
 
 const CreateAcademicSession = () => {
   const [academicYear, setAcademicYear] = useState('');
@@ -200,7 +200,7 @@ const CreateAcademicSession = () => {
   return (
     <AnimatePresence>
       <motion.div className="h-screen bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a] overflow-hidden">
-        <Navbar />
+        <NavbarNew />
 
         <div className="h-[calc(100vh-64px)] mt-16 overflow-y-auto">
           <div className="container mx-auto px-4 py-6">

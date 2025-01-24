@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "@/components/subComponents/Navbar";
+import Navbar from "@/components/subComponents/NavbarNew";
 import FirstTimeLoginForm from "./FirstTimeLoginForm";
 import { FiX } from "react-icons/fi";
 import axios from "axios";

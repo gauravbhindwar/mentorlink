@@ -2,7 +2,7 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import Navbar from '@/components/subComponents/Navbar'
+import Navbar from '@/components/subComponents/NavbarNew'
 
 const AdminDashboard = () => {
     const router = useRouter();

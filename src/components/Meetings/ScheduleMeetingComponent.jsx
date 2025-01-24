@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "@/components/subComponents/Navbar";
+import Navbar from "@/components/subComponents/NavbarNew";
 import axios from "axios";
 import EmailProgress from '../EmailProgress/EmailProgress';
 import { FaVideo, FaBuilding } from 'react-icons/fa'; // Add this import at the top

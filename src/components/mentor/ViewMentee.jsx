@@ -4,7 +4,7 @@ import {Grid2, Box, Typography, Dialog, DialogTitle, DialogContent, DialogAction
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
-import Navbar from '@/components/subComponents/Navbar';
+import Navbar from '@/components/subComponents/NavbarNew';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import EditIcon from '@mui/icons-material/Edit';

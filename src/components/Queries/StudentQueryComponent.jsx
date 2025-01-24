@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiActivity, FiClock, FiMessageCircle } from 'react-icons/fi';
-import Navbar from '@/components/subComponents/Navbar';
+import Navbar from '@/components/subComponents/NavbarNew';
 
 const StudentQueryPage = () => {
   const [selectedStatus, setSelectedStatus] = useState(null);

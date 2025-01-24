@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import Navbar from "@/components/subComponents/Navbar"; // Import Navbar component
+import Navbar from "@/components/subComponents/NavbarNew"; // Import Navbar component
 
 export default function NotFound() {
   return (
