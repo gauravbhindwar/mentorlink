@@ -4,7 +4,7 @@ import { authOptions } from "../../../lib/authOptions";
 import { Mentor } from "../../../lib/db/mentorSchema";
 import { connect } from "../../../lib/dbConfig";
 
-export async function GET() {
+export async function GET(request) {
   try {
     await connect();
     const session = await getServerSession(authOptions);
@@ -13,7 +13,17 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const mentor = await Mentor.findOne({ email: session.user.email });
+    // Get MUJ ID from query parameters
+    const { searchParams } = new URL(request.url);
+    const MUJId = searchParams.get("MUJId");
+    const email = searchParams.get("email");
+
+    // Build query object based on available parameters
+    const query = {
+      $or: [{ email: email }, ...(MUJId ? [{ MUJid: MUJId }] : [])],
+    };
+
+    const mentor = await Mentor.findOne(query);
 
     if (!mentor) {
       return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
