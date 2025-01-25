@@ -3,8 +3,8 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { toast, Toaster } from "react-hot-toast";
-import { generateMOMPdf, generateConsolidatedPdf } from "./PDFGenerator";
-import { PDFDownloadComponent } from "./PDFGenerator";
+import { generateMOMPdf } from "./PDFGenerator";
+import { PDFDownloadComponent, ConsolidatedDocument } from "./PDFGenerator";
 
 const MeetingReportGenerator = () => {
   const [academicYear, setAcademicYear] = useState("");
@@ -16,6 +16,7 @@ const MeetingReportGenerator = () => {
   const [academicSessions, setAcademicSessions] = useState([]);
   const [mentorMUJid, setMentorMUJid] = useState("");
   const [mentorName, setMentorName] = useState("");
+  const [consolidatedData, setConsolidatedData] = useState({});
   const [isGeneratingConsolidated, setIsGeneratingConsolidated] =
     useState(false);
 
@@ -161,70 +162,53 @@ const MeetingReportGenerator = () => {
     }
   };
 
-  const handleGenerateConsolidate = async () => {
+  const generatePDFDocument = () => {
+    // Convert mentee_details array into a Map for quick lookups
+    const menteeDetailsMap = new Map();
+    meetings.forEach((meeting) => {
+      meeting.menteeDetails?.forEach((mentee) => {
+        if (!menteeDetailsMap.has(mentee.MUJid)) {
+          menteeDetailsMap.set(mentee.MUJid, {
+            MUJid: mentee.MUJid,
+            name: mentee.name,
+            semester: semester,
+            meetingsCount: 0,
+            mentorRemarks: mentee.mentorRemarks || "",
+          });
+        }
+      });
+    });
+
+    // Count meeting attendance for each mentee
+    meetings.forEach((meeting) => {
+      const presentMentees = meeting.present_mentees || [];
+      presentMentees.forEach((menteeMUJid) => {
+        if (menteeDetailsMap.has(menteeMUJid)) {
+          const mentee = menteeDetailsMap.get(menteeMUJid);
+          mentee.meetingsCount = (mentee.meetingsCount || 0) + 1;
+          menteeDetailsMap.set(menteeMUJid, mentee);
+        }
+      });
+    });
+
+    // Convert Map back to array
+    const processedMentees = Array.from(menteeDetailsMap.values());
+
     try {
-      setIsGeneratingConsolidated(true);
-
-      // Process meetings and attendance
-      const attendanceCount = {};
-      const processedMentees = new Map();
-
-      // Process each meeting
-      meetings.forEach((meeting) => {
-        const presentMentees = meeting.present_mentees || [];
-
-        // Count attendance for present mentees
-        presentMentees.forEach((menteeMUJid) => {
-          attendanceCount[menteeMUJid] =
-            (attendanceCount[menteeMUJid] || 0) + 1;
-        });
-
-        // Process all mentees in the meeting
-        meeting.mentee_ids?.forEach((menteeId) => {
-          if (!processedMentees.has(menteeId)) {
-            processedMentees.set(menteeId, {
-              MUJid: menteeId,
-              name:
-                meeting.mentee_details?.find((m) => m.mujId === menteeId)
-                  ?.name || "Unknown",
-              meetingsCount: 0,
-              semester: semester,
-            });
-          }
-        });
-      });
-
-      // Update meetings count for each mentee
-      processedMentees.forEach((mentee, MUJid) => {
-        mentee.meetingsCount = attendanceCount[MUJid] || 0;
-      });
-
-      // Create consolidated data
-      const consolidatedData = {
-        meetings,
-        academicYear,
-        semester,
-        mentorName,
-        mentees: Array.from(processedMentees.values()),
-        selectedSemester: semester,
-      };
-
-      // Store consolidated data
-      sessionStorage.setItem(
-        "consolidatedData",
-        JSON.stringify(consolidatedData)
+      return (
+        <ConsolidatedDocument
+          meetings={meetings}
+          mentorName={mentorName}
+          mentees={processedMentees}
+          selectedSemester={semester}
+        />
       );
-
-      return handleExportPdf("consolidated", consolidatedData);
     } catch (error) {
-      console.error("Error generating consolidated report:", error);
-      toast.error("Failed to generate consolidated report");
+      console.error("Error in generatePDFDocument:", error);
+      toast.error("Error generating consolidated report");
       return null;
-    } finally {
-      setIsGeneratingConsolidated(false);
     }
   };
-
   // Render components
   const renderFilterControls = () => (
     <div className='bg-white/10 backdrop-blur-md rounded-2xl p-4 lg:p-6 h-full'>
@@ -450,35 +434,29 @@ const MeetingReportGenerator = () => {
             </div>
             {/* Consolidated Report Button - Show in both mobile and desktop */}
             {meetings.length >= 3 ? (
-              <button
-                onClick={handleGenerateConsolidate}
-                disabled={isGeneratingConsolidated}
-                className='w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all text-sm font-medium shadow-lg backdrop-blur-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'>
-                {isGeneratingConsolidated ? (
-                  <>
-                    <svg
-                      className='animate-spin h-5 w-5'
-                      xmlns='http://www.w3.org/2000/svg'
-                      fill='none'
-                      viewBox='0 0 24 24'>
-                      <circle
-                        className='opacity-25'
-                        cx='12'
-                        cy='12'
-                        r='10'
-                        stroke='currentColor'
-                        strokeWidth='4'></circle>
-                      <path
-                        className='opacity-75'
-                        fill='currentColor'
-                        d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-                    </svg>
-                    Generating Report...
-                  </>
-                ) : (
-                  "Generate Consolidated Report"
-                )}
-              </button>
+              <PDFDownloadComponent
+                document={generatePDFDocument()}
+                page={`consolidatedReport`}
+                fileName={`consolidated_report_${mentorName.replace(
+                  /\s+/g,
+                  "_"
+                )}_sem${semester}.pdf`}>
+                <div className='w-full flex items-center justify-center px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl text-white font-medium shadow-lg transition-all duration-300'>
+                  <svg
+                    className='w-5 h-5 mr-2'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth='2'
+                      d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
+                    />
+                  </svg>
+                  Download PDF Report
+                </div>
+              </PDFDownloadComponent>
             ) : meetings.length > 0 ? (
               <div className='w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-center'>
                 <span className='text-sm text-white/70'>
@@ -493,68 +471,6 @@ const MeetingReportGenerator = () => {
       </div>
     </div>
   );
-
-  const handleExportPdf = (type, data = null) => {
-    try {
-      let document;
-      let fileName;
-
-      if (type === "mom") {
-        // Format meeting data according to PDFGenerator's structure
-        const formattedData = {
-          ...data,
-          semester,
-          menteeDetails:
-            data.present_mentees_details?.map((mentee) => ({
-              MUJid: mentee.MUJid,
-              name: mentee.name,
-              mujId: mentee.registrationNumber || mentee.MUJid,
-            })) || [],
-          present_mentees: data.present_mentees || [],
-          meeting_notes: data.meeting_notes || {},
-          meeting_date: data.meeting_date,
-          meeting_time: data.meeting_time,
-          meeting_id: data.meeting_id,
-        };
-
-        document = generateMOMPdf(formattedData, mentorName);
-        fileName = `MOM_${data.meeting_id}_${new Date().toLocaleDateString(
-          "en-US"
-        )}.pdf`;
-
-        return (
-          <PDFDownloadComponent document={document} fileName={fileName}>
-            Export Report
-          </PDFDownloadComponent>
-        );
-      } else if (type === "consolidated") {
-        const consolidatedData =
-          data || JSON.parse(sessionStorage.getItem("consolidatedData"));
-        if (!consolidatedData) {
-          throw new Error("No consolidated data available");
-        }
-        document = generateConsolidatedPdf(
-          consolidatedData.meetings,
-          consolidatedData.academicYear,
-          consolidatedData.semester,
-          consolidatedData.mentorName
-        );
-        fileName = `Consolidated_Report_${academicYear}_${semester}_${new Date().toLocaleDateString(
-          "en-US"
-        )}.pdf`;
-      }
-
-      return (
-        <PDFDownloadComponent document={document} fileName={fileName}>
-          Export Report
-        </PDFDownloadComponent>
-      );
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert(error.message);
-      return null;
-    }
-  };
 
   useEffect(() => {
     try {
