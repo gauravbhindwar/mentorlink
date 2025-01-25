@@ -8,8 +8,8 @@ import { FiX } from "react-icons/fi";
 import axios from "axios";
 import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
-import AttendanceDialog from '@/components/Meetings/AttendanceDialog';
-import { Button } from '@mui/material';
+import AttendanceDialog from "@/components/Meetings/AttendanceDialog";
+import { Button } from "@mui/material";
 
 const MentorDashBoard = () => {
   const router = useRouter();
@@ -34,6 +34,7 @@ const MentorDashBoard = () => {
   const [showToast, setShowToast] = useState(false);
   const [isClientSide, setIsClientSide] = useState(false);
   const [showAttendance, setShowAttendance] = useState(false);
+  const [activeTab, setActiveTab] = useState(null);
 
   const extractSessionData = (data) => ({
     name: data.name,
@@ -52,13 +53,18 @@ const MentorDashBoard = () => {
   //   return session?.includes('JANUARY-JUNE') ? [2, 4, 6, 8] : [1, 3, 5, 7];
   // };
 
-  const fetchMeetingsForSemester = async (mentorId, year, session, semester) => {
+  const fetchMeetingsForSemester = async (
+    mentorId,
+    year,
+    session,
+    semester
+  ) => {
     try {
       const response = await fetch(
         `/api/mentor/manageMeeting?mentorId=${mentorId}&academicYear=${year}&session=${session}&semester=${semester}`
       );
       if (!response.ok) {
-        throw new Error('Failed to fetch meetings');
+        throw new Error("Failed to fetch meetings");
       }
       const data = await response.json();
       return data.meetings || [];
@@ -93,10 +99,14 @@ const MentorDashBoard = () => {
 
         if (!mentorInfo.isFirstTimeLogin) {
           setMeetingsLoading(true);
-          
+
           // Get primary semester (4 for Jan-June, 3 for July-Dec)
-          const primarySemester = mentorInfo.academicSession.includes('JANUARY-JUNE') ? 4 : 3;
-          
+          const primarySemester = mentorInfo.academicSession.includes(
+            "JANUARY-JUNE"
+          )
+            ? 4
+            : 3;
+
           // Fetch primary semester meetings first
           const primaryMeetings = await fetchMeetingsForSemester(
             mentorInfo.MUJid,
@@ -107,12 +117,17 @@ const MentorDashBoard = () => {
 
           // Set initial meetings
           setMeetings(primaryMeetings);
-          sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(primaryMeetings)
+          );
           setMeetingsLoading(false);
 
           // Fetch other semesters in background
-          const otherSemesters = mentorInfo.academicSession.includes('JANUARY-JUNE') 
-            ? [2, 6, 8] 
+          const otherSemesters = mentorInfo.academicSession.includes(
+            "JANUARY-JUNE"
+          )
+            ? [2, 6, 8]
             : [1, 5, 7];
 
           Promise.all(
@@ -123,11 +138,17 @@ const MentorDashBoard = () => {
                 mentorInfo.academicSession,
                 semester
               );
-              
+
               if (semesterMeetings.length > 0) {
-                setMeetings(prevMeetings => {
-                  const updatedMeetings = [...prevMeetings, ...semesterMeetings];
-                  sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
+                setMeetings((prevMeetings) => {
+                  const updatedMeetings = [
+                    ...prevMeetings,
+                    ...semesterMeetings,
+                  ];
+                  sessionStorage.setItem(
+                    "meetingData",
+                    JSON.stringify(updatedMeetings)
+                  );
                   return updatedMeetings;
                 });
               }
@@ -207,37 +228,43 @@ const MentorDashBoard = () => {
         meeting_notes: meetingNotes,
         presentMentees: meetingNotes.presentMentees,
       });
-  
+
       if (response.data.meeting) {
-        // Update meetings in state and session storage
-        setMeetings(prevMeetings => {
-          const updatedMeetings = prevMeetings.map(meeting => {
-            if (meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id) {
+        // Update meetings in state
+        setMeetings((prevMeetings) => {
+          const updatedMeetings = prevMeetings.map((meeting) => {
+            if (
+              meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id
+            ) {
               return {
                 ...meeting,
                 meeting: {
-                  ...meeting,
+                  ...meeting.meeting,
                   meeting_notes: meetingNotes,
                   present_mentees: meetingNotes.presentMentees,
-                  isReportFilled: true
-                }
+                  isReportFilled: true,
+                },
               };
             }
             return meeting;
           });
-          
-          // Update session storage
-          sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
+
+          // Update session storage with new meeting data
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(updatedMeetings)
+          );
           return updatedMeetings;
         });
-  
+
         // Update attendance records
         await axios.post("/api/mentee/meetings-attended", {
           meeting_id: selectedMeeting.meeting.meeting_id,
           presentMentees: meetingNotes.presentMentees,
           totalMentees: selectedMeeting.meeting?.mentee_ids,
         });
-  
+
+        // Clear the form and close the modal
         setSelectedMeeting(null);
         setMeetingNotes({
           TopicOfDiscussion: "",
@@ -249,6 +276,8 @@ const MentorDashBoard = () => {
           feedbackFromMentee: "",
           presentMentees: [],
         });
+
+        // Show success message
       }
     } catch (error) {
       console.error("Error submitting meeting notes:", error);
@@ -257,7 +286,62 @@ const MentorDashBoard = () => {
       setIsSubmitting(false);
     }
   };
-  
+
+  // Add a function to refresh meetings data
+  const refreshMeetings = async () => {
+    setMeetingsLoading(true);
+    try {
+      // Get primary semester (4 for Jan-June, 3 for July-Dec)
+      const primarySemester = mentorData.academicSession.includes(
+        "JANUARY-JUNE"
+      )
+        ? 4
+        : 3;
+
+      // Fetch primary semester meetings first
+      const primaryMeetings = await fetchMeetingsForSemester(
+        mentorData.MUJid,
+        mentorData.academicYear,
+        mentorData.academicSession,
+        primarySemester
+      );
+
+      // Set initial meetings
+      setMeetings(primaryMeetings);
+      sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+
+      // Fetch other semesters in background
+      const otherSemesters = mentorData.academicSession.includes("JANUARY-JUNE")
+        ? [2, 6, 8]
+        : [1, 5, 7];
+
+      const allMeetingsPromises = otherSemesters.map((semester) =>
+        fetchMeetingsForSemester(
+          mentorData.MUJid,
+          mentorData.academicYear,
+          mentorData.academicSession,
+          semester
+        )
+      );
+
+      const allMeetings = await Promise.all(allMeetingsPromises);
+      const flattenedMeetings = [...primaryMeetings, ...allMeetings.flat()];
+
+      setMeetings(flattenedMeetings);
+      sessionStorage.setItem("meetingData", JSON.stringify(flattenedMeetings));
+    } catch (error) {
+      console.error("Error refreshing meetings:", error);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  };
+
+  // Modify the useEffect that handles meeting data to use the refreshMeetings function
+  useEffect(() => {
+    if (!mentorData.isFirstTimeLogin) {
+      refreshMeetings();
+    }
+  }, [mentorData.isFirstTimeLogin]);
 
   const getEmailBody = (meeting) => `
 Dear Mentees,
@@ -306,13 +390,15 @@ Contact: ${mentorData?.email || ""}`;
           emails: menteeEmails,
           subject: `Meeting Reminder - ${meeting.meeting.meeting_id}`,
           body: getEmailBody(meeting),
-          meetingId: meeting.meeting.meeting_id // Add meeting ID to track emails
+          meetingId: meeting.meeting.meeting_id, // Add meeting ID to track emails
         });
 
         if (emailResponse.data.success) {
           setShowToast(true);
           // Show number of times emails were sent for this meeting
-          alert(`Reminder email #${emailResponse.data.totalEmailsSent} sent successfully to ${emailResponse.data.sentCount} recipients`);
+          alert(
+            `Reminder email #${emailResponse.data.totalEmailsSent} sent successfully to ${emailResponse.data.sentCount} recipients`
+          );
           setTimeout(() => setShowToast(false), 5000);
         } else {
           throw new Error(emailResponse.data.message);
@@ -330,10 +416,10 @@ Contact: ${mentorData?.email || ""}`;
 
   const handleSelectAllPresent = () => {
     if (!selectedMeeting?.menteeDetails) return;
-    
-    setMeetingNotes(prev => ({
+
+    setMeetingNotes((prev) => ({
       ...prev,
-      presentMentees: selectedMeeting.menteeDetails.map(m => m.MUJid)
+      presentMentees: selectedMeeting.menteeDetails.map((m) => m.MUJid),
     }));
   };
 
@@ -345,20 +431,22 @@ Contact: ${mentorData?.email || ""}`;
         meeting_id: selectedMeeting.meeting.meeting_id,
         meeting_notes: {
           ...meetingNotes,
-          presentMentees: meetingNotes.presentMentees
-        }
+          presentMentees: meetingNotes.presentMentees,
+        },
       });
 
       // Update in session storage
-      const meetingData = JSON.parse(sessionStorage.getItem("meetingData") || "[]");
-      const updatedMeetings = meetingData.map(meeting => {
+      const meetingData = JSON.parse(
+        sessionStorage.getItem("meetingData") || "[]"
+      );
+      const updatedMeetings = meetingData.map((meeting) => {
         if (meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id) {
           return {
             ...meeting,
             meeting: {
               ...meeting.meeting,
-              present_mentees: meetingNotes.presentMentees
-            }
+              present_mentees: meetingNotes.presentMentees,
+            },
           };
         }
         return meeting;
@@ -367,13 +455,12 @@ Contact: ${mentorData?.email || ""}`;
 
       // Close the dialog
       setShowAttendance(false);
-      
-      // Show success toast or notification
-      toast.success('Attendance saved successfully');
 
+      // Show success toast or notification
+      toast.success("Attendance saved successfully");
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      toast.error('Failed to save attendance');
+      console.error("Error saving attendance:", error);
+      toast.error("Failed to save attendance");
     }
   };
 
@@ -547,270 +634,284 @@ Contact: ${mentorData?.email || ""}`;
                     <h2 className='text-2xl font-bold text-white mb-4'>
                       Upcoming Meetings
                     </h2>
-                    {Object.entries(groupBySemester(meetings))
-                      .sort(([semA], [semB]) => semA - semB)
-                      .map(([semester, semesterMeetings]) => (
-                        <div key={semester} className='mb-6'>
-                          <h3 className='text-xl font-semibold text-white mb-3 border-b border-white/20 pb-2'>
-                            Semester {semester}
-                          </h3>
-                          <div className='space-y-4'>
-                            {semesterMeetings.map((meeting, index) => (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{
-                                  opacity: 1,
-                                  y: 0,
-                                  transition: { delay: index * 0.1 },
-                                }}
-                                className='bg-white/5 p-4 rounded-lg'>
-                                {console.log(
-                                  "meeting:",
-                                  meeting.meeting.meeting_notes.isMeetingOnline
-                                )}
-                                <div className='text-white flex justify-between'>
-                                  <div>
-                                    <div className="space-y-2">
-                                      <p>
-                                        {new Date(meeting.meeting.meeting_date)
-                                          .toLocaleDateString("en-IN", {
-                                            day: "numeric",
-                                            month: "long",
-                                            year: "numeric",
-                                            ordinal: true,
-                                          })}
-                                      </p>
-                                      <p>
-                                        Meeting Topic: {" "}
-                                        {meeting.meeting.meeting_notes.TopicOfDiscussion}
-                                      </p>
-                                    </div>
-                                    <p className='font-semibold'>
-                                      {meeting?.sections
-                                        ? `Sections: ${[
-                                            ...new Set(meeting?.sections),
-                                          ].join(", ")}`
-                                        : `Section: ${meeting.section}`}
-                                    </p>
-                                    <p>Semester: {meeting.semester}</p>
+                    <div className='mb-4 border-b border-gray-700'>
+                      <div className='flex overflow-x-auto space-x-4 custom-scrollbar'>
+                        {Object.keys(groupBySemester(meetings))
+                          .sort((a, b) => a - b)
+                          .map((semester) => (
+                            <button
+                              key={semester}
+                              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors duration-200 ${
+                                activeTab === semester
+                                  ? "bg-white/10 text-white border-b-2 border-orange-500"
+                                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                              }`}
+                              onClick={() => setActiveTab(semester)}>
+                              Semester {semester}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                    <div className='space-y-4'>
+                      {activeTab &&
+                        groupBySemester(meetings)[activeTab]?.map(
+                          (meeting, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                                transition: { delay: index * 0.1 },
+                              }}
+                              className='bg-white/5 p-4 rounded-lg'>
+                              {console.log(
+                                "meeting:",
+                                meeting.meeting.meeting_notes.isMeetingOnline
+                              )}
+                              <div className='text-white flex justify-between'>
+                                <div>
+                                  <div className='space-y-2'>
                                     <p>
-                                      Date:{" "}
-                                      {new Date(meeting.meeting.meeting_date)
-                                        .toLocaleDateString("en-IN", {
-                                          day: "numeric",
-                                          month: "long",
-                                          year: "numeric",
-                                          ordinal: true,
-                                        })
-                                        .replace(
-                                          /(\d+)(?=\s)/,
-                                          (n) =>
-                                            n +
-                                              ["st", "nd", "rd"][
-                                                (((n % 100) - 20) % 10) - 1
-                                              ] || "th"
-                                        )}
+                                      {new Date(
+                                        meeting.meeting.meeting_date
+                                      ).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        ordinal: true,
+                                      })}
                                     </p>
-                                    <p>Time: {meeting.meeting.meeting_time}</p>
-                                    {meeting.meeting.meeting_notes
-                                      .isMeetingOnline ? (
-                                      <p className='flex items-center space-x-2'>
-                                        <span className='text-gray-300'>
-                                          Link:{" "}
-                                        </span>
-                                        {meeting.meeting.meeting_notes.venue.includes(
-                                          "https:"
-                                        ) ? (
-                                          <a
-                                            href={`${meeting.meeting.meeting_notes.venue}`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
-                                            <span className='truncate max-w-[200px]'>
-                                              {
-                                                meeting.meeting.meeting_notes
-                                                  .venue
-                                              }
-                                            </span>
-                                            <svg
-                                              className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
-                                              fill='none'
-                                              viewBox='0 0 24 24'
-                                              stroke='currentColor'>
-                                              <path
-                                                strokeLinecap='round'
-                                                strokeLinejoin='round'
-                                                strokeWidth={2}
-                                                d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
-                                              />
-                                            </svg>
-                                          </a>
-                                        ) : (
-                                          <a
-                                            href={`https://${meeting.meeting.meeting_notes.venue}`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
-                                            <span className='truncate max-w-[200px]'>
-                                              {
-                                                meeting.meeting.meeting_notes
-                                                  .venue
-                                              }
-                                            </span>
-                                            <svg
-                                              className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
-                                              fill='none'
-                                              viewBox='0 0 24 24'
-                                              stroke='currentColor'>
-                                              <path
-                                                strokeLinecap='round'
-                                                strokeLinejoin='round'
-                                                strokeWidth={2}
-                                                d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
-                                              />
-                                            </svg>
-                                          </a>
-                                        )}
-                                      </p>
-                                    ) : (
-                                      <p>
-                                        Venue:{" "}
-                                        {meeting.meeting.meeting_notes.venue}
-                                      </p>
-                                    )}
+                                    <p>
+                                      Meeting Topic:{" "}
+                                      {
+                                        meeting.meeting.meeting_notes
+                                          .TopicOfDiscussion
+                                      }
+                                    </p>
                                   </div>
-                                  <div className='border-r-2 h-full'></div>
-                                  <div className='my-auto'>
-                                    {new Date(meeting.meeting.meeting_date) <=
-                                    new Date() ? (
-                                      <>
-                                        {!meeting.meeting.isReportFilled &&
-                                          new Date(
-                                            meeting.meeting.meeting_date
-                                          ) <= new Date() && (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedMeeting(meeting);
-                                                setMeetingNotes({
-                                                  TopicOfDiscussion:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.TopicOfDiscussion || "",
-                                                  TypeOfInformation: "",
-                                                  NotesToStudent: "",
-                                                  issuesRaisedByMentee: "",
-                                                  feedbackFromMentee: "",
-                                                  outcome: "",
-                                                  closureRemarks: "",
-                                                  presentMentees: [],
-                                                });
-                                              }}
-                                              className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
-                                              Submit Report
-                                            </button>
-                                          )}
-                                        {meeting.meeting.isReportFilled && (
-                                          <div className=''>
-                                            <button
-                                              onClick={() => {
-                                                setSelectedMeeting(meeting);
-                                                setMeetingNotes({
-                                                  TopicOfDiscussion:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.TopicOfDiscussion || "",
-                                                  TypeOfInformation:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.TypeOfInformation || "",
-                                                  NotesToStudent:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.NotesToStudent || "",
-                                                  issuesRaisedByMentee:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.issuesRaisedByMentee ||
-                                                    "",
-                                                  feedbackFromMentee:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.feedbackFromMentee ||
-                                                    "",
-                                                  outcome:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.outcome || "",
-                                                  closureRemarks:
-                                                    meeting?.meeting
-                                                      ?.meeting_notes
-                                                      ?.closureRemarks || "",
-                                                  presentMentees:
-                                                    meeting?.meeting
-                                                      ?.present_mentees || [],
-                                                });
-                                              }}
-                                              className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
-                                              Edit Report
-                                            </button>
-                                            
-                                            {isClientSide && (
-                                              <PDFDownloadComponent
-                                                key={meeting.meeting.meeting_id}
-                                                page={`MentorDashboard`}
-                                                document={generateMOMPdf(
-                                                  {
-                                                    ...meeting.meeting,
-                                                    section: meeting.section,
-                                                    semester: meeting.semester,
-                                                    academicYear:
-                                                      mentorData.academicYear,
-                                                    menteeDetails:
-                                                      meeting?.menteeDetails,
-                                                  },
-                                                  mentorData.name
-                                                )}
-                                                fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
-                                                <div 
-                                                  className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center'
-                                                  role="button"
-                                                >
-                                                  Download MOM Report
-                                                </div>
-                                              </PDFDownloadComponent>
-                                            )}
-                                          </div>
-                                        )}
-                                      </>
-                                    ) : (
-                                      <div className='flex flex-col gap-2'>
-                                        <div className='text-red-500 text-center'>
-                                          Meeting not held yet
-                                        </div>
-                                        <button
-                                          onClick={() =>
-                                            sendEmailToMentees(meeting)
-                                          }
-                                          className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
-                                          disabled={isLoading}>
-                                          {isLoading ? (
-                                            <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
-                                          ) : (
-                                            "Resend Meeting Email"
-                                          )}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
+                                  <p className='font-semibold'>
+                                    {meeting?.sections
+                                      ? `Sections: ${[
+                                          ...new Set(meeting?.sections),
+                                        ].join(", ")}`
+                                      : `Section: ${meeting.section}`}
+                                  </p>
+                                  <p>Semester: {meeting.semester}</p>
+                                  <p>
+                                    Date:{" "}
+                                    {new Date(meeting.meeting.meeting_date)
+                                      .toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        ordinal: true,
+                                      })
+                                      .replace(
+                                        /(\d+)(?=\s)/,
+                                        (n) =>
+                                          n +
+                                            ["st", "nd", "rd"][
+                                              (((n % 100) - 20) % 10) - 1
+                                            ] || "th"
+                                      )}
+                                  </p>
+                                  <p>Time: {meeting.meeting.meeting_time}</p>
+                                  {meeting.meeting.meeting_notes
+                                    .isMeetingOnline ? (
+                                    <p className='flex items-center space-x-2'>
+                                      <span className='text-gray-300'>
+                                        Link:{" "}
+                                      </span>
+                                      {meeting.meeting.meeting_notes.venue.includes(
+                                        "https:"
+                                      ) ? (
+                                        <a
+                                          href={`${meeting.meeting.meeting_notes.venue}`}
+                                          target='_blank'
+                                          rel='noopener noreferrer'
+                                          className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
+                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          <span className='truncate max-w-[200px]'>
+                                            {
+                                              meeting.meeting.meeting_notes
+                                                .venue
+                                            }
+                                          </span>
+                                          <svg
+                                            className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
+                                            fill='none'
+                                            viewBox='0 0 24 24'
+                                            stroke='currentColor'>
+                                            <path
+                                              strokeLinecap='round'
+                                              strokeLinejoin='round'
+                                              strokeWidth={2}
+                                              d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
+                                            />
+                                          </svg>
+                                        </a>
+                                      ) : (
+                                        <a
+                                          href={`https://${meeting.meeting.meeting_notes.venue}`}
+                                          target='_blank'
+                                          rel='noopener noreferrer'
+                                          className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
+                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          <span className='truncate max-w-[200px]'>
+                                            {
+                                              meeting.meeting.meeting_notes
+                                                .venue
+                                            }
+                                          </span>
+                                          <svg
+                                            className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
+                                            fill='none'
+                                            viewBox='0 0 24 24'
+                                            stroke='currentColor'>
+                                            <path
+                                              strokeLinecap='round'
+                                              strokeLinejoin='round'
+                                              strokeWidth={2}
+                                              d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
+                                            />
+                                          </svg>
+                                        </a>
+                                      )}
+                                    </p>
+                                  ) : (
+                                    <p>
+                                      Venue:{" "}
+                                      {meeting.meeting.meeting_notes.venue}
+                                    </p>
+                                  )}
                                 </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                                <div className='border-r-2 h-full'></div>
+                                <div className='my-auto'>
+                                  {new Date(meeting.meeting.meeting_date) <=
+                                  new Date() ? (
+                                    <>
+                                      {!meeting.meeting.isReportFilled &&
+                                        new Date(
+                                          meeting.meeting.meeting_date
+                                        ) <= new Date() && (
+                                          <button
+                                            onClick={() => {
+                                              setSelectedMeeting(meeting);
+                                              setMeetingNotes({
+                                                TopicOfDiscussion:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.TopicOfDiscussion || "",
+                                                TypeOfInformation: "",
+                                                NotesToStudent: "",
+                                                issuesRaisedByMentee: "",
+                                                feedbackFromMentee: "",
+                                                outcome: "",
+                                                closureRemarks: "",
+                                                presentMentees: [],
+                                              });
+                                            }}
+                                            className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+                                            Submit Report
+                                          </button>
+                                        )}
+                                      {meeting.meeting.isReportFilled && (
+                                        <div className=''>
+                                          <button
+                                            onClick={() => {
+                                              setSelectedMeeting(meeting);
+                                              setMeetingNotes({
+                                                TopicOfDiscussion:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.TopicOfDiscussion || "",
+                                                TypeOfInformation:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.TypeOfInformation || "",
+                                                NotesToStudent:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.NotesToStudent || "",
+                                                issuesRaisedByMentee:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.issuesRaisedByMentee ||
+                                                  "",
+                                                feedbackFromMentee:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.feedbackFromMentee || "",
+                                                outcome:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes?.outcome ||
+                                                  "",
+                                                closureRemarks:
+                                                  meeting?.meeting
+                                                    ?.meeting_notes
+                                                    ?.closureRemarks || "",
+                                                presentMentees:
+                                                  meeting?.meeting
+                                                    ?.present_mentees || [],
+                                              });
+                                            }}
+                                            className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
+                                            Edit Report
+                                          </button>
+
+                                          {isClientSide && (
+                                            <PDFDownloadComponent
+                                              key={meeting.meeting.meeting_id}
+                                              page={`MentorDashboard`}
+                                              document={generateMOMPdf(
+                                                {
+                                                  ...meeting.meeting,
+                                                  section: meeting.section,
+                                                  semester: meeting.semester,
+                                                  academicYear:
+                                                    mentorData.academicYear,
+                                                  menteeDetails:
+                                                    meeting?.menteeDetails,
+                                                },
+                                                mentorData.name
+                                              )}
+                                              fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
+                                              <div
+                                                className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center'
+                                                role='button'>
+                                                Download MOM Report
+                                              </div>
+                                            </PDFDownloadComponent>
+                                          )}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div className='flex flex-col gap-2'>
+                                      <div className='text-red-500 text-center'>
+                                        Meeting not held yet
+                                      </div>
+                                      <button
+                                        onClick={() =>
+                                          sendEmailToMentees(meeting)
+                                        }
+                                        className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
+                                        disabled={isLoading}>
+                                        {isLoading ? (
+                                          <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
+                                        ) : (
+                                          "Resend Meeting Email"
+                                        )}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )
+                        )}
+                    </div>
                   </>
                 ) : (
                   <div className='flex flex-col items-center justify-center space-y-4'></div>
@@ -835,7 +936,6 @@ Contact: ${mentorData?.email || ""}`;
                 <FiX size={24} />
               </button>
             </div>
-
             <div className='p-6 max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 {/* Left Column */}
@@ -881,14 +981,13 @@ Contact: ${mentorData?.email || ""}`;
 
                   <Button
                     onClick={() => setShowAttendance(true)}
-                    variant="contained"
+                    variant='contained'
                     fullWidth
                     sx={{
                       mt: 2,
-                      bgcolor: '#f97316',
-                      '&:hover': { bgcolor: '#ea580c' }
-                    }}
-                  >
+                      bgcolor: "#f97316",
+                      "&:hover": { bgcolor: "#ea580c" },
+                    }}>
                     Mark Attendance
                   </Button>
                 </div>
@@ -945,18 +1044,17 @@ Contact: ${mentorData?.email || ""}`;
                   mentees={selectedMeeting?.menteeDetails || []}
                   presentMentees={meetingNotes.presentMentees}
                   onUpdateAttendance={(mujId) => {
-                    setMeetingNotes(prev => ({
+                    setMeetingNotes((prev) => ({
                       ...prev,
                       presentMentees: prev.presentMentees.includes(mujId)
-                        ? prev.presentMentees.filter(id => id !== mujId)
-                        : [...prev.presentMentees, mujId]
+                        ? prev.presentMentees.filter((id) => id !== mujId)
+                        : [...prev.presentMentees, mujId],
                     }));
                   }}
                   onSelectAll={handleSelectAllPresent}
                   onSubmit={handleAttendanceSubmit}
                 />
               </div>
-
               <div className='space-y-2 mt-6'>
                 <label className='block text-sm font-medium text-gray-300'>
                   Feedback from Mentee (Optional)
@@ -969,7 +1067,9 @@ Contact: ${mentorData?.email || ""}`;
                   className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                   placeholder='Enter mentee feedback (optional)...'
                 />
-              </div>            </div>            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
+              </div>{" "}
+            </div>{" "}
+            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
               <button
                 onClick={handleMeetingSubmit}
                 disabled={isSubmitDisabled || isSubmitting}
@@ -994,7 +1094,10 @@ Contact: ${mentorData?.email || ""}`;
           </div>
         </div>
       )}
-      <AnimatePresence>        {showToast && (          <motion.div
+      <AnimatePresence>
+        {" "}
+        {showToast && (
+          <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
