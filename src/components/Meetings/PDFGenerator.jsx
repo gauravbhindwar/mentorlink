@@ -640,7 +640,7 @@ export const generateConsolidatedPdf = (
 
 // Add new export for PDF download
 export const PDFDownloadComponent = ({
-  document: pdfDocument,  // renamed to avoid confusion with global document
+  document: pdfDocument, 
   fileName,
   children,
   page,
@@ -653,7 +653,7 @@ export const PDFDownloadComponent = ({
   }, []);
 
   const downloadPDF = async () => {
-    if (typeof window === 'undefined') return; // Guard against server-side execution
+    if (typeof window === 'undefined') return;
     
     try {
       setIsLoading(true);
@@ -672,8 +672,6 @@ export const PDFDownloadComponent = ({
       setIsLoading(false);
     }
   };
-
-  // Don't render anything on server-side
   if (typeof window === 'undefined' || !isClient) {
     return page && page === "MentorDashboard" ? (
       <div className='flex items-center justify-center'>
