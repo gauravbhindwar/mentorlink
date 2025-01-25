@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AcademicSession } from "./academicSessionSchema";
-import {Mentee} from "./menteeSchema";
+import { Mentee } from "./menteeSchema";
+import { Mentor } from "./mentorSchema";
 
 // Create a sub-schema for individual meetings
 const individualMeetingSchema = new mongoose.Schema({
@@ -163,7 +164,7 @@ meetingSchema.statics.findOrCreateMentorMeetings = async function(mentorId, acad
   return mentorMeetings;
 };
 
-meetingSchema.statics.getMentorMeetingsData = async function(year, session, semester, page, limit) {
+meetingSchema.statics.getMentorMeetingsData = async function(year, session, semester, page = 0, limit = 10) {
   const skip = page * limit;
   
   const meetings = await this.aggregate([
@@ -205,20 +206,64 @@ meetingSchema.statics.getMentorMeetingsData = async function(year, session, seme
   return { meetings, total };
 };
 
-meetingSchema.statics.getMeetorMeetings = async function(mentorMUJid, year, session, semester) {
+meetingSchema.statics.getMentorMeetings = async function(mentorMUJid, year, session, semester) {
   const academicYear = `${parseInt(year) - 1}-${year}`; // Convert year to academic year format
 
-  const meetings = await this.findOne({
-    mentorMUJid: mentorMUJid,
-    'academicDetails.academicYear': academicYear,
-    'academicDetails.academicSession': session
-  });
+  const meetings = await this.aggregate([
+    {
+      $match: {
+        mentorMUJid: mentorMUJid,
+        'academicDetails.academicYear': academicYear,
+        'academicDetails.academicSession': session
+      }
+    },
+    {
+      $unwind: '$meetings'
+    },
+    {
+      $match: {
+        'meetings.semester': parseInt(semester)
+      }
+    },
+    {
+      $lookup: {
+        from: 'mentors',
+        localField: 'mentorMUJid',
+        foreignField: 'MUJid',
+        as: 'mentorInfo'
+      }
+    },
+    {
+      $unwind: '$mentorInfo'
+    },
+    {
+      $lookup: {
+        from: 'mentees',
+        localField: 'meetings.mentee_ids',
+        foreignField: 'MUJid',
+        as: 'menteeDetails'
+      }
+    },
+    {
+      $project: {
+        'meetings': 1,
+        'mentorInfo.name': 1,
+        'menteeDetails.name': 1,
+        'menteeDetails.MUJid': 1,
+        'menteeDetails.meetingsAttended': 1
+      }
+    }
+  ]);
 
-  if (!meetings) {
-    return [];
-  }
-
-  return meetings.meetings.filter(m => m.semester === parseInt(semester));
+  return meetings.map(meeting => ({
+    ...meeting.meetings,
+    mentorName: meeting.mentorInfo.name,
+    menteeDetails: meeting.menteeDetails.map(mentee => ({
+      name: mentee.name,
+      MUJid: mentee.MUJid,
+      meetingsAttended: mentee.meetingsAttended.length
+    }))
+  }));
 };
 
 meetingSchema.statics.getMeetingWithMenteeDetails = async function(
@@ -246,7 +291,7 @@ meetingSchema.statics.getMeetingWithMenteeDetails = async function(
     const allMenteeDetails = await Promise.all(
       targetMeeting.mentee_ids.map(async (menteeId) => {
         try {
-          const mentee = await mongoose.model('Mentee').findOne({ 
+          const mentee = await Mentee.findOne({ 
             MUJid: menteeId 
           })
           .select('name MUJid email')
