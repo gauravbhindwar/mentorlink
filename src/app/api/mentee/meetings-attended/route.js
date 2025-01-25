@@ -30,9 +30,15 @@ export async function PUT(req) {
 export async function POST(req) {
   try {
     await connect();
-    const { meeting_id, presentMentees, totalMentees } = await req.json();
+    const { meeting_id, mentor_id, presentMentees, totalMentees } =
+      await req.json();
 
-    if (!meeting_id || !Array.isArray(presentMentees) || !Array.isArray(totalMentees)) {
+    if (
+      !meeting_id ||
+      !Array.isArray(presentMentees) ||
+      !Array.isArray(totalMentees) ||
+      !mentor_id
+    ) {
       return NextResponse.json(
         { error: "Invalid request data" },
         { status: 400 }
@@ -41,28 +47,23 @@ export async function POST(req) {
 
     // Update present_mentees in Meeting schema
     await Meeting.updateOne(
+      { mentor_id: mentor_id },
       { "meetings.meeting_id": meeting_id },
-      { 
-        $set: { 
+      {
+        $set: {
           "meetings.$.present_mentees": presentMentees,
-          "meetings.$.isReportFilled": true 
-        } 
+          "meetings.$.isReportFilled": true,
+        },
       }
     );
 
-    // Update meetings_attended count for all mentees
-    const updatePromises = totalMentees.map(menteeId => {
-      const isPresent = presentMentees.includes(menteeId);
-      
-      return Mentee.findOneAndUpdate(
-        { MUJid: menteeId },
-        {
-          $inc: { 
-            meetingsCount: isPresent ? 1 : 0 
-          }
-        },
-        { new: true }
-      );
+    // Update meetingsAttended for all mentees in totalMentees
+    const updatePromises = totalMentees.map(async (mujId) => {
+      const updateOperation = presentMentees.includes(mujId)
+        ? { $addToSet: { meetingsAttended: meeting_id } } // Add meeting_id if present
+        : { $pull: { meetingsAttended: meeting_id } }; // Remove meeting_id if absent
+
+      return Mentee.updateOne({ MUJid: mujId }, updateOperation);
     });
 
     await Promise.all(updatePromises);

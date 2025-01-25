@@ -246,6 +246,15 @@ const MentorDashBoard = () => {
       });
 
       if (response.data.meeting) {
+        // Update attendance records
+        console.log("Meeting report submitted successfully:", response.data);
+        await axios.post("/api/mentee/meetings-attended", {
+          mentor_id: mentorData.MUJid,
+          meeting_id: selectedMeeting.meeting.meeting_id,
+          presentMentees: meetingNotes.presentMentees,
+          totalMentees: selectedMeeting.meeting?.mentee_ids,
+        });
+
         // Update meetings in state
         setMeetings((prevMeetings) => {
           const updatedMeetings = prevMeetings.map((meeting) => {
@@ -273,13 +282,6 @@ const MentorDashBoard = () => {
           return updatedMeetings;
         });
 
-        // Update attendance records
-        await axios.post("/api/mentee/meetings-attended", {
-          meeting_id: selectedMeeting.meeting.meeting_id,
-          presentMentees: meetingNotes.presentMentees,
-          totalMentees: selectedMeeting.meeting?.mentee_ids,
-        });
-
         // Clear the form and close the modal
         setSelectedMeeting(null);
         setMeetingNotes({
@@ -297,7 +299,7 @@ const MentorDashBoard = () => {
       }
     } catch (error) {
       console.error("Error submitting meeting notes:", error);
-      alert("Failed to submit meeting report. Please try again.");
+      // alert("Failed to submit meeting report. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

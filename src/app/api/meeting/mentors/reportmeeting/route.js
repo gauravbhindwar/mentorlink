@@ -106,42 +106,42 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await connect();
-    
-    const { mentor_id, meeting_id, meeting_notes, presentMentees } = await request.json();
+
+    const { mentor_id, meeting_id, meeting_notes, presentMentees } =
+      await request.json();
 
     // Find the meeting document and update the specific meeting
     const updatedMeeting = await Meeting.findOneAndUpdate(
       {
         mentorMUJid: mentor_id,
-        'meetings.meeting_id': meeting_id
+        "meetings.meeting_id": meeting_id,
       },
       {
         $set: {
-          'meetings.$.meeting_notes': meeting_notes,
-          'meetings.$.present_mentees': presentMentees,
-          'meetings.$.isReportFilled': true
-        }
+          "meetings.$.meeting_notes": meeting_notes,
+          "meetings.$.present_mentees": presentMentees,
+          "meetings.$.isReportFilled": true,
+        },
       },
       { new: true }
     );
 
     if (!updatedMeeting) {
-      return NextResponse.json(
-        { error: "Meeting not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
     }
 
     // Get the updated meeting details
     const updatedMeetingDetails = updatedMeeting.meetings.find(
-      m => m.meeting_id === meeting_id
+      (m) => m.meeting_id === meeting_id
     );
 
     return NextResponse.json(
-      { message: "Meeting notes updated successfully", meeting: updatedMeetingDetails },
+      {
+        message: "Meeting notes updated successfully",
+        meeting: updatedMeetingDetails,
+      },
       { status: 200 }
     );
-
   } catch (error) {
     console.error("Error updating meeting notes:", error);
     return NextResponse.json(
