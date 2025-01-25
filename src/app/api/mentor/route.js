@@ -60,7 +60,7 @@ export async function PUT(request) {
 
     return NextResponse.json(updatedMentor);
   } catch (error) {
-    console.error("Update error:", error);
+    // console.error("Update error:", error);
     return NextResponse.json(
       { error: error.message || "Error updating mentor" },
       { status: 500 }

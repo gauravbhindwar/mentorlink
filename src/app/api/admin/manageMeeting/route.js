@@ -34,9 +34,8 @@ export async function GET(request) {
         });
 
     } catch (error) {
-        console.error('Database error:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch meetings', success: false },
+            { error: 'Failed to fetch meetings', success: false, details: error.message },
             { status: 500 }
         );
     }

@@ -759,7 +759,19 @@ const ViewMentee = () => {
                     </DialogActions>
                 </Dialog>
 
-                <Toaster position="top-right" />
+                <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: "rgba(0, 0, 0, 0.8)",
+              color: "#fff",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "0.75rem",
+            },
+          }}
+        />
             </div>
         </ThemeProvider>
     );

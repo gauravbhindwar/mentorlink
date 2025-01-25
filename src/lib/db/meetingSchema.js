@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { AcademicSession } from "./academicSessionSchema";
 import { Mentee } from "./menteeSchema";
-import { Mentor } from "./mentorSchema";
 
 // Create a sub-schema for individual meetings
 const individualMeetingSchema = new mongoose.Schema({
@@ -250,7 +249,8 @@ meetingSchema.statics.getMentorMeetings = async function(mentorMUJid, year, sess
         'mentorInfo.name': 1,
         'menteeDetails.name': 1,
         'menteeDetails.MUJid': 1,
-        'menteeDetails.meetingsAttended': 1
+        'menteeDetails.meetingsAttended': 1,
+        'menteeDetails.mentorRemarks': 1  // Add this line
       }
     }
   ]);
@@ -261,7 +261,8 @@ meetingSchema.statics.getMentorMeetings = async function(mentorMUJid, year, sess
     menteeDetails: meeting.menteeDetails.map(mentee => ({
       name: mentee.name,
       MUJid: mentee.MUJid,
-      meetingsAttended: mentee.meetingsAttended.length
+      meetingsAttended: mentee.meetingsAttended.length,
+      mentorRemarks: mentee.mentorRemarks || 'N/A'  // Add this line
     }))
   }));
 };
@@ -294,7 +295,7 @@ meetingSchema.statics.getMeetingWithMenteeDetails = async function(
           const mentee = await Mentee.findOne({ 
             MUJid: menteeId 
           })
-          .select('name MUJid email')
+          .select('name MUJid email mentorRemarks')
           .lean();
 
           return {
@@ -302,6 +303,7 @@ meetingSchema.statics.getMeetingWithMenteeDetails = async function(
             MUJid: mentee?.MUJid || menteeId,
             name: mentee?.name || 'Unknown',
             email: mentee?.email || 'N/A',
+            mentorRemarks: mentee?.mentorRemarks || 'N/A',
             isPresent: targetMeeting.present_mentees?.includes(menteeId) || false
           };
         } catch (err) {
@@ -331,6 +333,64 @@ meetingSchema.statics.getMeetingWithMenteeDetails = async function(
   }
 };
 
-const Meeting = mongoose.models.Meeting || mongoose.model("Meeting", meetingSchema);
+// Add this new static method before the model export
+meetingSchema.statics.getMenteeAttendanceCount = async function(menteeId, academicYear, academicSession) {
+  const result = await this.aggregate([
+    {
+      $match: {
+        'academicDetails.academicYear': academicYear,
+        'academicDetails.academicSession': academicSession,
+        'meetings.mentee_ids': menteeId
+      }
+    },
+    {
+      $unwind: '$meetings'
+    },
+    {
+      $match: {
+        'meetings.mentee_ids': menteeId
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalMeetings: { $sum: 1 },
+        attendedMeetings: {
+          $sum: {
+            $cond: [
+              { $in: [menteeId, '$meetings.present_mentees'] },
+              1,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        totalMeetings: 1,
+        attendedMeetings: 1,
+        attendancePercentage: {
+          $multiply: [
+            { $divide: ['$attendedMeetings', '$totalMeetings'] },
+            100
+          ]
+        }
+      }
+    }
+  ]);
 
+  if (result.length === 0) {
+    return {
+      totalMeetings: 0,
+      attendedMeetings: 0,
+      attendancePercentage: 0
+    };
+  }
+
+  return result[0];
+};
+
+const Meeting = mongoose.models.Meeting || mongoose.model("Meeting", meetingSchema);
 export { Meeting };

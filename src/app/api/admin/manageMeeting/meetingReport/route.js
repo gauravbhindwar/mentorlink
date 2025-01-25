@@ -33,18 +33,49 @@ export async function GET(request) {
             );
         }
 
+        // Calculate attendance for each mentee
+        const menteeAttendance = {};
+        meetings.forEach(meeting => {
+            const presentMentees = meeting.meetingData.present_mentees || [];
+            meeting.menteeDetails.forEach(mentee => {
+                if (!menteeAttendance[mentee.MUJid]) {
+                    menteeAttendance[mentee.MUJid] = {
+                        total: meetings.length,
+                        attended: 0,
+                        name: mentee.name,
+                        mentorRemarks: mentee.mentorRemarks
+                    };
+                }
+                if (presentMentees.includes(mentee.MUJid)) {
+                    menteeAttendance[mentee.MUJid].attended++;
+                }
+            });
+        });
+
+        const processedMeetings = meetings.map(meeting => ({
+            ...meeting.meetingData,
+            mentorName: meeting._id.mentorName,
+            menteeDetails: meeting.menteeDetails.map(mentee => ({
+                ...mentee,
+                meetingsAttended: menteeAttendance[mentee.MUJid]?.attended || 0,
+                totalMeetings: meetings.length
+            }))
+        }));
+
         const reportData = {
             mentorMUJid,
             academicYear: year,
             academicSession: session,
             semester,
             mentorName: meetings[0]?.mentorName || 'Unknown',
-            meetings
+            meetings: processedMeetings,
+            menteeAttendance
         };
         console.log('reportData', reportData);
         console.log("Mentees:", reportData.meetings[0]?.menteeDetails || []);
         console.log("Present Mentees:", reportData.meetings[0]?.present_mentees || []);
         console.log("Meeting Notes:", reportData.meetings[0]?.meeting_notes || {});
+        console.log("Meeting Remarks:", reportData.meetings[0]?.meeting_remarks || {});
 
         const presentMenteesWithDetails = meetings.flatMap(meeting => {
             if (!meeting.present_mentees || !meeting.menteeDetails) {
@@ -58,19 +89,19 @@ export async function GET(request) {
                 };
             });
         });
-        console.log("Present Mentees with Details:", presentMenteesWithDetails);
+        // console.log("Present Mentees with Details:", presentMenteesWithDetails);
 
         return NextResponse.json({
             reportData,
             presentMenteesWithDetails,
+            menteeAttendance,
             success: true
         });
 
     } catch (error) {
-        console.error('Database error:', error);
-        return NextResponse.json(
-            { error: 'Failed to generate meeting report', success: false },
-            { status: 500 }
-        );
+       return NextResponse.json(
+        { error: 'Failed to fetch meetings report', success: false, details: error.message },
+        { status: 500 }
+    );
     }
 }

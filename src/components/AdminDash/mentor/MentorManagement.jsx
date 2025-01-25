@@ -579,28 +579,19 @@ const handleEditMentor = async (updatedMentor) => {
   return (
     <ThemeProvider theme={theme}>
       <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
-        <Toaster 
-          position="bottom-right"
-          reverseOrder={false}
-          containerStyle={{
-            position: 'fixed',
-            bottom: 20,
-            right: 20,
-            zIndex: 100000
-          }}
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: 'rgba(17, 24, 39, 0.95)',
-              color: '#fff',
-              backdropFilter: 'blur(8px)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              maxWidth: '400px',
-              fontSize: '0.875rem',
-            },
-          }}
-        />
+       <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  duration: 3000,
+                  style: {
+                    background: "rgba(0, 0, 0, 0.8)",
+                    color: "#fff",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "0.75rem",
+                  },
+                }}
+              />
         
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">

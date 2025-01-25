@@ -191,15 +191,26 @@ export const MOMDocument = ({
   semester,
   section,
   mentorName,
-  menteeDetails
+  presentMenteeDetails,
 }) => {
-  // Process only present mentees
-  const students = menteeDetails?.map((mentee, index) => ({
-    srNo: index + 1,
-    regNo: mentee.mujId || mentee.MUJid, // Use either mujId or MUJid
-    name: mentee.name,
-    section: section
-  })) || [];
+  let students;
+  if (presentMenteeDetails && presentMenteeDetails.length > 0) {
+    students =
+      presentMenteeDetails?.map((mentee, index) => ({
+        srNo: index + 1,
+        regNo: mentee?.MUJid,
+        name: mentee.name,
+        section: mentee.section, // Ensure section is fetched
+      })) || [];
+  } else {
+    students =
+      meeting.mentee_details?.map((mentee, index) => ({
+        srNo: index + 1,
+        regNo: mentee.mujId,
+        name: mentee.name,
+        section: mentee.section, // Ensure section is fetched
+      })) || [];
+  }
 
   const firstHalf = students.slice(0, Math.ceil(students.length / 2));
   const secondHalf = students.slice(Math.ceil(students.length / 2));
@@ -589,7 +600,7 @@ export const generateMOMPdf = (meeting, mentorName) => {
         semester={meeting.semester}
         section={meeting.section}
         mentorName={mentorName} // Ensure mentorName is passed here
-        menteeDetails={presentMenteeDetails}
+        presentMenteeDetails={presentMenteeDetails}
       />
     );
   }
@@ -600,7 +611,6 @@ export const generateMOMPdf = (meeting, mentorName) => {
       semester={meeting.semester}
       section={meeting.section}
       mentorName={mentorName} // Ensure mentorName is passed here
-      menteeDetails={meeting.menteeDetails} // Pass the filtered menteeDetails directly
     />
   );
 };
