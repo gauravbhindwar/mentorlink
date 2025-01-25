@@ -5,7 +5,7 @@ import Navbar from "@/components/subComponents/NavbarNew"; // Import Navbar comp
 export default function NotFound() {
   return (
     <>
-      <Navbar /> {/* Add Navbar component */}
+       {/* Add Navbar component */}
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-gray-800">
         <Image
           src="/not-found.svg"

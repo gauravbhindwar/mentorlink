@@ -17,7 +17,6 @@ export default function RootLayout({
 }>) {
   return (
     <div>
-      <NavbarNew />
 
       {children}
 

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Navbar from "<@/components/subComponents/NavbarNewNew";
+import Navbar from "@/components/subComponents/NavbarNew";
 import { motion } from "framer-motion";
 import YearSessionSelector from "./archiveComponents/YearSessionSelector";
 import ArchiveResults from "./archiveComponents/ArchiveResults";

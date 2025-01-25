@@ -75,7 +75,7 @@ const AdminDashboard = () => {
                 <div className="absolute inset-0 backdrop-blur-3xl" />
             </div>
 
-            <Navbar />
+            
 
             <div className="relative z-10 px-4 md:px-6 pt-20 pb-10">
                 {/* Header Section */}

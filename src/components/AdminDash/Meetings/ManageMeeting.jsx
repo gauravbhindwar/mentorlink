@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import Navbar from '@/components/subComponents/NavbarNewNew';
+import NavbarNew from '@/components/subComponents/NavbarNew';
 import axios from 'axios';
 import LoadingComponent from '@/components/LoadingComponent';
 import { DataGrid } from '@mui/x-data-grid';

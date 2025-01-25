@@ -80,7 +80,7 @@ const MentorQueryPage = () => {
           <div className="absolute inset-0 backdrop-blur-3xl" />
         </div>
 
-        <Navbar />
+        
 
         <div className="relative z-10 container mx-auto px-4 pt-20">
           <motion.div 

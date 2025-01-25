@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import NavbarNew from '@/components/subComponents/NavbarNewNew';
+import NavbarNew from '@/components/subComponents/NavbarNew';
 
 const CreateAcademicSession = () => {
   const [academicYear, setAcademicYear] = useState('');

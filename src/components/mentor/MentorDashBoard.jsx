@@ -448,7 +448,7 @@ Contact: ${mentorData?.email || ""}`;
         <div className='absolute inset-0 backdrop-blur-3xl' />
       </div>
 
-      <Navbar />
+      
       {/* {console.log("mentor3:",mentorData)} */}
       {mentorData?.isFirstTimeLogin ? (
         <div className='relative z-10 container mx-auto px-4 pt-20'>

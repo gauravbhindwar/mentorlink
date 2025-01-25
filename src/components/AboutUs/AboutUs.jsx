@@ -75,13 +75,13 @@ const AboutUs = () => {
       image: "/Peoples/Faculty/Satpal-Singh.jpeg",
       description: "Computer Science Department",
       linkedin: "https://linkedin.com/in/satypalkushwaha",
-      email: "satypal.kushwaha@muj.manipal.edu",
+      email: "satpal.kushwaha@muj.manipal.edu",
       phone: "+91-XXXXXXXXXX",
     },
   ];
 
   return (
-    <div className='min-h-screen bg-[#0a0a0a] overflow-y-auto custom-slider relative'>
+    <div className='min-h-screen bg-[#0a0a0a] overflow-y-auto custom-slider relative top-16'>
       {/* Background Effects */}
       <div className='absolute inset-0 z-0'>
         <div className='absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient' />
@@ -100,7 +100,7 @@ const AboutUs = () => {
             About MentorLink
           </h1>
           <p className='text-gray-300 max-w-2xl mx-auto mb-12 text-xl font-light leading-relaxed'>
-            A project developed under the Software Development Club (SDC),
+            A project developed under the Software Development Center (SDC),
             Department of Computer Science Engineering, Manipal University
             Jaipur.
           </p>
