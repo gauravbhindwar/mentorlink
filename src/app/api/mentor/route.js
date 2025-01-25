@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../../lib/authOptions";
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "../../../lib/authOptions";
 import { Mentor } from "../../../lib/db/mentorSchema";
 import { connect } from "../../../lib/dbConfig";
 
 export async function GET(request) {
   try {
     await connect();
-    const session = await getServerSession(authOptions);
+    // const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // if (!session) {
+    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // }
 
     // Get MUJ ID from query parameters
     const { searchParams } = new URL(request.url);
