@@ -141,12 +141,11 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {['semester', 'section', 'academicYear'].map((field) => (
+              {['semester', 'academicYear'].map((field) => ( // Remove 'section' from array
                 mentee[field] && (
                   <Chip 
                     key={field}
                     label={field === 'semester' ? `Semester ${mentee[field]}` :
-                           field === 'section' ? `Section ${mentee[field]}` :
                            mentee[field]}
                     sx={{ 
                       bgcolor: 'rgba(99, 102, 241, 0.1)',

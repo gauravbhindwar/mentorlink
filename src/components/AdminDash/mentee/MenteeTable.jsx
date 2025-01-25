@@ -377,6 +377,42 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
     updateTableData();
   }, [filters, baseData]); // Add dependency on filters and baseData
 
+  // Add function to update local data
+  const updateLocalData = (newMentee) => {
+    if (!currentFilters?.academicYear || !currentFilters?.academicSession) return;
+
+    const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
+    const updatedData = [...localData, newMentee];
+    
+    // Update localStorage
+    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+    
+    // Update state immediately
+    setLocalData(updatedData);
+    setBaseData(updatedData);
+  };
+
+  // Add useEffect to listen for localStorage changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (!currentFilters?.academicYear || !currentFilters?.academicSession) return;
+      
+      const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
+      if (e.key === storageKey) {
+        try {
+          const newData = JSON.parse(e.newValue || '[]');
+          setLocalData(newData);
+          setBaseData(newData);
+        } catch (error) {
+          console.error('Error parsing updated data:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [currentFilters]);
+
   // Modify processedMentees to use localData directly
   const processedMentees = useMemo(() => {
     if (!mounted || !localData) return [];

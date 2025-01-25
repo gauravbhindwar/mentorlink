@@ -30,16 +30,6 @@ export const dialogStyles = {
         borderColor: '#f97316',
         borderWidth: '2px',
       },
-      '&.Mui-disabled': {
-        backgroundColor: 'rgba(255, 59, 48, 0.1)',
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: 'rgba(255, 59, 48, 0.3)',
-        },
-        '& input': {
-          color: 'rgba(255, 59, 48, 0.7) !important',
-          WebkitTextFillColor: 'rgba(255, 59, 48, 0.7) !important',
-        },
-      },
     },
     '& .MuiOutlinedInput-notchedOutline': {
       borderColor: 'rgba(255, 255, 255, 0.2)',

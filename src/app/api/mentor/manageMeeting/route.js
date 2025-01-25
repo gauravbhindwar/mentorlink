@@ -20,7 +20,7 @@ export async function GET(request) {
       );
     }
 
-    // Find all mentees for this mentor first
+    // Find all mentees for this mentor
     const mentees = await Mentee.find({
       mentorMujid: mentorId,
       academicYear: academicYear,
@@ -50,11 +50,10 @@ export async function GET(request) {
       );
     }
 
-    // Update mentee_ids for each meeting based on semester and sections
+    // Map meetings with mentee details
     const updatedMeetings = filteredMeetings.map(meeting => {
       const semesterMentees = mentees.filter(mentee => 
-        mentee.semester === meeting.semester && 
-        (meeting.sections.length === 0 || meeting.sections.includes(mentee.section))
+        mentee.semester === meeting.semester
       );
 
       // Update the meeting's mentee_ids in the database
@@ -65,7 +64,8 @@ export async function GET(request) {
         },
         { 
           $set: { 
-            'meetings.$.mentee_ids': semesterMentees.map(m => m.MUJid)
+            'meetings.$.mentee_ids': semesterMentees.map(m => m.MUJid),
+            'meetings.$.present_mentees': meeting.present_mentees || []
           } 
         }
       ).exec();
@@ -73,9 +73,9 @@ export async function GET(request) {
       return {
         meeting: {
           ...meeting.toObject(),
-          mentee_ids: semesterMentees.map(m => m.MUJid)
+          mentee_ids: semesterMentees.map(m => m.MUJid),
+          present_mentees: meeting.present_mentees || []
         },
-        sections: meeting.sections || [],
         semester: meeting.semester,
         sessionName: meetingsDoc.academicDetails.academicSession,
         menteeDetails: semesterMentees

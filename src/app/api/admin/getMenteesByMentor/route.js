@@ -9,9 +9,8 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const mentorMujid = searchParams.get('mentorMujid');
     const semester = parseInt(searchParams.get('semester'));
-    const section = searchParams.get('section');
 
-    if (!mentorMujid || !semester || !section || !/^[A-Z]$/.test(section)) {
+    if (!mentorMujid || !semester) {
       return NextResponse.json(
         { error: "Invalid parameters. Mentor MUJID, semester, and valid section (A-Z) are required" },
         { status: 400 }
@@ -20,9 +19,8 @@ export async function GET(req) {
 
     const mentees = await Mentee.find({ 
       mentorMujid: mentorMujid,
-      semester: semester,
-      section: section
-    }).select('name MUJid email section semester academicYear academicSession yearOfRegistration phone');
+      semester: semester
+    }).select('name MUJid email semester academicYear academicSession yearOfRegistration phone');
 
     return NextResponse.json({ mentees }, { status: 200 });
 

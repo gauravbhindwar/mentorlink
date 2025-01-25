@@ -85,7 +85,6 @@ academicSessionsSchema.methods.getMeetingWithMenteeDetails = async function (
 
     return {
       meeting,
-      sections: meeting.sections,
       semester: meeting.semester,
       sessionName: meeting.academicDetails.academicSession
     };

@@ -209,14 +209,10 @@ const MentorFilterSection = ({
   }, [academicSession]);
   
   const handleReset = () => {
-    setAcademicYear('');
-    setAcademicSession('');
     setEmailSearch('');
     setFilters(prev => ({
       ...prev,
       mentorEmailid: '',
-      academicYear: '',
-      academicSession: ''
     }));
   };
 

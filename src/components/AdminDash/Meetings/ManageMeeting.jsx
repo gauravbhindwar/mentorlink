@@ -18,7 +18,6 @@ const ManageMeeting = () => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [semester, setSemester] = useState('');
-  const [section, setSection] = useState('');
   const [mentorMeetings, setMentorMeetings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
@@ -47,18 +46,13 @@ const ManageMeeting = () => {
     init();
   }, []);
 
-  const fetchMentorMeetings = async (year = academicYear, session = academicSession, sem = semester, sec = section, pg = page, size = pageSize) => {
+  const fetchMentorMeetings = async (year = academicYear, session = academicSession, sem = semester, pg = page, size = pageSize) => {
     setLoading(true);
     try {
-      const isJulyDecember = session.includes('JULY-DECEMBER');
-      const [startYear] = year.split('-');
-      const queryYear = isJulyDecember ? startYear : parseInt(startYear) + 1;
-
       const params = {
-        year: queryYear,
-        session: session,
+        year,
+        session,
         semester: sem,
-        ...(sec && { section: sec }),
         page: pg,
         limit: size
       };
@@ -81,13 +75,13 @@ const ManageMeeting = () => {
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    fetchMentorMeetings(academicYear, academicSession, semester, section, newPage, pageSize);
+    fetchMentorMeetings(academicYear, academicSession, semester, newPage, pageSize);
   };
 
   const handlePageSizeChange = (newPageSize) => {
     setPageSize(newPageSize);
     setPage(0);
-    fetchMentorMeetings(academicYear, academicSession, semester, section, 0, newPageSize);
+    fetchMentorMeetings(academicYear, academicSession, semester, 0, newPageSize);
   };
 
   const handleAcademicYearChange = (e) => {
@@ -116,18 +110,11 @@ const ManageMeeting = () => {
     }
   };
 
-  const handleSectionChange = (e) => {
-    const value = e.target.value.toUpperCase();
-    if (/^[A-Z]?$/.test(value)) {
-      setSection(value);
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     setPage(0); // Reset to first page
     setShowTable(true); // Show table when fetching
-    fetchMentorMeetings(academicYear, academicSession, semester, section, 0, pageSize);
+    fetchMentorMeetings(academicYear, academicSession, semester, 0, pageSize);
   };
 
   const sendEmail = async (mentorEmail) => {
@@ -156,32 +143,6 @@ const ManageMeeting = () => {
   const generateReport = async (mentorMUJid) => {
     try {
       const mentorData = mentorMeetings.find(m => m.MUJid === mentorMUJid);
-      let sectionToUse = section;
-
-      // If section is empty, fetch it from the database
-      if (!section) {
-        try {
-          const response = await axios.get('/api/meetings/mentor/section', {
-            params: {
-              mentorMUJid,
-              academicYear,
-              academicSession,
-              semester
-            }
-          });
-          
-          if (response.data?.section) {
-            sectionToUse = response.data.section;
-          } else {
-            // Use empty string but don't show error
-            sectionToUse = '';
-          }
-        } catch (error) {
-          console.error('Error fetching section:', error);
-          // Continue with empty section
-          sectionToUse = '';
-        }
-      }
 
       // Store the report data
       const initialData = {
@@ -189,7 +150,6 @@ const ManageMeeting = () => {
         academicYear,
         academicSession,
         semester,
-        section: sectionToUse,
         mentorMUJid,
         mentorName: mentorData?.mentorName || ''
       };
@@ -318,17 +278,6 @@ const ManageMeeting = () => {
                   }}
                   maxLength={1}
                   className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
-                <input
-                  type="text"
-                  placeholder="Enter Section"
-                  value={section}
-                  onChange={handleSectionChange}
-                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                 />
               </div>
             </div>

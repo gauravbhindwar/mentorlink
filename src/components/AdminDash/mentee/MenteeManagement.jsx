@@ -51,12 +51,8 @@ const filterData = (data, filters) => {
     const matchesSemester = !filters.semester || 
       mentee.semester === (typeof filters.semester === 'string' ? 
         parseInt(filters.semester) : filters.semester);
-    
-    const matchesSection = !filters.section || 
-      (mentee.section && mentee.section.toString().toUpperCase() === filters.section.toUpperCase());
 
     return matchesSemester && 
-           matchesSection && 
            matchesMenteeMujid && 
            matchesMentorMujid && 
            matchesMentorEmail;
@@ -69,7 +65,6 @@ const MenteeManagement = () => {
     academicYear: '',
     academicSession: '',
     semester: '',
-    section: '',
     mentorMujid: '',
     menteeMujid: '',
     mentorEmailid: ''
@@ -154,7 +149,6 @@ const MenteeManagement = () => {
     MUJid: '',
     phone: '',
     yearOfRegistration: '',
-    section: '',
     semester: '',
     startYear: '',
     endYear: '',
@@ -194,8 +188,7 @@ const MenteeManagement = () => {
     mentorEmailid: '',
     mentee_MUJid: '',
     session: '',
-    semester: '',
-    section: ''
+    semester: ''
   });
 
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
@@ -499,8 +492,7 @@ const handleUpdate = (updatedMentee) => {
         mentor_MUJid: '',
         mentee_MUJid: '',
         session: '',
-        semester: '',
-        section: ''
+        semester: ''
     });
   };
 
@@ -606,7 +598,7 @@ const handleUpdate = (updatedMentee) => {
       const localData = localStorage.getItem(storageKey);
       
       // Check if we need to fetch new data
-      if (!localData || (!filters.semester && !filters.section && !filters.menteeMujid && !filters.mentorEmailid)) {
+      if (!localData || (!filters.semester && !filters.menteeMujid && !filters.mentorEmailid)) {
         // Fetch new data from API
         const response = await axios.get('/api/admin/manageUsers/manageMentee', {
           params: baseParams
@@ -630,8 +622,7 @@ const handleUpdate = (updatedMentee) => {
           sourceData = response.data.map(item => ({
             ...item,
             MUJid: item.MUJid?.toUpperCase(),
-            mentorMujid: item.mentorMujid?.toUpperCase(),
-            section: item.section?.toUpperCase()
+            mentorMujid: item.mentorMujid?.toUpperCase()
           }));
           localStorage.setItem(storageKey, JSON.stringify(sourceData));
           dataCache.current.set(storageKey, sourceData);
@@ -642,9 +633,6 @@ const handleUpdate = (updatedMentee) => {
           const matchSemester = !filters.semester || 
             parseInt(item.semester) === parseInt(filters.semester);
 
-          const matchSection = !filters.section || 
-            item.section?.toUpperCase() === filters.section.toUpperCase();
-
           const matchMenteeMujid = !filters.menteeMujid || 
             item.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
 
@@ -654,7 +642,7 @@ const handleUpdate = (updatedMentee) => {
           const matchMentorEmail = !filters.mentorEmailid || 
             item.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
 
-          return matchSemester && matchSection && matchMenteeMujid && 
+          return matchSemester && matchMenteeMujid && 
                  matchMentorMujid && matchMentorEmail;
         });
       }
@@ -678,7 +666,6 @@ const handleUpdate = (updatedMentee) => {
       academicYear: '',
       academicSession: '',
       semester: '',
-      section: '',
       mentorMujid: '',
       menteeMujid: '',
       mentorEmailid: ''
@@ -735,7 +722,6 @@ const handleUpdate = (updatedMentee) => {
       'email',
       'MUJid',
       'yearOfRegistration',
-      'section',
       'semester',
       'academicYear',
       'academicSession', 
@@ -758,6 +744,22 @@ const handleUpdate = (updatedMentee) => {
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error adding mentee', 'error');
     }
+  };
+
+  const handleMenteeAdded = ({ mentee, storageKey }) => {
+    // Update mentees state immediately
+    setMentees(prev => [...prev, mentee]);
+    
+    // Update localStorage for the specific academic period
+    const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const updatedData = [...existingData, mentee];
+    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+    
+    // Update current filters to trigger table refresh
+    setCurrentFilters(prev => ({
+      ...prev,
+      timestamp: Date.now()
+    }));
   };
 
   useEffect(() => {
@@ -796,7 +798,6 @@ const handleUpdate = (updatedMentee) => {
     academicYear: filters.academicYear,
     academicSession: filters.academicSession,
     semester: filters.semester,
-    section: filters.section,
     menteeMujid: filters.menteeMujid, // Add setter for menteeMujid
     mentorMujid: filters.mentorMujid,  // Add setter for mentorMujid,
     mentorEmailid: filters.mentorEmailid
@@ -1088,6 +1089,7 @@ const handleUpdate = (updatedMentee) => {
           onInputChange={handleInputChange}
           onSubmit={handleFormSubmit}
           academicSessions={academicSessions}
+          onMenteeAdded={handleMenteeAdded} // Add this prop
         />
 
         <EditMenteeDialog

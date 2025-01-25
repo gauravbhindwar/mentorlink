@@ -236,7 +236,7 @@ const FilterSection = ({
       let data;
       const localData = localStorage.getItem('mentee data');
       
-      if (!localData || (!filters.semester && !filters.section && !filters.menteeMujid && !filters.mentorEmailid)) {
+      if (!localData || (!filters.semester && !filters.menteeMujid && !filters.mentorEmailid)) {
         const response = await axios.get('/api/admin/manageUsers/manageMentee', {
           params: baseParams
         });
@@ -293,8 +293,14 @@ const FilterSection = ({
   };
 
   const handleReset = () => {
-    sessionStorage.removeItem('menteeData');
-    onReset();
+    // Replace setFilters with individual handleFilterChange calls
+    handleFilterChange('academicYear', '');
+    handleFilterChange('academicSession', '');
+    handleFilterChange('semester', '');
+    handleFilterChange('mentorMujid', '');
+    handleFilterChange('menteeMujid', '');
+    handleFilterChange('mentorEmailid', '');
+    onReset(); // Call the onReset prop if provided
   };
 
   useEffect(() => {
@@ -535,7 +541,7 @@ const FilterSection = ({
            //    Example: 2023-2024
            //   </Box>
            // }
-           sx={textFieldStyles}
+           sx={{...textFieldStyles, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
          />
          {renderYearDropdown()}
        </Box>
@@ -558,8 +564,7 @@ const FilterSection = ({
             //    Type &apos;jul&apos; or &apos;jan&apos; for quick selection
             //   </Box>
             // }
-           disabled={!filters.academicYear}
-            sx={textFieldStyles}
+            sx={{...textFieldStyles, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
           />
           {renderSessionDropdown()}
         </Box>
@@ -583,17 +588,27 @@ const FilterSection = ({
             MenuProps={{
               PaperProps: {
                 sx: {
-                  bgcolor: '#1a1a1a',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  bgcolor: 'rgba(17, 24, 39, 0.95)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(249, 115, 22, 0.2)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                  maxHeight: '200px',
+                  overflow: 'hidden',
                   '& .MuiMenuItem-root': {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    fontSize: '1rem',
                     color: 'white',
+                    py: 1,
+                    px: 1.5,
                     '&:hover': {
-                      bgcolor: '#2a2a2a',
+                      bgcolor: 'rgba(249, 115, 22, 0.1)',
                     },
                     '&.Mui-selected': {
-                      bgcolor: '#333333',
+                      bgcolor: 'rgba(249, 115, 22, 0.2)',
                       '&:hover': {
-                        bgcolor: '#404040',
+                        bgcolor: 'rgba(249, 115, 22, 0.3)',
                       }
                     }
                   }
@@ -611,31 +626,6 @@ const FilterSection = ({
             ))}
           </Select>
         </FormControl>
-      )
-    },
-    {
-      name: 'section',
-      label: 'Section',
-      customRender: (
-        <TextField
-          size="small"
-          label={filters.semester ? `Section` : `Select Semester First`}
-          value={filters.section || ''}
-          onChange={(e) => {
-            if(!filters.semester) return;
-            const value = e.target.value.toUpperCase().slice(0, 1);
-            if (value && !/^[A-Z]$/.test(value)) return;
-            handleFilterChange('section', value);
-
-          }}
-          // disabled={!filters.semester}
-          inputProps={{
-            style: { textTransform: 'uppercase' },
-            maxLength: 1
-          }}
-          placeholder={filters.semester ? "A-Z" : `Semester First`}
-          sx={textFieldStyles}
-        />
       )
     },
     {
@@ -942,37 +932,53 @@ const textFieldStyles = {
   minWidth: 120,
   '& .MuiOutlinedInput-root': {
     color: 'white',
-    backgroundColor: '#1a1a1a', // Solid dark background
-    // Remove backdropFilter
+    // backgroundColor: '#1a1a1a', 
     borderRadius: '12px',
     '&:hover .MuiOutlinedInput-notchedOutline': {
       borderColor: '#f97316',
     },
     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+      borderWidth: '2px',
+      borderStyle: 'solid',
       borderColor: '#f97316',
     },
   },
   '& .MuiOutlinedInput-notchedOutline': {
+    borderWidth: '2px',
+    borderStyle: 'solid',
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   '& .MuiInputLabel-root': {
     color: 'rgba(255, 255, 255, 0.7)',
+    // '&.Mui-focused': {
+    //   color: '#f97316',
+    // },
+    color: 'white',
     '&.Mui-focused': {
       color: '#f97316',
     },
   },
   '&.Mui-disabled': {
-    color: 'rgba(255, 255, 255, 0.7) !important',
+    color: 'white !important',
     '& .MuiOutlinedInput-root': {
       '& input': {
-        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+        WebkitTextFillColor: 'white',
       },
       '& input::placeholder': {
-        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+        color: 'white',
         opacity: 1,
       },
     },
   },
+  '& .MuiSelect-icon': {
+    color: '#f97316',
+  },
+  '& .MuiMenuItem-root': {
+    color: 'white',
+  },
+  '& .MuiInputBase-input': {
+    color: 'white',
+  }
 };
 
 const comboBoxStyles = {

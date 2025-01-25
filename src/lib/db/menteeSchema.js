@@ -17,8 +17,13 @@ const menteesSchema = new mongoose.Schema({
     type: String,
     required: false,
     validate: {
-      validator: (value) => /^\d{10}$/.test(value),
-      message: "Phone number must be a 10-digit number",
+      validator: function(value) {
+        // Allow empty strings, null, or undefined
+        if (!value) return true;
+        // Validate 10 digits only if value exists
+        return /^\d{10}$/.test(value);
+      },
+      message: "Phone number must be empty or a 10-digit number",
     },
   },
   address: {
@@ -36,7 +41,6 @@ const menteesSchema = new mongoose.Schema({
       message: "Invalid year of registration",
     },
   },
-  section: { type: String, required: true },
   semester: { type: Number, required: true, min: 1, max: 8 },
   meetingsAttended: { type: [String] },
   mentorRemarks: { type: String, default: "" },
@@ -64,17 +68,24 @@ const menteesSchema = new mongoose.Schema({
   },
   mentorMujid: {
     type: String,
-    required: function () {
-      return this.mentorMujid !== null;
+    required: true,
+    uppercase: true,
+    validate: {
+      validator: function (v) {
+        return /^[A-Z0-9]+$/.test(v);
+      },
+      message: (props) => `${props.value} is not a valid mentor MUJid!`,
     },
-    default: null,
   },
   mentorEmailid: {
     type: String,
-    required: function () {
-      return this.mentorEmailid !== null;
+    required: true,
+    validate: {
+      validator: function (v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      },
+      message: (props) => `${props.value} is not a valid email!`,
     },
-    default: null,
   },
   otp: { type: String },
   otpExpires: { type: Date },
@@ -90,8 +101,14 @@ const menteesSchema = new mongoose.Schema({
   },
 });
 
-// Add pre-save middleware to update timestamps
+// Add pre-save middleware to ensure MUJids are uppercase
 menteesSchema.pre("save", function (next) {
+  if (this.MUJid) {
+    this.MUJid = this.MUJid.toUpperCase();
+  }
+  if (this.mentorMujid) {
+    this.mentorMujid = this.mentorMujid.toUpperCase();
+  }
   this.updated_at = new Date();
   if (!this.created_at) {
     this.created_at = new Date();
