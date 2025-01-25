@@ -60,14 +60,21 @@ const MentorDashBoard = () => {
     semester
   ) => {
     try {
-      const response = await fetch(
-        `/api/mentor/manageMeeting?mentorId=${mentorId}&academicYear=${year}&session=${session}&semester=${semester}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch meetings");
+      if (
+        mentorId != undefined &&
+        year != undefined &&
+        session != undefined &&
+        semester != undefined
+      ) {
+        const response = await fetch(
+          `/api/mentor/manageMeeting?mentorId=${mentorId}&academicYear=${year}&session=${session}&semester=${semester}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch meetings");
+        }
+        const data = await response.json();
+        return data.meetings || [];
       }
-      const data = await response.json();
-      return data.meetings || [];
     } catch (error) {
       console.error(`Error fetching meetings for semester ${semester}:`, error);
       return [];
@@ -308,12 +315,15 @@ const MentorDashBoard = () => {
           : 3;
 
       // Fetch primary semester meetings first
-      const primaryMeetings = await fetchMeetingsForSemester(
+      let primaryMeetings = await fetchMeetingsForSemester(
         mentorData.MUJid,
         mentorData.academicYear,
         mentorData.academicSession,
         primarySemester
       );
+
+      // Ensure primaryMeetings is an array
+      primaryMeetings = Array.isArray(primaryMeetings) ? primaryMeetings : [];
 
       // Set initial meetings
       setMeetings(primaryMeetings);
@@ -335,8 +345,11 @@ const MentorDashBoard = () => {
         )
       );
 
-      const allMeetings = await Promise.all(allMeetingsPromises);
-      const flattenedMeetings = [...primaryMeetings, ...allMeetings.flat()];
+      const otherSemesterMeetings = await Promise.all(allMeetingsPromises);
+      const flattenedMeetings = [
+        ...primaryMeetings,
+        ...otherSemesterMeetings.flat().filter(Boolean),
+      ];
 
       setMeetings(flattenedMeetings);
       sessionStorage.setItem("meetingData", JSON.stringify(flattenedMeetings));
@@ -383,11 +396,7 @@ ${meeting.meeting.meeting_notes.isMeetingOnline ? "Meeting Link" : "Venue"}: ${
   }
 Branch: ${"CSE CORE"}
 Semester: ${meeting.semester}
-${
-  meeting.sections
-    ? `Sections: ${[...new Set(meeting.sections)].join(", ")}`
-    : `Section: ${meeting.section}`
-}
+
 
 Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
 
@@ -693,16 +702,6 @@ Contact: ${mentorData?.email || ""}`;
                                   <div>
                                     <div className='space-y-2'>
                                       <p>
-                                        {new Date(
-                                          meeting.meeting.meeting_date
-                                        ).toLocaleDateString("en-IN", {
-                                          day: "numeric",
-                                          month: "long",
-                                          year: "numeric",
-                                          ordinal: true,
-                                        })}
-                                      </p>
-                                      <p>
                                         Meeting Topic:{" "}
                                         {
                                           meeting.meeting.meeting_notes
@@ -710,31 +709,18 @@ Contact: ${mentorData?.email || ""}`;
                                         }
                                       </p>
                                     </div>
-                                    <p className='font-semibold'>
-                                      {meeting?.sections
-                                        ? `Sections: ${[
-                                            ...new Set(meeting?.sections),
-                                          ].join(", ")}`
-                                        : `Section: ${meeting.section}`}
-                                    </p>
+
                                     <p>Semester: {meeting.semester}</p>
                                     <p>
                                       Date:{" "}
-                                      {new Date(meeting.meeting.meeting_date)
-                                        .toLocaleDateString("en-IN", {
-                                          day: "numeric",
-                                          month: "long",
-                                          year: "numeric",
-                                          ordinal: true,
-                                        })
-                                        .replace(
-                                          /(\d+)(?=\s)/,
-                                          (n) =>
-                                            n +
-                                              ["st", "nd", "rd"][
-                                                (((n % 100) - 20) % 10) - 1
-                                              ] || "th"
-                                        )}
+                                      {new Date(
+                                        meeting.meeting.meeting_date
+                                      ).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        ordinal: true,
+                                      })}
                                     </p>
                                     <p>Time: {meeting.meeting.meeting_time}</p>
                                     {meeting.meeting.meeting_notes
@@ -832,6 +818,13 @@ Contact: ${mentorData?.email || ""}`;
                                                   outcome: "",
                                                   closureRemarks: "",
                                                   presentMentees: [],
+                                                  isMeetingOnline:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.isMeetingOnline,
+                                                  venue:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes?.venue,
                                                 });
                                               }}
                                               className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
@@ -877,6 +870,13 @@ Contact: ${mentorData?.email || ""}`;
                                                   presentMentees:
                                                     meeting?.meeting
                                                       ?.present_mentees || [],
+                                                  isMeetingOnline:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.isMeetingOnline,
+                                                  venue:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes?.venue,
                                                 });
                                               }}
                                               className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
