@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast, Toaster } from 'react-hot-toast';
 import { generateMOMPdf, generateConsolidatedPdf } from './PDFGenerator';
 import { PDFDownloadComponent } from './PDFGenerator';
+
 const MeetingReportGenerator = () => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
@@ -16,21 +17,6 @@ const MeetingReportGenerator = () => {
   const [mentorMUJid, setMentorMUJid] = useState('');
   const [mentorName, setMentorName] = useState('');
   const [isGeneratingConsolidated, setIsGeneratingConsolidated] = useState(false);
-  const [pdfRenderer, setPdfRenderer] = useState(null);
-
-  useEffect(() => {
-    const initPDFRenderer = async () => {
-      if (typeof window !== 'undefined') {
-        try {
-          const { pdf } = await import('@react-pdf/renderer');
-          setPdfRenderer(() => pdf);
-        } catch (error) {
-          console.error('Error initializing PDF renderer:', error);
-        }
-      }
-    };
-    initPDFRenderer();
-  }, []);
 
   // Utility functions
   const getCurrentAcademicYear = () => {
@@ -159,108 +145,63 @@ const MeetingReportGenerator = () => {
     }
 };
 
-const handleGenerateConsolidate = async () => {
-  try {
-    if (!pdfRenderer) {
-      toast.error('PDF renderer not initialized. Please wait and try again.');
-      return;
-    }
-
-    setIsGeneratingConsolidated(true);
-
-    if (!meetings?.length) {
-      throw new Error('No meetings data available');
-    }
-
-    const validMeetings = meetings.filter(meeting => 
-      meeting && meeting.menteeDetails && Array.isArray(meeting.menteeDetails)
-    );
-
-    if (!validMeetings.length) {
-      throw new Error('No valid meeting data found');
-    }
-
-    const menteesData = {};
-    validMeetings.forEach(meeting => {
-      const presentMentees = meeting.present_mentees || [];
-      (meeting.menteeDetails || []).forEach(mentee => {
-        if (!mentee?.MUJid) return;
-
-        if (!menteesData[mentee.MUJid]) {
-          menteesData[mentee.MUJid] = {
-            MUJid: mentee.MUJid,
-            name: mentee.name || 'Unknown',
-            meetingsCount: 0,
-            totalMeetings: validMeetings.length,
-            semester: semester,
-            mentorRemarks: mentee.mentorRemarks || ''
-          };
-        }
+  const handleGenerateConsolidate = async () => {
+    try {
+      setIsGeneratingConsolidated(true);
+      
+      // Process meetings and attendance
+      const attendanceCount = {};
+      const processedMentees = new Map();
+      
+      // Process each meeting
+      meetings.forEach(meeting => {
+        const presentMentees = meeting.present_mentees || [];
         
-        if (presentMentees.includes(mentee.MUJid)) {
-          menteesData[mentee.MUJid].meetingsCount++;
-        }
+        // Count attendance for present mentees
+        presentMentees.forEach(menteeMUJid => {
+          attendanceCount[menteeMUJid] = (attendanceCount[menteeMUJid] || 0) + 1;
+        });
+
+        // Process all mentees in the meeting
+        meeting.mentee_ids?.forEach(menteeId => {
+          if (!processedMentees.has(menteeId)) {
+            processedMentees.set(menteeId, {
+              MUJid: menteeId,
+              name: meeting.mentee_details?.find(m => m.mujId === menteeId)?.name || 'Unknown',
+              meetingsCount: 0,
+              semester: semester
+            });
+          }
+        });
       });
-    });
 
-    const menteesArray = Object.values(menteesData).map(mentee => ({
-      ...mentee,
-      mentorRemarks: getAttendanceRemark(mentee.meetingsCount, mentee.totalMeetings, mentee.mentorRemarks)
-    }));
+      // Update meetings count for each mentee
+      processedMentees.forEach((mentee, MUJid) => {
+        mentee.meetingsCount = attendanceCount[MUJid] || 0;
+      });
 
-    const pdfDoc = generateConsolidatedPdf(
-      validMeetings,
-      academicYear,
-      semester,
-      validMeetings[0]?.section || '',
-      mentorName,
-      menteesArray
-    );
+      // Create consolidated data
+      const consolidatedData = {
+        meetings,
+        academicYear,
+        semester,
+        mentorName,
+        mentees: Array.from(processedMentees.values()),
+        selectedSemester: semester
+      };
 
-    if (!pdfDoc) {
-      throw new Error('Failed to generate PDF document');
+      // Store consolidated data
+      sessionStorage.setItem('consolidatedData', JSON.stringify(consolidatedData));
+
+      return handleExportPdf('consolidated', consolidatedData);
+    } catch (error) {
+      console.error('Error generating consolidated report:', error);
+      toast.error('Failed to generate consolidated report');
+      return null;
+    } finally {
+      setIsGeneratingConsolidated(false);
     }
-
-    const fileName = `Consolidated_Report_${academicYear}_${semester}_${new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).replace(/,/g, '')}.pdf`;
-
-    await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to ensure PDF is ready
-    const blob = await pdfRenderer(pdfDoc).toBlob();
-    
-    if (!blob) {
-      throw new Error('Failed to generate PDF blob');
-    }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast.success('Report generated successfully!');
-  } catch (error) {
-    console.error('Error generating consolidated report:', error);
-    toast.error(error.message || 'Failed to generate consolidated report');
-  } finally {
-    setIsGeneratingConsolidated(false);
-  }
-};
-
-const getAttendanceRemark = (attended, total, existingRemarks) => {
-  const percentage = Math.round((attended / total) * 100);
-  const remarkPrefix = percentage === 100 ? 'Excellent Attendance (100%)' :
-                      percentage >= 75 ? `Good Attendance (${percentage}%)` :
-                      percentage < 50 ? `Poor Attendance (${percentage}%)` :
-                      `Average Attendance (${percentage}%)`;
-  
-  return `${remarkPrefix} - ${existingRemarks || 'No additional remarks'}`;
-};
+  };
 
   // Render components
   const renderFilterControls = () => (
@@ -430,7 +371,7 @@ const getAttendanceRemark = (attended, total, existingRemarks) => {
                   })),
                 meeting_notes: meeting.meeting_notes || {},
             }, mentorName)}
-            fileName={`MOM_${meeting.meeting_id}.pdf`}
+            fileName={`MOM_${meeting.meeting_id}_${new Date().toLocaleDateString('en-US')}.pdf`}
         >
             {`MOM ${index + 1}`}
         </PDFDownloadComponent>
@@ -490,6 +431,62 @@ const getAttendanceRemark = (attended, total, existingRemarks) => {
     </div>
   );
 
+  const handleExportPdf = (type, data = null) => {
+    try {
+      let document;
+      let fileName;
+
+      if (type === 'mom') {
+        // Format meeting data according to PDFGenerator's structure
+        const formattedData = {
+            ...data,
+            semester,
+            menteeDetails: data.present_mentees_details?.map(mentee => ({
+                MUJid: mentee.MUJid,
+                name: mentee.name,
+                mujId: mentee.registrationNumber || mentee.MUJid
+            })) || [],
+            present_mentees: data.present_mentees || [],
+            meeting_notes: data.meeting_notes || {},
+            meeting_date: data.meeting_date,
+            meeting_time: data.meeting_time,
+            meeting_id: data.meeting_id
+        };
+
+        document = generateMOMPdf(formattedData, mentorName);
+        fileName = `MOM_${data.meeting_id}_${new Date().toLocaleDateString('en-US')}.pdf`;
+
+        return (
+            <PDFDownloadComponent document={document} fileName={fileName}>
+                Export Report
+            </PDFDownloadComponent>
+        );
+    } else if (type === 'consolidated') {
+        const consolidatedData = data || JSON.parse(sessionStorage.getItem('consolidatedData'));
+        if (!consolidatedData) {
+          throw new Error('No consolidated data available');
+        }
+        document = generateConsolidatedPdf(
+          consolidatedData.meetings,
+          consolidatedData.academicYear,
+          consolidatedData.semester,
+          consolidatedData.mentorName
+        );
+        fileName = `Consolidated_Report_${academicYear}_${semester}_${new Date().toLocaleDateString('en-US')}.pdf`;
+      }
+
+      return (
+        <PDFDownloadComponent document={document} fileName={fileName}>
+          Export Report
+        </PDFDownloadComponent>
+      );
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert(error.message);
+      return null;
+    }
+  };
+
   useEffect(() => {
     try {
       const storedReportData = sessionStorage.getItem('reportData');
@@ -542,19 +539,7 @@ const getAttendanceRemark = (attended, total, existingRemarks) => {
 
   return (
     <>
-       <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: "rgba(0, 0, 0, 0.8)",
-              color: "#fff",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: "0.75rem",
-            },
-          }}
-        />
+      <Toaster position="top-right" />
       <div className="min-h-screen bg-[#0a0a0a] overflow-y-auto">
         <div className="absolute inset-0 z-0">
           {/* Background effects */}
