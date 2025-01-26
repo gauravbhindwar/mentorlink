@@ -126,7 +126,30 @@ const storeOtpForUser = async (email, otp) => {
 export async function POST(req) {
   await connect();
   try {
-    const { email } = await req.json();
+    const { email, captchaToken } = await req.json();
+
+    // Verify reCAPTCHA v3 token
+    const captchaVerification = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${process.env.RECAPTCHA_SECRET_V3_KEY}&response=${captchaToken}`,
+    });
+
+    const captchaResult = await captchaVerification.json();
+
+    // Check both success and score for v3
+    if (!captchaResult.success || captchaResult.score < 0.5) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Security check failed. Please try again.",
+          score: captchaResult.score 
+        },
+        { status: 400 }
+      );
+    }
 
     if (!email) {
       return NextResponse.json(

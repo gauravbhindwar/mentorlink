@@ -1,11 +1,9 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // ...existing config...
+  env: {
+    NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+  },
+}
 
-// /** @type {import('next').NextConfig} */
-// const nextConfig = {
-//   // ...existing config
-//   // webpack: (config) => {
-//   //   config.resolve.alias.canvas = false;
-//   //   return config;
-//   // }
-// }
-
-// module.exports = nextConfig
+module.exports = nextConfig
