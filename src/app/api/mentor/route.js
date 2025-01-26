@@ -1,19 +1,29 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../../lib/authOptions";
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "../../../lib/authOptions";
 import { Mentor } from "../../../lib/db/mentorSchema";
 import { connect } from "../../../lib/dbConfig";
 
-export async function GET() {
+export async function GET(request) {
   try {
     await connect();
-    const session = await getServerSession(authOptions);
+    // const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // if (!session) {
+    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // }
 
-    const mentor = await Mentor.findOne({ email: session.user.email });
+    // Get MUJ ID from query parameters
+    const { searchParams } = new URL(request.url);
+    const MUJId = searchParams.get("MUJId");
+    const email = searchParams.get("email");
+
+    // Build query object based on available parameters
+    const query = {
+      $or: [{ email: email }, ...(MUJId ? [{ MUJid: MUJId }] : [])],
+    };
+
+    const mentor = await Mentor.findOne(query);
 
     if (!mentor) {
       return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
@@ -50,7 +60,7 @@ export async function PUT(request) {
 
     return NextResponse.json(updatedMentor);
   } catch (error) {
-    console.error("Update error:", error);
+    // console.error("Update error:", error);
     return NextResponse.json(
       { error: error.message || "Error updating mentor" },
       { status: 500 }

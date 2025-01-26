@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 const checkMentorEmail = async (email) => {
     try {
-        console.log(email);
+        // console.log(email);
         await connect();
         const mentor = await Mentor.findOne({ email });
         if (mentor) {
@@ -20,7 +20,7 @@ const checkMentorEmail = async (email) => {
 
 const checkMenteeEmail = async (email) => {
     try {
-        console.log(email);
+        // console.log(email);
         await connect();
         const mentee = await Mentee.findOne({ email });
         if (mentee) {

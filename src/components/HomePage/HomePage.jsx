@@ -1,145 +1,182 @@
 "use client";
-import React, { useState} from "react";
-import Login from "@/components/Login/Login";
-import Navbar from "@/components/subComponents/Navbar";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import Login from "../Login/Login";
+import AboutUs from "../AboutUs/AboutUs";
+import Image from "next/image";
+
 const HomePage = () => {
-  const [loginType, setLoginType] = useState(null);
+  const [showAboutUs, setShowAboutUs] = useState(false);
+  const [stars, setStars] = useState([]);
 
+  useEffect(() => {
+    const generateStars = () => {
+      const newStars = [];
+      const numberOfStars = 50;
 
-  const cards = [
-    { 
-      type: 'mentor', 
-      icon: '👨‍🏫', 
-      title: 'Mentor Portal',
-      description: 'Guide and support students in their academic journey',
-      gradient: 'from-orange-500 via-amber-500 to-yellow-500',
-      shadowColor: 'rgba(251, 146, 60, 0.4)'
-    },
-    //Currently disabled Mentee Portal
-    // { 
-    //   type: 'mentee', 
-    //   icon: '👨‍🎓', 
-    //   title: 'Mentee Portal',
-    //   description: 'Connect with mentors and track your progress',
-    //   gradient: 'from-pink-500 via-rose-500 to-red-500',
-    //   shadowColor: 'rgba(244, 63, 94, 0.4)'
-    // },
-    { 
-      type: 'admin', 
-      icon: '👨‍💼', 
-      title: 'Admin Portal',
-      description: 'Manage users and oversee system operations',
-      gradient: 'from-purple-500 via-violet-500 to-indigo-500',
-      shadowColor: 'rgba(147, 51, 234, 0.4)'
-    },
-    // { 
-    //   type: 'superadmin', 
-    //   icon: '👑', 
-    //   title: 'SuperAdmin Portal',
-    //   description: 'Full system control and configuration',
-    //   gradient: 'from-blue-500 via-cyan-500 to-teal-500',
-    //   shadowColor: 'rgba(59, 130, 246, 0.4)'
-    // },
-  ];
+      for (let i = 0; i < numberOfStars; i++) {
+        newStars.push({
+          id: i,
+          left: `${Math.random() * 100}%`,
+          size: Math.random() * 3 + 1,
+          delay: Math.random() * 5,
+          duration: Math.random() * 3 + 2,
+          opacity: Math.random() * 0.7 + 0.3,
+        });
+      }
 
+      setStars(newStars);
+    };
+
+    generateStars();
+
+    const handleResize = () => {
+      generateStars();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e) => {
+    setMousePosition({
+      x: (e.clientX / window.innerWidth) * 20,
+      y: (e.clientY / window.innerHeight) * 20,
+    });
+  };
+
+  // Add ESC key handler
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === "Escape") {
+        setShowAboutUs(false);
+      }
+    };
+
+    if (showAboutUs) {
+      window.addEventListener("keydown", handleEscKey);
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleEscKey);
+    };
+  }, [showAboutUs]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
-      {/* Enhanced Background Effects */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
-        <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl" />
-        <div className="absolute inset-0 backdrop-blur-3xl" />
-      </div>
+    <div
+      className='fixed inset-0 bg-gradient-to-b from-slate-900 to-black overflow-hidden'
+      onMouseMove={handleMouseMove}>
+      <button
+        onClick={() => setShowAboutUs(true)}
+        className='fixed top-4 right-4 z-50 px-6 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm tracking-wide shadow-lg'>
+        About Us
+      </button>
 
-      <Navbar />
+      {/* About Us Sliding Panel */}
+      {showAboutUs && (
+        <>
+          <div
+            onClick={() => setShowAboutUs(false)}
+            className='fixed inset-0 bg-black/50 z-40 transition-opacity duration-300'
+          />
+          <div
+            className={`fixed top-0 h-full bg-transparent z-50 overflow-y-auto custom-scrollbar w-[70%] transition-all duration-500 ease-in-out ${
+              showAboutUs ? "right-0" : "-right-[70%]"
+            }`}>
+            <button
+              onClick={() => setShowAboutUs(false)}
+              className='absolute top-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white hover:text-gray-300 transition-all text-3xl font-light border border-gray-600/50'>
+              ×
+            </button>
+            <AboutUs />
+          </div>
+        </>
+      )}
 
-      <div className="relative z-10 container mx-auto px-4">
-        {/* Hero Section */}
-        {!loginType && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-20 mb-10"
-          >
-            <motion.h1 
-              className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              Welcome to MentorLink
-            </motion.h1>
-            <motion.p 
-              className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              Connect, Learn, and Grow with MUJ&apos;s Integrated Mentorship Platform
-            </motion.p>
-          </motion.div>
-        )}
+      {stars.map((star) => (
+        <div
+          key={star.id}
+          className='absolute rounded-full bg-white animate-falling-star'
+          style={{
+            left: star.left,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            opacity: star.opacity,
+            animation: `falling ${star.duration}s linear infinite`,
+            animationDelay: `${star.delay}s`,
+            transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)`,
+            transition: "transform 0.1s ease-out",
+          }}
+        />
+      ))}
 
-        {/* Main Content */}
-        <div className="flex items-center justify-center min-h-[calc(100vh-400px)]">
-          <AnimatePresence mode="wait">
-            {!loginType ? (
-              <motion.div 
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full" // Reduced gap-6 to gap-4 and max-w-5xl to max-w-4xl
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {cards.map((card, index) => (
-                  <motion.div
-                    key={card.type}
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ 
-                      opacity: 1, 
-                      y: 0,
-                      transition: { delay: index * 0.1 }
-                    }}
-                    whileHover={{ 
-                      scale: 1.03, // Reduced from 1.05
-                      boxShadow: `0 0 30px ${card.shadowColor}`,
-                    }}
-                    className={`
-                      relative overflow-hidden
-                      bg-gradient-to-br ${card.gradient}
-                      rounded-xl p-6 // Reduced from rounded-2xl and p-8
-                      cursor-pointer
-                      transition-all duration-500
-                      border border-white/10
-                      backdrop-blur-sm
-                      hover:border-white/20
-                    `}
-                    onClick={() => setLoginType(card.type)}
-                  >
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span className="text-4xl mb-4 block">{card.icon}</span> {/* Reduced from text-5xl and mb-6 */}
-                    <h3 className="text-xl font-bold text-white mb-2">{card.title}</h3> {/* Reduced from text-2xl and mb-3 */}
-                    <p className="text-white/80 text-sm leading-relaxed">
-                      {card.description}
-                    </p>
-                    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-3xl group-hover:w-32 group-hover:h-32 transition-all" /> {/* Reduced from w-32/h-32 to w-24/h-24 */}
-                  </motion.div>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="w-full max-w-lg"
-              >
-                <Login role={loginType} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div className='relative z-10 h-full flex flex-col items-center justify-center'>
+        <div className='text-center mb-12'>
+          <Image
+            src='/muj-logo.svg'
+            alt='MUJ Logo'
+            className='mx-auto w-80 mb-8'
+            width={200}
+            height={200}
+          />
+          <h1 className='text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-purple-500 mb-4'>
+            Mentorlink
+          </h1>
+          <p className='text-gray-400 text-sm md:text-base tracking-wider uppercase'>
+            By Software Development Center
+          </p>
         </div>
+
+        <Login />
       </div>
+
+      <style jsx>{`
+        @keyframes falling {
+          0% {
+            transform: translateY(-10vh) rotate(45deg);
+          }
+          100% {
+            transform: translateY(110vh) rotate(45deg);
+          }
+        }
+
+        .animate-falling-star {
+          box-shadow: 0 0 4px rgba(255, 255, 255, 0.8),
+            0 0 8px rgba(255, 255, 255, 0.6);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-falling-star {
+            animation: none !important;
+            transform: none !important;
+          }
+        }
+      `}</style>
+
+      <div
+        className='absolute w-0.5 h-0.5 bg-white animate-shooting-star'
+        style={{
+          left: "10%",
+          top: "20%",
+          animation: "shooting 4s linear infinite",
+          animationDelay: "2s",
+        }}>
+        <div className='w-8 h-0.5 bg-gradient-to-r from-white via-white to-transparent transform -rotate-45' />
+      </div>
+
+      <style jsx>{`
+        @keyframes shooting {
+          0% {
+            transform: translate(0, 0) rotate(45deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(100vw, 100vh) rotate(45deg);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 };

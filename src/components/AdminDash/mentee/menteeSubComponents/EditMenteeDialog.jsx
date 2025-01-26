@@ -21,7 +21,6 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
         name: mentee.name || '',
         email: mentee.email || '',
         phone: mentee.phone || '',
-        section: mentee.section || '',
         semester: mentee.semester || '',
         academicYear: mentee.academicYear || '',
         academicSession: mentee.academicSession || '',
@@ -45,8 +44,6 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
         return value ? (/^\d{10}$/.test(value) ? '' : 'Invalid phone number') : '';
       case 'yearOfRegistration':
         return value ? (value >= 2000 && value <= new Date().getFullYear() ? '' : 'Invalid year') : '';
-      case 'section':
-        return value?.trim() ? (/^[A-Z]$/.test(value.toUpperCase()) ? '' : 'Section must be a single letter') : 'Section is required';
       case 'semester':
         return value ? (value >= 1 && value <= 8 ? '' : 'Semester must be between 1 and 8') : 'Semester is required';
       default:
@@ -62,8 +59,6 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
     // Format specific fields
     if (name === 'MUJid' || name === 'mentorMujid') {
       updatedValue = value.toUpperCase();
-    } else if (name === 'section') {
-      updatedValue = value.toUpperCase().slice(0, 1);
     } else if (name === 'phone') {
       updatedValue = value.replace(/\D/g, '').slice(0, 10);
     }
@@ -101,14 +96,14 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
     if (error && name !== 'email') {
       toast.error(error, {
         duration: 3000,
-        position: 'top-right'
+        position: 'bottom-right'
       });
     }
   };
 
   // Modified handleUpdate function
   const handleUpdate = () => {
-    const editableFields = ['name', 'email', 'phone', 'yearOfRegistration', 'section', 'semester'];
+    const editableFields = ['name', 'email', 'phone', 'yearOfRegistration', 'semester'];
     const newErrors = {};
     let hasErrors = false;
 
@@ -208,14 +203,14 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
                 <TextField
                   label="MUJid"
                   name="MUJid"
-                  value={editedMentee?.MUJid || ''} // Changed from mentee to editedMentee
-                  disabled
-                  sx={dialogStyles.textField}
+                  value={editedMentee?.MUJid || ''} 
+                  // disabled
+                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
                 />
                 <TextField
                   label="Name"
                   name="name"
-                  value={editedMentee?.name || ''} // Changed from mentee to editedMentee
+                  value={editedMentee?.name || ''} 
                   onChange={handleEditInputChange}
                   required
                   error={!!errors.name}
@@ -226,11 +221,11 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
                   label="Email"
                   name="email"
                   type="email"
-                  value={editedMentee?.email || ''} // Changed from mentee to editedMentee
+                  value={editedMentee?.email || ''}
                   onChange={handleEditInputChange}
                   required
                   error={!!errors.email}
-                  helperText={errors.email || ' '} // Added space to maintain consistent height
+                  helperText={errors.email || ' '}
                   sx={{
                     ...dialogStyles.textField,
                     '& .MuiFormHelperText-root': {
@@ -244,7 +239,7 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
                 <TextField
                   label="Phone"
                   name="phone"
-                  value={editedMentee?.phone || ''} // Changed from mentee to editedMentee
+                  value={editedMentee?.phone || ''}
                   onChange={handleEditInputChange}
                   error={!!errors.phone}
                   helperText={errors.phone}
@@ -269,17 +264,6 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
                   sx={dialogStyles.textField}
                 />
                 <TextField
-                  label="Section"
-                  name="section"
-                  value={editedMentee?.section || ''} // Changed from mentee to editedMentee
-                  onChange={handleEditInputChange}
-                  required
-                  error={!!errors.section}
-                  helperText={errors.section}
-                  inputProps={{ maxLength: 1, style: { textTransform: 'uppercase' } }}
-                  sx={dialogStyles.textField}
-                />
-                <TextField
                   label="Semester"
                   name="semester"
                   type="number"
@@ -294,25 +278,13 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
                   label="Academic Year"
                   name="academicYear"
                   value={editedMentee?.academicYear || ''} // Changed from mentee to editedMentee
-                  disabled
-                  sx={{
-                    ...dialogStyles.textField,
-                    '& .MuiInputBase-input.Mui-disabled': {
-                      WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                    }
-                  }}
+                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
                 />
                 <TextField
                   label="Academic Session"
                   name="academicSession"
                   value={editedMentee?.academicSession || ''} // Changed from mentee to editedMentee
-                  disabled
-                  sx={{
-                    ...dialogStyles.textField,
-                    '& .MuiInputBase-input.Mui-disabled': {
-                      WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                    }
-                  }}
+                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
                 />
               </Box>
 
@@ -335,25 +307,13 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
                     label="Mentor MUJid"
                     name="mentorMujid"
                     value={editedMentee?.mentorMujid || ''}
-                    disabled
-                    sx={{
-                      ...dialogStyles.textField,
-                      '& .MuiInputBase-input.Mui-disabled': {
-                        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                      }
-                    }}
+                    sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
                   />
                   <TextField
                     label="Mentor Email"
                     name="mentorEmailid"
                     value={editedMentee?.mentorEmailid || ''}
-                    disabled
-                    sx={{
-                      ...dialogStyles.textField,
-                      '& .MuiInputBase-input.Mui-disabled': {
-                        WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                      }
-                    }}
+                    sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
                   />
                 </Box>
               </Box>

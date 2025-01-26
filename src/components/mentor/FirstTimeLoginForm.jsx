@@ -14,7 +14,7 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
         academicSession: mentorData?.academicSession || '',
     });
 
-    console.log("Mentor Data:", mentorData);
+    // console.log("Mentor Data:", mentorData);
 
     const [errors, setErrors] = useState({});
 
@@ -90,13 +90,13 @@ const FirstTimeLoginForm = ({ onSubmitSuccess, mentorData }) => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Profile updated successfully:', data);
+                    // console.log('Profile updated successfully:', data);
                     
                     if (mentorData.isFirstTimeLogin) {
                         try {
                             const sessionData = extractSessionData(data);
                             sessionStorage.setItem('mentorData', JSON.stringify(sessionData));
-                            console.log('Session data set:', sessionData);
+                            // console.log('Session data set:', sessionData);
                         } catch (storageError) {
                             console.error('SessionStorage error:', storageError);
                         }

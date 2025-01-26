@@ -6,33 +6,25 @@ const RemarksDialog = ({
   onClose, 
   initialValue, 
   originalValue, 
-  onSave, 
-  onReset 
+  onSave
 }) => {
-  // Add state to control textarea value
   const [value, setValue] = useState(initialValue);
   const [isModified, setIsModified] = useState(false);
-
-  // Add ref for textarea
   const textareaRef = useRef(null);
 
-  // Update value when initialValue changes
   useEffect(() => {
     setValue(initialValue);
     setIsModified(initialValue !== originalValue && initialValue !== '');
   }, [initialValue, originalValue]);
 
-  // Focus textarea when dialog opens
   useEffect(() => {
     if (isOpen && textareaRef.current) {
       textareaRef.current.focus();
-      // Optional: Place cursor at the end of text
       const length = textareaRef.current.value.length;
       textareaRef.current.setSelectionRange(length, length);
     }
   }, [isOpen]);
 
-  // Add keyboard event handler
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -46,17 +38,16 @@ const RemarksDialog = ({
     }
   }, [isOpen, onClose]);
 
-  const handleReset = () => {
-    setValue(''); // Clear the text in dialog
-    onReset(); // Call parent reset handler
-    setIsModified(false);
-  };
 
   const handleChange = (e) => {
     const newValue = e.target.value;
     setValue(newValue);
-    onSave(newValue);
     setIsModified(newValue !== originalValue && newValue !== '');
+  };
+
+  const handleSubmit = () => {
+    onSave(value);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -99,25 +90,18 @@ const RemarksDialog = ({
             aria-label="Remarks text"
           />
           
-          <div className="flex justify-between items-center">
-            {/* Always show Reset button if there are changes */}
-            <button
-              onClick={handleReset}
-              className={`px-4 py-2 text-sm transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                value ? 'text-orange-500 hover:bg-orange-500/10' 
-                : 'text-gray-500 cursor-not-allowed opacity-50'
-              }`}
-              disabled={!value}
-              aria-label="Clear remarks"
-            >
-              Clear Remarks
-            </button>
-            
+          <div className="flex justify-end space-x-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
             >
-              Done
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+            >
+              Submit
             </button>
           </div>
         </div>

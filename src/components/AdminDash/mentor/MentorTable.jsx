@@ -45,7 +45,7 @@ const CustomNoRowsOverlay = () => (
   </Box>
 );
 
-const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' }) => {
+const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState({ open: false, mentor: null });
@@ -64,7 +64,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
     mentorEmailid: ''
   });
   const [baseData, setBaseData] = useState([]);
-  const [localData, setLocalData] = useState([]);
+  // const [localData, setLocalData] = useState([]);
   // const [loadingProgress, setLoadingProgress] = useState(0);
   // const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
   const cachedData = useRef(new Map());
@@ -236,27 +236,12 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
 
   // Process mentors data - Update this to include all necessary fields
   const processedMentors = useMemo(() => {
-    if (!Array.isArray(localData)) {
-      // Handle case where localData is not an array
-      if (localData?.mentors) {
-        return localData.mentors.map((item) => ({
-          ...item,
-          id: item._id || item.id,
-          MUJid: (item.MUJid || '').toUpperCase(),
-          name: item.name || '',
-          email: item.email || '',
-          phone_number: item.phone_number || '',
-          academicYear: item.academicYear || '',
-          academicSession: item.academicSession || '',
-          role: Array.isArray(item.role) ? item.role : [item.role] || ['mentor'],
-          gender: item.gender || '',
-          isActive: item.isActive || false,
-        }));
-      }
-      return [];
-    }
-    
-    return localData.map((item) => ({
+    const mentorsToProcess = emailFilter 
+      ? mentors.filter(mentor => 
+          mentor.email.toLowerCase().includes(emailFilter.toLowerCase()))
+      : mentors;
+
+    return mentorsToProcess.map((item) => ({
       ...item,
       id: item._id || item.id,
       MUJid: (item.MUJid || '').toUpperCase(),
@@ -269,7 +254,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       gender: item.gender || '',
       isActive: item.isActive || false,
     }));
-  }, [localData]);
+  }, [mentors, emailFilter]);
 
   // Add this effect to handle initial data loading
   useEffect(() => {
@@ -329,7 +314,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
       if (cachedData.current.has(currentKey)) {
         const cachedResult = cachedData.current.get(currentKey);
         setBaseData(Array.isArray(cachedResult) ? cachedResult : cachedResult?.mentors || []);
-        setLocalData(Array.isArray(cachedResult) ? cachedResult : cachedResult?.mentors || []);
+        // setLocalData(Array.isArray(cachedResult) ? cachedResult : cachedResult?.mentors || []);
         return;
       }
       
@@ -346,11 +331,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
         const mentorsData = initialResponse.data?.mentors || [];
         cachedData.current.set(currentKey, mentorsData);
         setBaseData(mentorsData);
-        setLocalData(mentorsData);
+        // setLocalData(mentorsData);
       } catch (error) {
         console.error('Error fetching data:', error);
         setBaseData([]);
-        setLocalData([]);
+        // setLocalData([]);
       }
     };
 
@@ -368,18 +353,18 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
         dataToFilter = await getDataFromCacheOrFetch(filters.academicYear, filters.academicSession);
       }
 
-      const filteredResults = dataToFilter.filter(mentor => {
-        const matchesDepartment = !filters.department || 
-          mentor.department?.toLowerCase().includes(filters.department.toLowerCase());
-        const matchesMentorMujid = !filters.mentorMujid || 
-          mentor.MUJid?.toLowerCase().includes(filters.mentorMujid.toLowerCase());
-        const matchesMentorEmail = !filters.mentorEmailid || 
-          mentor.email?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
+      // const filteredResults = dataToFilter.filter(mentor => {
+      //   const matchesDepartment = !filters.department || 
+      //     mentor.department?.toLowerCase().includes(filters.department.toLowerCase());
+      //   const matchesMentorMujid = !filters.mentorMujid || 
+      //     mentor.MUJid?.toLowerCase().includes(filters.mentorMujid.toLowerCase());
+      //   const matchesMentorEmail = !filters.mentorEmailid || 
+      //     mentor.email?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
 
-        return matchesDepartment && matchesMentorMujid && matchesMentorEmail;
-      });
+      //   return matchesDepartment && matchesMentorMujid && matchesMentorEmail;
+      // });
 
-      setLocalData(filteredResults);
+      // setLocalData(filteredResults);
     };
 
     applyFilters();
@@ -415,16 +400,35 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
   // Update useEffect to handle mentors prop changes
   useEffect(() => {
     if (Array.isArray(mentors)) {
-      setLocalData(mentors);
+      // setLocalData(mentors);
       setBaseData(mentors);
     } else if (mentors?.mentors) {
-      setLocalData(mentors.mentors);
+      // setLocalData(mentors.mentors);
       setBaseData(mentors.mentors);
     } else {
-      setLocalData([]);
+      // setLocalData([]);
       setBaseData([]);
     }
   }, [mentors]); // Add mentors as dependency
+
+  // const [displayedMentors, setDisplayedMentors] = useState([]);
+
+  // useEffect(() => {
+  //   if (!mentors?.length) {
+  //     setDisplayedMentors([]);
+  //     return;
+  //   }
+
+    // If there's an email filter, apply it
+  //   if (emailFilter) {
+  //     const filtered = mentors.filter(mentor => 
+  //       mentor.email.toLowerCase().includes(emailFilter.toLowerCase())
+  //     );
+  //     setDisplayedMentors(filtered);
+  //   } else {
+  //     setDisplayedMentors(mentors);
+  //   }
+  // }, [mentors, emailFilter]);
 
   const columns = [
     { 
@@ -643,7 +647,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, onDataUpdate = '' })
   // Update useEffect to sync with parent's filters
   useEffect(() => {
     if (mentors?.length > 0 && filters.academicYear && filters.academicSession) {
-      setLocalData(mentors);
+      // setLocalData(mentors);
       setBaseData(mentors);
       const cacheKey = `${filters.academicYear}-${filters.academicSession}`;
       cachedData.current.set(cacheKey, mentors);

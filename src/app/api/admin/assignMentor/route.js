@@ -1,5 +1,4 @@
 import { connect } from "../../../../lib/dbConfig";
-import { MentorMenteeRelationship } from "../../../../lib/db/mentorMenteeRelationshipSchema";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {

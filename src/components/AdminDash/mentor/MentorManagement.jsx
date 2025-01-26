@@ -323,41 +323,41 @@ const handleEditMentor = async (updatedMentor) => {
   // };
   
 
-    const fetchMentors = async ({ academicYear = '', academicSession = '' } = {}) => {
-    if (!academicYear || !academicSession) {
+    const fetchMentors = async (filters = {}) => {
+    if (!filters.academicYear || !filters.academicSession) {
       return;
     }
   
     setLoading(true);
     try {
-      // Store current filters
-      setCurrentFilters({ 
-        academicYear, 
-        academicSession
-      });
-  
       const params = new URLSearchParams();
-      params.append('academicYear', academicYear);
-      params.append('academicSession', academicSession);
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
   
       const response = await axios.get(`/api/admin/manageUsers/manageMentor?${params}`);
       
-      if (response.data && response.data.mentors) {
-        setMentors(response.data.mentors);
+      if (response.data) {
+        const updatedMentors = response.data.mentors || [];
+        
+        // If there's an email filter, apply it locally first
+        const filteredMentors = filters.mentorEmailid 
+          ? updatedMentors.filter(mentor => 
+              mentor.email.toLowerCase().includes(filters.mentorEmailid.toLowerCase()))
+          : updatedMentors;
+
+        setMentors(filteredMentors);
         setTableVisible(true);
+        setCurrentFilters(filters); // Update current filters after successful fetch
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Error fetching mentors", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
+      toast.error(error.response?.data?.error || "Error fetching mentors");
       setMentors([]);
       setTableVisible(false);
     } finally {
       setLoading(false);
     }
   };
-  
 
   // Add this new function to handle patch update
   const handlePatchUpdate = async () => {
@@ -576,31 +576,27 @@ const handleEditMentor = async (updatedMentor) => {
   //   setOpenDialog(true);
   // };
 
+  // Update handleFilterChange to trigger fetch
+  const handleFilterChange = (filters) => {
+    fetchMentors(filters);
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
-        <Toaster 
-          position="bottom-right"
-          reverseOrder={false}
-          containerStyle={{
-            position: 'fixed',
-            bottom: 20,
-            right: 20,
-            zIndex: 100000
-          }}
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: 'rgba(17, 24, 39, 0.95)',
-              color: '#fff',
-              backdropFilter: 'blur(8px)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              maxWidth: '400px',
-              fontSize: '0.875rem',
-            },
-          }}
-        />
+       <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  duration: 3000,
+                  style: {
+                    background: "rgba(0, 0, 0, 0.8)",
+                    color: "#fff",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "0.75rem",
+                  },
+                }}
+              />
         
         {/* Background Effects */}
         <div className="absolute inset-0 z-0">
@@ -664,26 +660,8 @@ const handleEditMentor = async (updatedMentor) => {
                     academicYear,
                     academicSession,
                   }}
-                  onFilterChange={(name, value) => {
-                    switch (name) {
-                      case "academicYear":
-                        setAcademicYear(value);
-                        break;
-                      case "academicSession":
-                        setAcademicSession(value);
-                        break;
-                      case "email":
-                        // Update currentFilters with new email value
-                        setCurrentFilters(prev => ({
-                          ...prev,
-                          email: value
-                        }));
-                        break;
-                    }
-                  }}
-                  onSearch={({ academicYear, academicSession, MUJid }) => {
-                    fetchMentors({ academicYear, academicSession, MUJid });
-                  }}
+                  onFilterChange={handleFilterChange}
+                  onSearch={fetchMentors}
                   onAddNew={() => setOpenDialog(true)}
                   onDelete={handleDeleteMentor}
                   mentors={mentors}

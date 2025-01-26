@@ -1,317 +1,304 @@
-"use client"
-import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { CgMenuRound, CgCloseO } from 'react-icons/cg'
-import { motion, AnimatePresence } from 'framer-motion'
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import { FiChevronDown, FiLogOut, FiGrid, FiInfo } from "react-icons/fi";
+import { usePathname, useRouter } from "next/navigation";
 
 const Navbar = () => {
-    // const [dropdownVisible, setDropdownVisible] = useState(false)
-    const [email, setEmail] = useState('')
-    const [role, setRole] = useState('')
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const router = useRouter()
-    let hideDropdownTimeout;
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const [user, setUser] = useState({
+    name: "Guest",
+    email: "",
+    initial: "G",
+    roles: [],
+  });
 
-    const buttonVariants = {
-        idle: { scale: 1 },
-        hover: { 
-            scale: 1.05,
-            boxShadow: '0 0 20px rgba(34, 197, 94, 0.5)',
-            transition: {
-                duration: 0.3,
-                yoyo: Infinity
-            }
-        }
+  useEffect(() => {
+    const mentorData = JSON.parse(sessionStorage.getItem("mentorData") || "{}");
+
+    if (mentorData.email) {
+      setUser({
+        name: mentorData.name || "Guest",
+        email: mentorData.email,
+        initial: (mentorData.name?.[0] || "G").toUpperCase(),
+        roles: mentorData.role || [],
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
     };
 
-    useEffect(() => {
-        const storedRole = sessionStorage.getItem('role');
-        const storedEmail = sessionStorage.getItem('email');
-        
-        if (storedEmail) setEmail(storedEmail);
-        if (storedRole) {
-            setRole(storedRole);
-        }
-    }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
-    useEffect(() => {
-        const handleClickOutside = () => {
-            // Close mobile menu when clicking outside
-            if (isMobileMenuOpen) {
-                setIsMobileMenuOpen(false);
-            }
-        };
+  // Don't render navbar on root route
+  if (pathname === "/") {
+    return null;
+  }
 
-        // Add click event listener to document
-        document.addEventListener('click', handleClickOutside);
+  const getRandomColor = () => {
+    const colors = [
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-yellow-500",
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
 
-        // Cleanup function
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
-    }, [isMobileMenuOpen]); // Dependencies array
+  const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
-    const handleLogout = () => {
-        sessionStorage.clear();
-        setRole('');
-        setEmail('');
-        router.push('/');
+  const handleLogout = () => {
+    sessionStorage.clear();
+    router.push("/");
+  };
+
+  const handleRoleSwitch = () => {
+    const currentRole = sessionStorage.getItem("role");
+    if (currentRole === "mentor") {
+      sessionStorage.setItem("role", "admin");
+      router.push("/pages/admin/admindashboard");
+    } else {
+      sessionStorage.setItem("role", "mentor");
+      router.push("/pages/mentordashboard");
     }
+  };
 
-    const handleDashboard = () => {
-        if (role === 'admin' || role === 'superadmin') {
-            router.push('/pages/admin/admindashboard')
-        } else if (role === 'mentor') {
-            router.push('/pages/mentordashboard')
-        } else if (role === 'mentee') {
-            router.push('/pages/menteedashboard')
-        } else {
-            router.push('/') // Default dashboard
-        }
+  const generateBreadcrumbs = () => {
+    if (pathname === "/pages/mentordashboard") {
+      return [{ label: "Mentor Dashboard", path: "/pages/mentordashboard" }];
     }
-
-    const showDropdown = () => {
-        clearTimeout(hideDropdownTimeout);
-        // setDropdownVisible(true);
+    if (pathname === "/pages/viewmentee") {
+      return [
+        { label: "Mentor Dashboard", path: "/pages/mentordashboard" },
+        { label: "View Mentee", path: "/pages/viewmentee" },
+      ];
     }
-    const hideDropdown = () => {
-        hideDropdownTimeout = setTimeout(() => {
-            // setDropdownVisible(false);
-        }, 300); // Adjust the delay as needed
+    if (pathname === "/pages/meetings/schmeeting") {
+      return [
+        { label: "Mentor Dashboard", path: "/pages/mentordashboard" },
+        { label: "Schedule Meeting", path: "/pages/meetings/schmeeting" },
+      ];
     }
-
-    const toggleMobileMenu = (e) => {
-        e.stopPropagation(); // Prevent the click from bubbling up
-        setIsMobileMenuOpen(!isMobileMenuOpen);
+    if (pathname === "/pages/mentordashboard/consolidatedReport") {
+      return [
+        { label: "Mentor Dashboard", path: "/pages/mentordashboard" },
+        {
+          label: "Consolidated Report",
+          path: "/pages/mentordashboard/consolidatedReport",
+        },
+      ];
     }
-
-    const handleAboutUs = () => {
-        router.push('/about');
+    if (pathname === "/pages/admin/admindashboard") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+      ];
     }
+    if (pathname === "/pages/admin/managementee") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+        { label: "Manage Mentees", path: "/pages/admin/managementee" },
+      ];
+    }
+    if (pathname === "/pages/admin/managemeeting") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+        { label: "Manage Meetings", path: "/pages/admin/managemeeting" },
+      ];
+    }
+    if (pathname === "/pages/admin/managementor") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+        { label: "Manage Mentors", path: "/pages/admin/managementor" },
+      ];
+    }
+    if (pathname === "/pages/admin/createacademicsession") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+        {
+          label: "Create Academic Session",
+          path: "/pages/admin/createacademicsession",
+        },
+      ];
+    }
+    if (pathname === "/archives") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+        {
+          label: "Archives",
+          path: "/archives",
+        },
+      ];
+    }
+    if (pathname === "/pages/meetings/mreport") {
+      return [
+        { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
+        {
+          label: "Manage Meetings",
+          path: "/pages/admin/managemeeting",
+        },
+        {
+          label: "Meeting Reports",
+          path: "/pages/meetings/mreport",
+        },
+      ];
+    }
+    if (pathname === "/about") {
+      return [
+        {
+          label: `${user.roles === "mentor" ? "Mentor" : "Admin"} Dashboard`,
+          path: `${
+            user.roles === "mentor"
+              ? "/pages/mentordashboard"
+              : "/pages/admin/admindashboard"
+          }`,
+        },
+        {
+          label: "Manage Meetings",
+          path: "/pages/admin/managemeeting",
+        },
+      ];
+    }
+    return [{ label: "Home", path: "/" }];
+  };
 
-    return (
-        <nav className=" rounded-lg fixed top-0 z-50 h-15 w-full bg-gradient-to-r from-orange-500/10 via-orange-400/10 to-pink-500/10 backdrop-blur-md border-b border-orange-200/20 flex justify-center">
-            <div className="px-4 md:px-6 py-3 flex items-center justify-between w-full">
-                {/* Left Logo Section */}
-                <div className="flex items-center gap-3">
-                    <motion.div
-                        className="flex items-center gap-2"
-                        variants={{
-                            hidden: { opacity: 0, x: -20 },
-                            show: { opacity: 1, x: 0 }
-                        }}
-                        initial="hidden"
-                        animate="show"
-                        transition={{ duration: 0.3 }}
-                    >
-                        <motion.div
-                            whileHover={{ scale: 1.05, boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)' }}
-                            whileTap={{ scale: 0.95 }}
-                            className="relative bg-[#fa8634] rounded-md px-5 py-2 transition-all duration-200 ease-in-out" 
-                        >
-                            <Image 
-                                src="/muj-logo.svg" 
-                                alt="MUJ Logo" 
-                                className="h-8 w-auto filter" 
-                                width={32} 
-                                height={32} 
-                                priority 
-                            />
-                        </motion.div>
-                        <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="relative bg-white/5 p-1.5 rounded-xl backdrop-blur-md shadow-md px-6 py-2 transition-all duration-200 ease-in-out"
-                        >
-                            <Image 
-                                src="/sdc-logo-black.webp" 
-                                alt="SDC Logo" 
-                                className="h-8 w-[auto] filter drop-shadow-lg " 
-                                width={32} 
-                                height={32} 
-                                priority 
-                            />
-                        </motion.div>
-                    </motion.div>
+  return (
+    <nav className='bg-gradient-to-r from-orange-500/10 via-orange-400/10 to-pink-500/10 border-b border-orange-200/20 absolute w-full max-w-[100vw] z-[100]'>
+      <div className='max-w-[90vw] px-4 sm:px-6 lg:px-8'>
+        <div className='flex justify-between h-16 items-center'>
+          <div className='flex items-center space-x-4'>
+            <div className='flex-shrink-0'>
+              <img
+                className='h-12 w-auto'
+                src='/muj-logo.svg'
+                alt='Primary Logo'
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src =
+                    "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9";
+                }}
+              />
+            </div>
+            <div className='flex-shrink-0 hidden md:block'>
+              <img
+                className='h-12 w-auto'
+                src='/sdc-logo.webp'
+                alt='Secondary Logo'
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src =
+                    "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9";
+                }}
+              />
+            </div>
+          </div>
 
-                    {role && (
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="hidden md:flex items-center text-sm px-3 py-1.5 rounded-lg
-                                     bg-orange-500/10 hover:bg-orange-500/20
-                                     border border-orange-200/20 hover:border-orange-200/40
-                                     text-white/90 font-medium transition-all duration-300"
-                            onClick={handleDashboard}
-                        >
-                            {role === 'admin' || role === 'superadmin' 
-                                ? 'Admin Dashboard' 
-                                : `${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard`
-                            }
-                        </motion.button>
+          <div className='hidden md:block flex-1 px-8'>
+            <div className='flex justify-center'>
+              <nav className='flex' aria-label='Breadcrumb'>
+                {generateBreadcrumbs().map((item, index) => (
+                  <div key={index} className='flex items-center'>
+                    {index !== 0 && (
+                      <svg
+                        className='flex-shrink-0 h-5 w-5 text-gray-400'
+                        viewBox='0 0 20 20'
+                        fill='currentColor'>
+                        <path
+                          fillRule='evenodd'
+                          d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z'
+                          clipRule='evenodd'
+                        />
+                      </svg>
                     )}
+                    <a
+                      href={item.path}
+                      className={`${
+                        index === generateBreadcrumbs().length - 1
+                          ? "text-gray-300 hover:text-gray-100"
+                          : "text-gray-500 hover:text-gray-400"
+                      } ml-2 text-sm font-medium`}>
+                      {item.label}
+                    </a>
+                  </div>
+                ))}
+              </nav>
+            </div>
+          </div>
+
+          <div className='relative z-[1000000]' ref={dropdownRef}>
+            <button
+              onClick={toggleDropdown}
+              className='flex items-center space-x-3 focus:outline-none'
+              aria-label='User menu'
+              aria-expanded={isDropdownOpen}>
+              <div
+                className={`${getRandomColor()} h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold`}>
+                {user.initial}
+              </div>
+              <FiChevronDown />
+            </button>
+
+            {isDropdownOpen && (
+              <div className='absolute right-0 mt-2 w-[fit-content] rounded-md shadow-lg py-1 bg-gradient-to-r from-gray-900 to-gray-800 ring-1 ring-orange-500/20'>
+                <div className='px-4 py-2 border-b border-orange-500/20'>
+                  <p className='text-sm font-medium text-orange-100'>
+                    {user.name}
+                  </p>
+                  <p className='text-sm text-orange-200/60'>{user.email}</p>
                 </div>
 
-                {/* Desktop Menu */}
-                <motion.div 
-                    className="hidden md:flex items-center gap-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                >
-                    {email && role ? (
-                        <>
-                            <span className="text-sm max-lg:hidden text-white/70 px-3 py-1.5 rounded-lg bg-orange-500/10">
-                                {email}
-                            </span>
-                            <div className="relative" onMouseEnter={showDropdown} onMouseLeave={hideDropdown}>
-                                <motion.button
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className="text-sm px-3 py-1.5 rounded-lg text-white/90
-                                             bg-orange-500/10 hover:bg-orange-500/20
-                                             border border-orange-200/20 hover:border-orange-200/40
-                                             transition-all duration-300"
-                                >
-                                    Profile
-                                </motion.button>
-                            </div>
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleLogout}
-                                className="text-sm px-3 py-1.5 rounded-lg text-white/90
-                                         bg-red-500/10 hover:bg-red-500/20
-                                         border border-red-500/20 hover:border-red-500/30
-                                         transition-all duration-300"
-                            >
-                                Logout
-                            </motion.button>
-                        </>
-                    ) : (
-                        <motion.button
-                            variants={buttonVariants}
-                            initial="idle"
-                            whileHover="hover"
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleAboutUs}
-                            className="text-sm px-4 py-2 rounded-lg text-emerald-50
-                                     bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-teal-500/20
-                                     hover:from-green-500/30 hover:via-emerald-500/30 hover:to-teal-500/30
-                                     border border-green-400/30
-                                     transition-all duration-300
-                                     relative overflow-hidden
-                                     group"
-                        >
-                            <span className="relative z-10">About Us</span>
-                            <motion.div
-                                className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 opacity-0 group-hover:opacity-20
-                                         transition-opacity duration-300"
-                                animate={{
-                                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                                }}
-                                transition={{
-                                    duration: 5,
-                                    repeat: Infinity,
-                                    ease: 'linear'
-                                }}
-                            />
-                        </motion.button>
-                    )}
-                </motion.div>
-
-                {/* Mobile Menu Button */}
-                <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    className="md:hidden text-white/90 p-1.5 hover:bg-orange-500/10 rounded-lg
-                             border border-orange-200/20"
-                    onClick={toggleMobileMenu}
-                >
-                    {isMobileMenuOpen ? 
-                        <CgCloseO className="w-5 h-5" /> : 
-                        <CgMenuRound className="w-5 h-5" />
-                    }
-                </motion.button>
-            </div>
-
-            {/* Mobile Menu */}
-            <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden absolute top-full left-0 right-0 
-                                 bg-gradient-to-b from-gray-900/95 to-gray-800/95
-                                 border-t border-orange-200/20 backdrop-blur-md
-                                 shadow-xl"
-                    >
-                        <div className="p-4 space-y-3">
-                            {email && role && (
-                                <>
-                                    <div className="px-4 py-3 rounded-lg bg-gray-800/80 
-                                                  border border-orange-200/20">
-                                        <p className="text-xs text-orange-200/70">Signed in as:</p>
-                                        <p className="truncate text-white font-medium">{email}</p>
-                                    </div>
-                                    <button
-                                        className="w-full px-4 py-3 rounded-lg
-                                                 bg-gradient-to-r from-orange-500/20 to-pink-500/20
-                                                 hover:from-orange-500/30 hover:to-pink-500/30
-                                                 border border-orange-200/30
-                                                 transition-all duration-300
-                                                 text-left group"
-                                        onClick={handleDashboard}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-white font-medium">Dashboard</span>
-                                            <span className="text-orange-300 transform group-hover:translate-x-1 transition-transform">→</span>
-                                        </div>
-                                    </button>
-                                    <button
-                                        className="w-full px-4 py-3 rounded-lg
-                                                 bg-gradient-to-r from-red-500/20 to-red-600/20
-                                                 hover:from-red-500/30 hover:to-red-600/30
-                                                 border border-red-200/30
-                                                 transition-all duration-300
-                                                 text-left group"
-                                        onClick={handleLogout}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-white font-medium">Logout</span>
-                                            <span className="text-red-300 transform group-hover:translate-x-1 transition-transform">→</span>
-                                        </div>
-                                    </button>
-                                </>
-                            )}
-                            {!email && !role && (
-                                <motion.button
-                                    variants={buttonVariants}
-                                    initial="idle"
-                                    whileHover="hover"
-                                    whileTap={{ scale: 0.95 }}
-                                    className="w-full px-4 py-3 rounded-lg
-                                             bg-gradient-to-r from-emerald-500/20 to-teal-500/20
-                                             hover:from-emerald-500/30 hover:to-teal-500/30
-                                             border border-emerald-400/30
-                                             transition-all duration-300
-                                             relative overflow-hidden
-                                             group text-left"
-                                    onClick={handleAboutUs}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-white font-medium relative z-10">About Us</span>
-                                        <span className="text-emerald-300 relative z-10 transform group-hover:translate-x-1 transition-transform">→</span>
-                                    </div>
-                                </motion.button>
-                            )}
-                        </div>
-                    </motion.div>
+                {user.roles && user.roles.length >= 2 && (
+                  <button
+                    onClick={handleRoleSwitch}
+                    className='flex w-full items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
+                    <FiGrid className='mr-3 h-5 w-5 text-orange-400' />
+                    {sessionStorage.getItem("role") === "mentor"
+                      ? "Admin"
+                      : "Mentor"}{" "}
+                    Dashboard
+                  </button>
                 )}
-            </AnimatePresence>
-        </nav>
-    );
+
+                {/* {user.roles && user.roles.length >= 2 && (
+                  <a
+                    href='/dashboard'
+                    className='flex items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
+                    <FiGrid className='mr-3 h-5 w-5 text-orange-400' />
+                    Dashboard
+                  </a>
+                )} */}
+
+                <a
+                  href='/about'
+                  className='flex items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
+                  <FiInfo className='mr-3 h-5 w-5 text-orange-400' />
+                  About Us
+                </a>
+
+                <button
+                  onClick={handleLogout}
+                  className='flex w-full items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
+                  <FiLogOut className='mr-3 h-5 w-5 text-orange-400' />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
 };
 
 export default Navbar;
-

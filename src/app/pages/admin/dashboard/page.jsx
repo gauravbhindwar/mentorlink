@@ -9,7 +9,7 @@ export default function Page() {
             <AdminOption link="/pages/admin/view-mentors" text="View Mentors" />
             <AdminOption link="/pages/admin/view-mentees" text="View Mentees" />
             <AdminOption link="" text="Generate Meeting Reports" />
-            <AdminOption link="" text="Edit/Assign Mentors" onClick={() => console.log("hello")} />
+            {/* <AdminOption link="" text="Edit/Assign Mentors" onClick={() => console.log("hello")} /> */}
         </div>
     </>
   );

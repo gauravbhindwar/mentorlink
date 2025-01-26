@@ -14,6 +14,11 @@ export async function PATCH(request) {
     // Remove MUJid from update data if present
     const { ...updateData } = data;
 
+    // Ensure role is always an array
+    if (typeof updateData.role === 'string') {
+      updateData.role = [updateData.role];
+    }
+
     // Validate required fields
     if (!mujid) {
       return NextResponse.json({ error: "MUJid is required" }, { status: 400 });
@@ -39,9 +44,12 @@ export async function PATCH(request) {
     );
 
     // Handle admin role changes
-    const wasAdmin = existingMentor.role.some(r => ['admin', 'superadmin'].includes(r));
-    const isNowAdmin = data.role.some(r => ['admin', 'superadmin'].includes(r));
-    const adminRoles = data.role.filter(r => ['admin', 'superadmin'].includes(r));
+    // const wasAdmin = existingMentor.role.includes('admin') || existingMentor.role.includes('superadmin');
+    const wasAdmin = existingMentor.role.includes('admin') 
+    // const wasAdmin = existingMentor.role.includes('admin') || existingMentor.role.includes('superadmin');
+    const isNowAdmin = updateData.role.includes('admin')
+    // const isNowAdmin = updateData.role.includes('admin') || updateData.role.includes('superadmin');
+    const adminRoles = updateData.role.filter(r => ['admin'].includes(r));
 
     if (isNowAdmin) {
       // Update or create admin record

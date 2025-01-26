@@ -1,479 +1,583 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { ToastContainer, toast } from "react-toastify";
-import { motion, AnimatePresence } from "framer-motion"; // Add AnimatePresence to imports
-import "react-toastify/dist/ReactToastify.css";
-import { signIn } from "next-auth/react";
-import Image from 'next/image';
+// Remove ReCAPTCHA import as v3 doesn't need a component
 
-const FormSchema = z.object({
-  email: z.string().email({ message: "Invalid email address" }),
-  pin: z
-    .string()
-    .min(6, { message: "Your one-time password must be 6 characters." }),
-});
+// Move loadReCaptchaScript outside component and modify it to return a promise
+const loadReCaptchaScript = () => {
+  return new Promise((resolve) => {
+    if (window.grecaptcha) {
+      resolve();
+      return;
+    }
 
-const Login = ({ role }) => {
-
-  const form = useForm({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      email: "",
-      pin: "",
-    },
+    const script = document.createElement("script");
+    script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      window.grecaptcha.ready(() => {
+        resolve();
+      });
+    };
+    document.head.appendChild(script);
   });
+};
 
-  const [email, setEmail] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [resendEnabled, setResendEnabled] = useState(false);
-  const [timer, setTimer] = useState(60);
-  const [loading, setLoading] = useState(false); // Add loading state
+const Login = () => {
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [otp, setOTP] = useState(""); // Initialize with empty string instead of undefined
+  const [emailError, setEmailError] = useState("");
+  const [sendOTPSuccess, setSendOTPSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isVerifyHovered, setIsVerifyHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [roles, setRoles] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [verifySuccess, setVerifySuccess] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [canResend, setCanResend] = useState(false);
+  const [isRecaptchaLoaded, setIsRecaptchaLoaded] = useState(false);
 
   useEffect(() => {
-    if (otpSent) {
-      const countdown = setInterval(() => {
-        setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    const initRecaptcha = async () => {
+      try {
+        await loadReCaptchaScript();
+        setIsRecaptchaLoaded(true);
+      } catch (error) {
+        console.error("Failed to load reCAPTCHA:", error);
+      }
+    };
+
+    initRecaptcha();
+
+    // Cleanup
+    return () => {
+      // Remove the script when component unmounts
+      const scripts = document.querySelectorAll(`script[src*="recaptcha"]`);
+      scripts.forEach((script) => script.remove());
+    };
+  }, []);
+
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
       }, 1000);
-
-      if (timer === 0) {
-        setResendEnabled(true);
-        clearInterval(countdown);
-      }
-
-      return () => clearInterval(countdown);
+    } else if (countdown === 0 && sendOTPSuccess) {
+      setCanResend(true);
     }
-  }, [otpSent, timer]);
+    return () => clearInterval(timer);
+  }, [countdown, sendOTPSuccess]);
 
-  const showToast = {
-    success: (message) => toast.success(message, {
-      position: "bottom-right",
-      autoClose: 3000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      className: "toast-success",
-      bodyClassName: "toast-body",
-      style: {
-        background: "linear-gradient(to right, #f97316, #ea580c)",
-        color: "white",
-        borderRadius: "10px",
-        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.15)",
-      },
-    }),
-    error: (message) => toast.error(message, {
-      position: "bottom-right",
-      autoClose: 4000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      className: "toast-error",
-      bodyClassName: "toast-body",
-      style: {
-        background: "#ffffff",
-        color: "#f97316",
-        border: "2px solid #f97316",
-        borderRadius: "10px",
-        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.1)",
-      },
-    })
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      return "Email is required";
+    }
+    if (!regex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    return "";
   };
 
-  const handleFormSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-
-    if (!otpSent) {
-      try {
-        const response = await axios.post("/api/auth/send-otp", {
-          email: email,
-          role: role,
-        }); 
-        if (response.status === 200) {
-          showToast.success("OTP sent successfully");
-          setOtpSent(true);
-          setResendEnabled(false);
-          setTimer(60);
-        } else {
-          showToast.error(response.data.message || "Error sending OTP. Please try again later.");
-        }
-      } catch (error) {
-        showToast.error(error.response?.data?.message || "Error sending OTP");
-      } finally {
-        setLoading(false);
-      }
+  const handleEmailChange = (e) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    // Only show validation error if user has started typing
+    if (newEmail) {
+      setEmailError(validateEmail(newEmail));
     } else {
-      try {
-        // Verify OTP
-        const verifyResponse = await axios.post("/api/auth/verify-otp", {
-          email: email,
-          role: role,
-          otp: otp,
-        });
-
-        if (!verifyResponse.data.success) {
-          showToast.error(verifyResponse.data.message || "OTP verification failed");
-          setLoading(false);
-          return;
-        }
-
-        // Sign in with credentials
-        const result = await signIn("credentials", {
-          email,
-          role,
-          otp,
-          redirect: false,
-        });
-
-        if (result?.ok) {
-          showToast.success("Login successful!");
-          
-          // Store session data
-          sessionStorage.setItem('email', email);
-          sessionStorage.setItem('role', role);
-          if (verifyResponse.data?.mujid) {
-            sessionStorage.setItem('mujid', verifyResponse.data.mujid);
-          }
-
-          // Redirect based on role
-          const dashboardPath = 
-            role === "mentor" ? "/pages/mentordashboard" :
-            role === "mentee" ? "/pages/menteedashboard" :
-            "/pages/admin/admindashboard";
-
-          router.push(dashboardPath);
-        } else {
-          showToast.error(result?.error || "Login failed");
-        }
-      } catch (error) {
-        const errorMessage = error?.response?.data?.message || 
-                           error?.message || 
-                           "Error during authentication";
-        showToast.error(errorMessage);
-      } finally {
-        setLoading(false);
-      }
+      setEmailError("");
+    }
+  };
+  const handleOTPChange = (e) => {
+    const value = e.target.value.replace(/\D/g, ""); // Remove any non-digits
+    if (value.length <= 6) {
+      // Only allow up to 6 digits
+      setOTP(value);
     }
   };
 
-  const handleOtpChange = (value) => {
-    setOtp(value);
+  // Update executeCaptcha function
+  const executeCaptcha = async () => {
+    if (!isRecaptchaLoaded || !window.grecaptcha) {
+      throw new Error("reCAPTCHA not loaded");
+    }
+
+    try {
+      const token = await window.grecaptcha.execute(
+        process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY,
+        {
+          action: "submit",
+        }
+      );
+      return token;
+    } catch (error) {
+      console.error("reCAPTCHA execution error:", error);
+      throw new Error("Security verification failed");
+    }
   };
 
-  const handleResendOtp = async () => {
-    if (resendEnabled) {
-      setLoading(true); // Set loading to true
-      try {
-        const response = await axios.post("/api/auth/send-otp", {
-          email: email,
-          role: role,
-        });
-        if (response.status === 200) {
-          showToast.success("OTP resent successfully");
-          setResendEnabled(false);
-          setTimer(60);
-        } else {
-          showToast.error("Error resending OTP");
-        }
-      } catch {
-        showToast.error("Error resending OTP");
-      } finally {
-        setLoading(false); // Set loading to false
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const error = validateEmail(email);
+    if (error) {
+      setEmailError(error);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const captchaToken = await executeCaptcha();
+      if (!captchaToken) {
+        throw new Error("Security verification failed");
       }
+
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          captchaToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setEmailError(data.message || "Error sending OTP");
+        setSendOTPSuccess(false);
+      }
+      if (data.success) {
+        setEmailError("");
+        setSendOTPSuccess(true);
+        setCountdown(50); // Start timer when OTP is first sent
+        setCanResend(false);
+        // console.log("OTP sent successfully");
+      }
+    } catch (error) {
+      setEmailError(
+        error.message || "Security verification failed. Please try again."
+      );
+      setSendOTPSuccess(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update handleResendOTP to include captcha
+  const handleResendOTP = async () => {
+    setIsLoading(true);
+    setCanResend(false);
+    setCountdown(50); // Reset timer to 50 seconds
+
+    try {
+      const captchaToken = await executeCaptcha();
+      if (!captchaToken) {
+        throw new Error("Security verification failed");
+      }
+
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          captchaToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setEmailError(data.message || "Error resending OTP");
+      }
+      if (data.success) {
+        setEmailError("");
+        setSendOTPSuccess(true);
+      }
+    } catch (error) {
+      setEmailError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifySubmit = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length !== 6) {
+      setOtpError("Please enter a valid 6-digit OTP");
+      setVerifySuccess(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOtpError(data.message || "Error verifying OTP");
+        setVerifySuccess(false);
+      }
+      if (data.success) {
+        setOtpError("");
+        setVerifySuccess(true);
+        // Store role and email in session storage
+        if (data.role && data.role.length > 1) {
+          sessionStorage.setItem("UserRole", data.role);
+        }
+        sessionStorage.setItem("role", data.role);
+        sessionStorage.setItem("email", email);
+        sessionStorage.setItem("mujid", data.MUJid);
+
+        const response = await axios.get("/api/mentor", {
+          params: { MUJId: data.MUJid, email: email },
+        });
+        const mentorInfo = response.data;
+        if (mentorInfo) {
+          sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
+        }
+        if (data && data.role && data.role.length > 1) {
+          setRoles(data.role);
+        } else {
+          // Single role - direct redirect using router
+          switch (data.role[0]) {
+            case "admin":
+              router.push("/pages/admin/admindashboard");
+              break;
+            case "mentor":
+              router.push("/pages/mentordashboard");
+              break;
+            default:
+              setOtpError("Invalid role assigned");
+          }
+        }
+      } else {
+        setOtpError(data.message || "Invalid OTP");
+      }
+    } catch (error) {
+      setOtpError(error.message);
+      setVerifySuccess(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen">
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 99999
-        }}
-        toastStyle={{
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '14px',
-          fontWeight: '500',
-          position: 'relative',
-          transform: 'none !important',
-          transition: 'opacity 0.3s ease-in-out !important'
-        }}
-        className="!fixed !bottom-4 !right-4"
-        progressStyle={{
-          background: 'linear-gradient(to right, #f97316, #ea580c)',
-        }}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="flex flex-col md:flex-row gap-4 items-center justify-center text-center"
-      >
-        <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ 
-          opacity: 1, 
-          scale: 1,
-          height: otpSent ? "420px" : "320px" // Reduced from 480px to 420px
-        }}
-        transition={{ 
-          duration: 0.5,
-          height: {
-            duration: 0.4,
-            ease: "easeInOut"
-          }
-        }}
-        className="w-full max-w-md bg-white shadow-lg rounded-xl p-6 md:p-12 flex flex-col justify-center overflow-hidden"
-      >
-        <div className="space-y-6">
-          <Image 
-            src="/muj-logo.svg" 
-            alt="MUJ Logo" 
-            width={150} 
-            height={150} 
-            style={{ width: "auto", height: "auto" }} 
-            className="mx-auto mb-4"
-          />
-          <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <motion.div 
-                        className="relative w-full"
-                        initial={{ x: -50, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ 
-                          type: "spring",
-                          stiffness: 100,
-                          damping: 15,
-                          duration: 0.6 
-                        }}
-                      >
-                        <div className="relative h-14">
-                          <Input
-                            {...field}
-                            placeholder="Enter your email address"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            name="email"
-                            className={`
-                              w-full h-full pr-4 mr-8
-                              text-base
-                              rounded-2xl
-                              border-[1.5px] border-orange-300
-                              focus:border-orange-500 focus:ring-1 focus:ring-orange-500
-                              transition-all duration-200
-                              bg-white
-                              shadow-sm hover:shadow-md
-                              disabled:bg-gray-100 disabled:border-gray-300
-                              disabled:cursor-not-allowed
-                              motion-reduce:transition-none
-                              placeholder:text-gray-400
-                              placeholder:transition-all
-                              placeholder:duration-200
-                              focus:placeholder:opacity-0
-                              focus:placeholder:-translate-y-10
-                              ${email ? 'border-orange-500 bg-orange-50/30 placeholder:opacity-0' : ''}
-                            `}
-                            disabled={otpSent}
+    <div className='w-full flex flex-col items-center justify-center min-w-screen gap-14'>
+      {!verifySuccess ? (
+        <>
+          <form onSubmit={handleSubmit} className='w-full max-w-2xl px-4'>
+            <div className='flex flex-col gap-6'>
+              {" "}
+              {/* Added flex-col and gap */}
+              <div className='flex gap-4 items-center'>
+                <div className='flex-1 max-w-[400px] relative'>
+                  <label
+                    htmlFor='email'
+                    className={`absolute left-4 transition-all duration-300 pointer-events-none
+                  ${
+                    isFocused || email
+                      ? "-translate-y-7 text-sm text-orange-500"
+                      : "translate-y-3 text-gray-400"
+                  }`}
+                    style={{
+                      transformOrigin: "0 0",
+                    }}>
+                    Enter your email
+                  </label>
+                  <input
+                    id='email'
+                    type='email'
+                    value={email}
+                    disabled={sendOTPSuccess}
+                    onChange={handleEmailChange}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    className={`w-full px-4 py-3 rounded-lg bg-transparent border 
+                  ${emailError ? "border-red-500" : "border-gray-300"}
+                  ${
+                    sendOTPSuccess
+                      ? "border-green-500 bg-slate-800 opacity-60"
+                      : ""
+                  }
+                  text-white focus:outline-none focus:ring-2 
+                  ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
+                  transition-all duration-300`}
+                    required
+                  />
+                  {emailError && (
+                    <span className='absolute left-0 -bottom-6 text-red-500 text-sm'>
+                      {emailError}
+                    </span>
+                  )}
+                  {sendOTPSuccess && (
+                    <span className='absolute left-0 -bottom-6 text-green-500 text-sm'>
+                      OTP sent successfully
+                    </span>
+                  )}
+                </div>
+                {!sendOTPSuccess && (
+                  <button
+                    type='submit'
+                    disabled={isLoading}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                    className='relative px-6 py-3 !text-white rounded-lg transition-all duration-300 
+              disabled:opacity-50 hover:scale-102 active:scale-90 transform
+              after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
+              after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
+              before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
+              hover:after:opacity-100 after:duration-300'>
+                    {isLoading ? (
+                      <span className='flex items-center justify-center relative z-10'>
+                        <svg
+                          className='animate-spin h-5 w-5 mr-3'
+                          viewBox='0 0 24 24'>
+                          <circle
+                            className='opacity-25'
+                            cx='12'
+                            cy='12'
+                            r='10'
+                            stroke='currentColor'
+                            strokeWidth='4'
+                            fill='none'
                           />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
-                          </div>
-                        </div>
-                      </motion.div>
-                    </FormControl>
-                    <FormMessage className="text-orange-500 mt-1 text-sm" />
-                  </FormItem>
-                )}
-              />
-
-              <AnimatePresence mode="wait">
-                {otpSent && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: "auto" }}
-                    exit={{ opacity: 0, y: -20, height: 0 }}
-                    transition={{ 
-                      duration: 0.3,
-                      ease: "easeInOut",
-                      opacity: { duration: 0.2 },
-                      height: { duration: 0.3 }
-                    }}
-                  >
-                    <FormField
-                      control={form.control}
-                      name="pin"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col items-center">
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                          >
-                            <FormLabel className="text-gray-700 font-semibold text-lg mb-4">
-                              One-Time Password
-                            </FormLabel>
-                          </motion.div>
-                          <FormControl>
-                            <div className="relative flex justify-center w-full">
-                              <InputOTP
-                                maxLength={6}
-                                {...field}
-                                value={otp}
-                                onChange={handleOtpChange}
-                                separator={
-                                  <span className="text-orange-400 text-2xl mx-2 animate-pulse">•</span>
-                                }
-                                className="gap-3"
-                              >
-                                <InputOTPGroup className="gap-2 flex justify-center"> 
-                                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                                    <InputOTPSlot
-                                      key={index}
-                                      index={index}
-                                      className={`
-                                        w-10 h-10 
-                                        text-center text-xl font-bold  // Reduced text size from 2xl to xl
-                                        rounded-lg
-                                        border-2 border-orange-200
-                                        focus:border-orange-500 focus:ring-2 focus:ring-orange-400
-                                        transition-all duration-300
-                                        transform hover:scale-105
-                                        bg-gradient-to-b from-white to-orange-50
-                                        shadow-md hover:shadow-orange-200
-                                        placeholder:text-orange-300
-                                        ${otp[index] ? 'border-orange-400 scale-105' : ''}
-                                        motion-safe:animate-pop-in
-                                      `}
-                                      placeholder="_"
-                                      style={{
-                                        animationDelay: `${index * 100}ms`,
-                                      }}
-                                    />
-                                  ))}
-                                </InputOTPGroup>
-                              </InputOTP>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className={`
-                  w-full py-2 md:py-3 rounded-full 
-                  bg-gradient-to-r from-orange-400 to-orange-600 
-                  hover:from-orange-500 hover:to-orange-700
-                  text-white shadow-lg 
-                  transition-all duration-300 ease-in-out
-                  transform hover:scale-105 active:scale-95
-                  ${loading ? 'opacity-80 cursor-not-allowed' : 'hover:shadow-xl'}
-                `}
-              >
-                {loading ? "Processing..." : otpSent ? "Verify OTP" : "Send OTP"}
-              </Button>
-
-              {otpSent && (
-                <div className="mt-4 flex justify-between items-center">
-                  <Button
-                    type="button"
-                    disabled={!resendEnabled || loading}
-                    onClick={handleResendOtp}
-                    className={`
-                      px-4 py-2 rounded-md text-sm font-semibold
-                      transition-all duration-300 ease-in-out
-                      transform hover:scale-105 active:scale-95
-                      ${resendEnabled && !loading 
-                        ? 'bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      }
-                    `}
-                  >
-                    {loading ? (
-                      <svg
-                        className="animate-spin h-5 w-5 mr-2 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                    ) : resendEnabled ? (
-                      "Resend OTP"
+                          <path
+                            className='opacity-75'
+                            fill='currentColor'
+                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                          />
+                        </svg>
+                        Processing...
+                      </span>
                     ) : (
-                      <span className="flex items-center">
-                        Resend OTP in <span className="font-mono mx-1">{timer}s</span>
+                      <span
+                        className={`relative z-10 flex items-center gap-2 ${
+                          isHovered ? "text-white" : "text-gray-300 mx-3"
+                        }`}>
+                        <span>Continue</span>
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-300 ${
+                            isHovered ? "translate-x-1 opacity-100" : "hidden"
+                          }`}
+                          fill='none'
+                          viewBox='0 0 24 24'
+                          stroke='currentColor'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M9 5l7 7-7 7'
+                          />
+                        </svg>
                       </span>
                     )}
-                  </Button>
+                  </button>
+                )}
+              </div>
+            </div>
+          </form>
+
+          {sendOTPSuccess && (
+            <form
+              onSubmit={handleVerifySubmit}
+              className='w-full max-w-2xl px-4'>
+              <div className='flex flex-col gap-4'>
+                <div className='flex gap-4 items-center'>
+                  <div className='flex-1 max-w-[400px] relative'>
+                    <label
+                      htmlFor='otp'
+                      className={`absolute left-4 transition-all duration-300 pointer-events-none
+                ${
+                  isFocused || otp
+                    ? "-translate-y-7 text-sm text-orange-500"
+                    : "translate-y-3 text-gray-400"
+                }`}
+                      style={{
+                        transformOrigin: "0 0",
+                      }}>
+                      Enter OTP
+                    </label>
+                    <input
+                      id='otp'
+                      type='text' // Changed from 'otp' to 'text'
+                      value={otp}
+                      onChange={handleOTPChange}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
+                      className={`w-full px-4 py-3 rounded-lg bg-transparent border 
+                ${emailError ? "border-red-500" : "border-gray-300"}
+                text-white focus:outline-none focus:ring-2 
+                ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
+                transition-all duration-300`}
+                      required
+                    />
+                    {otpError && (
+                      <span className='absolute left-0 -bottom-6 text-red-500 text-sm'>
+                        {otpError}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type='submit'
+                    disabled={isLoading}
+                    onMouseEnter={() => setIsVerifyHovered(true)}
+                    onMouseLeave={() => setIsVerifyHovered(false)}
+                    className='relative px-6 py-3 !text-white rounded-lg transition-all duration-300 
+                    disabled:opacity-50 hover:scale-102 active:scale-90 transform
+                    after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
+                    after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
+                    before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
+                    hover:after:opacity-100 after:duration-300'>
+                    {isLoading ? (
+                      <span className='flex items-center justify-center relative z-10'>
+                        <svg
+                          className='animate-spin h-5 w-5 mr-3'
+                          viewBox='0 0 24 24'>
+                          <circle
+                            className='opacity-25'
+                            cx='12'
+                            cy='12'
+                            r='10'
+                            stroke='currentColor'
+                            strokeWidth='4'
+                            fill='none'
+                          />
+                          <path
+                            className='opacity-75'
+                            fill='currentColor'
+                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                          />
+                        </svg>
+                        Processing...
+                      </span>
+                    ) : (
+                      <span
+                        className={`relative z-10 flex items-center gap-2 ${
+                          isVerifyHovered ? "text-white" : "text-gray-300 mx-3"
+                        }`}>
+                        <span>Verify</span>
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-300 ${
+                            isVerifyHovered
+                              ? "translate-x-1 opacity-100"
+                              : "hidden"
+                          }`}
+                          fill='none'
+                          viewBox='0 0 24 24'
+                          stroke='currentColor'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M9 5l7 7-7 7'
+                          />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
                 </div>
-              )}
+
+                <button
+                  type='button'
+                  disabled={!canResend || isLoading || countdown > 0}
+                  onClick={handleResendOTP}
+                  className={`self-start ml-1 text-sm flex items-center gap-2 transition-all duration-300
+                    ${
+                      countdown > 0
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-orange-500 hover:text-orange-400"
+                    }
+                  `}>
+                  {countdown > 0 ? (
+                    <>
+                      <svg className='animate-spin h-4 w-4' viewBox='0 0 24 24'>
+                        <circle
+                          className='opacity-25'
+                          cx='12'
+                          cy='12'
+                          r='10'
+                          stroke='currentColor'
+                          strokeWidth='4'
+                          fill='none'
+                        />
+                        <path
+                          className='opacity-75'
+                          fill='currentColor'
+                          d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                        />
+                      </svg>
+                      <span>Resend OTP in {countdown}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className='w-4 h-4'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+                        />
+                      </svg>
+                      <span>Resend OTP</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
-          </Form>
+          )}
+        </>
+      ) : roles.length > 1 ? (
+        <div className='flex flex-col items-center gap-6 relative'>
+          <h2 className='text-white text-2xl'>Select your dashboard</h2>
+          <div className='flex gap-6'>
+            <div
+              onClick={() => {
+                sessionStorage.setItem("role", "admin");
+                router.push("/pages/admin/admindashboard");
+              }}
+              className='cursor-pointer p-6 rounded-lg border border-gray-300 hover:border-orange-500 active:border-blue-600 active:bg-blue-500 transition-all relative '>
+              <h3 className='text-white text-xl mb-2'>Admin Dashboard</h3>
+              <p className='text-gray-400'>Manage mentors/mentees</p>
+            </div>
+
+            <div
+              onClick={() => {
+                sessionStorage.setItem("role", "mentor");
+                router.push("/pages/mentordashboard");
+              }}
+              className='cursor-pointer p-6 rounded-lg border border-gray-300 hover:border-orange-500 active:border-blue-600 active:scale-90 active:bg-blue-500 transition-all relative'>
+              <h3 className='text-white text-xl mb-2'>Mentor Dashboard</h3>
+              <p className='text-gray-400'>Manage meetings</p>
+            </div>
+          </div>
         </div>
-      </motion.div>
-    </motion.div>
+      ) : (
+        <div className='flex justify-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500'></div>
+        </div>
+      )}
     </div>
   );
 };

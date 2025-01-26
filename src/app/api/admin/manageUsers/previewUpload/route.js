@@ -186,10 +186,6 @@ export async function POST(req) {
       }
 
       if (type === 'mentee') {
-        if (!row.section || !/^[A-Z]$/i.test(row.section)) {
-          rowErrors.push('Invalid section (must be a single letter A-Z)');
-        }
-
         if (!row.semester || isNaN(row.semester) || row.semester < 1 || row.semester > 8) {
           rowErrors.push('Invalid semester (must be between 1-8)');
         }

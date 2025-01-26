@@ -2,34 +2,36 @@ import nodemailer from "nodemailer";
 import smtpTransport from "nodemailer-smtp-transport";
 import bcrypt from "bcryptjs";
 import { connect } from "../../../../lib/dbConfig";
-import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
-import { NextResponse } from 'next/server';
+import { Mentor } from "../../../../lib/dbModels";
+import { NextResponse } from "next/server";
 
 // Function to generate a 6-digit OTP
 const generateOtp = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString(); 
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 // Configure the nodemailer transport for sending emails
-const transporter = nodemailer.createTransport(smtpTransport({
-    service: 'Gmail',
+const transporter = nodemailer.createTransport(
+  smtpTransport({
+    service: "Gmail",
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
     tls: {
-        rejectUnauthorized: false
-    }
-}));
+      rejectUnauthorized: false,
+    },
+  })
+);
 
 // Function to send OTP via email
 const sendOtpEmail = async (email, otp) => {
-    await transporter.sendMail({
-        from: `"MentorLink" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Your MentorLink Verification Code',
-        text: `Your verification code is ${otp}`,
-        html: `
+  await transporter.sendMail({
+    from: `"MentorLink" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Your MentorLink Verification Code",
+    text: `Your verification code is ${otp}`,
+    html: `
             <div style="
                 font-family: 'Arial', sans-serif;
                 max-width: 600px;
@@ -93,71 +95,82 @@ const sendOtpEmail = async (email, otp) => {
                 </div>
             </div>
         `,
-        priority: 'high'
-    });
+    priority: "high",
+  });
 };
 
-// Function to check user based on role and store OTP in their document
-const storeOtpForUser = async (email, role, otp) => {
-    let User;
-    switch (role) {
-        case 'mentor':
-            User = Mentor;
-            break;
-        case 'admin':
-        case 'superadmin': // Combined case for both admin types
-            User = Admin;
-            break;
-        case 'mentee':
-            User = Mentee;
-            break;
-        default:
-            throw new Error("Invalid role");
-    }
+// Function to check user based on store OTP in their document
+const storeOtpForUser = async (email, otp) => {
+  await connect();
 
-    await connect();
-    
-    const user = await User.findOne({ email });
-    if (!user) {
-        throw new Error(`${role} not found`);
-    }
+  const user = await Mentor.findOne({ email });
+  if (!user) {
+    throw new Error(`${email} not found, please contact your admin`);
+  }
 
-    // Hash the OTP
-    const hashedOtp = await bcrypt.hash(otp, 10);
+  // Hash the OTP
+  const hashedOtp = await bcrypt.hash(otp, 10);
 
-    // Update user document
-    user.otp = hashedOtp;
-    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    user.isOtpUsed = false;
+  // Update user document
+  user.otp = hashedOtp;
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  user.isOtpUsed = false;
 
-    // Save and verify
-    await user.save();
+  // Save and verify
+  await user.save();
 
-    return user;
+  return user;
 };
 
 // Main POST handler to send OTP
 export async function POST(req) {
-    try {
-        const { email, role } = await req.json();
+  await connect();
+  try {
+    const { email, captchaToken } = await req.json();
 
-        if (!email || !role) {
-            return NextResponse.json(
-                { success: false, message: "Email and role are required" },
-                { status: 400 }
-            );
-        }
+    // Verify reCAPTCHA v3 token
+    const captchaVerification = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${process.env.RECAPTCHA_SECRET_V3_KEY}&response=${captchaToken}`,
+    });
 
-        // Generate OTP and send it via email
-        const generatedOtp = generateOtp();
-        await storeOtpForUser(email, role, generatedOtp); // Store OTP in user document
-        await sendOtpEmail(email, generatedOtp); // Send OTP email
+    const captchaResult = await captchaVerification.json();
 
-        return NextResponse.json({ success: true, message: "OTP sent" }, { status: 200 });
-    } catch (error) {
-        return NextResponse.json(
-            { success: false, message: error.message || "Error processing request" },
-            { status: 500 }
-        );
+    // Check both success and score for v3
+    if (!captchaResult.success || captchaResult.score < 0.5) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Security check failed. Please try again.",
+          score: captchaResult.score 
+        },
+        { status: 400 }
+      );
     }
+
+    if (!email) {
+      return NextResponse.json(
+        { success: false, message: "Email is required" },
+        { status: 400 }
+      );
+    }
+
+    // Generate OTP and send it via email
+    const generatedOtp = generateOtp();
+    await storeOtpForUser(email, generatedOtp); // Store OTP in user document
+    await sendOtpEmail(email, generatedOtp); // Send OTP email
+
+    return NextResponse.json(
+      { success: true, message: "OTP sent" },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, message: error.message || "Error processing request" },
+      { status: 500 }
+    );
+  }
 }

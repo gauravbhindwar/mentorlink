@@ -2,13 +2,13 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "@/components/subComponents/Navbar";
 import FirstTimeLoginForm from "./FirstTimeLoginForm";
-// import Image from 'next/image'
 import { FiX } from "react-icons/fi";
 import axios from "axios";
 import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
+import AttendanceDialog from "@/components/Meetings/AttendanceDialog";
+import { Button } from "@mui/material";
 
 const MentorDashBoard = () => {
   const router = useRouter();
@@ -32,67 +32,161 @@ const MentorDashBoard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isClientSide, setIsClientSide] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
+  const [activeTab, setActiveTab] = useState(null);
 
-  const extractSessionData = (data) => ({
-    name: data.name,
-    email: data.email,
-    MUJid: data.MUJid,
-    academicSession: data.academicSession,
-    academicYear: data.academicYear,
-    isFirstTimeLogin: data.isFirstTimeLogin,
-  });
+  // const extractSessionData = (data) => ({
+  //   name: data.name,
+  //   email: data.email,
+  //   MUJid: data.MUJid,
+  //   academicSession: data.academicSession,
+  //   academicYear: data.academicYear,
+  //   isFirstTimeLogin: data.isFirstTimeLogin,
+  // });
 
   useEffect(() => {
     setIsClientSide(true);
   }, []);
 
+  // const getCurrentSemester = (session) => {
+  //   return session?.includes('JANUARY-JUNE') ? [2, 4, 6, 8] : [1, 3, 5, 7];
+  // };
+
+  const fetchMeetingsForSemester = async (
+    mentorId,
+    year,
+    session,
+    semester
+  ) => {
+    try {
+      if (
+        mentorId != undefined &&
+        year != undefined &&
+        session != undefined &&
+        semester != undefined
+      ) {
+        const response = await fetch(
+          `/api/mentor/manageMeeting?mentorId=${mentorId}&academicYear=${year}&session=${session}&semester=${semester}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch meetings");
+        }
+        const data = await response.json();
+        return data.meetings || [];
+      }
+    } catch (error) {
+      console.error(`Error fetching meetings for semester ${semester}:`, error);
+      return [];
+    }
+  };
+
   useEffect(() => {
-    const fetchMentorData = async () => {
+    const fetchInitialData = async () => {
+      setLoading(true);
       try {
+        // 1. Check session storage for mentor data
         const sessionData = sessionStorage.getItem("mentorData");
+        let mentorInfo;
+
         if (sessionData) {
-          const parsedData = JSON.parse(sessionData);
-          setMentorData(parsedData);
-          setLoading(false);
-          return;
+          mentorInfo = JSON.parse(sessionData);
+          setMentorData(mentorInfo);
+        } else {
+          // Get MUJ ID from session storage if available
+          const storedMUJId = sessionStorage.getItem("mujid");
+          const storedEmail = sessionStorage.getItem("email");
+          const response = await axios.get("/api/mentor", {
+            params: { MUJId: storedMUJId, email: storedEmail },
+          });
+          mentorInfo = response.data;
+          if (!mentorInfo.isFirstTimeLogin) {
+            sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
+          }
+          setMentorData(mentorInfo);
         }
 
-        const response = await fetch("/api/mentor");
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Mentor data:", data);
-          if (!data.isFirstTimeLogin) {
-            sessionStorage.setItem(
-              "mentorData",
-              JSON.stringify(extractSessionData(data))
-            );
-          }
-          setMentorData(data);
+        if (!mentorInfo.isFirstTimeLogin) {
+          setMeetingsLoading(true);
+
+          // Get primary semester (4 for Jan-June, 3 for July-Dec)
+          const primarySemester =
+            mentorInfo?.academicSession &&
+            mentorInfo?.academicSession.includes("JANUARY-JUNE")
+              ? 4
+              : 3;
+
+          // Fetch primary semester meetings first
+          const primaryMeetings = await fetchMeetingsForSemester(
+            mentorInfo.MUJid,
+            mentorInfo.academicYear,
+            mentorInfo.academicSession,
+            primarySemester
+          );
+
+          // Set initial meetings
+          setMeetings(primaryMeetings);
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(primaryMeetings)
+          );
+          setMeetingsLoading(false);
+
+          // Fetch other semesters in background
+          const otherSemesters =
+            mentorInfo?.academicSession &&
+            mentorInfo?.academicSession.includes("JANUARY-JUNE")
+              ? [2, 6, 8]
+              : [1, 5, 7];
+
+          Promise.all(
+            otherSemesters.map(async (semester) => {
+              const semesterMeetings = await fetchMeetingsForSemester(
+                mentorInfo.MUJid,
+                mentorInfo.academicYear,
+                mentorInfo.academicSession,
+                semester
+              );
+
+              if (semesterMeetings.length > 0) {
+                setMeetings((prevMeetings) => {
+                  const updatedMeetings = [
+                    ...prevMeetings,
+                    ...semesterMeetings,
+                  ];
+                  sessionStorage.setItem(
+                    "meetingData",
+                    JSON.stringify(updatedMeetings)
+                  );
+                  return updatedMeetings;
+                });
+              }
+            })
+          );
         }
       } catch (error) {
-        console.error("Error fetching mentor data:", error);
+        console.error("Error fetching initial data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMentorData();
+    fetchInitialData();
   }, []);
 
-  // Add this helper function before the component
-  const mergeMeetings = (meetings) => {
-    return meetings.reduce((acc, meeting) => {
-      const existingMeeting = acc.find(
-        (m) => m.meeting.meeting_id === meeting.meeting.meeting_id
-      );
-      if (existingMeeting) {
-        existingMeeting.sections.push(meeting.section);
-      } else {
-        acc.push({ ...meeting, sections: [meeting.section] });
-      }
-      return acc;
-    }, []);
-  };
+  // // Add this helper function before the component
+  // const mergeMeetings = (meetings) => {
+  //   return meetings.reduce((acc, meeting) => {
+  //     const existingMeeting = acc.find(
+  //       (m) => m.meeting.meeting_id === meeting.meeting.meeting_id
+  //     );
+  //     if (existingMeeting) {
+  //       existingMeeting.sections.push(meeting.section);
+  //     } else {
+  //       acc.push({ ...meeting, sections: [meeting.section] });
+  //     }
+  //     return acc;
+  //   }, []);
+  // };
 
   // Add this helper function before the component
   const groupBySemester = (meetings) => {
@@ -106,44 +200,12 @@ const MentorDashBoard = () => {
     }, {});
   };
 
-  // Replace the meetings fetch useEffect with this updated version
-  useEffect(() => {
-    const fetchMeetings = async () => {
-      if (
-        !mentorData.MUJid ||
-        !mentorData.academicYear ||
-        !mentorData.academicSession
-      )
-        return;
-      setMeetingsLoading(true);
-      try {
-        const response = await fetch(
-          `/api/mentor/manageMeeting?mentorId=${mentorData.MUJid}&academicYear=${mentorData.academicYear}&session=${mentorData.academicSession}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          const mergedMeetings = mergeMeetings(data.meetings);
-
-          if(mergedMeetings.length > 0) {
-            if(sessionStorage.getItem("meetingData")){
-              sessionStorage.removeItem("meetingData");
-            }
-            sessionStorage.setItem("meetingData", JSON.stringify(mergedMeetings));
-            setMeetings(mergedMeetings);
-          }
-          setMeetingsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching meetings:", error);
-      } finally {
-        setMeetingsLoading(false);
-      }
-    };
-
-    if (!mentorData.isFirstTimeLogin) {
-      fetchMeetings();
-    }
-  }, [mentorData]);
+  // Add this helper function near the top of the file, before the component
+  const getAllSemesters = (academicSession) => {
+    return academicSession?.includes("JANUARY-JUNE")
+      ? [2, 4, 6, 8]
+      : [1, 3, 5, 7];
+  };
 
   useEffect(() => {
     const {
@@ -172,63 +234,151 @@ const MentorDashBoard = () => {
     }));
   };
 
-  // const handleMenteeCheck = (e, index, MUJid) => {
-  //   if (e.target.checked) {
-  //     setMeetingNotes((prevNotes) => ({
-  //       ...prevNotes,
-  //       presentMentees: [...prevNotes.presentMentees, MUJid],
-  //     }));
-  //   } else {
-  //     setMeetingNotes((prevNotes) => ({
-  //       ...prevNotes,
-  //       presentMentees: prevNotes.presentMentees.filter((id) => id !== MUJid),
-  //     }));
-  //   }
-  // };
-
-  // Update the handleMeetingSubmit function
   const handleMeetingSubmit = async () => {
     setIsSubmitting(true);
     try {
-      await axios.post("/api/meeting/mentors/reportmeeting", {
+      const response = await axios.post("/api/meeting/mentors/reportmeeting", {
         mentor_id: mentorData.MUJid,
         meeting_id: selectedMeeting.meeting.meeting_id,
         meeting_notes: meetingNotes,
         presentMentees: meetingNotes.presentMentees,
       });
-      console.log("Meeting notes submitted successfully", selectedMeeting);
-      await axios.post("/api/mentee/meetings-attended", {
-        meeting_id: selectedMeeting.meeting.meeting_id,
-        presentMentees: meetingNotes.presentMentees,
-        totalMentees: selectedMeeting.meeting?.mentee_ids,
-      });
-      setSelectedMeeting(null);
-      setMeetingNotes({
-        TopicOfDiscussion: "",
-        TypeOfInformation: "",
-        NotesToStudent: "",
-        issuesRaisedByMentee: "",
-        outcome: "",
-        closureRemarks: "",
-        feedbackFromMentee: "",
-        presentMentees: [],
-      });
-      setMeetingsLoading(true);
-      const updatedMeetings = await fetch(
-        `/api/mentor/manageMeeting?mentorId=${mentorData.MUJid}&academicYear=${mentorData.academicYear}&session=${mentorData.academicSession}`
-      );
-      if (updatedMeetings.ok) {
-        const data = await updatedMeetings.json();
-        const mergedMeetings = mergeMeetings(data.meetings);
-        setMeetings(mergedMeetings);
-        setMeetingsLoading(false);
+
+      if (response.data.meeting) {
+        // Update attendance records
+        // console.log("Meeting report submitted successfully:", response.data);
+        await axios.post("/api/mentee/meetings-attended", {
+          mentor_id: mentorData.MUJid,
+          meeting_id: selectedMeeting.meeting.meeting_id,
+          presentMentees: meetingNotes.presentMentees,
+          totalMentees: selectedMeeting.meeting?.mentee_ids,
+        });
+
+        // Update meetings in state
+        setMeetings((prevMeetings) => {
+          const updatedMeetings = prevMeetings.map((meeting) => {
+            if (
+              meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id
+            ) {
+              return {
+                ...meeting,
+                meeting: {
+                  ...meeting.meeting,
+                  meeting_notes: meetingNotes,
+                  present_mentees: meetingNotes.presentMentees,
+                  isReportFilled: true,
+                },
+              };
+            }
+            return meeting;
+          });
+
+          // Update session storage with new meeting data
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(updatedMeetings)
+          );
+          return updatedMeetings;
+        });
+
+        // Clear the form and close the modal
+        setSelectedMeeting(null);
+        setMeetingNotes({
+          TopicOfDiscussion: "",
+          TypeOfInformation: "",
+          NotesToStudent: "",
+          issuesRaisedByMentee: "",
+          outcome: "",
+          closureRemarks: "",
+          feedbackFromMentee: "",
+          presentMentees: [],
+        });
+
+        // Show success message
       }
     } catch (error) {
-      console.log("Error submitting meeting notes:", error);
+      console.error("Error submitting meeting notes:", error);
+      // alert("Failed to submit meeting report. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Add a function to refresh meetings data
+  const refreshMeetings = async () => {
+    setMeetingsLoading(true);
+    try {
+      // Get primary semester (4 for Jan-June, 3 for July-Dec)
+      const primarySemester =
+        mentorData?.academicSession &&
+        mentorData?.academicSession.includes("JANUARY-JUNE")
+          ? 4
+          : 3;
+
+      // Fetch primary semester meetings first
+      let primaryMeetings = await fetchMeetingsForSemester(
+        mentorData.MUJid,
+        mentorData.academicYear,
+        mentorData.academicSession,
+        primarySemester
+      );
+
+      // Ensure primaryMeetings is an array
+      primaryMeetings = Array.isArray(primaryMeetings) ? primaryMeetings : [];
+
+      // Set initial meetings
+      setMeetings(primaryMeetings);
+      sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+
+      // Fetch other semesters in background
+      const otherSemesters =
+        mentorData?.academicSession &&
+        mentorData?.academicSession.includes("JANUARY-JUNE")
+          ? [2, 6, 8]
+          : [1, 5, 7];
+
+      const allMeetingsPromises = otherSemesters.map((semester) =>
+        fetchMeetingsForSemester(
+          mentorData.MUJid,
+          mentorData.academicYear,
+          mentorData.academicSession,
+          semester
+        )
+      );
+
+      const otherSemesterMeetings = await Promise.all(allMeetingsPromises);
+      const flattenedMeetings = [
+        ...primaryMeetings,
+        ...otherSemesterMeetings.flat().filter(Boolean),
+      ];
+
+      setMeetings(flattenedMeetings);
+      sessionStorage.setItem("meetingData", JSON.stringify(flattenedMeetings));
+    } catch (error) {
+      console.error("Error refreshing meetings:", error);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  };
+
+  // Modify the useEffect that handles meeting data to use the refreshMeetings function
+  useEffect(() => {
+    if (!mentorData.isFirstTimeLogin) {
+      refreshMeetings();
+    }
+  }, [mentorData.isFirstTimeLogin]);
+
+  useEffect(() => {
+    if (mentorData?.academicSession) {
+      // Set default semester based on academic session
+      const defaultSemester = mentorData?.academicSession.includes(
+        "JANUARY-JUNE"
+      )
+        ? 4
+        : 3;
+      setActiveTab(defaultSemester);
+    }
+  }, [mentorData?.academicSession]);
 
   const getEmailBody = (meeting) => `
 Dear Mentees,
@@ -247,11 +397,7 @@ ${meeting.meeting.meeting_notes.isMeetingOnline ? "Meeting Link" : "Venue"}: ${
   }
 Branch: ${"CSE CORE"}
 Semester: ${meeting.semester}
-${
-  meeting.sections
-    ? `Sections: ${[...new Set(meeting.sections)].join(", ")}`
-    : `Section: ${meeting.section}`
-}
+
 
 Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
 
@@ -273,26 +419,81 @@ Contact: ${mentorData?.email || ""}`;
         const menteesData = await response.json();
         const menteeEmails = menteesData.map((mentee) => mentee.email);
 
-        const emailPromises = menteeEmails.map(async (email) => {
-          const response = await axios.post("/api/meeting/send-email", {
-            email,
-            subject: `Meeting Reminder - ${meeting.meeting.meeting_id}`,
-            body: getEmailBody(meeting),
-          });
-          return response;
+        const emailResponse = await axios.post("/api/meeting/send-email", {
+          emails: menteeEmails,
+          subject: `Meeting Reminder - ${meeting.meeting.meeting_id}`,
+          body: getEmailBody(meeting),
+          meetingId: meeting.meeting.meeting_id, // Add meeting ID to track emails
         });
-        await Promise.all(emailPromises);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 5000);
+
+        if (emailResponse.data.success) {
+          setShowToast(true);
+          // Show number of times emails were sent for this meeting
+          alert(
+            `Reminder email #${emailResponse.data.totalEmailsSent} sent successfully to ${emailResponse.data.sentCount} recipients`
+          );
+          setTimeout(() => setShowToast(false), 5000);
+        } else {
+          throw new Error(emailResponse.data.message);
+        }
       } else {
         throw new Error("Failed to fetch mentees");
       }
-      // alert('Reminder emails sent successfully!');
     } catch (error) {
       console.error("Error sending emails:", error);
-      alert("Failed to send reminder emails");
+      alert(`Failed to send reminder emails: ${error.message}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSelectAllPresent = () => {
+    if (!selectedMeeting?.menteeDetails) return;
+
+    setMeetingNotes((prev) => ({
+      ...prev,
+      presentMentees: selectedMeeting.menteeDetails.map((m) => m.MUJid),
+    }));
+  };
+
+  const handleAttendanceSubmit = async () => {
+    try {
+      // Update in database
+      await axios.post("/api/meeting/mentors/reportmeeting", {
+        mentor_id: mentorData.MUJid,
+        meeting_id: selectedMeeting.meeting.meeting_id,
+        meeting_notes: {
+          ...meetingNotes,
+          presentMentees: meetingNotes.presentMentees,
+        },
+      });
+
+      // Update in session storage
+      const meetingData = JSON.parse(
+        sessionStorage.getItem("meetingData") || "[]"
+      );
+      const updatedMeetings = meetingData.map((meeting) => {
+        if (meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id) {
+          return {
+            ...meeting,
+            meeting: {
+              ...meeting.meeting,
+              present_mentees: meetingNotes.presentMentees,
+            },
+          };
+        }
+        return meeting;
+      });
+      sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
+
+      // Close the dialog
+      setShowAttendance(false);
+
+      // Show success toast or notification
+      toast.success("Attendance saved successfully");
+    } catch (error) {
+      console.error("Error saving attendance:", error);
+      toast.error("Failed to save attendance");
     }
   };
 
@@ -367,7 +568,6 @@ Contact: ${mentorData?.email || ""}`;
         <div className='absolute inset-0 backdrop-blur-3xl' />
       </div>
 
-      <Navbar />
       {/* {console.log("mentor3:",mentorData)} */}
       {mentorData?.isFirstTimeLogin ? (
         <div className='relative z-10 container mx-auto px-4 pt-20'>
@@ -457,26 +657,34 @@ Contact: ${mentorData?.email || ""}`;
                 borderRadius: "1rem",
               }}>
               <div className='bg-white/10 rounded-lg p-6 backdrop-blur-sm overflow-y-auto max-h-[448px] custom-scrollbar'>
-                {meetingsLoading ? (
-                  <div className='flex items-center justify-center py-8'>
-                    <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white'></div>
-                  </div>
-                ) : meetings.length > 0 ? (
+                {meetings.length > 0 || meetingsLoading ? (
                   <>
                     <h2 className='text-2xl font-bold text-white mb-4'>
                       Upcoming Meetings
                     </h2>
-                    {Object.entries(groupBySemester(meetings))
-                      .sort(([semA], [semB]) => semA - semB)
-                      .map(([semester, semesterMeetings]) => (
-                        <div key={semester} className='mb-6'>
-                          <h3 className='text-xl font-semibold text-white mb-3 border-b border-white/20 pb-2'>
-                            Semester {semester}
-                          </h3>
-                          <div className='space-y-4'>
-                            {semesterMeetings.map((meeting, index) => (
-                              // ... existing meeting card code ...
-                              // Keep the existing meeting card code unchanged
+                    <div className='mb-4 border-b border-gray-700'>
+                      <div className='flex overflow-x-auto space-x-4 custom-scrollbar'>
+                        {getAllSemesters(mentorData.academicSession).map(
+                          (semester) => (
+                            <button
+                              key={semester}
+                              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors duration-200 ${
+                                activeTab === semester
+                                  ? "bg-white/10 text-white border-b-2 border-orange-500"
+                                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                              }`}
+                              onClick={() => setActiveTab(semester)}>
+                              Semester {semester}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                    <div className='space-y-4'>
+                      {activeTab &&
+                        (groupBySemester(meetings)[activeTab]?.length > 0 ? (
+                          groupBySemester(meetings)[activeTab]?.map(
+                            (meeting, index) => (
                               <motion.div
                                 key={index}
                                 initial={{ opacity: 0, y: 20 }}
@@ -486,45 +694,33 @@ Contact: ${mentorData?.email || ""}`;
                                   transition: { delay: index * 0.1 },
                                 }}
                                 className='bg-white/5 p-4 rounded-lg'>
-                                {/* Keep the existing meeting card content */}
-                                {console.log(
+                                {/* {console.log(
                                   "meeting:",
                                   meeting.meeting.meeting_notes.isMeetingOnline
-                                )}
+                                )} */}
                                 <div className='text-white flex justify-between'>
                                   <div>
-                                    <p>
-                                      Meeting Topic:{" "}
-                                      {
-                                        meeting.meeting.meeting_notes
-                                          .TopicOfDiscussion
-                                      }
-                                    </p>
-                                    <p className='font-semibold'>
-                                      {meeting?.sections
-                                        ? `Sections: ${[
-                                            ...new Set(meeting?.sections),
-                                          ].join(", ")}`
-                                        : `Section: ${meeting.section}`}
-                                    </p>
+                                    <div className='space-y-2'>
+                                      <p>
+                                        Meeting Topic:{" "}
+                                        {
+                                          meeting.meeting.meeting_notes
+                                            .TopicOfDiscussion
+                                        }
+                                      </p>
+                                    </div>
+
                                     <p>Semester: {meeting.semester}</p>
                                     <p>
                                       Date:{" "}
-                                      {new Date(meeting.meeting.meeting_date)
-                                        .toLocaleDateString("en-IN", {
-                                          day: "numeric",
-                                          month: "long",
-                                          year: "numeric",
-                                          ordinal: true,
-                                        })
-                                        .replace(
-                                          /(\d+)(?=\s)/,
-                                          (n) =>
-                                            n +
-                                              ["st", "nd", "rd"][
-                                                (((n % 100) - 20) % 10) - 1
-                                              ] || "th"
-                                        )}
+                                      {new Date(
+                                        meeting.meeting.meeting_date
+                                      ).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        ordinal: true,
+                                      })}
                                     </p>
                                     <p>Time: {meeting.meeting.meeting_time}</p>
                                     {meeting.meeting.meeting_notes
@@ -533,7 +729,9 @@ Contact: ${mentorData?.email || ""}`;
                                         <span className='text-gray-300'>
                                           Link:{" "}
                                         </span>
-                                        {meeting.meeting.meeting_notes.venue.includes(
+                                        {meeting?.meeting?.meeting_notes
+                                          ?.venue &&
+                                        meeting?.meeting?.meeting_notes?.venue.includes(
                                           "https:"
                                         ) ? (
                                           <a
@@ -541,7 +739,7 @@ Contact: ${mentorData?.email || ""}`;
                                             target='_blank'
                                             rel='noopener noreferrer'
                                             className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
                                             <span className='truncate max-w-[200px]'>
                                               {
                                                 meeting.meeting.meeting_notes
@@ -557,7 +755,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'
+                                                d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
                                               />
                                             </svg>
                                           </a>
@@ -567,7 +765,7 @@ Contact: ${mentorData?.email || ""}`;
                                             target='_blank'
                                             rel='noopener noreferrer'
                                             className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
                                             <span className='truncate max-w-[200px]'>
                                               {
                                                 meeting.meeting.meeting_notes
@@ -583,7 +781,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'
+                                                d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
                                               />
                                             </svg>
                                           </a>
@@ -620,6 +818,13 @@ Contact: ${mentorData?.email || ""}`;
                                                   outcome: "",
                                                   closureRemarks: "",
                                                   presentMentees: [],
+                                                  isMeetingOnline:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.isMeetingOnline,
+                                                  venue:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes?.venue,
                                                 });
                                               }}
                                               className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
@@ -665,15 +870,19 @@ Contact: ${mentorData?.email || ""}`;
                                                   presentMentees:
                                                     meeting?.meeting
                                                       ?.present_mentees || [],
+                                                  isMeetingOnline:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.isMeetingOnline,
+                                                  venue:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes?.venue,
                                                 });
                                               }}
                                               className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
                                               Edit Report
                                             </button>
-                                            {console.log(
-                                              "meeting1234:",
-                                              meeting?.menteeDetails
-                                            )}
+
                                             {isClientSide && (
                                               <PDFDownloadComponent
                                                 key={meeting.meeting.meeting_id}
@@ -691,9 +900,11 @@ Contact: ${mentorData?.email || ""}`;
                                                   mentorData.name
                                                 )}
                                                 fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
-                                                <button className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+                                                <div
+                                                  className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center'
+                                                  role='button'>
                                                   Download MOM Report
-                                                </button>
+                                                </div>
                                               </PDFDownloadComponent>
                                             )}
                                           </div>
@@ -721,10 +932,14 @@ Contact: ${mentorData?.email || ""}`;
                                   </div>
                                 </div>
                               </motion.div>
-                            ))}
+                            )
+                          )
+                        ) : (
+                          <div className='text-center py-8 text-gray-400'>
+                            No meetings scheduled for Semester {activeTab}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                    </div>
                   </>
                 ) : (
                   <div className='flex flex-col items-center justify-center space-y-4'></div>
@@ -739,20 +954,19 @@ Contact: ${mentorData?.email || ""}`;
           className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4'
           onClick={() => setSelectedMeeting(null)}>
           <div
-            className='bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
+            className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
             onClick={(e) => e.stopPropagation()}>
-            <div className='max-h-[80vh] overflow-y-auto custom-scrollbar px-2'>
+            <div className='sticky top-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-t-xl border-b border-gray-700 flex justify-between items-center'>
+              <h2 className='text-2xl font-bold text-white'>Meeting Notes</h2>
               <button
-                className='absolute top-4 right-4 text-gray-400 hover:text-white transition-colors'
+                className='text-gray-400 hover:text-white transition-colors'
                 onClick={() => setSelectedMeeting(null)}>
                 <FiX size={24} />
               </button>
-
-              <h2 className='text-2xl font-bold mb-6 text-white text-center'>
-                Meeting Notes
-              </h2>
-
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+            </div>
+            <div className='p-6 max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                {/* Left Column */}
                 <div className='space-y-4'>
                   <div className='space-y-2'>
                     <label className='block text-sm font-medium text-gray-300'>
@@ -762,9 +976,8 @@ Contact: ${mentorData?.email || ""}`;
                       type='text'
                       name='TopicOfDiscussion'
                       value={meetingNotes.TopicOfDiscussion}
-                      onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                      placeholder='Enter topic...'
+                      disabled={true}
+                      className='w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-white/70'
                     />
                   </div>
 
@@ -777,8 +990,7 @@ Contact: ${mentorData?.email || ""}`;
                       name='TypeOfInformation'
                       value={meetingNotes.TypeOfInformation}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                      placeholder='Enter information type...'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white'
                     />
                   </div>
 
@@ -791,12 +1003,24 @@ Contact: ${mentorData?.email || ""}`;
                       name='NotesToStudent'
                       value={meetingNotes.NotesToStudent}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                      placeholder='Enter notes...'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white'
                     />
                   </div>
+
+                  <Button
+                    onClick={() => setShowAttendance(true)}
+                    variant='contained'
+                    fullWidth
+                    sx={{
+                      mt: 2,
+                      bgcolor: "#f97316",
+                      "&:hover": { bgcolor: "#ea580c" },
+                    }}>
+                    Mark Attendance
+                  </Button>
                 </div>
 
+                {/* Right Column */}
                 <div className='space-y-4'>
                   <div className='space-y-2'>
                     <label className='block text-sm font-medium text-gray-300'>
@@ -841,77 +1065,26 @@ Contact: ${mentorData?.email || ""}`;
                   </div>
                 </div>
 
-                {selectedMeeting?.menteeDetails?.length > 0 && (
-                  <div className='space-y-4'>
-                    <h3 className='text-lg font-medium text-white mb-3'>
-                      Attendees
-                    </h3>
-                    <div className='space-y-2 max-h-[330px] overflow-y-auto custom-scrollbar'>
-                      {selectedMeeting.menteeDetails.map((mentee, index) => (
-                        <div
-                          key={index}
-                          onClick={() => {
-                            const isPresent =
-                              meetingNotes.presentMentees.includes(
-                                mentee.MUJid
-                              );
-                            if (isPresent) {
-                              setMeetingNotes((prev) => ({
-                                ...prev,
-                                presentMentees: prev.presentMentees.filter(
-                                  (id) => id !== mentee.MUJid
-                                ),
-                              }));
-                            } else {
-                              setMeetingNotes((prev) => ({
-                                ...prev,
-                                presentMentees: [
-                                  ...prev.presentMentees,
-                                  mentee.MUJid,
-                                ],
-                              }));
-                            }
-                          }}
-                          className='flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3 border border-gray-700 cursor-pointer hover:bg-gray-700 transition-colors'>
-                          <div className='flex flex-col'>
-                            <span className='text-white font-medium'>
-                              {mentee.name}
-                            </span>
-                            <span className='text-gray-400 text-sm'>
-                              Section: {mentee.section}
-                            </span>
-                          </div>
-                          <div className='flex items-center space-x-3'>
-                            <input
-                              type='checkbox'
-                              className='w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500'
-                              checked={meetingNotes?.presentMentees.includes(
-                                mentee.MUJid
-                              )}
-                              onChange={(e) => e.stopPropagation()} // Prevent double-firing of click event
-                            />
-                            <span
-                              className={`text-sm font-medium ${
-                                meetingNotes?.presentMentees.includes(
-                                  mentee.MUJid
-                                )
-                                  ? "text-green-500"
-                                  : "text-red-500"
-                              }`}>
-                              {meetingNotes?.presentMentees.includes(
-                                mentee.MUJid
-                              )
-                                ? "Present"
-                                : "Absent"}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Attendance Dialog */}
+                <AttendanceDialog
+                  open={showAttendance}
+                  onClose={() => setShowAttendance(false)}
+                  mentees={selectedMeeting?.menteeDetails || []}
+                  presentMentees={meetingNotes.presentMentees}
+                  onUpdateAttendance={(mujId) => {
+                    setMeetingNotes((prev) => ({
+                      ...prev,
+                      presentMentees:
+                        prev?.presentMentees &&
+                        prev?.presentMentees.includes(mujId)
+                          ? prev.presentMentees.filter((id) => id !== mujId)
+                          : [...prev.presentMentees, mujId],
+                    }));
+                  }}
+                  onSelectAll={handleSelectAllPresent}
+                  onSubmit={handleAttendanceSubmit}
+                />
               </div>
-
               <div className='space-y-2 mt-6'>
                 <label className='block text-sm font-medium text-gray-300'>
                   Feedback from Mentee (Optional)
@@ -924,20 +1097,21 @@ Contact: ${mentorData?.email || ""}`;
                   className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                   placeholder='Enter mentee feedback (optional)...'
                 />
-              </div>
-
+              </div>{" "}
+            </div>{" "}
+            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
               <button
                 onClick={handleMeetingSubmit}
                 disabled={isSubmitDisabled || isSubmitting}
                 className={`
-                                    w-full mt-6 py-3 px-4 rounded-lg text-white font-medium
-                                    transition-all duration-200 flex items-center justify-center
-                                    ${
-                                      isSubmitDisabled
-                                        ? "bg-gray-700 cursor-not-allowed"
-                                        : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                                    }
-                                `}>
+                  w-full py-3 px-4 rounded-lg text-white font-medium
+                  transition-all duration-200 flex items-center justify-center
+                  ${
+                    isSubmitDisabled
+                      ? "bg-gray-700 cursor-not-allowed"
+                      : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  }
+                `}>
                 {isSubmitting ? (
                   <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
                 ) : isSubmitDisabled ? (
@@ -951,6 +1125,7 @@ Contact: ${mentorData?.email || ""}`;
         </div>
       )}
       <AnimatePresence>
+        {" "}
         {showToast && (
           <motion.div
             initial={{ opacity: 0, y: 50 }}
