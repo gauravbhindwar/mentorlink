@@ -9,8 +9,8 @@ import {
   Typography,
   IconButton,
   TextField,
-  Grid,
   MenuItem,
+  Grid2,
   FormControlLabel,
   Switch,
   Box,
@@ -18,6 +18,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { toast } from "react-hot-toast";
 import { dialogStyles, toastStyles } from '../mentorStyle';
+import { Opacity } from '@mui/icons-material';
 
 const EditMentorDialog = ({
   open,
@@ -32,6 +33,16 @@ const EditMentorDialog = ({
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Add isFormValid function
+  const isFormValid = () => {
+    return (
+      selectedMentor?.name?.trim() &&
+      selectedMentor?.email?.trim() &&
+      selectedMentor?.phone_number?.trim() &&
+      selectedMentor?.role?.length > 0
+    );
   };
 
   const handleSubmit = async () => {
@@ -108,26 +119,18 @@ const EditMentorDialog = ({
       </DialogTitle>
       <DialogContent sx={dialogStyles.content}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Grid2 container spacing={3}>
+            <Grid2 xs={12} md={6}>
               <TextField
                 fullWidth
                 label="MUJid"
                 name="MUJid"
                 value={selectedMentor?.MUJid || ""}
-                InputProps={{
-                  readOnly: true, // Make field read-only
-                }}
-                sx={{
-                  ...dialogStyles.textField,
-                  '& .MuiInputBase-input.Mui-readOnly': {
-                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                    cursor: 'not-allowed',
-                  },
-                }}
+                // disabled
+                sx={{ ...dialogStyles.textField, opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none', background: 'rgba(255, 255, 255, 0.05)', color: 'white' ,select:"none" }}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Name"
@@ -137,8 +140,8 @@ const EditMentorDialog = ({
                 required
                 sx={dialogStyles.textField}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Email"
@@ -149,8 +152,8 @@ const EditMentorDialog = ({
                 required
                 sx={dialogStyles.textField}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Phone Number"
@@ -160,24 +163,30 @@ const EditMentorDialog = ({
                 required
                 sx={dialogStyles.textField}
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 xs={12} md={6}>
               <TextField
                 fullWidth
                 select
                 label="Role"
                 name="role"
-                value={selectedMentor?.role || []}
+                value={selectedMentor?.role?.[0] || ""}
                 onChange={handleInputChange}
-                SelectProps={{ multiple: true }}
-                sx={dialogStyles.textField}
+                sx={{...dialogStyles.textField}}
               >
-                <MenuItem value="mentor">Mentor</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="superadmin">Super Admin</MenuItem>
+                <MenuItem value="mentor">
+                  <Typography variant="body1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Mentor
+                  </Typography>
+                </MenuItem>
+                <MenuItem value="admin">
+                  <Typography variant="body1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                    Admin
+                  </Typography>
+                </MenuItem>
               </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Grid2>
+            <Grid2 xs={12} md={6}>
               <FormControlLabel
                 control={
                   <Switch
@@ -201,8 +210,8 @@ const EditMentorDialog = ({
                 label="Active Status"
                 sx={{ color: 'white' }}
               />
-            </Grid>
-          </Grid>
+            </Grid2>
+          </Grid2>
         </Box>
       </DialogContent>
       <DialogActions sx={dialogStyles.actions}>
@@ -223,10 +232,17 @@ const EditMentorDialog = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
+          disabled={!isFormValid()}
           sx={{
             bgcolor: "#f97316",
             "&:hover": {
               bgcolor: "#ea580c",
+            },
+            "&:disabled": {
+              bgcolor: "rgba(249, 115, 22, 0.4)",
+              color: "rgba(255, 255, 255, 0.4)",
+              cursor: "not-allowed",
+              pointerEvents: "none",
             },
           }}
         >

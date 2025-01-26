@@ -124,7 +124,7 @@ const MentorFilterSection = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadDialog, setUploadDialog] = useState(false);
   const [emailSearch, setEmailSearch] = useState('');
-  const [filters, setFilters] = useState({});
+  // const [filters, setFilters] = useState({});
 
   const getCurrentAcademicYear = () => {
     const currentDate = new Date();
@@ -156,20 +156,16 @@ const MentorFilterSection = ({
       return;
     }
   
-    // Parse the session to determine the correct academic year
-    const [sessionType, year] = academicSession.split(' ');
-    const calculatedAcademicYear = sessionType === 'JULY-DECEMBER'
-      ? `${year}-${parseInt(year) + 1}`
-      : `${parseInt(year) - 1}-${year}`;
-  
     const currentFilters = {
-      academicYear: calculatedAcademicYear,
+      academicYear,
       academicSession,
-      mentorEmailid: emailSearch || ''
+      mentorEmailid: emailSearch, // Include email in search
+      batchSize: 50,
+      offset: 0
     };
   
     // Update filters state
-    setFilters(currentFilters);
+    // setFilters(currentFilters);
     
     // Pass filters to parent components
     if (onFilterChange) {
@@ -210,10 +206,10 @@ const MentorFilterSection = ({
   
   const handleReset = () => {
     setEmailSearch('');
-    setFilters(prev => ({
-      ...prev,
-      mentorEmailid: '',
-    }));
+    // setFilters(prev => ({
+    //   ...prev,
+    //   mentorEmailid: '',
+    // }));
   };
 
 
@@ -412,40 +408,36 @@ const MentorFilterSection = ({
 
   const handleEmailSearch = (value) => {
     setEmailSearch(value);
-    // Update the filters state
-    setFilters(prev => ({
-      ...prev,
-      mentorEmailid: value
-    }));
     
-    if (onFilterChange) {
-      onFilterChange({
-        ...filters,
-        mentorEmailid: value
-      });
-    }
+    const currentFilters = {
+      academicYear,
+      academicSession,
+      mentorEmailid: value,
+      batchSize: 50,
+      offset: 0
+    };
+    
+    // setFilters(currentFilters);
+    
+    // Use a single update for both filter change and search
+    onFilterChange?.(currentFilters);
+    
+    // Debounce API call
+    const timeoutId = setTimeout(() => {
+      onSearch(currentFilters);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   };
 
   return (
     <Box sx={filterSectionStyles.wrapper}>
       <Box sx={filterSectionStyles.section}>
        {/* academic year */}
-        <Typography 
-          variant="subtitle2" 
-          sx={{ 
-            // color: 'rgba(255, 255, 255, 0.9)',
-            color: 'red',
-            fontWeight: 600,
-            mb: 0.5, // Reduced from 1
-            letterSpacing: '0.5px'
-          }}
-        >
-          Academic Year
-        </Typography>
-        {/* Year TextField */}
+       
         <Box ref={yearRef} sx={comboBoxStyles}>
           <TextField
-            // label="Academic Year"
+            label="Academic Year"
             value={academicYear}
             InputProps={{
               readOnly: true,
@@ -453,21 +445,7 @@ const MentorFilterSection = ({
             size="small"
             placeholder="YYYY-YYYY"
             margin='dense'
-            sx={{
-              ...textFieldStyles,
-              '& .MuiOutlinedInput-root': {
-                ...textFieldStyles['& .MuiOutlinedInput-root'],
-                background: 'rgba(255, 255, 255, 0.05)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
-                },
-                height: '40px', // Added fixed height
-                userSelect: 'none', // Make text non-selectable
-              },
-            }}
-            fullWidth
+            sx={{...textFieldStyles, pointerEvents: 'none', opacity: 0.7, select: 'none'}}
           />
           {showYearOptions && dropdownRoot && createPortal(
             <Box className="options-dropdown" sx={{ position: 'fixed', transform: 'translateY(100%)' }}>
@@ -495,13 +473,9 @@ const MentorFilterSection = ({
             dropdownRoot
           )}
         </Box>
-
-        <Typography variant="subtitle2" sx={{ color: 'red' , fontWeight: 600 , letterSpacing: '0.5px', mt: 1.5 }}>
-          Academic Session
-        </Typography>
           <Box ref={sessionRef} sx={comboBoxStyles}>
             <TextField
-              // label="Academic Session"
+              label="Academic Session"
               value={academicSession}              
               size="small"
               placeholder="MONTH-MONTH YYYY"
@@ -515,42 +489,36 @@ const MentorFilterSection = ({
               InputProps={{
                 readOnly: true,
               }}
-              fullWidth
+              sx={{...textFieldStyles, pointerEvents: 'none', opacity: 0.7, select: 'none'}}
+            />
+          </Box>
+          <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, mb: 0.5 }}>
+            Filter results by Email (optional)
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <TextField
+              label="Email"
+              value={emailSearch}
+              onChange={(e) => handleEmailSearch(e.target.value)}
+              placeholder="Type to filter by email"
+              type="email"
               sx={{
                 ...textFieldStyles,
+                flex: 1,
+                mr: 1,
                 '& .MuiOutlinedInput-root': {
-            ...textFieldStyles['& .MuiOutlinedInput-root'],
-            height: '40px',
-            
-            '&.Mui-disabled': {
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              color: 'rgba(255, 255, 255, 0.7)',
-            }
+                  ...textFieldStyles['& .MuiOutlinedInput-root'],
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  height: '50px',
+                  borderRadius: '12px',
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#f97316',
+                  },
                 },
               }}
             />
+           
           </Box>
-          <Typography variant="subtitle2" sx={{ color: 'red', fontWeight: 600, mb: 0.5 }}>
-            Filter results by Email (optional)
-          </Typography>
-          <TextField
-            label="Email"
-            value={emailSearch}
-            onChange={(e) => handleEmailSearch(e.target.value)}
-            size="small"
-            placeholder="Type to filter by email"
-            type="email"
-            sx={{
-              ...textFieldStyles,
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                ...textFieldStyles['& .MuiOutlinedInput-root'],
-                background: 'rgba(255, 255, 255, 0.05)',
-                height: '36px',
-              },
-            }}
-            fullWidth
-          />
               </Box>
 
               <Box sx={filterSectionStyles.buttonGroup}>

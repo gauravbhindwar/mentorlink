@@ -94,21 +94,40 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const academicYear = searchParams.get("academicYear");
     const academicSession = searchParams.get("academicSession");
-    const email = searchParams.get("email");
+    const email = searchParams.get("mentorEmailid"); // Changed from email to mentorEmailid
+    const batchSize = parseInt(searchParams.get("batchSize")) || 50;
+    const offset = parseInt(searchParams.get("offset")) || 0;
 
-    // Create query object with only defined parameters
+    // Create base query object
     const query = {};
     if (academicYear) query.academicYear = academicYear;
     if (academicSession) query.academicSession = academicSession;
-    if (email) query.email = email;
-
-    const mentors = await Mentor.find(query).select('-password -otp -otpExpires -isOtpUsed');
-
-    if (!mentors) {
-      return NextResponse.json({ error: "No mentors found" }, { status: 404 });
+    if (email) {
+      query.email = { $regex: email, $options: 'i' }; // Case-insensitive email search
     }
 
-    return NextResponse.json({ mentors });
+    // Get total count for pagination
+    const totalCount = await Mentor.countDocuments(query);
+
+    // Get paginated mentors
+    const mentors = await Mentor.find(query)
+      .select('-password -otp -otpExpires -isOtpUsed')
+      .skip(offset)
+      .limit(batchSize)
+      .sort({ email: 1 }); // Sort by email ascending
+
+    if (!mentors || mentors.length === 0) {
+      return NextResponse.json({ 
+        message: "No mentors found",
+        mentors: [],
+        total: 0
+      }, { status: 200 });
+    }
+
+    return NextResponse.json({ 
+      mentors,
+      total: totalCount
+    });
   } catch (error) {
     console.error("Error fetching mentors:", error);
     return NextResponse.json(
