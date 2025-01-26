@@ -36,14 +36,14 @@ const MentorDashBoard = () => {
   const [showAttendance, setShowAttendance] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
 
-  const extractSessionData = (data) => ({
-    name: data.name,
-    email: data.email,
-    MUJid: data.MUJid,
-    academicSession: data.academicSession,
-    academicYear: data.academicYear,
-    isFirstTimeLogin: data.isFirstTimeLogin,
-  });
+  // const extractSessionData = (data) => ({
+  //   name: data.name,
+  //   email: data.email,
+  //   MUJid: data.MUJid,
+  //   academicSession: data.academicSession,
+  //   academicYear: data.academicYear,
+  //   isFirstTimeLogin: data.isFirstTimeLogin,
+  // });
 
   useEffect(() => {
     setIsClientSide(true);
@@ -247,7 +247,7 @@ const MentorDashBoard = () => {
 
       if (response.data.meeting) {
         // Update attendance records
-        console.log("Meeting report submitted successfully:", response.data);
+        // console.log("Meeting report submitted successfully:", response.data);
         await axios.post("/api/mentee/meetings-attended", {
           mentor_id: mentorData.MUJid,
           meeting_id: selectedMeeting.meeting.meeting_id,
@@ -696,10 +696,10 @@ Contact: ${mentorData?.email || ""}`;
                                   transition: { delay: index * 0.1 },
                                 }}
                                 className='bg-white/5 p-4 rounded-lg'>
-                                {console.log(
+                                {/* {console.log(
                                   "meeting:",
                                   meeting.meeting.meeting_notes.isMeetingOnline
-                                )}
+                                )} */}
                                 <div className='text-white flex justify-between'>
                                   <div>
                                     <div className='space-y-2'>

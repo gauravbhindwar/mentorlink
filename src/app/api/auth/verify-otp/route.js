@@ -1,6 +1,6 @@
 // route.js
 import { connect } from "../../../../lib/dbConfig";
-import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
+import { Mentor} from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 

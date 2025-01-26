@@ -1,4 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button, MenuItem } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { dialogStyles } from '../menteeStyle';
 

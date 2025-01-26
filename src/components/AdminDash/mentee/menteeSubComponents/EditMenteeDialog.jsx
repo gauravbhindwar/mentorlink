@@ -96,7 +96,7 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
     if (error && name !== 'email') {
       toast.error(error, {
         duration: 3000,
-        position: 'top-right'
+        position: 'bottom-right'
       });
     }
   };

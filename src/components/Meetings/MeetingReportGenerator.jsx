@@ -16,9 +16,9 @@ const MeetingReportGenerator = () => {
   const [academicSessions, setAcademicSessions] = useState([]);
   const [mentorMUJid, setMentorMUJid] = useState("");
   const [mentorName, setMentorName] = useState("");
-  const [consolidatedData, setConsolidatedData] = useState({});
-  const [isGeneratingConsolidated, setIsGeneratingConsolidated] =
-    useState(false);
+  // const [consolidatedData, setConsolidatedData] = useState({});
+  // const [isGeneratingConsolidated, setIsGeneratingConsolidated] =
+  //   useState(false);
 
   // Utility functions
   const getCurrentAcademicYear = () => {
@@ -101,12 +101,12 @@ const MeetingReportGenerator = () => {
         ? startYear
         : endYear;
 
-      console.log("Params for meetingReport:", {
-        year: queryYear,
-        session: data.academicSession.trim(),
-        semester: data.semester,
-        mentorMUJid: data.mentorMUJid,
-      });
+      // console.log("Params for meetingReport:", {
+      //   year: queryYear,
+      //   session: data.academicSession.trim(),
+      //   semester: data.semester,
+      //   mentorMUJid: data.mentorMUJid,
+      // });
 
       const response = await axios.get(
         "/api/admin/manageMeeting/meetingReport",
@@ -529,7 +529,7 @@ const MeetingReportGenerator = () => {
 
   return (
     <>
-      <Toaster position='top-right' />
+      <Toaster position='bottom-right' />
       <div className='min-h-screen bg-[#0a0a0a] overflow-y-auto'>
         <div className='absolute inset-0 z-0'>
           {/* Background effects */}

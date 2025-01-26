@@ -15,6 +15,20 @@ export async function POST(request) {
       );
     }
 
+    // Check if academic session already exists
+    const existingSession = await AcademicSession.findOne({
+      start_year: data.start_year,
+      end_year: data.end_year,
+      'sessions.name': data.sessions[0].name
+    });
+
+    if (existingSession) {
+      return NextResponse.json(
+        { error: "Academic session already exists for this period" },
+        { status: 409 }
+      );
+    }
+
     // Create new academic session without sections
     const newSession = new AcademicSession({
       start_year: data.start_year,
@@ -32,6 +46,23 @@ export async function POST(request) {
     console.error("Error creating academic session:", error);
     return NextResponse.json(
       { error: error.message || "Error creating academic session" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    await connect();
+    const sessions = await AcademicSession.find({})
+      .sort({ start_year: -1, 'sessions.name': -1 })
+      .select('start_year end_year sessions');
+
+    return NextResponse.json(sessions);
+  } catch (error) {
+    console.error("Error fetching academic sessions:", error);
+    return NextResponse.json(
+      { error: "Error fetching academic sessions" },
       { status: 500 }
     );
   }

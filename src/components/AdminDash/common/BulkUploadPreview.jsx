@@ -256,8 +256,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
           error: 'Error occurred while uploading'
         }
       );
-    } catch (error) {
-      console.log('Upload error:', error);
+    } catch {
       toast.error('Failed to upload data');
     }
   };

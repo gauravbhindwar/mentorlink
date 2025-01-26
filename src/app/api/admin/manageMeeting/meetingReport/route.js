@@ -24,7 +24,7 @@ export async function GET(request) {
             session,
             parseInt(semester)
         );
-        console.log("meetings", meetings);
+        // console.log("meetings", meetings);
         
         if (!meetings || meetings.length === 0) {
             return NextResponse.json(
@@ -41,10 +41,10 @@ export async function GET(request) {
             mentorName: meetings[0]?.mentorName || 'Unknown',
             meetings
         };
-        console.log('reportData', reportData);
-        console.log("Mentees:", reportData.meetings[0]?.menteeDetails || []);
-        console.log("Present Mentees:", reportData.meetings[0]?.present_mentees || []);
-        console.log("Meeting Notes:", reportData.meetings[0]?.meeting_notes || {});
+        // console.log('reportData', reportData);
+        // console.log("Mentees:", reportData.meetings[0]?.menteeDetails || []);
+        // console.log("Present Mentees:", reportData.meetings[0]?.present_mentees || []);
+        // console.log("Meeting Notes:", reportData.meetings[0]?.meeting_notes || {});
 
         const presentMenteesWithDetails = meetings.flatMap(meeting => {
             if (!meeting.present_mentees || !meeting.menteeDetails) {
@@ -58,7 +58,7 @@ export async function GET(request) {
                 };
             });
         });
-        console.log("Present Mentees with Details:", presentMenteesWithDetails);
+        // console.log("Present Mentees with Details:", presentMenteesWithDetails);
 
         return NextResponse.json({
             reportData,
@@ -67,9 +67,9 @@ export async function GET(request) {
         });
 
     } catch (error) {
-        console.error('Database error:', error);
+        // console.error('Database error:', error);
         return NextResponse.json(
-            { error: 'Failed to generate meeting report', success: false },
+            { error:error, message: 'Database error', success: false },
             { status: 500 }
         );
     }

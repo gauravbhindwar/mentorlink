@@ -378,19 +378,19 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
   }, [filters, baseData]); // Add dependency on filters and baseData
 
   // Add function to update local data
-  const updateLocalData = (newMentee) => {
-    if (!currentFilters?.academicYear || !currentFilters?.academicSession) return;
+  // const updateLocalData = (newMentee) => {
+  //   if (!currentFilters?.academicYear || !currentFilters?.academicSession) return;
 
-    const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
-    const updatedData = [...localData, newMentee];
+  //   const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
+  //   const updatedData = [...localData, newMentee];
     
-    // Update localStorage
-    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+  //   // Update localStorage
+  //   localStorage.setItem(storageKey, JSON.stringify(updatedData));
     
-    // Update state immediately
-    setLocalData(updatedData);
-    setBaseData(updatedData);
-  };
+  //   // Update state immediately
+  //   setLocalData(updatedData);
+  //   setBaseData(updatedData);
+  // };
 
   // Add useEffect to listen for localStorage changes
   useEffect(() => {

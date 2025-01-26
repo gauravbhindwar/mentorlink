@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import smtpTransport from "nodemailer-smtp-transport";
 import bcrypt from "bcryptjs";
 import { connect } from "../../../../lib/dbConfig";
-import { Mentor, Mentee, Admin } from "../../../../lib/dbModels";
+import { Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 
 // Function to generate a 6-digit OTP

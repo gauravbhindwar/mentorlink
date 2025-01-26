@@ -160,7 +160,7 @@ const AddMenteeDialog = ({ open, onClose, onMenteeAdded }) => { // Add onMenteeA
 
     if (missingFields.length > 0) {
       toast.error(`Please fill in required fields: ${missingFields.join(', ')}`, {
-        position: "top-right",
+        position: "bottom-right",
         autoClose: 3000
       });
       return false;

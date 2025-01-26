@@ -328,19 +328,19 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
   };
 
   // Modify bulk assignment semester change handler
-  const handleBulkSemesterChange = (e) => {
-    const value = e.target.value;
-    setBulkAssignDetails(prev => ({
-      ...prev,
-      semester: value
-    }));
-    // Reset available mentees and selected mentees
-    setAvailableMentees([]);
-    setSelectedMentees([]);
-    if (value) {
-      fetchAvailableMentees(value);
-    }
-  };
+  // const handleBulkSemesterChange = (e) => {
+  //   const value = e.target.value;
+  //   setBulkAssignDetails(prev => ({
+  //     ...prev,
+  //     semester: value
+  //   }));
+  //   // Reset available mentees and selected mentees
+  //   setAvailableMentees([]);
+  //   setSelectedMentees([]);
+  //   if (value) {
+  //     fetchAvailableMentees(value);
+  //   }
+  // };
 
   // Update the table styles for better visibility
   const tableStyles = {

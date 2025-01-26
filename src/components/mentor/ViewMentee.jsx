@@ -11,6 +11,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import { DataGrid } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import * as XLSX from 'xlsx';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 const ViewMentee = () => {
     const [mentees, setMentees] = useState([]);
@@ -22,6 +26,7 @@ const ViewMentee = () => {
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredMentees, setFilteredMentees] = useState([]);
+    const [exportAnchorEl, setExportAnchorEl] = useState(null);
 
     // Complete theme configuration
     const theme = createTheme({
@@ -127,7 +132,7 @@ const ViewMentee = () => {
             mentee.MUJid?.toLowerCase().includes(query) ||
             mentee.email?.toLowerCase().includes(query) ||
             mentee.phone?.includes(query) ||
-            mentee.section?.toLowerCase().includes(query) ||
+            // mentee.section?.toLowerCase().includes(query) ||
             String(mentee.semester)?.includes(query)
         );
         setFilteredMentees(filtered);
@@ -154,7 +159,7 @@ const ViewMentee = () => {
             ...selectedMentee,
             address: selectedMentee.address || '',
             email: selectedMentee.email || '',
-            section: selectedMentee.section || '',
+            // section: selectedMentee.section || '',
             semester: selectedMentee.semester || '',
             yearOfRegistration: selectedMentee.yearOfRegistration || '',
             academicSession: selectedMentee.academicSession || '',
@@ -188,7 +193,7 @@ const ViewMentee = () => {
                 ...prev,
                 [name]: value
             }));
-            console.log(`Updating ${name} to:`, value); // Debug log
+            // console.log(`Updating ${name} to:`, value); // Debug log
         }
     };
 
@@ -245,6 +250,68 @@ const ViewMentee = () => {
         }
     };
 
+    const handleExportClick = (event) => {
+        setExportAnchorEl(event.currentTarget);
+    };
+
+    const handleExportClose = () => {
+        setExportAnchorEl(null);
+    };
+
+    const handleExportFormat = (format) => {
+        try {
+            const data = mentees.map(mentee => ({
+                "MUJ ID": mentee.MUJid,
+                "Name": mentee.name,
+                "Email": mentee.email,
+                "Phone": mentee.phone,
+                "Semester": mentee.semester,
+                "Address": mentee.address,
+                "Academic Year": mentee.academicYear,
+                "Academic Session": mentee.academicSession,
+                "Father's Name": mentee.parents?.father?.name,
+                "Father's Email": mentee.parents?.father?.email,
+                "Father's Phone": mentee.parents?.father?.phone,
+                "Mother's Name": mentee.parents?.mother?.name,
+                "Mother's Email": mentee.parents?.mother?.email,
+                "Mother's Phone": mentee.parents?.mother?.phone,
+                "Guardian's Name": mentee.parents?.guardian?.name,
+                "Guardian's Email": mentee.parents?.guardian?.email,
+                "Guardian's Phone": mentee.parents?.guardian?.phone,
+                "Guardian's Relation": mentee.parents?.guardian?.relation
+            }));
+
+            if (format === 'xlsx') {
+                const worksheet = XLSX.utils.json_to_sheet(data);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Mentees");
+                XLSX.writeFile(workbook, `mentees_${new Date().toISOString().split('T')[0]}.xlsx`);
+            } else {
+                // CSV export
+                const headers = Object.keys(data[0]);
+                const csvContent = [
+                    headers.join(','),
+                    ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+                ].join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `mentees_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            
+            toast.success(`Mentees data exported successfully as ${format.toUpperCase()}`);
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            toast.error('Failed to export mentees data');
+        } finally {
+            handleExportClose();
+        }
+    };
+
     const columns = [
         { 
             field: 'MUJid', 
@@ -274,14 +341,6 @@ const ViewMentee = () => {
             field: 'phone', 
             headerName: 'Phone', 
             flex: 1,
-            headerClassName: 'super-app-theme--header',
-            headerAlign: 'center',
-            align: 'center',
-        },
-        { 
-            field: 'section', 
-            headerName: 'Section', 
-            flex: 0.8,
             headerClassName: 'super-app-theme--header',
             headerAlign: 'center',
             align: 'center',
@@ -339,15 +398,62 @@ const ViewMentee = () => {
                 <Navbar />
 
                 <div className="relative z-10 px-4 md:px-6 py-24">
-                    {/* Header */}
+                    {/* Header with Export Button */}
                     <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-center mb-10"
+                        className="flex flex-col md:flex-row justify-between items-center mb-10"
                     >
-                        <motion.h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4">
+                        <motion.h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 md:mb-0">
                             My Mentees
                         </motion.h1>
+                        
+                        <Button
+                            variant="contained"
+                            onClick={handleExportClick}
+                            startIcon={<FileDownloadIcon />}
+                            sx={{
+                                bgcolor: '#f97316',
+                                '&:hover': {
+                                    bgcolor: '#ea580c',
+                                },
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: '0.75rem',
+                                padding: '0.75rem 1.5rem',
+                                textTransform: 'none',
+                                fontSize: '1rem',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                            }}
+                        >
+                            Export
+                        </Button>
+
+                        <Menu
+                            anchorEl={exportAnchorEl}
+                            open={Boolean(exportAnchorEl)}
+                            onClose={handleExportClose}
+                            PaperProps={{
+                                sx: {
+                                    bgcolor: 'rgba(17, 17, 17, 0.95)',
+                                    backdropFilter: 'blur(10px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '0.75rem',
+                                    mt: 1,
+                                    '& .MuiMenuItem-root': {
+                                        color: 'white',
+                                        fontSize: '0.875rem',
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            bgcolor: 'rgba(249, 115, 22, 0.1)',
+                                        },
+                                    },
+                                },
+                            }}
+                        >
+                            <MenuItem onClick={() => handleExportFormat('xlsx')}>Export as Excel (.xlsx)</MenuItem>
+                            <MenuItem onClick={() => handleExportFormat('csv')}>Export as CSV (.csv)</MenuItem>
+                        </Menu>
                     </motion.div>
 
                     {/* Table Section */}
@@ -594,14 +700,6 @@ const ViewMentee = () => {
                                         <Typography variant="subtitle2" color="#f97316">
                                             Academic Information
                                         </Typography>
-                                        <TextField
-                                            label="Section"
-                                            name="section"
-                                            value={isEditing ? editedMentee.section : selectedMentee.section}
-                                            onChange={handleInputChange}
-                                            disabled={!isEditing}
-                                            fullWidth
-                                        />
                                         <TextField
                                             label="Semester"
                                             name="semester"
