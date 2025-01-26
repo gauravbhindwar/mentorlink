@@ -9,32 +9,33 @@ export async function GET(request) {
         const year = searchParams.get('year');
         const session = searchParams.get('session');
         const semester = searchParams.get('semester');
-        const mentorMUJid = searchParams.get('mentorMUJid');
+        const page = searchParams.get('page');
+        const limit = searchParams.get('limit');
 
-        if (!year || !session || !semester || !mentorMUJid) {
+        if (!year || !session || !semester) {
             return NextResponse.json(
                 { error: 'Missing required parameters' },
                 { status: 400 }
             );
         }
 
-        const meetings = await Meeting.getMeetorMeetings(
-            mentorMUJid,
+        const meetingsData = await Meeting.getMentorMeetingsData(
             year,
             session,
-            parseInt(semester)
+            semester,
+            parseInt(page),
+            parseInt(limit)
         );
 
         return NextResponse.json({
-            meetings,
-            total: meetings.length,
+            meetings: meetingsData.meetings,
+            total: meetingsData.total,
             success: true
         });
 
     } catch (error) {
-        console.error('Database error:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch meetings', success: false },
+            { error: 'Failed to fetch meetings', success: false, details: error.message },
             { status: 500 }
         );
     }

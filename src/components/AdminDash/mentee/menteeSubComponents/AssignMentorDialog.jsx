@@ -1,4 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button, MenuItem } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { dialogStyles } from '../menteeStyle';
 
@@ -51,24 +51,11 @@ const AssignMentorDialog = ({ open, onClose, details, onChange, onSubmit }) => {
           />
           <TextField
             label="Semester"
-            name="semester"
             type="number"
             value={details.semester}
             onChange={onChange}
             required
           />
-          <TextField
-            select
-            label="Section"
-            name="section"
-            value={details.section}
-            onChange={onChange}
-            required
-          >
-            {['A', 'B', 'C', 'D', 'E'].map(section => (
-              <MenuItem key={section} value={section}>{section}</MenuItem>
-            ))}
-          </TextField>
         </Box>
       </DialogContent>
       <DialogActions sx={dialogStyles.actions}>

@@ -8,11 +8,10 @@ export async function GET(req) {
     await connect();
     const { searchParams } = new URL(req.url);
     const semester = parseInt(searchParams.get('semester'));
-    const section = searchParams.get('section');
     const academicYear = searchParams.get('academicYear');
     const academicSession = searchParams.get('academicSession');
 
-    if (!semester || !section || !academicYear || !academicSession) {
+    if (!semester|| !academicYear || !academicSession) {
       return NextResponse.json(
         { error: "All parameters are required" },
         { status: 400 }
@@ -22,10 +21,9 @@ export async function GET(req) {
     // Find all mentees matching criteria
     const mentees = await Mentee.find({
       semester,
-      section,
       academicYear,
       academicSession
-    }).select('name MUJid email section semester mentorMujid mentorEmailid phone');
+    }).select('name MUJid email  semester mentorMujid mentorEmailid phone');
 
     // Get mentor details for assigned mentees
     const mentorsDetails = await Mentor.find({

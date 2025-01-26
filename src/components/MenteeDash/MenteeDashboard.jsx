@@ -77,7 +77,7 @@ const MenteeDashboard = () => {
     <ThemeProvider theme={theme}>
       <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-md max-h-screen">
         <Toaster
-          position="top-center"
+          position="bottom-right"
           toastOptions={{
             duration: 3000,
             style: {

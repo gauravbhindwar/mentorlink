@@ -57,12 +57,11 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
   }, [isUploading]);
 
   const columns = type === 'mentee' ? [
-    { field: 'MUJid', headerName: 'Mentee MUJid', flex: 0.75, minWidth: 130,headerAlign: 'center', align: 'center' }, // Decreased width
-    { field: 'name', headerName: 'Mentee Name', flex: 1, minWidth: 150,headerAlign: 'center', align: 'center' },    // Decreased width
-    { field: 'email', headerName: 'Mentee Email', flex: 1.5, minWidth: 250,headerAlign: 'center', align: 'center' },  // Increased width
-    { field: 'section', headerName: 'Section', flex: 0.45, minWidth: 70,headerAlign: 'center', align: 'center' },
-    { field: 'semester', headerName: 'Semester', flex: 0.5, minWidth: 100,headerAlign: 'center', align: 'center' }, // Increased width
-    { field: 'mentorEmail', headerName: 'Mentor Email', flex: 1.3, minWidth: 180,headerAlign: 'center', align: 'center' } // Decreased width
+    { field: 'MUJid', headerName: 'Mentee MUJid', flex: 0.75, minWidth: 130, headerAlign: 'center', align: 'center' },
+    { field: 'name', headerName: 'Mentee Name', flex: 1, minWidth: 150, headerAlign: 'center', align: 'center' },
+    { field: 'email', headerName: 'Mentee Email', flex: 1.5, minWidth: 250, headerAlign: 'center', align: 'center' },
+    { field: 'semester', headerName: 'Semester', flex: 0.5, minWidth: 100, headerAlign: 'center', align: 'center' },
+    { field: 'mentorEmail', headerName: 'Mentor Email', flex: 1.3, minWidth: 180, headerAlign: 'center', align: 'center' }
   ] : [
     { field: 'MUJid', headerName: 'MUJid', flex: 1, minWidth: 130 },
     { field: 'name', headerName: 'Name', flex: 1.5, minWidth: 180 },
@@ -161,7 +160,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
           }
         }}
       >
-        <Typography variant="subtitle1" sx={{ 
+        <Typography component="div" variant="subtitle1" sx={{ 
           fontWeight: 600, 
           mb: 1,
           display: 'flex',
@@ -174,7 +173,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
         
         {groupedErrors.map((group, index) => (
           <Box key={index} sx={{ mb: 1 }}>
-            <Typography sx={{ 
+            <Typography component="div" sx={{ 
               color: group.color,
               fontSize: '0.875rem',
               fontWeight: 600,
@@ -185,7 +184,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
             }}>
               {group.title} ({group.count})
             </Typography>
-            <Typography sx={{ 
+            <Typography component="div" sx={{ 
               color: 'rgba(255, 255, 255, 0.7)',
               fontSize: '0.8rem',
               pl: 2
@@ -196,7 +195,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
         ))}
 
         {groupedErrors.some(g => g.category === 'missing_session') && (
-          <Typography sx={{ 
+          <Typography component="div" sx={{ 
             mt: 2,
             color: '#f97316',
             fontSize: '0.875rem',
@@ -225,16 +224,16 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
           color: '#ffffff'
         }}
       >
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+        <Typography component="div" variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
           Mentor Changes Summary
         </Typography>
         {mentorActions.toCreate.length > 0 && (
-          <Typography sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+          <Typography component="div" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
             • New mentors to be created: {mentorActions.toCreate.length}
           </Typography>
         )}
         {mentorActions.toUpdate.length > 0 && (
-          <Typography sx={{ fontSize: '0.875rem' }}>
+          <Typography component="div" sx={{ fontSize: '0.875rem' }}>
             • Existing mentors to be updated: {mentorActions.toUpdate.length}
           </Typography>
         )}
@@ -257,8 +256,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
           error: 'Error occurred while uploading'
         }
       );
-    } catch (error) {
-      console.log('Upload error:', error);
+    } catch {
       toast.error('Failed to upload data');
     }
   };
@@ -296,9 +294,101 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
             border: '1px solid rgba(249, 115, 22, 0.1)',
             maxHeight: '90vh',
             transition: 'all 0.3s ease-in-out',
+            position: 'relative', // Add this
           }
         }}
       >
+        {isUploading && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bgcolor: 'rgba(0, 0, 0, 0.7)',
+              zIndex: 9999,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <Box
+              sx={{
+                width: '80%',
+                maxWidth: 400,
+                bgcolor: '#1a1a1a',
+                borderRadius: 2,
+                p: 3,
+                border: '1px solid rgba(249, 115, 22, 0.2)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              <Typography
+                component="div" // Add this line
+                sx={{
+                  color: '#ffffff',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  mb: 2,
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                }}
+              >
+                {uploadProgress < 100 ? 'Uploading Data' : 'Processing...'}
+                <Box component="span" sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: '4px',
+                        height: '4px',
+                        borderRadius: '50%',
+                        backgroundColor: '#f97316',
+                        animation: `bounce 0.8s ${i * 0.2}s infinite`,
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Typography>
+
+              <Box sx={{ position: 'relative', mb: 1 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={uploadProgress}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    bgcolor: 'rgba(249, 115, 22, 0.1)',
+                    '& .MuiLinearProgress-bar': {
+                      bgcolor: '#f97316',
+                      backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
+                      backgroundSize: '1rem 1rem',
+                      animation: 'uploadProgress 1s linear infinite, stripe 1s linear infinite',
+                    },
+                  }}
+                />
+              </Box>
+
+              <Typography
+                component="div" // Add this line
+                sx={{
+                  color: '#94a3b8',
+                  fontSize: '0.875rem',
+                  textAlign: 'center',
+                }}
+              >
+                {Math.round(uploadProgress)}% Complete
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
         <DialogTitle 
           sx={{
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
@@ -310,7 +400,7 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
           }}
         >
           <Typography
-            variant="h6"
+            component="div" // Change from h2 to div
             sx={{
               fontSize: '1.25rem',
               fontWeight: 600,
@@ -474,65 +564,6 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
               }}
             />
           </Box>
-
-          {isUploading && (
-            <Box sx={{ width: '100%', mt: 2 }}> {/* Reduced margin */}
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, position: 'relative' }}>
-                <Typography 
-                  sx={{ 
-                    color: '#ffffff',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    mr: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}
-                >
-                  {uploadProgress < 100 
-                    ? `Uploading... ${Math.round(uploadProgress)}%`
-                    : 'Processing...'
-                  }
-                  <Box 
-                    component="span" 
-                    sx={{ 
-                      display: 'flex',
-                      gap: '4px',
-                      alignItems: 'center'
-                    }}
-                  >
-                    {[0, 1, 2].map((i) => (
-                      <span
-                        key={i}
-                        style={{
-                          width: '4px',
-                          height: '4px',
-                          borderRadius: '50%',
-                          backgroundColor: '#f97316',
-                          animation: `bounce 0.8s ${i * 0.2}s infinite`
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Typography>
-              </Box>
-              <LinearProgress  
-                variant="determinate"
-                value={uploadProgress}
-                sx={{
-                  height: 6,
-                  borderRadius: 3,
-                  bgcolor: 'rgba(249, 115, 22, 0.1)',
-                  '& .MuiLinearProgress-bar': {
-                    bgcolor: '#f97316',
-                    backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
-                    backgroundSize: '1rem 1rem',
-                    animation: 'uploadProgress 1s linear infinite, stripe 1s linear infinite'
-                  }
-                }}
-              />
-            </Box>
-          )}
         </DialogContent>
 
         <DialogActions sx={{ 

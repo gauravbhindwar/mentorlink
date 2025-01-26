@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,7 +11,6 @@ import {
   Divider,
   Button,
   TextField,
-  MenuItem,
   DialogActions
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -32,7 +31,6 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const MentorDetailsDialog = ({ open, onClose, mentor }) => {
   const [selectedSemester, setSelectedSemester] = useState(null);
-  const [selectedSection, setSelectedSection] = useState(null);
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editMenteeDialog, setEditMenteeDialog] = useState(false);
@@ -42,18 +40,26 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
   const [selectedMentees, setSelectedMentees] = useState([]);
   const [loadingMentees, setLoadingMentees] = useState(false);
   const [bulkAssignDetails, setBulkAssignDetails] = useState({
-    semester: '',
-    section: '',
+    semester: mentor?.academicSession?.includes('JANUARY-JUNE') ? 4 : 3,
   });
   const [showMentorInfo, setShowMentorInfo] = useState(true);
+  const [menteeCounts, setMenteeCounts] = useState({});
 
-  const fetchMentees = async (semester, section) => {
+  // Add new state for edit form
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    semester: '',
+    yearOfRegistration: '',
+  });
+
+  const fetchMentees = async (semester) => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/admin/getMenteesByMentor?mentorMujid=${mentor?.MUJid}&semester=${semester}&section=${section}`);
+      const response = await axios.get(`/api/admin/getMenteesByMentor?mentorMujid=${mentor?.MUJid}&semester=${semester}`);
       setMentees(response.data.mentees || []);
       setSelectedSemester(semester);
-      setSelectedSection(section);
     } catch (error) {
       console.log('Error fetching mentees:', error);
       setMentees([]);
@@ -62,33 +68,47 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     }
   };
 
+  const fetchMenteeCounts = async () => {
+    try {
+      const response = await axios.get(`/api/admin/getMenteesCount?mentorMujid=${mentor?.MUJid}`);
+      setMenteeCounts(response.data.counts || {});
+    } catch (error) {
+      console.log('Error fetching mentee counts:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (open && mentor?.MUJid) {
+      fetchMenteeCounts();
+      
+      // Set default semester based on academic session
+      const defaultSemester = mentor.academicSession?.includes('JANUARY-JUNE') ? 4 : 3;
+      handleSemesterClick(defaultSemester);
+    }
+  }, [open, mentor?.MUJid]);
+
   const handleSemesterClick = (sem) => {
     setSelectedSemester(sem);
-    setSelectedSection(null); // Reset section when semester changes
     setMentees([]); // Clear mentees list
     // Reset bulk assignment states
     setAvailableMentees([]);
     setSelectedMentees([]);
     setBulkAssignDetails({
       semester: '',
-      section: '',
     });
+    fetchMentees(sem); // Fetch mentees when semester is selected
   };
 
-  const handleSectionInput = (event) => {
-    const value = event.target.value.toUpperCase();
-    // Allow any single uppercase letter A-Z
-    if (/^[A-Z]?$/.test(value)) {
-      setSelectedSection(value);
-      setMentees([]); // Clear mentees list before fetching new data
-      if (value && selectedSemester) {
-        fetchMentees(selectedSemester, value);
-      }
-    }
-  };
-
+  // Update handleEditMentee
   const handleEditMentee = async (mentee) => {
     setSelectedMentee(mentee);
+    setEditFormData({
+      name: mentee.name || '',
+      email: mentee.email || '',
+      phone: mentee.phone || '',
+      semester: mentee.semester || '',
+      yearOfRegistration: mentee.yearOfRegistration || '',
+    });
     setEditMenteeDialog(true);
   };
 
@@ -101,29 +121,52 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
       toast.success('Mentee unassigned successfully');
       setEditMenteeDialog(false);
       // Refresh the mentees list
-      if (selectedSemester && selectedSection) {
-        await fetchMentees(selectedSemester, selectedSection);
+      if (selectedSemester) {
+        await fetchMentees(selectedSemester);
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Error unassigning mentee');
     }
   };
 
-  const handleSaveMenteeChanges = async (updatedData) => {
+  // Add handler for form changes
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Update handleSaveMenteeChanges to use editFormData
+  const handleSaveMenteeChanges = async () => {
     try {
       await axios.patch(`/api/admin/manageUsers/manageMentee`, {
         MUJid: selectedMentee.MUJid,
-        ...updatedData
+        ...editFormData
       });
       toast.success('Mentee details updated successfully');
       setEditMenteeDialog(false);
       // Refresh the mentees list
-      if (selectedSemester && selectedSection) {
-        await fetchMentees(selectedSemester, selectedSection);
+      if (selectedSemester) {
+        await fetchMentees(selectedSemester);
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Error updating mentee details');
     }
+  };
+
+  // Add cleanup when dialog closes
+  const handleCloseEditDialog = () => {
+    setEditMenteeDialog(false);
+    setSelectedMentee(null);
+    setEditFormData({
+      name: '',
+      email: '',
+      phone: '',
+      semester: '',
+      yearOfRegistration: '',
+    });
   };
 
   // Add custom styles for the assignment dialog
@@ -235,13 +278,12 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
   };
 
   // Add new function to fetch available mentees
-  const fetchAvailableMentees = async (semester, section) => {
+  const fetchAvailableMentees = async (semester) => {
     setLoadingMentees(true);
     try {
       const response = await axios.get(`/api/admin/getMenteesForAssignment`, {
         params: {
           semester,
-          section,
           academicYear: mentor.academicYear,
           academicSession: mentor.academicSession
         }
@@ -262,52 +304,43 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
         mentor_MUJid: mentor.MUJid,
         academicYear: mentor.academicYear,
         academicSession: mentor.academicSession,
-        section: bulkAssignDetails.section,
         current_semester: bulkAssignDetails.semester
       }));
 
       await axios.post('/api/admin/assignMentor/bulk', { assignments });
       toast.success('Mentees assigned successfully');
       setBulkAssignDialog(false);
+      
+      // Refresh both the counts and current list
+      await fetchMenteeCounts();
       if (selectedSemester === Number(bulkAssignDetails.semester)) {
-        await fetchMentees(selectedSemester, bulkAssignDetails.section);
+        await fetchMentees(selectedSemester);
       }
+      
+      // Clear selected states
+      setSelectedMentees([]);
+      setBulkAssignDetails({ semester: '' });
+      setAvailableMentees([]);
+
     } catch (error) {
       toast.error(error.response?.data?.error || 'Error assigning mentees');
     }
   };
 
-  // Add a validation function for section input
-  const handleBulkSectionInput = (event) => {
-    const value = event.target.value.toUpperCase();
-    if (/^[A-Z]?$/.test(value)) {
-      setBulkAssignDetails(prev => ({
-        ...prev,
-        section: value
-      }));
-      // Reset available mentees and selected mentees
-      setAvailableMentees([]);
-      setSelectedMentees([]);
-      if (value && bulkAssignDetails.semester) {
-        fetchAvailableMentees(bulkAssignDetails.semester, value);
-      }
-    }
-  };
-
   // Modify bulk assignment semester change handler
-  const handleBulkSemesterChange = (e) => {
-    const value = e.target.value;
-    setBulkAssignDetails(prev => ({
-      ...prev,
-      semester: value
-    }));
-    // Reset available mentees and selected mentees
-    setAvailableMentees([]);
-    setSelectedMentees([]);
-    if (value && bulkAssignDetails.section) {
-      fetchAvailableMentees(value, bulkAssignDetails.section);
-    }
-  };
+  // const handleBulkSemesterChange = (e) => {
+  //   const value = e.target.value;
+  //   setBulkAssignDetails(prev => ({
+  //     ...prev,
+  //     semester: value
+  //   }));
+  //   // Reset available mentees and selected mentees
+  //   setAvailableMentees([]);
+  //   setSelectedMentees([]);
+  //   if (value) {
+  //     fetchAvailableMentees(value);
+  //   }
+  // };
 
   // Update the table styles for better visibility
   const tableStyles = {
@@ -355,6 +388,64 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
     }
     return [];
   };
+
+  // Add useEffect to refresh counts periodically or after assignments
+  useEffect(() => {
+    let interval;
+    if (open && mentor?.MUJid) {
+      // Initial fetch
+      fetchMenteeCounts();
+      
+      // Set up periodic refresh every 30 seconds
+      interval = setInterval(fetchMenteeCounts, 30000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [open, mentor?.MUJid]);
+
+  // Remove or modify the auto-refresh effect
+  useEffect(() => {
+    let interval;
+    if (bulkAssignDialog && bulkAssignDetails.semester) {
+      // Do initial fetch only
+      fetchAvailableMentees(bulkAssignDetails.semester);
+      
+      // Remove the interval - this was causing auto-refresh
+      // interval = setInterval(() => {
+      //   fetchAvailableMentees(bulkAssignDetails.semester);
+      // }, 15000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [bulkAssignDialog, bulkAssignDetails.semester]);
+
+  // Modify the bulk assignment semester options to show only odd/even based on session
+  const getBulkAssignmentSemesters = () => {
+    if (!mentor?.academicSession) return [];
+    
+    // If JANUARY-JUNE, show even semesters (2,4,6,8)
+    if (mentor.academicSession.includes('JANUARY-JUNE')) {
+      return [2, 4, 6, 8];
+    }
+    // If JULY-DECEMBER, show odd semesters (1,3,5,7)
+    if (mentor.academicSession.includes('JULY-DECEMBER')) {
+      return [1, 3, 5, 7];
+    }
+    return [];
+  };
+
+  // Add useEffect to set default semester when dialog opens
+  useEffect(() => {
+    if (bulkAssignDialog) {
+      const defaultSemester = mentor?.academicSession?.includes('JANUARY-JUNE') ? 4 : 3;
+      setBulkAssignDetails(prev => ({ ...prev, semester: defaultSemester }));
+      fetchAvailableMentees(defaultSemester);
+    }
+  }, [bulkAssignDialog]);
 
   return (
     <Dialog
@@ -524,7 +615,24 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
               {getAvailableSemesters().map((sem) => (
                 <Chip
                   key={sem}
-                  label={`Semester ${sem}`}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Semester {sem}</span>
+                      <Chip
+                        size="small"
+                        label={menteeCounts[sem] || 0}
+                        sx={{
+                          height: '20px',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          '.MuiChip-label': {
+                            px: 1,
+                            fontSize: '0.75rem',
+                            color: selectedSemester === sem ? 'white' : '#3b82f6',
+                          },
+                        }}
+                      />
+                    </Box>
+                  }
                   onClick={() => handleSemesterClick(sem)}
                   sx={{
                     color: 'white',
@@ -540,47 +648,6 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
               ))}
             </Box>
           </Box>
-
-          {/* Section Input */}
-          {selectedSemester && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
-                Enter Section
-              </Typography>
-              <TextField
-                value={selectedSection || ''}
-                onChange={handleSectionInput}
-                placeholder="A-Z"
-                inputProps={{ 
-                  maxLength: 1,
-                  style: { 
-                    textTransform: 'uppercase',
-                    fontSize: '1.1rem',
-                    textAlign: 'center',
-                  }
-                }}
-                sx={{
-                  width: '120px',
-                  '& .MuiOutlinedInput-root': {
-                    height: '48px',
-                    color: '#3b82f6',
-                    bgcolor: 'rgba(51, 65, 85, 0.1)',
-                    borderRadius: '12px',
-                    '&:hover': {
-                      bgcolor: 'rgba(51, 65, 85, 0.15)',
-                    },
-                    '&.Mui-focused': {
-                      bgcolor: 'rgba(51, 65, 85, 0.2)',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#3b82f6',
-                        borderWidth: '2px',
-                      },
-                    },
-                  },
-                }}
-              />
-            </Box>
-          )}
 
           {/* Mentees List with Table Layout */}
           <Box sx={{
@@ -673,8 +740,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                 color: 'rgba(255, 255, 255, 0.5)'
               }}>
                 {!selectedSemester ? 'Select a semester to view mentees' : 
-                !selectedSection ? 'Enter a section (A-Z)' : 
-                'No mentees found for this semester and section'}
+                'No mentees found for this semester'}
               </Box>
             )}
           </Box>
@@ -712,7 +778,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
       {/* Updated Edit Mentee Dialog */}
       <Dialog
         open={editMenteeDialog}
-        onClose={() => setEditMenteeDialog(false)}
+        onClose={handleCloseEditDialog}
         PaperProps={{ sx: assignmentDialogStyles.paper }}
         maxWidth="md"
         fullWidth
@@ -723,7 +789,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
             <Typography>Edit Mentee Details</Typography>
           </Box>
           <IconButton
-            onClick={() => setEditMenteeDialog(false)}
+            onClick={handleCloseEditDialog}
             sx={{
               position: 'absolute',
               right: 8,
@@ -752,26 +818,31 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                   <TextField
                     label="Name"
-                    defaultValue={selectedMentee.name}
+                    name="name"
+                    value={editFormData.name}
+                    onChange={handleEditFormChange}
                     sx={assignmentDialogStyles.textField}
                     fullWidth
                   />
                   <TextField
                     label="MUJ ID"
-                    value={selectedMentee.MUJid}
-                    sx={assignmentDialogStyles.textField}
+                    value={selectedMentee?.MUJid || ''}
+                    sx={{ ...assignmentDialogStyles.textField, pointerEvents: 'none', opacity: 0.7,select: 'none' }}
                     fullWidth
-                    disabled
                   />
                   <TextField
                     label="Email"
-                    defaultValue={selectedMentee.email}
+                    name="email"
+                    value={editFormData.email}
+                    onChange={handleEditFormChange}
                     sx={assignmentDialogStyles.textField}
                     fullWidth
                   />
                   <TextField
                     label="Phone"
-                    defaultValue={selectedMentee.phone}
+                    name="phone"
+                    value={editFormData.phone}
+                    onChange={handleEditFormChange}
                     sx={assignmentDialogStyles.textField}
                     fullWidth
                   />
@@ -791,38 +862,34 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                   <TextField
                     label="Academic Year"
-                    defaultValue={selectedMentee.academicYear}
-                    sx={assignmentDialogStyles.textField}
+                    value={selectedMentee?.academicYear || ''}
+                    sx={{ ...assignmentDialogStyles.textField, pointerEvents: 'none',select: 'none', opacity: 0.7 }}
                     fullWidth
                   />
                   <TextField
                     label="Academic Session"
-                    defaultValue={selectedMentee.academicSession}
-                    sx={assignmentDialogStyles.textField}
+                    value={selectedMentee?.academicSession || ''}
+                    sx={{ ...assignmentDialogStyles.textField, pointerEvents: 'none',select:"none", opacity: 0.7 }}
                     fullWidth
+
                   />
                   <TextField
                     label="Current Semester"
-                    defaultValue={selectedMentee.semester}
+                    name="semester"
+                    value={editFormData.semester}
+                    onChange={handleEditFormChange}
                     type="number"
                     InputProps={{ inputProps: { min: 1, max: 8 } }}
                     sx={assignmentDialogStyles.textField}
                     fullWidth
                   />
                   <TextField
-                    label="Section"
-                    defaultValue={selectedMentee.section}
-                    inputProps={{ 
-                      style: { textTransform: 'uppercase' },
-                      maxLength: 1
-                    }}
-                    sx={assignmentDialogStyles.textField}
-                    fullWidth
-                  />
-                  <TextField
                     label="Year of Registration"
-                    defaultValue={selectedMentee.yearOfRegistration}
+                    name="yearOfRegistration"
+                    value={editFormData.yearOfRegistration}
+                    onChange={handleEditFormChange}
                     type="number"
+                    InputProps={{ inputProps: { min: 2010, max: new Date().getFullYear() } }}
                     sx={assignmentDialogStyles.textField}
                     fullWidth
                   />
@@ -853,7 +920,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
           </Button>
           <Box>
             <Button
-              onClick={() => setEditMenteeDialog(false)}
+              onClick={handleCloseEditDialog}
               sx={{
                 color: 'white',
                 mr: 2
@@ -862,17 +929,7 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
               Cancel
             </Button>
             <Button
-              onClick={() => handleSaveMenteeChanges({
-                // Add all the fields you want to update
-                name: document.querySelector('[label="Name"] input').value,
-                email: document.querySelector('[label="Email"] input').value,
-                phone: document.querySelector('[label="Phone"] input').value,
-                academicYear: document.querySelector('[label="Academic Year"] input').value,
-                academicSession: document.querySelector('[label="Academic Session"] input').value,
-                semester: document.querySelector('[label="Current Semester"] input').value,
-                section: document.querySelector('[label="Section"] input').value.toUpperCase(),
-                yearOfRegistration: document.querySelector('[label="Year of Registration"] input').value,
-              })}
+              onClick={handleSaveMenteeChanges}
               variant="contained"
               sx={{
                 bgcolor: '#3b82f6',
@@ -963,68 +1020,34 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
             {/* Filters Section */}
             <Box sx={{ 
               display: 'flex', 
-              gap: 3,
+              gap: 2,
               alignItems: 'center',
-              bgcolor: 'rgba(51, 65, 85, 0.05)',
-              p: 2,
-              borderRadius: '12px',
-              border: '1px solid rgba(51, 65, 85, 0.15)',
+              flexWrap: 'wrap'
             }}>
-              <TextField
-                select
-                label="Semester"
-                value={bulkAssignDetails.semester}
-                onChange={handleBulkSemesterChange}  // Use the new handler
-                size="small"
-                sx={{
-                  width: '150px',
-                  '& .MuiOutlinedInput-root': {
-                    color: '#f97316',
-                    backgroundColor: '#111827',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                  },
-                  '& .MuiMenuItem-root': {
-                    backgroundColor: '#1f2937',
+              <Typography variant="subtitle2" sx={{ color: 'white', mr: 2 }}>
+                Select Semester:
+              </Typography>
+              {getBulkAssignmentSemesters().map((sem) => (
+                <Chip
+                  key={sem}
+                  label={`Semester ${sem}`}
+                  onClick={() => {
+                    setBulkAssignDetails(prev => ({ ...prev, semester: sem }));
+                    setSelectedMentees([]);
+                    fetchAvailableMentees(sem);
+                  }}
+                  sx={{
                     color: 'white',
-                  },
-                }}
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                  <MenuItem key={sem} value={sem}>Semester {sem}</MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                label="Section"
-                value={bulkAssignDetails.section}
-                onChange={handleBulkSectionInput}
-                placeholder="A-Z"
-                size="small"
-                inputProps={{ 
-                  maxLength: 1,
-                  style: { 
-                    textTransform: 'uppercase',
-                    fontSize: '1.1rem',
-                    textAlign: 'center',
-                  }
-                }}
-                sx={{
-                  width: '100px',
-                  '& .MuiOutlinedInput-root': {
-                    color: '#f97316',
-                    backgroundColor: '#111827',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                  },
-                  '& .MuiMenuItem-root': {
-                    backgroundColor: '#1f2937',
-                    color: 'white',
-                  },
-                }}
-              />
+                    bgcolor: bulkAssignDetails.semester === sem ? '#3b82f6' : 'rgba(255, 255, 255, 0.05)',
+                    '&:hover': {
+                      bgcolor: bulkAssignDetails.semester === sem ? '#2563eb' : 'rgba(255, 255, 255, 0.1)',
+                    },
+                    transition: 'all 0.2s ease',
+                    border: '1px solid',
+                    borderColor: bulkAssignDetails.semester === sem ? '#3b82f6' : 'transparent',
+                  }}
+                />
+              ))}
             </Box>
 
             {/* Enhanced Mentees Table */}
@@ -1040,12 +1063,15 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                             color: '#3b82f6',
                           }
                         }}
+                        checked={availableMentees.length > 0 && 
+                          availableMentees.filter(m => !m.mentorMujid).length === selectedMentees.length}
                         onChange={(e) => {
-                          setSelectedMentees(
-                            e.target.checked 
-                              ? availableMentees.filter(m => !m.mentorMujid).map(m => m.MUJid)
-                              : []
-                          );
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const availableIds = availableMentees
+                            .filter(m => !m.mentorMujid)
+                            .map(m => m.MUJid);
+                          setSelectedMentees(e.target.checked ? availableIds : []);
                         }}
                       />
                     </TableCell>
@@ -1076,11 +1102,13 @@ const MentorDetailsDialog = ({ open, onClose, mentor }) => {
                           disabled={mentee.mentorMujid}
                           checked={selectedMentees.includes(mentee.MUJid)}
                           onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedMentees([...selectedMentees, mentee.MUJid]);
-                            } else {
-                              setSelectedMentees(selectedMentees.filter(id => id !== mentee.MUJid));
-                            }
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedMentees(prev => 
+                              e.target.checked
+                                ? [...prev, mentee.MUJid]
+                                : prev.filter(id => id !== mentee.MUJid)
+                            );
                           }}
                           sx={{ 
                             color: '#3b82f6',

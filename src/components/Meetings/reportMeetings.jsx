@@ -229,12 +229,12 @@ const ReportMeetings = () => {
     }));
   };
 
-  const handleGenerateMOM = () => {
-    const selectedMeeting = meetings.find(m => m.meeting_id === momDetails.meetingId);
-    if (selectedMeeting) {
-      console.log('Generating MOM Report:', { selectedMeeting, momDetails });
-    }
-  };
+  // const handleGenerateMOM = () => {
+  //   const selectedMeeting = meetings.find(m => m.meeting_id === momDetails.meetingId);
+  //   if (selectedMeeting) {
+  //     console.log('Generating MOM Report:', { selectedMeeting, momDetails });
+  //   }
+  // };
 
   const handleGenerateConsolidate = async () => {
     try {
@@ -359,7 +359,7 @@ const ReportMeetings = () => {
     </div>
   );
 
-  console.log('Meetings:', selectedMeeting?.meeting_notes);
+  // console.log('Meetings:', selectedMeeting?.meeting_notes);
   // Add new helper function for MOM buttons
   const getMOMButtonLabel = (meetingIndex) => {
     return `MOM ${meetingIndex + 1}`; // Now returns MOM button label for all meetings
@@ -679,7 +679,7 @@ const renderMOMDetailDialog = () => (
                   <div className="p-6 border-b border-slate-700/50">
                     <h4 className="text-lg font-semibold text-white flex items-center gap-2">
                       <span className="text-xl">👥</span> Attendees
-                      {console.log("Hello",selectedMeeting)}
+                      {/* {console.log("Hello",selectedMeeting)} */}
                       <span className="ml-2 px-2 py-1 text-xs font-medium text-slate-400 bg-slate-700/50 rounded-full">
                         {selectedMeeting?.mentee_details?.length || 0} Students
                       </span>

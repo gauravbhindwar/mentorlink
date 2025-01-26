@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Login from "../Login/Login";
 import AboutUs from "../AboutUs/AboutUs";
+import Image from "next/image";
 
 const HomePage = () => {
   const [showAboutUs, setShowAboutUs] = useState(false);
@@ -112,10 +113,12 @@ const HomePage = () => {
 
       <div className='relative z-10 h-full flex flex-col items-center justify-center'>
         <div className='text-center mb-12'>
-          <img
+          <Image
             src='/muj-logo.svg'
             alt='MUJ Logo'
             className='mx-auto w-80 mb-8'
+            width={200}
+            height={200}
           />
           <h1 className='text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-purple-500 mb-4'>
             Mentorlink

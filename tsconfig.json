@@ -23,6 +23,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/components/HomePage/HomePage.jsx", "src/components/archivePage/ArchivePage.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/components/HomePage/HomePage.jsx", "src/components/archivePage/ArchivePage.jsx", "src/app/api/meetings/menteeDetails/route.js"],
   "exclude": ["node_modules"]
 }

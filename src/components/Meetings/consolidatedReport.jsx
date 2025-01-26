@@ -35,12 +35,12 @@ const ConsolidatedReport = () => {
   }, []);
 
   useEffect(() => {
-    console.log("Fetching meeting data from session storage on mount");
+    // console.log("Fetching meeting data from session storage on mount");
     fetchLocalMeetingData();  
   }, []);
 
   const fetchLocalMeetingData = async () => {
-    console.log("Fetching meeting data from session storage");
+    // console.log("Fetching meeting data from session storage");
     try {
       const meetingData = sessionStorage.getItem('meetingData');
       if (!meetingData) {

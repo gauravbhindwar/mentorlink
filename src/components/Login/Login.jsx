@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+// import Image from "next/image";
 
 const Login = () => {
   const router = useRouter();
@@ -16,8 +16,8 @@ const Login = () => {
   const [roles, setRoles] = useState("");
   const [otpError, setOtpError] = useState("");
   const [verifySuccess, setVerifySuccess] = useState(false);
-  const [showAdminPreview, setShowAdminPreview] = useState(false);
-  const [showMentorPreview, setShowMentorPreview] = useState(false);
+  // const [showAdminPreview, setShowAdminPreview] = useState(false);
+  // const [showMentorPreview, setShowMentorPreview] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
 
@@ -91,7 +91,7 @@ const Login = () => {
         setSendOTPSuccess(true);
         setCountdown(50); // Start timer when OTP is first sent
         setCanResend(false);
-        console.log("OTP sent successfully");
+        // console.log("OTP sent successfully");
       }
     } catch (error) {
       setEmailError(error.message);
@@ -461,8 +461,8 @@ const Login = () => {
           <h2 className='text-white text-2xl'>Select your dashboard</h2>
           <div className='flex gap-6'>
             <div
-              onMouseEnter={() => setShowAdminPreview(true)}
-              onMouseLeave={() => setShowAdminPreview(false)}
+              // onMouseEnter={() => setShowAdminPreview(true)}
+              // onMouseLeave={() => setShowAdminPreview(false)}
               onClick={() => {
                 sessionStorage.setItem("role", "admin");
                 router.push("/pages/admin/admindashboard");
@@ -507,8 +507,8 @@ const Login = () => {
             </div>
 
             <div
-              onMouseEnter={() => setShowMentorPreview(true)}
-              onMouseLeave={() => setShowMentorPreview(false)}
+              // onMouseEnter={() => setShowMentorPreview(true)}
+              // onMouseLeave={() => setShowMentorPreview(false)}
               onClick={() => {
                 sessionStorage.setItem("role", "mentor");
                 router.push("/pages/mentordashboard");

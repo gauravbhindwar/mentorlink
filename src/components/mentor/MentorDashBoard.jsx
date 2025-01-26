@@ -8,8 +8,8 @@ import { FiX } from "react-icons/fi";
 import axios from "axios";
 import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
-import AttendanceDialog from '@/components/Meetings/AttendanceDialog';
-import { Button } from '@mui/material';
+import AttendanceDialog from "@/components/Meetings/AttendanceDialog";
+import { Button } from "@mui/material";
 
 const MentorDashBoard = () => {
   const router = useRouter();
@@ -34,15 +34,16 @@ const MentorDashBoard = () => {
   const [showToast, setShowToast] = useState(false);
   const [isClientSide, setIsClientSide] = useState(false);
   const [showAttendance, setShowAttendance] = useState(false);
+  const [activeTab, setActiveTab] = useState(null);
 
-  const extractSessionData = (data) => ({
-    name: data.name,
-    email: data.email,
-    MUJid: data.MUJid,
-    academicSession: data.academicSession,
-    academicYear: data.academicYear,
-    isFirstTimeLogin: data.isFirstTimeLogin,
-  });
+  // const extractSessionData = (data) => ({
+  //   name: data.name,
+  //   email: data.email,
+  //   MUJid: data.MUJid,
+  //   academicSession: data.academicSession,
+  //   academicYear: data.academicYear,
+  //   isFirstTimeLogin: data.isFirstTimeLogin,
+  // });
 
   useEffect(() => {
     setIsClientSide(true);
@@ -52,16 +53,28 @@ const MentorDashBoard = () => {
   //   return session?.includes('JANUARY-JUNE') ? [2, 4, 6, 8] : [1, 3, 5, 7];
   // };
 
-  const fetchMeetingsForSemester = async (mentorId, year, session, semester) => {
+  const fetchMeetingsForSemester = async (
+    mentorId,
+    year,
+    session,
+    semester
+  ) => {
     try {
-      const response = await fetch(
-        `/api/mentor/manageMeeting?mentorId=${mentorId}&academicYear=${year}&session=${session}&semester=${semester}`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch meetings');
+      if (
+        mentorId != undefined &&
+        year != undefined &&
+        session != undefined &&
+        semester != undefined
+      ) {
+        const response = await fetch(
+          `/api/mentor/manageMeeting?mentorId=${mentorId}&academicYear=${year}&session=${session}&semester=${semester}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch meetings");
+        }
+        const data = await response.json();
+        return data.meetings || [];
       }
-      const data = await response.json();
-      return data.meetings || [];
     } catch (error) {
       console.error(`Error fetching meetings for semester ${semester}:`, error);
       return [];
@@ -80,23 +93,29 @@ const MentorDashBoard = () => {
           mentorInfo = JSON.parse(sessionData);
           setMentorData(mentorInfo);
         } else {
-          const response = await axios.get("/api/mentor");
+          // Get MUJ ID from session storage if available
+          const storedMUJId = sessionStorage.getItem("mujid");
+          const storedEmail = sessionStorage.getItem("email");
+          const response = await axios.get("/api/mentor", {
+            params: { MUJId: storedMUJId, email: storedEmail },
+          });
           mentorInfo = response.data;
           if (!mentorInfo.isFirstTimeLogin) {
-            sessionStorage.setItem(
-              "mentorData",
-              JSON.stringify(extractSessionData(mentorInfo))
-            );
+            sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
           }
           setMentorData(mentorInfo);
         }
 
         if (!mentorInfo.isFirstTimeLogin) {
           setMeetingsLoading(true);
-          
+
           // Get primary semester (4 for Jan-June, 3 for July-Dec)
-          const primarySemester = mentorInfo.academicSession.includes('JANUARY-JUNE') ? 4 : 3;
-          
+          const primarySemester =
+            mentorInfo?.academicSession &&
+            mentorInfo?.academicSession.includes("JANUARY-JUNE")
+              ? 4
+              : 3;
+
           // Fetch primary semester meetings first
           const primaryMeetings = await fetchMeetingsForSemester(
             mentorInfo.MUJid,
@@ -107,13 +126,18 @@ const MentorDashBoard = () => {
 
           // Set initial meetings
           setMeetings(primaryMeetings);
-          sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(primaryMeetings)
+          );
           setMeetingsLoading(false);
 
           // Fetch other semesters in background
-          const otherSemesters = mentorInfo.academicSession.includes('JANUARY-JUNE') 
-            ? [2, 6, 8] 
-            : [1, 5, 7];
+          const otherSemesters =
+            mentorInfo?.academicSession &&
+            mentorInfo?.academicSession.includes("JANUARY-JUNE")
+              ? [2, 6, 8]
+              : [1, 5, 7];
 
           Promise.all(
             otherSemesters.map(async (semester) => {
@@ -123,11 +147,17 @@ const MentorDashBoard = () => {
                 mentorInfo.academicSession,
                 semester
               );
-              
+
               if (semesterMeetings.length > 0) {
-                setMeetings(prevMeetings => {
-                  const updatedMeetings = [...prevMeetings, ...semesterMeetings];
-                  sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
+                setMeetings((prevMeetings) => {
+                  const updatedMeetings = [
+                    ...prevMeetings,
+                    ...semesterMeetings,
+                  ];
+                  sessionStorage.setItem(
+                    "meetingData",
+                    JSON.stringify(updatedMeetings)
+                  );
                   return updatedMeetings;
                 });
               }
@@ -171,6 +201,13 @@ const MentorDashBoard = () => {
     }, {});
   };
 
+  // Add this helper function near the top of the file, before the component
+  const getAllSemesters = (academicSession) => {
+    return academicSession?.includes("JANUARY-JUNE")
+      ? [2, 4, 6, 8]
+      : [1, 3, 5, 7];
+  };
+
   useEffect(() => {
     const {
       TopicOfDiscussion,
@@ -207,37 +244,45 @@ const MentorDashBoard = () => {
         meeting_notes: meetingNotes,
         presentMentees: meetingNotes.presentMentees,
       });
-  
+
       if (response.data.meeting) {
-        // Update meetings in state and session storage
-        setMeetings(prevMeetings => {
-          const updatedMeetings = prevMeetings.map(meeting => {
-            if (meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id) {
-              return {
-                ...meeting,
-                meeting: {
-                  ...meeting,
-                  meeting_notes: meetingNotes,
-                  present_mentees: meetingNotes.presentMentees,
-                  isReportFilled: true
-                }
-              };
-            }
-            return meeting;
-          });
-          
-          // Update session storage
-          sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
-          return updatedMeetings;
-        });
-  
         // Update attendance records
+        // console.log("Meeting report submitted successfully:", response.data);
         await axios.post("/api/mentee/meetings-attended", {
+          mentor_id: mentorData.MUJid,
           meeting_id: selectedMeeting.meeting.meeting_id,
           presentMentees: meetingNotes.presentMentees,
           totalMentees: selectedMeeting.meeting?.mentee_ids,
         });
-  
+
+        // Update meetings in state
+        setMeetings((prevMeetings) => {
+          const updatedMeetings = prevMeetings.map((meeting) => {
+            if (
+              meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id
+            ) {
+              return {
+                ...meeting,
+                meeting: {
+                  ...meeting.meeting,
+                  meeting_notes: meetingNotes,
+                  present_mentees: meetingNotes.presentMentees,
+                  isReportFilled: true,
+                },
+              };
+            }
+            return meeting;
+          });
+
+          // Update session storage with new meeting data
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(updatedMeetings)
+          );
+          return updatedMeetings;
+        });
+
+        // Clear the form and close the modal
         setSelectedMeeting(null);
         setMeetingNotes({
           TopicOfDiscussion: "",
@@ -249,15 +294,92 @@ const MentorDashBoard = () => {
           feedbackFromMentee: "",
           presentMentees: [],
         });
+
+        // Show success message
       }
     } catch (error) {
       console.error("Error submitting meeting notes:", error);
-      alert("Failed to submit meeting report. Please try again.");
+      // alert("Failed to submit meeting report. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
+  // Add a function to refresh meetings data
+  const refreshMeetings = async () => {
+    setMeetingsLoading(true);
+    try {
+      // Get primary semester (4 for Jan-June, 3 for July-Dec)
+      const primarySemester =
+        mentorData?.academicSession &&
+        mentorData?.academicSession.includes("JANUARY-JUNE")
+          ? 4
+          : 3;
+
+      // Fetch primary semester meetings first
+      let primaryMeetings = await fetchMeetingsForSemester(
+        mentorData.MUJid,
+        mentorData.academicYear,
+        mentorData.academicSession,
+        primarySemester
+      );
+
+      // Ensure primaryMeetings is an array
+      primaryMeetings = Array.isArray(primaryMeetings) ? primaryMeetings : [];
+
+      // Set initial meetings
+      setMeetings(primaryMeetings);
+      sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+
+      // Fetch other semesters in background
+      const otherSemesters =
+        mentorData?.academicSession &&
+        mentorData?.academicSession.includes("JANUARY-JUNE")
+          ? [2, 6, 8]
+          : [1, 5, 7];
+
+      const allMeetingsPromises = otherSemesters.map((semester) =>
+        fetchMeetingsForSemester(
+          mentorData.MUJid,
+          mentorData.academicYear,
+          mentorData.academicSession,
+          semester
+        )
+      );
+
+      const otherSemesterMeetings = await Promise.all(allMeetingsPromises);
+      const flattenedMeetings = [
+        ...primaryMeetings,
+        ...otherSemesterMeetings.flat().filter(Boolean),
+      ];
+
+      setMeetings(flattenedMeetings);
+      sessionStorage.setItem("meetingData", JSON.stringify(flattenedMeetings));
+    } catch (error) {
+      console.error("Error refreshing meetings:", error);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  };
+
+  // Modify the useEffect that handles meeting data to use the refreshMeetings function
+  useEffect(() => {
+    if (!mentorData.isFirstTimeLogin) {
+      refreshMeetings();
+    }
+  }, [mentorData.isFirstTimeLogin]);
+
+  useEffect(() => {
+    if (mentorData?.academicSession) {
+      // Set default semester based on academic session
+      const defaultSemester = mentorData?.academicSession.includes(
+        "JANUARY-JUNE"
+      )
+        ? 4
+        : 3;
+      setActiveTab(defaultSemester);
+    }
+  }, [mentorData?.academicSession]);
 
   const getEmailBody = (meeting) => `
 Dear Mentees,
@@ -276,11 +398,7 @@ ${meeting.meeting.meeting_notes.isMeetingOnline ? "Meeting Link" : "Venue"}: ${
   }
 Branch: ${"CSE CORE"}
 Semester: ${meeting.semester}
-${
-  meeting.sections
-    ? `Sections: ${[...new Set(meeting.sections)].join(", ")}`
-    : `Section: ${meeting.section}`
-}
+
 
 Please ensure your attendance for this mentor meeting. If you have any conflicts or concerns, kindly inform me in advance.
 
@@ -306,13 +424,15 @@ Contact: ${mentorData?.email || ""}`;
           emails: menteeEmails,
           subject: `Meeting Reminder - ${meeting.meeting.meeting_id}`,
           body: getEmailBody(meeting),
-          meetingId: meeting.meeting.meeting_id // Add meeting ID to track emails
+          meetingId: meeting.meeting.meeting_id, // Add meeting ID to track emails
         });
 
         if (emailResponse.data.success) {
           setShowToast(true);
           // Show number of times emails were sent for this meeting
-          alert(`Reminder email #${emailResponse.data.totalEmailsSent} sent successfully to ${emailResponse.data.sentCount} recipients`);
+          alert(
+            `Reminder email #${emailResponse.data.totalEmailsSent} sent successfully to ${emailResponse.data.sentCount} recipients`
+          );
           setTimeout(() => setShowToast(false), 5000);
         } else {
           throw new Error(emailResponse.data.message);
@@ -330,10 +450,10 @@ Contact: ${mentorData?.email || ""}`;
 
   const handleSelectAllPresent = () => {
     if (!selectedMeeting?.menteeDetails) return;
-    
-    setMeetingNotes(prev => ({
+
+    setMeetingNotes((prev) => ({
       ...prev,
-      presentMentees: selectedMeeting.menteeDetails.map(m => m.MUJid)
+      presentMentees: selectedMeeting.menteeDetails.map((m) => m.MUJid),
     }));
   };
 
@@ -345,20 +465,22 @@ Contact: ${mentorData?.email || ""}`;
         meeting_id: selectedMeeting.meeting.meeting_id,
         meeting_notes: {
           ...meetingNotes,
-          presentMentees: meetingNotes.presentMentees
-        }
+          presentMentees: meetingNotes.presentMentees,
+        },
       });
 
       // Update in session storage
-      const meetingData = JSON.parse(sessionStorage.getItem("meetingData") || "[]");
-      const updatedMeetings = meetingData.map(meeting => {
+      const meetingData = JSON.parse(
+        sessionStorage.getItem("meetingData") || "[]"
+      );
+      const updatedMeetings = meetingData.map((meeting) => {
         if (meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id) {
           return {
             ...meeting,
             meeting: {
               ...meeting.meeting,
-              present_mentees: meetingNotes.presentMentees
-            }
+              present_mentees: meetingNotes.presentMentees,
+            },
           };
         }
         return meeting;
@@ -367,13 +489,12 @@ Contact: ${mentorData?.email || ""}`;
 
       // Close the dialog
       setShowAttendance(false);
-      
-      // Show success toast or notification
-      toast.success('Attendance saved successfully');
 
+      // Show success toast or notification
+      toast.success("Attendance saved successfully");
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      toast.error('Failed to save attendance');
+      console.error("Error saving attendance:", error);
+      toast.error("Failed to save attendance");
     }
   };
 
@@ -538,24 +659,34 @@ Contact: ${mentorData?.email || ""}`;
                 borderRadius: "1rem",
               }}>
               <div className='bg-white/10 rounded-lg p-6 backdrop-blur-sm overflow-y-auto max-h-[448px] custom-scrollbar'>
-                {meetingsLoading ? (
-                  <div className='flex items-center justify-center py-8'>
-                    <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-white'></div>
-                  </div>
-                ) : meetings.length > 0 ? (
+                {meetings.length > 0 || meetingsLoading ? (
                   <>
                     <h2 className='text-2xl font-bold text-white mb-4'>
                       Upcoming Meetings
                     </h2>
-                    {Object.entries(groupBySemester(meetings))
-                      .sort(([semA], [semB]) => semA - semB)
-                      .map(([semester, semesterMeetings]) => (
-                        <div key={semester} className='mb-6'>
-                          <h3 className='text-xl font-semibold text-white mb-3 border-b border-white/20 pb-2'>
-                            Semester {semester}
-                          </h3>
-                          <div className='space-y-4'>
-                            {semesterMeetings.map((meeting, index) => (
+                    <div className='mb-4 border-b border-gray-700'>
+                      <div className='flex overflow-x-auto space-x-4 custom-scrollbar'>
+                        {getAllSemesters(mentorData.academicSession).map(
+                          (semester) => (
+                            <button
+                              key={semester}
+                              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors duration-200 ${
+                                activeTab === semester
+                                  ? "bg-white/10 text-white border-b-2 border-orange-500"
+                                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                              }`}
+                              onClick={() => setActiveTab(semester)}>
+                              Semester {semester}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                    <div className='space-y-4'>
+                      {activeTab &&
+                        (groupBySemester(meetings)[activeTab]?.length > 0 ? (
+                          groupBySemester(meetings)[activeTab]?.map(
+                            (meeting, index) => (
                               <motion.div
                                 key={index}
                                 initial={{ opacity: 0, y: 20 }}
@@ -565,52 +696,33 @@ Contact: ${mentorData?.email || ""}`;
                                   transition: { delay: index * 0.1 },
                                 }}
                                 className='bg-white/5 p-4 rounded-lg'>
-                                {console.log(
+                                {/* {console.log(
                                   "meeting:",
                                   meeting.meeting.meeting_notes.isMeetingOnline
-                                )}
+                                )} */}
                                 <div className='text-white flex justify-between'>
                                   <div>
-                                    <div className="space-y-2">
+                                    <div className='space-y-2'>
                                       <p>
-                                        {new Date(meeting.meeting.meeting_date)
-                                          .toLocaleDateString("en-IN", {
-                                            day: "numeric",
-                                            month: "long",
-                                            year: "numeric",
-                                            ordinal: true,
-                                          })}
-                                      </p>
-                                      <p>
-                                        Meeting Topic: {" "}
-                                        {meeting.meeting.meeting_notes.TopicOfDiscussion}
+                                        Meeting Topic:{" "}
+                                        {
+                                          meeting.meeting.meeting_notes
+                                            .TopicOfDiscussion
+                                        }
                                       </p>
                                     </div>
-                                    <p className='font-semibold'>
-                                      {meeting?.sections
-                                        ? `Sections: ${[
-                                            ...new Set(meeting?.sections),
-                                          ].join(", ")}`
-                                        : `Section: ${meeting.section}`}
-                                    </p>
+
                                     <p>Semester: {meeting.semester}</p>
                                     <p>
                                       Date:{" "}
-                                      {new Date(meeting.meeting.meeting_date)
-                                        .toLocaleDateString("en-IN", {
-                                          day: "numeric",
-                                          month: "long",
-                                          year: "numeric",
-                                          ordinal: true,
-                                        })
-                                        .replace(
-                                          /(\d+)(?=\s)/,
-                                          (n) =>
-                                            n +
-                                              ["st", "nd", "rd"][
-                                                (((n % 100) - 20) % 10) - 1
-                                              ] || "th"
-                                        )}
+                                      {new Date(
+                                        meeting.meeting.meeting_date
+                                      ).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                        ordinal: true,
+                                      })}
                                     </p>
                                     <p>Time: {meeting.meeting.meeting_time}</p>
                                     {meeting.meeting.meeting_notes
@@ -619,7 +731,9 @@ Contact: ${mentorData?.email || ""}`;
                                         <span className='text-gray-300'>
                                           Link:{" "}
                                         </span>
-                                        {meeting.meeting.meeting_notes.venue.includes(
+                                        {meeting?.meeting?.meeting_notes
+                                          ?.venue &&
+                                        meeting?.meeting?.meeting_notes?.venue.includes(
                                           "https:"
                                         ) ? (
                                           <a
@@ -627,7 +741,7 @@ Contact: ${mentorData?.email || ""}`;
                                             target='_blank'
                                             rel='noopener noreferrer'
                                             className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
                                             <span className='truncate max-w-[200px]'>
                                               {
                                                 meeting.meeting.meeting_notes
@@ -653,7 +767,7 @@ Contact: ${mentorData?.email || ""}`;
                                             target='_blank'
                                             rel='noopener noreferrer'
                                             className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                            text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
                                             <span className='truncate max-w-[200px]'>
                                               {
                                                 meeting.meeting.meeting_notes
@@ -706,6 +820,13 @@ Contact: ${mentorData?.email || ""}`;
                                                   outcome: "",
                                                   closureRemarks: "",
                                                   presentMentees: [],
+                                                  isMeetingOnline:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.isMeetingOnline,
+                                                  venue:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes?.venue,
                                                 });
                                               }}
                                               className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
@@ -751,12 +872,19 @@ Contact: ${mentorData?.email || ""}`;
                                                   presentMentees:
                                                     meeting?.meeting
                                                       ?.present_mentees || [],
+                                                  isMeetingOnline:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes
+                                                      ?.isMeetingOnline,
+                                                  venue:
+                                                    meeting?.meeting
+                                                      ?.meeting_notes?.venue,
                                                 });
                                               }}
                                               className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
                                               Edit Report
                                             </button>
-                                            
+
                                             {isClientSide && (
                                               <PDFDownloadComponent
                                                 key={meeting.meeting.meeting_id}
@@ -774,10 +902,9 @@ Contact: ${mentorData?.email || ""}`;
                                                   mentorData.name
                                                 )}
                                                 fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
-                                                <div 
+                                                <div
                                                   className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center'
-                                                  role="button"
-                                                >
+                                                  role='button'>
                                                   Download MOM Report
                                                 </div>
                                               </PDFDownloadComponent>
@@ -807,10 +934,14 @@ Contact: ${mentorData?.email || ""}`;
                                   </div>
                                 </div>
                               </motion.div>
-                            ))}
+                            )
+                          )
+                        ) : (
+                          <div className='text-center py-8 text-gray-400'>
+                            No meetings scheduled for Semester {activeTab}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                    </div>
                   </>
                 ) : (
                   <div className='flex flex-col items-center justify-center space-y-4'></div>
@@ -835,7 +966,6 @@ Contact: ${mentorData?.email || ""}`;
                 <FiX size={24} />
               </button>
             </div>
-
             <div className='p-6 max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 {/* Left Column */}
@@ -881,14 +1011,13 @@ Contact: ${mentorData?.email || ""}`;
 
                   <Button
                     onClick={() => setShowAttendance(true)}
-                    variant="contained"
+                    variant='contained'
                     fullWidth
                     sx={{
                       mt: 2,
-                      bgcolor: '#f97316',
-                      '&:hover': { bgcolor: '#ea580c' }
-                    }}
-                  >
+                      bgcolor: "#f97316",
+                      "&:hover": { bgcolor: "#ea580c" },
+                    }}>
                     Mark Attendance
                   </Button>
                 </div>
@@ -945,18 +1074,19 @@ Contact: ${mentorData?.email || ""}`;
                   mentees={selectedMeeting?.menteeDetails || []}
                   presentMentees={meetingNotes.presentMentees}
                   onUpdateAttendance={(mujId) => {
-                    setMeetingNotes(prev => ({
+                    setMeetingNotes((prev) => ({
                       ...prev,
-                      presentMentees: prev.presentMentees.includes(mujId)
-                        ? prev.presentMentees.filter(id => id !== mujId)
-                        : [...prev.presentMentees, mujId]
+                      presentMentees:
+                        prev?.presentMentees &&
+                        prev?.presentMentees.includes(mujId)
+                          ? prev.presentMentees.filter((id) => id !== mujId)
+                          : [...prev.presentMentees, mujId],
                     }));
                   }}
                   onSelectAll={handleSelectAllPresent}
                   onSubmit={handleAttendanceSubmit}
                 />
               </div>
-
               <div className='space-y-2 mt-6'>
                 <label className='block text-sm font-medium text-gray-300'>
                   Feedback from Mentee (Optional)
@@ -969,7 +1099,9 @@ Contact: ${mentorData?.email || ""}`;
                   className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                   placeholder='Enter mentee feedback (optional)...'
                 />
-              </div>            </div>            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
+              </div>{" "}
+            </div>{" "}
+            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
               <button
                 onClick={handleMeetingSubmit}
                 disabled={isSubmitDisabled || isSubmitting}
@@ -994,7 +1126,10 @@ Contact: ${mentorData?.email || ""}`;
           </div>
         </div>
       )}
-      <AnimatePresence>        {showToast && (          <motion.div
+      <AnimatePresence>
+        {" "}
+        {showToast && (
+          <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}

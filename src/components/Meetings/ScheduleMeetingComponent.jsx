@@ -32,8 +32,8 @@ const ScheduleMeetingComponent = () => {
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
 
-  const [semesterSuggestions, setSemesterSuggestions] = useState([]);
-  console.log(semesterSuggestions);
+  // const [semesterSuggestions, setSemesterSuggestions] = useState([]);
+  // console.log(semesterSuggestions);
   const semesterRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false); // Add this new state
   const [submitting, setSubmitting] = useState(false);
@@ -125,7 +125,7 @@ const ScheduleMeetingComponent = () => {
         if (response.data) {
           const meetingsHeld = response.data?.meetings;
 
-          console.log("Mentor meetings:", meetingsHeld);
+          // console.log("Mentor meetings:", meetingsHeld);
           // console.log('Meeting count:', meetingCount);
           //MEETING LIMIT CURRENTLY DISABLED
           // if(meetingsHeld.length >= 4){
@@ -153,8 +153,10 @@ const ScheduleMeetingComponent = () => {
         generateMeetingId();
         getMentees(mentorId, currentSemester);
       }
-    } catch (error) {
+    } 
+    catch (error) {
       console.log("Error in useEffect:", error);
+      throw error;
     }
   }, [currentSemester]); // Add proper dependencies
 
@@ -234,16 +236,16 @@ const ScheduleMeetingComponent = () => {
         `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&year=${academicYear}&session=${academicSession}`
       );
       if (!response.ok) {
-        console.log("Failed to fetch mentees");
+        // console.log("Failed to fetch mentees");
         setDisabled(true);
       } else {
         const menteesData = await response.json();
         setMentees(menteesData);
         setDisabled(menteesData.length === 0);
       }
-      console.log(mentees, "mentees");
+      // console.log(mentees, "mentees");
     } catch (error) {
-      console.log("Error fetching mentees:", error);
+      // console.log("Error fetching mentees:", error);
       setDisabled(true);
       throw error;
     } finally {
@@ -341,12 +343,12 @@ const ScheduleMeetingComponent = () => {
     setAcademicSession(value);
   };
 
-  const generateSemesterSuggestions = (input) => {
-    if (!input) return [];
-    return availableSemesters.filter((sem) =>
-      `${sem}`.toLowerCase().includes(input.toLowerCase())
-    );
-  };
+  // const generateSemesterSuggestions = (input) => {
+  //   if (!input) return [];
+  //   return availableSemesters.filter((sem) =>
+  //     `${sem}`.toLowerCase().includes(input.toLowerCase())
+  //   );
+  // };
 
   const handleSemesterInput = (e) => {
     let value = e.target.value.toUpperCase();
@@ -355,10 +357,10 @@ const ScheduleMeetingComponent = () => {
     if (availableSemesters.includes(parseInt(value))) {
       setShowSemesterOptions(false);
     } else if (value.length > 0) {
-      setSemesterSuggestions(generateSemesterSuggestions(value));
+      // setSemesterSuggestions(generateSemesterSuggestions(value));
       setShowSemesterOptions(true);
     } else {
-      setSemesterSuggestions([]);
+      // setSemesterSuggestions([]);
       setShowSemesterOptions(false);
     }
 
@@ -382,7 +384,8 @@ const ScheduleMeetingComponent = () => {
           setShowSemesterOptions(false);
         }
       } catch (error) {
-        console.log("Error in handleClickOutside:", error);
+        // console.log("Error in handleClickOutside:", error);
+        throw error;
       }
     };
 
@@ -397,6 +400,7 @@ const ScheduleMeetingComponent = () => {
       setIsMounted(true);
     } catch (error) {
       console.log("Error during hydration:", error);
+      throw error;
     }
   }, []);
 

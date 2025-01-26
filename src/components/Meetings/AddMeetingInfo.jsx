@@ -15,8 +15,8 @@ const AddMeetingInfo = () => {
   const [meetings, setMeetings] = useState([]);
   const [yearSuggestions, setYearSuggestions] = useState([]);
   const [sessionSuggestions, setSessionSuggestions] = useState([]);
-  const [semesterSuggestions, setSemesterSuggestions] = useState([]);
-  console.log(semesterSuggestions);
+  // const [semesterSuggestions, setSemesterSuggestions] = useState([]);
+  // console.log(semesterSuggestions);
   const [showYearOptions, setShowYearOptions] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const [showSemesterOptions, setShowSemesterOptions] = useState(false);
@@ -98,10 +98,10 @@ const AddMeetingInfo = () => {
   const handleSemesterInput = (e) => {
     let value = e.target.value.toUpperCase();
     if (value.length > 0) {
-      setSemesterSuggestions(generateSemesterSuggestions(value));
+      // setSemesterSuggestions(generateSemesterSuggestions(value));
       setShowSemesterOptions(true);
     } else {
-      setSemesterSuggestions([]);
+      // setSemesterSuggestions([]);
       setShowSemesterOptions(false);
     }
     setCurrentSemester(value);
@@ -173,12 +173,12 @@ const AddMeetingInfo = () => {
     );
   };
 
-  const generateSemesterSuggestions = (input) => {
-    if (!input) return [];
-    return availableSemesters.filter(sem => 
-      `${sem}`.toLowerCase().includes(input.toLowerCase())
-    );
-  };
+  // const generateSemesterSuggestions = (input) => {
+  //   if (!input) return [];
+  //   return availableSemesters.filter(sem => 
+  //     `${sem}`.toLowerCase().includes(input.toLowerCase())
+  //   );
+  // };
 
   const validateAcademicYear = (value) => {
     if (!value) return false;
@@ -462,7 +462,7 @@ const AddMeetingInfo = () => {
                                 });
                               }}
                             >
-                              {console.log("meeting: ",meeting)}
+                              {/* {console.log("meeting: ",meeting)} */}
                               <div className="flex items-center space-x-2">
                                 {/* {console.log("meeting: ",meeting)} */}
                                 <div>

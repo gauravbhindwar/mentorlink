@@ -1,19 +1,19 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button, Alert } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button, Alert, Stack } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
 import { dialogStyles } from '../menteeStyle';
 import { useState, useEffect } from 'react';
 import { determineAcademicPeriod } from '../utils/academicUtils';
 import { toast } from 'react-toastify';
 
-const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props since we'll handle API call directly
+const AddMenteeDialog = ({ open, onClose, onMenteeAdded }) => { // Add onMenteeAdded prop
   const [menteeDetails, setMenteeDetails] = useState({
     MUJid: '',
     name: '',
     email: '',
     phone: '',
     yearOfRegistration: '',
-    section: '',
     semester: '',
     academicYear: '',
     academicSession: '',
@@ -146,7 +146,6 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
       name: 'Name',
       email: 'Email',
       yearOfRegistration: 'Year of Registration',
-      section: 'Section',
       semester: 'Semester',
       mentorMujid: 'Mentor',
     };
@@ -161,7 +160,7 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
 
     if (missingFields.length > 0) {
       toast.error(`Please fill in required fields: ${missingFields.join(', ')}`, {
-        position: "top-right",
+        position: "bottom-right",
         autoClose: 3000
       });
       return false;
@@ -209,6 +208,20 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
         toast.error(data.error || 'Failed to add mentee');
         return;
       }
+
+      // Update localStorage with new mentee data using academicYear and academicSession from menteeDetails
+      const storageKey = `${menteeDetails.academicYear}-${menteeDetails.academicSession}`;
+      const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const updatedData = [...existingData, data.mentee];
+      localStorage.setItem(storageKey, JSON.stringify(updatedData));
+
+      // Notify parent component with the storage key for context
+      if (onMenteeAdded) {
+        onMenteeAdded({
+          mentee: data.mentee,
+          storageKey
+        });
+      }
       
       toast.success('Mentee added successfully!');
       setMenteeDetails({
@@ -217,7 +230,6 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
         email: '',
         phone: '',
         yearOfRegistration: '',
-        section: '',
         semester: '',
         academicYear: menteeDetails.academicYear, // Keep academic period
         academicSession: menteeDetails.academicSession, // Keep academic period
@@ -242,123 +254,124 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
         <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
           Add New Mentee
         </Typography>
-        <IconButton onClick={onClose} sx={dialogStyles.closeButton}>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&:hover': { color: '#f97316' },
+          }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
       <DialogContent sx={dialogStyles.content}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Student Information */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-              Student Information
-            </Typography>
-            <TextField
-              label="MUJid"
-              name="MUJid"
-              value={menteeDetails.MUJid}
-              onChange={handleInputChange}
-              required
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Name"
-              name="name"
-              value={menteeDetails.name}
-              onChange={handleInputChange}
-              required
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Email"
-              name="email"
-              value={menteeDetails.email}
-              onChange={handleInputChange}
-              required
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Phone"
-              name="phone"
-              value={menteeDetails.phone}
-              onChange={handleInputChange}
-              sx={dialogStyles.textField}
-            />
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                Student Information
+              </Typography>
+              <TextField
+                label="MUJid"
+                name="MUJid"
+                value={menteeDetails.MUJid}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Name"
+                name="name"
+                value={menteeDetails.name}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Email"
+                name="email"
+                value={menteeDetails.email}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Phone"
+                name="phone"
+                value={menteeDetails.phone}
+                onChange={handleInputChange}
+                sx={dialogStyles.textField}
+              />
+            </Box>
+
+            {/* Academic Information */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                Academic Information
+              </Typography>
+              <TextField
+                label="Year of Registration"
+                name="yearOfRegistration"
+                type="number"
+                value={menteeDetails.yearOfRegistration}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Semester"
+                name="semester"
+                type="number"
+                value={menteeDetails.semester}
+                onChange={handleInputChange}
+                required
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Academic Year"
+                name="academicYear"
+                value={menteeDetails.academicYear}
+                sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+              />
+              <TextField
+                label="Academic Session"
+                name="academicSession"
+                value={menteeDetails.academicSession}
+                sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+              />
+            </Box>
           </Box>
 
-          {/* Academic Information */}
+          {/* Mentor Information */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-              Academic Information
+              Mentor Information
             </Typography>
-            <TextField
-              label="Year of Registration"
-              name="yearOfRegistration"
-              type="number"
-              value={menteeDetails.yearOfRegistration}
-              onChange={handleInputChange}
-              required
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Section"
-              name="section"
-              value={menteeDetails.section}
-              onChange={handleInputChange}
-              required
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Semester"
-              name="semester"
-              type="number"
-              value={menteeDetails.semester}
-              onChange={handleInputChange}
-              required
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Academic Year"
-              name="academicYear"
-              value={menteeDetails.academicYear}
-              disabled
-              sx={dialogStyles.textField}
-            />
-            <TextField
-              label="Academic Session"
-              name="academicSession"
-              value={menteeDetails.academicSession}
-              disabled
-              sx={dialogStyles.textField}
-            />
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <Stack direction="row" spacing={2} alignItems="flex-start">
               <TextField
                 label="Mentor Email"
                 name="mentorEmailid"
                 value={menteeDetails.mentorEmailid}
                 onChange={handleInputChange}
                 required
-                sx={{ ...dialogStyles.textField, flex: 1 }}
+                sx={{ flex: 1 , ...dialogStyles.textField}}
               />
               <Button
                 variant="contained"
                 onClick={searchMentor}
-                sx={{ minWidth: 'auto', height: '56px' }}
+                startIcon={<SearchIcon />}
+                sx={{ height: '56px', borderRadius: '4px', '&:hover':"#f97316" }}
               >
-                <SearchIcon />
+                Search
               </Button>
-            </Box>
-            <TextField
-              label="Mentor MUJid"
-              name="mentorMujid"
-              value={menteeDetails.mentorMujid}
-              disabled
-              sx={dialogStyles.textField}
-            />
+            </Stack>
             {mentorError && (
               <Alert 
-                severity={mentorError.includes('successfully') ? "success" : "error"} 
-                sx={{ mt: 1 }}
+                severity={mentorError.includes('successfully') ? "success" : "error"}
               >
                 {mentorError}
               </Alert>
@@ -368,11 +381,19 @@ const AddMenteeDialog = ({ open, onClose }) => { // Remove onSubmit from props s
                 variant="contained"
                 color="primary"
                 onClick={handleCreateMentor}
-                sx={{ mt: 1 }}
+                startIcon={<AddIcon />}
+                sx={{ mt: 1, borderRadius: '4px', '&:hover':"#f97316" }}
               >
-                Create New Mentor with Auto-Generated MUJid
+                Create New Mentor
               </Button>
             )}
+            <TextField
+              label="Mentor MUJid"
+              name="mentorMujid"
+              value={menteeDetails.mentorMujid}
+              sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+            />
+           
           </Box>
         </Box>
       </DialogContent>

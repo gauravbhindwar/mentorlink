@@ -1,7 +1,6 @@
 import { Mentee, Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
-import { NextResponse } from "next/server";
 import { connect } from "@/lib/dbConfig";
 import { Meeting } from "@/lib/db/meetingSchema";
 
@@ -150,7 +149,7 @@ export async function GET(req) {
       }, { status: 400 });
     }
 
-    console.log("Searching for mentees with mentor email:", mentorEmail);
+    // console.log("Searching for mentees with mentor email:", mentorEmail);
 
     // Find all mentees assigned to this mentor using mentorEmailid field
     const mentees = await Mentee.find({ 
@@ -159,7 +158,7 @@ export async function GET(req) {
     .select('-password -otp -otpExpires -isOtpUsed')
     .lean();
 
-    console.log("Found mentees:", mentees.length);
+    // console.log("Found mentees:", mentees.length);
 
     return NextResponse.json({
       success: true,
@@ -178,75 +177,75 @@ export async function GET(req) {
 }
 
 // PUT request to update a mentee by mujid
-export async function PUT(req) {
-  try {
-    await connect();
-    const data = await req.json();
-    const mentorEmail = req.headers.get('mentor-email');
+// export async function PUT(req) {
+//   try {
+//     await connect();
+//     const data = await req.json();
+//     const mentorEmail = req.headers.get('mentor-email');
 
-    if (!mentorEmail) {
-      return NextResponse.json({
-        success: false,
-        message: "Mentor email is required"
-      }, { status: 400 });
-    }
+//     if (!mentorEmail) {
+//       return NextResponse.json({
+//         success: false,
+//         message: "Mentor email is required"
+//       }, { status: 400 });
+//     }
 
-    console.log('Received update data:', data); // Debug log
+//     console.log('Received update data:', data); // Debug log
 
-    const allowedUpdates = {
-      name: data.name,
-      phone: data.phone,
-      address: data.address, // Ensure address is included
-      parents: {
-        father: data.parents?.father || {},
-        mother: data.parents?.mother || {},
-        guardian: data.parents?.guardian || {}
-      }
-    };
+//     const allowedUpdates = {
+//       name: data.name,
+//       phone: data.phone,
+//       address: data.address, // Ensure address is included
+//       parents: {
+//         father: data.parents?.father || {},
+//         mother: data.parents?.mother || {},
+//         guardian: data.parents?.guardian || {}
+//       }
+//     };
 
-    // Remove undefined fields
-    Object.keys(allowedUpdates).forEach(key => {
-      if (allowedUpdates[key] === undefined || allowedUpdates[key] === null) {
-        delete allowedUpdates[key];
-      }
-    });
+//     // Remove undefined fields
+//     Object.keys(allowedUpdates).forEach(key => {
+//       if (allowedUpdates[key] === undefined || allowedUpdates[key] === null) {
+//         delete allowedUpdates[key];
+//       }
+//     });
 
-    console.log('Processed updates:', allowedUpdates); // Debug log
+//     console.log('Processed updates:', allowedUpdates); // Debug log
 
-    const updatedMentee = await Mentee.findOneAndUpdate(
-      { 
-        MUJid: data.MUJid,
-        mentorEmailid: mentorEmail
-      },
-      { $set: allowedUpdates },
-      { 
-        new: true,
-        runValidators: true
-      }
-    );
+//     const updatedMentee = await Mentee.findOneAndUpdate(
+//       { 
+//         MUJid: data.MUJid,
+//         mentorEmailid: mentorEmail
+//       },
+//       { $set: allowedUpdates },
+//       { 
+//         new: true,
+//         runValidators: true
+//       }
+//     );
 
-    if (!updatedMentee) {
-      return NextResponse.json({
-        success: false,
-        message: "Mentee not found or not authorized to update"
-      }, { status: 404 });
-    }
+//     if (!updatedMentee) {
+//       return NextResponse.json({
+//         success: false,
+//         message: "Mentee not found or not authorized to update"
+//       }, { status: 404 });
+//     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Mentee updated successfully",
-      mentee: updatedMentee
-    }, { status: 200 });
+//     return NextResponse.json({
+//       success: true,
+//       message: "Mentee updated successfully",
+//       mentee: updatedMentee
+//     }, { status: 200 });
 
-  } catch (error) {
-    console.error("Update error:", error);
-    return NextResponse.json({
-      success: false,
-      message: "Error updating mentee",
-      error: error.message
-    }, { status: 500 });
-  }
-}
+//   } catch (error) {
+//     console.error("Update error:", error);
+//     return NextResponse.json({
+//       success: false,
+//       message: "Error updating mentee",
+//       error: error.message
+//     }, { status: 500 });
+//   }
+// }
 
 // PATCH request to update specific fields of a mentee by mujid
 export async function PATCH(req) {

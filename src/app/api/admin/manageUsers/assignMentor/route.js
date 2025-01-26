@@ -1,5 +1,5 @@
 import { connect } from "../../../../../lib/dbConfig";
-import { MentorMenteeRelationship } from "../../../../../lib/dbModels";
+// import { MentorMenteeRelationship } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 
@@ -8,8 +8,7 @@ const assignmentSchema = Joi.object({
   mentor_MUJid: Joi.string().required(),
   mentee_MUJid: Joi.string().required(),
   session: Joi.string().required(),
-  current_semester: Joi.number().required(),
-  section: Joi.string().required()
+  current_semester: Joi.number().required()
 });
 
 // Utility function to handle errors
@@ -28,15 +27,14 @@ export async function POST(req) {
       return createErrorResponse(error.details[0].message, 400);
     }
 
-    const { mentor_MUJid, mentee_MUJid, session, current_semester, section } = requestBody;
+    const { mentor_MUJid, mentee_MUJid, session, current_semester } = requestBody;
 
     try {
       await MentorMenteeRelationship.assignMentor({
         mentor_MUJid,
         mentee_MUJid,
         session,
-        current_semester,
-        section
+        current_semester
       });
     } catch (assignError) {
       return createErrorResponse(assignError.message, 400);
