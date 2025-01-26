@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 // Remove ReCAPTCHA import as v3 doesn't need a component
 
 // Move loadReCaptchaScript outside component and modify it to return a promise
@@ -11,7 +12,7 @@ const loadReCaptchaScript = () => {
       return;
     }
 
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY}`;
     script.async = true;
     script.defer = true;
@@ -47,17 +48,17 @@ const Login = () => {
         await loadReCaptchaScript();
         setIsRecaptchaLoaded(true);
       } catch (error) {
-        console.error('Failed to load reCAPTCHA:', error);
+        console.error("Failed to load reCAPTCHA:", error);
       }
     };
-    
+
     initRecaptcha();
 
     // Cleanup
     return () => {
       // Remove the script when component unmounts
       const scripts = document.querySelectorAll(`script[src*="recaptcha"]`);
-      scripts.forEach(script => script.remove());
+      scripts.forEach((script) => script.remove());
     };
   }, []);
 
@@ -105,17 +106,20 @@ const Login = () => {
   // Update executeCaptcha function
   const executeCaptcha = async () => {
     if (!isRecaptchaLoaded || !window.grecaptcha) {
-      throw new Error('reCAPTCHA not loaded');
+      throw new Error("reCAPTCHA not loaded");
     }
 
     try {
-      const token = await window.grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY, {
-        action: 'submit'
-      });
+      const token = await window.grecaptcha.execute(
+        process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY,
+        {
+          action: "submit",
+        }
+      );
       return token;
     } catch (error) {
-      console.error('reCAPTCHA execution error:', error);
-      throw new Error('Security verification failed');
+      console.error("reCAPTCHA execution error:", error);
+      throw new Error("Security verification failed");
     }
   };
 
@@ -131,7 +135,7 @@ const Login = () => {
     try {
       const captchaToken = await executeCaptcha();
       if (!captchaToken) {
-        throw new Error('Security verification failed');
+        throw new Error("Security verification failed");
       }
 
       const response = await fetch("/api/auth/send-otp", {
@@ -139,9 +143,9 @@ const Login = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           email,
-          captchaToken 
+          captchaToken,
         }),
       });
 
@@ -159,7 +163,9 @@ const Login = () => {
         // console.log("OTP sent successfully");
       }
     } catch (error) {
-      setEmailError(error.message || 'Security verification failed. Please try again.');
+      setEmailError(
+        error.message || "Security verification failed. Please try again."
+      );
       setSendOTPSuccess(false);
     } finally {
       setIsLoading(false);
@@ -175,7 +181,7 @@ const Login = () => {
     try {
       const captchaToken = await executeCaptcha();
       if (!captchaToken) {
-        throw new Error('Security verification failed');
+        throw new Error("Security verification failed");
       }
 
       const response = await fetch("/api/auth/send-otp", {
@@ -183,9 +189,9 @@ const Login = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           email,
-          captchaToken 
+          captchaToken,
         }),
       });
 
@@ -239,8 +245,15 @@ const Login = () => {
         sessionStorage.setItem("role", data.role);
         sessionStorage.setItem("email", email);
         sessionStorage.setItem("mujid", data.MUJid);
-        // Handle role-based navigation
-        if (data.role.length > 1) {
+
+        const response = await axios.get("/api/mentor", {
+          params: { MUJId: data.MUJid, email: email },
+        });
+        const mentorInfo = response.data;
+        if (mentorInfo) {
+          sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
+        }
+        if (data && data.role && data.role.length > 1) {
           setRoles(data.role);
         } else {
           // Single role - direct redirect using router
@@ -271,7 +284,9 @@ const Login = () => {
       {!verifySuccess ? (
         <>
           <form onSubmit={handleSubmit} className='w-full max-w-2xl px-4'>
-            <div className='flex flex-col gap-6'> {/* Added flex-col and gap */}
+            <div className='flex flex-col gap-6'>
+              {" "}
+              {/* Added flex-col and gap */}
               <div className='flex gap-4 items-center'>
                 <div className='flex-1 max-w-[400px] relative'>
                   <label

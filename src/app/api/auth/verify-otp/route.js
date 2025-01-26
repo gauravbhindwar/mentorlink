@@ -1,6 +1,6 @@
 // route.js
 import { connect } from "../../../../lib/dbConfig";
-import { Mentor} from "../../../../lib/dbModels";
+import { Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
@@ -15,9 +15,9 @@ const verifyOtpForUser = async (email, otp) => {
   }
 
   // Check if already verified
-  if (user.isOtpUsed) {
-    return { success: true, message: "Previously verified" };
-  }
+  // if (user.isOtpUsed) {
+  //   return { success: true, message: "Previously verified" };
+  // }
 
   // Check if valid OTP exists
   if (!user.otp || !user.otpExpires) {

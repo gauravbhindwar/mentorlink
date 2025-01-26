@@ -2,10 +2,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "@/components/subComponents/Navbar";
 import axios from "axios";
-import EmailProgress from '../EmailProgress/EmailProgress';
-import { FaVideo, FaBuilding } from 'react-icons/fa'; // Add this import at the top
+import EmailProgress from "../EmailProgress/EmailProgress";
+import { FaVideo, FaBuilding } from "react-icons/fa"; // Add this import at the top
 
 const ScheduleMeetingComponent = () => {
   const router = useRouter();
@@ -43,7 +42,11 @@ const ScheduleMeetingComponent = () => {
   const [preventReload, setPreventReload] = useState(false);
   const [isMeetingOnline, setIsMeetingOnline] = useState(false);
   const [venue, setVenue] = useState("");
-  const [emailProgress, setEmailProgress] = useState({ current: 0, total: 0, show: false });
+  const [emailProgress, setEmailProgress] = useState({
+    current: 0,
+    total: 0,
+    show: false,
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -153,8 +156,7 @@ const ScheduleMeetingComponent = () => {
         generateMeetingId();
         getMentees(mentorId, currentSemester);
       }
-    } 
-    catch (error) {
+    } catch (error) {
       console.log("Error in useEffect:", error);
       throw error;
     }
@@ -190,7 +192,7 @@ const ScheduleMeetingComponent = () => {
     setLoading(true);
     setSubmitting(true);
     setPreventReload(true);
-    
+
     try {
       // First schedule the meeting
       const response = await axios.post("/api/meeting/mentors/schmeeting", {
@@ -206,12 +208,12 @@ const ScheduleMeetingComponent = () => {
         venue: venue,
       });
 
-        if (response.status === 200) {
+      if (response.status === 200) {
         // Filter out invalid emails and send
         const validEmails = mentees
-          .filter(mentee => mentee.email && mentee.email.includes('@'))
-          .map(mentee => mentee.email);
-          
+          .filter((mentee) => mentee.email && mentee.email.includes("@"))
+          .map((mentee) => mentee.email);
+
         if (validEmails.length === 0) {
           throw new Error("No valid email addresses found");
         }
@@ -220,7 +222,9 @@ const ScheduleMeetingComponent = () => {
       }
     } catch (error) {
       console.error("Error scheduling meeting:", error);
-      setCustomAlert(error.message || "Failed to schedule meeting or send emails");
+      setCustomAlert(
+        error.message || "Failed to schedule meeting or send emails"
+      );
     } finally {
       setLoading(false);
       setSubmitting(false);
@@ -441,22 +445,22 @@ Contact: ${mentorData?.email || ""}`;
 
       // Start progress
       setEmailProgress({ current: 0, total: menteeEmails.length, show: true });
-      
+
       // Send emails
       const response = await axios.post("/api/meeting/send-email", {
         emails: menteeEmails,
         subject: `Meeting Scheduled - ${meetingId}`,
         body: getEmailBody(),
-        meetingId: meetingId // Ensure meetingId is included
+        meetingId: meetingId, // Ensure meetingId is included
       });
 
       if (response.data.success) {
-        setEmailProgress({ 
-          current: menteeEmails.length, 
-          total: menteeEmails.length, 
-          show: true 
+        setEmailProgress({
+          current: menteeEmails.length,
+          total: menteeEmails.length,
+          show: true,
         });
-        
+
         setTimeout(() => {
           setEmailProgress({ current: 0, total: 0, show: false });
           router.push("/pages/mentordashboard");
@@ -466,7 +470,9 @@ Contact: ${mentorData?.email || ""}`;
       }
     } catch (error) {
       console.error("Error sending emails:", error);
-      setCustomAlert(error.message || "Failed to send meeting notification emails");
+      setCustomAlert(
+        error.message || "Failed to send meeting notification emails"
+      );
       setEmailProgress({ current: 0, total: 0, show: false });
     }
   };
@@ -493,8 +499,6 @@ Contact: ${mentorData?.email || ""}`;
           <div className='absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient' />
           <div className='absolute inset-0 backdrop-blur-3xl' />
         </div>
-
-        <Navbar />
 
         <div className='relative z-10 container mx-auto px-4 pt-24'>
           <motion.div
@@ -715,12 +719,14 @@ Contact: ${mentorData?.email || ""}`;
                         onChange={(e) => {
                           const selectedDate = new Date(e.target.value);
                           const now = new Date();
-                          
+
                           if (selectedDate < now) {
-                            setCustomAlert("Please select a future date and time");
+                            setCustomAlert(
+                              "Please select a future date and time"
+                            );
                             return;
                           }
-                          
+
                           setDateTime(e.target.value);
                           formatDateTime(e.target.value);
                           setCustomAlert("");
@@ -743,31 +749,29 @@ Contact: ${mentorData?.email || ""}`;
                         type='button'
                         onClick={() => {
                           setIsMeetingOnline(false);
-                          setVenue('');
+                          setVenue("");
                         }}
                         className={`flex items-center justify-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
                           !isMeetingOnline
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-black/20 text-gray-400 hover:bg-black/30'
-                        }`}
-                      >
-                        <FaBuilding className="text-lg" />
+                            ? "bg-orange-500 text-white"
+                            : "bg-black/20 text-gray-400 hover:bg-black/30"
+                        }`}>
+                        <FaBuilding className='text-lg' />
                         <span>Offline</span>
                       </button>
-                      
+
                       <button
                         type='button'
                         onClick={() => {
                           setIsMeetingOnline(true);
-                          setVenue('');
+                          setVenue("");
                         }}
                         className={`flex items-center justify-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
                           isMeetingOnline
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-black/20 text-gray-400 hover:bg-black/30'
-                        }`}
-                      >
-                        <FaVideo className="text-lg" />
+                            ? "bg-orange-500 text-white"
+                            : "bg-black/20 text-gray-400 hover:bg-black/30"
+                        }`}>
+                        <FaVideo className='text-lg' />
                         <span>Online</span>
                       </button>
                     </div>
@@ -781,9 +785,9 @@ Contact: ${mentorData?.email || ""}`;
                     <div className='relative'>
                       <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
                         {isMeetingOnline ? (
-                          <FaVideo className="text-gray-400" />
+                          <FaVideo className='text-gray-400' />
                         ) : (
-                          <FaBuilding className="text-gray-400" />
+                          <FaBuilding className='text-gray-400' />
                         )}
                       </div>
                       <input
@@ -867,10 +871,12 @@ Contact: ${mentorData?.email || ""}`;
           </motion.div>
         </div>
         {emailProgress.show && (
-          <EmailProgress 
+          <EmailProgress
             current={emailProgress.current}
             total={emailProgress.total}
-            onClose={() => setEmailProgress({ current: 0, total: 0, show: false })}
+            onClose={() =>
+              setEmailProgress({ current: 0, total: 0, show: false })
+            }
           />
         )}
       </motion.div>

@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import Navbar from '@/components/subComponents/Navbar';
 import { useRouter } from 'next/navigation';
 
 interface AcademicSessionType {
@@ -36,12 +35,12 @@ const CreateAcademicSession = () => {
 
   const validateAndParseSemesters = (input: string): number[] | null => {
     const semesterArray: number[] = input.split(',').map(s => parseInt(s.trim()));
-    const isValid: boolean = semesterArray.every(s => 
-      !isNaN(s) && s >= 1 && s <= 8 && 
-      ((academicSession.includes('JULY-DECEMBER') && s % 2 === 1) || 
-       (academicSession.includes('JANUARY-JUNE') && s % 2 === 0))
+    const isValid: boolean = semesterArray.every(s =>
+      !isNaN(s) && s >= 1 && s <= 8 &&
+      ((academicSession.includes('JULY-DECEMBER') && s % 2 === 1) ||
+        (academicSession.includes('JANUARY-JUNE') && s % 2 === 0))
     );
-    
+
     if (!isValid) {
       setSemesterError('Invalid semesters. Must be comma-separated odd (1,3,5,7) for July-Dec or even (2,4,6,8) for Jan-June');
       return null;
@@ -54,7 +53,7 @@ const CreateAcademicSession = () => {
     setLoading(true);
     try {
       const semesterArray = validateAndParseSemesters(semesters);
-      
+
       if (!semesterArray) {
         setLoading(false);
         return;
@@ -76,17 +75,17 @@ const CreateAcademicSession = () => {
       };
 
       const response = await axios.post('/api/admin/academicSession', sessionData);
-      
+
       if (response.status === 200) {
         setCustomAlert('Academic session created successfully');
         setShowRedirectDialog(true);
-        
+
         // Start countdown
         let timeLeft = 3;
         const countdownInterval = setInterval(() => {
           timeLeft -= 1;
           setCountdown(timeLeft);
-          
+
           if (timeLeft === 0) {
             clearInterval(countdownInterval);
             router.push('/pages/admin/admindashboard');
@@ -117,7 +116,7 @@ const CreateAcademicSession = () => {
     if (!input) return [];
     const currentYear = new Date().getFullYear();
     const suggestions = [];
-    
+
     for (let i = 0; i < 5; i++) {
       const year = currentYear - i;
       const academicYear = `${year}-${year + 1}`;
@@ -135,19 +134,19 @@ const CreateAcademicSession = () => {
       `JULY-DECEMBER ${startYear}`,
       `JANUARY-JUNE ${endYear}`
     ];
-    
-    return possibleSessions.filter(session => 
+
+    return possibleSessions.filter(session =>
       session.toLowerCase().includes(input.toLowerCase())
     );
   };
 
   const handleAcademicYearInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.toUpperCase();
-    
+
     if (value.length === 4 && !value.includes('-')) {
       value = `${value}-${parseInt(value) + 1}`;
     }
-    
+
     // Auto-hide dropdown if a valid year pattern is entered (YYYY-YYYY)
     if (/^\d{4}-\d{4}$/.test(value)) {
       setShowYearOptions(false);
@@ -164,7 +163,7 @@ const CreateAcademicSession = () => {
 
   const handleAcademicSessionInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.toUpperCase();
-    
+
     if (value.startsWith('JUL')) {
       value = `JULY-DECEMBER ${academicYear?.split('-')[0]}`;
       setShowSessionOptions(false);
@@ -178,28 +177,28 @@ const CreateAcademicSession = () => {
       setSessionSuggestions([]);
       setShowSessionOptions(false);
     }
-    
+
     setAcademicSession(value);
   };
 
   const formatSemesters = (input: string) => {
     // Split by commas and handle multiple commas
     const parts = input.split(/,+/).filter((part: string) => part.trim() !== '');
-    
+
     // Process each part to extract numbers
     const numbers: string = parts.map((part: string) => part.replace(/[^0-9]/g, '')).join('');
-    
+
     // Filter valid numbers based on session
     const validNumbers = [...numbers].filter(n => {
       const num = parseInt(n);
-      return academicSession.includes('JULY-DECEMBER') ? 
-        (num % 2 === 1 && num <= 7) : 
+      return academicSession.includes('JULY-DECEMBER') ?
+        (num % 2 === 1 && num <= 7) :
         (num % 2 === 0 && num <= 8);
     });
-    
+
     // Return empty string if no valid numbers
     if (validNumbers.length === 0) return '';
-    
+
     // Join with commas
     return validNumbers.join(',');
   };
@@ -212,7 +211,7 @@ const CreateAcademicSession = () => {
     }
     const formatted = formatSemesters(value);
     setSemesters(formatted);
-    
+
     const showError = value.length > 0 && formatted.length === 0;
     setSemesterError(showError ? 'Invalid semesters' : '');
   };
@@ -220,10 +219,10 @@ const CreateAcademicSession = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (yearRef.current && !yearRef.current.contains(event.target as Node)) {
-      setShowYearOptions(false);
+        setShowYearOptions(false);
       }
       if (sessionRef.current && !sessionRef.current.contains(event.target as Node)) {
-      setShowSessionOptions(false);
+        setShowSessionOptions(false);
       }
     };
 
@@ -240,15 +239,14 @@ const CreateAcademicSession = () => {
         console.error('Error fetching sessions:', error);
       }
     };
-    
+
     fetchSessions();
   }, []);
 
   return (
     <AnimatePresence>
       <motion.div className="h-screen bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a] overflow-hidden">
-        <Navbar />
-        
+
         {/* Redirect Dialog */}
         <AnimatePresence>
           {showRedirectDialog && (
@@ -267,17 +265,17 @@ const CreateAcademicSession = () => {
                 <div className="text-center space-y-4">
                   <div className="flex justify-center">
                     <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <svg 
-                        className="w-6 h-6 text-green-500" 
-                        fill="none" 
-                        stroke="currentColor" 
+                      <svg
+                        className="w-6 h-6 text-green-500"
+                        fill="none"
+                        stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M5 13l4 4L19 7" 
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
                         />
                       </svg>
                     </div>
@@ -306,7 +304,7 @@ const CreateAcademicSession = () => {
           <div className="container mx-auto px-4 py-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Form Section */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="w-full"
@@ -415,13 +413,12 @@ const CreateAcademicSession = () => {
 
                     {/* Submit Button */}
                     <div className="pt-2">
-                      <button 
-                        type="button" 
-                        className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all ${
-                          loading 
-                            ? 'bg-orange-500/50 cursor-not-allowed' 
+                      <button
+                        type="button"
+                        className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all ${loading
+                            ? 'bg-orange-500/50 cursor-not-allowed'
                             : 'bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600'
-                        }`}
+                          }`}
                         disabled={loading}
                         onClick={handleCreateAcademicSession}
                       >
@@ -438,7 +435,7 @@ const CreateAcademicSession = () => {
                         )}
                       </button>
                       {customAlert && (
-                        <motion.p 
+                        <motion.p
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           className='text-sm text-center mt-3 font-medium text-orange-500'

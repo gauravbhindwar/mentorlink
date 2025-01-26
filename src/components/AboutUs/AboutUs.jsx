@@ -94,7 +94,7 @@ const AboutUs = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className='text-center py-8'>
+          className='text-center py-8 mt-8'>
           <h1
             className={`${righteous.className} text-5xl md:text-7xl font-normal bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-blue-500 mb-8 tracking-wide`}>
             About MentorLink

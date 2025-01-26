@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Navbar from "@/components/subComponents/Navbar";
 import "./globals.css";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Navbar />
         {children}
         <div id="portal-root" />
         <SpeedInsights />
