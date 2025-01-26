@@ -239,6 +239,7 @@ export default function NavbarNew() {
             </div>
 
             <div className="mid-col hidden md:flex justify-around w-1/2">
+                
                 {role === "admin" && (
                     <div className=" group relative">
                         <button
@@ -314,6 +315,7 @@ export default function NavbarNew() {
                         {(role === "admin" || role === "mentor") &&
                             <button onClick={(e) => router.push("/pages/mentordashboard")} className="hover:underline">Mentor Dashboard</button>
                         }
+                        <button onClick={handleLogout}>Log Out</button>
                     </div>
                 </div>
             </div>
