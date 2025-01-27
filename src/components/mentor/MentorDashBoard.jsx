@@ -30,11 +30,12 @@ const MentorDashBoard = () => {
   });
   const [isSubmitDisabled, setIsSubmitDisabled] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isClientSide, setIsClientSide] = useState(false);
   const [showAttendance, setShowAttendance] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
+  const [emailInProgress, setEmailInProgress] = useState({});
 
   // const extractSessionData = (data) => ({
   //   name: data.name,
@@ -418,44 +419,54 @@ Department of Computer Science and Engineering
 Manipal University Jaipur
 Contact: ${mentorData?.email || ""}`;
 
-  const sendEmailToMentees = async (meeting) => {
-    setIsLoading(true);
-    try {
-      const responsePromise = fetch(
-        `/api/meeting/mentees?mentorId=${mentorData.MUJid}&semester=${meeting.semester}&section=${meeting.section}&year=${mentorData.academicYear}&session=${mentorData.academicSession}`
-      );
-      const response = await responsePromise;
-      if (response.ok) {
-        const menteesData = await response.json();
-        const menteeEmails = menteesData.map((mentee) => mentee.email);
-
-        const emailResponse = await axios.post("/api/meeting/send-email", {
-          emails: menteeEmails,
-          subject: `Meeting Reminder - ${meeting.meeting.meeting_id}`,
-          body: getEmailBody(meeting),
-          meetingId: meeting.meeting.meeting_id, // Add meeting ID to track emails
-        });
-
-        if (emailResponse.data.success) {
-          setShowToast(true);
-          // Show number of times emails were sent for this meeting
-          alert(
-            `Reminder email #${emailResponse.data.totalEmailsSent} sent successfully to ${emailResponse.data.sentCount} recipients`
-          );
-          setTimeout(() => setShowToast(false), 5000);
-        } else {
-          throw new Error(emailResponse.data.message);
-        }
-      } else {
-        throw new Error("Failed to fetch mentees");
-      }
-    } catch (error) {
-      console.error("Error sending emails:", error);
-      alert(`Failed to send reminder emails: ${error.message}`);
-    } finally {
-      setIsLoading(false);
+const sendEmailToMentees = async (meeting) => {
+  const meetingId = meeting.meeting.meeting_id;
+  setEmailInProgress(prev => ({ ...prev, [meetingId]: true }));
+  
+  try {
+    const response = await fetch(
+      `/api/meeting/mentees?mentorId=${mentorData.MUJid}&semester=${meeting.semester}&year=${mentorData.academicYear}&session=${mentorData.academicSession}&meetingId=${meetingId}`
+    );
+    
+    if (!response.ok) {
+      throw new Error("Failed to fetch mentees");
     }
-  };
+    
+    const menteesData = await response.json();
+    const menteeEmails = menteesData.map((mentee) => mentee.email);
+
+    const emailResponse = await axios.post("/api/meeting/send-email", {
+      emails: menteeEmails,
+      subject: `Meeting Reminder - ${meetingId}`,
+      body: getEmailBody(meeting),
+      meetingId: meetingId,
+    });
+
+    if (emailResponse.data.success) {
+      setShowToast(true);
+      // Update only the specific meeting's email count
+      setMeetings(prevMeetings =>
+        prevMeetings.map(m => {
+          if (m.meeting.meeting_id === meetingId) {
+            return {
+              ...m,
+              meeting: {
+                ...m.meeting,
+                emailsSentCount: (m.meeting.emailsSentCount || 0) + 1
+              }
+            };
+          }
+          return m;
+        })
+      );
+      setTimeout(() => setShowToast(false), 5000);
+    }
+  } catch (error) {
+    console.error("Error sending emails:", error);
+  } finally {
+    setEmailInProgress(prev => ({ ...prev, [meetingId]: false }));
+  }
+};
 
   const handleSelectAllPresent = () => {
     if (!selectedMeeting?.menteeDetails) return;
@@ -902,7 +913,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 document={generateMOMPdf(
                                                   {
                                                     ...meeting.meeting,
-                                                    section: meeting.section,
+                                                    // section: meeting.section,
                                                     semester: meeting.semester,
                                                     academicYear:
                                                       mentorData.academicYear,
@@ -932,11 +943,12 @@ Contact: ${mentorData?.email || ""}`;
                                             sendEmailToMentees(meeting)
                                           }
                                           className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
-                                          disabled={isLoading}>
-                                          {isLoading ? (
+                                          disabled={emailInProgress[meeting.meeting.meeting_id]}>
+                                          {emailInProgress[meeting.meeting.meeting_id] ? (
                                             <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
                                           ) : (
-                                            "Resend Meeting Email"
+                                            `Resend Email ${meeting.meeting.emailsSentCount ? 
+                                              `(${meeting.meeting.emailsSentCount})` : ''}`
                                           )}
                                         </button>
                                       </div>
@@ -1143,7 +1155,7 @@ Contact: ${mentorData?.email || ""}`;
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className='fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-black px-6 py-3 rounded-lg shadow-lg z-50 border border-green-500'>
+            className='fixed bottom-10 left-1/2 bg-black px-6 py-3 rounded-lg shadow-lg z-50 border border-green-500'>
             <span className='text-green-500 font-medium'>
               Emails sent successfully!
             </span>
