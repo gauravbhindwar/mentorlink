@@ -18,15 +18,20 @@ const Navbar = () => {
   useEffect(() => {
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData") || "{}");
 
-    if (mentorData.email) {
-      setUser({
-        name: mentorData.name || "Guest",
-        email: mentorData.email,
-        initial: (mentorData.name?.[0] || "G").toUpperCase(),
-        roles: mentorData.role || [],
-      });
+    if (!mentorData.email) {
+      // Auto logout if no email found
+      sessionStorage.clear();
+      router.push("/");
+      return;
     }
-  }, []);
+
+    setUser({
+      name: mentorData.name || "Guest",
+      email: mentorData.email,
+      initial: (mentorData.name?.[0] || "G").toUpperCase(),
+      roles: mentorData.role || [],
+    });
+  }, [router, pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -40,6 +45,11 @@ const Navbar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Add this new useEffect to close dropdown on route change
+  useEffect(() => {
+    setIsDropdownOpen(false);
+  }, [pathname]);
 
   // Don't render navbar on root route
   if (pathname === "/") {
