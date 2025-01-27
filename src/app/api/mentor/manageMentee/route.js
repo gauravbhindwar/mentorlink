@@ -2,7 +2,7 @@ import { Mentee, Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import Joi from "joi";
 import { connect } from "@/lib/dbConfig";
-import { Meeting } from "@/lib/db/meetingSchema";
+// import { Meeting } from "@/lib/db/meetingSchema";
 
 
 // Define the Joi schema for validation
@@ -325,7 +325,6 @@ export async function PUT(request) {
   try {
     await connect();
     const menteeData = await request.json();
-    // const mentorEmail = request.headers.get('mentor-email');
 
     if (!menteeData.MUJid) {
       return NextResponse.json({ error: "MUJid is required" }, { status: 400 });
@@ -335,8 +334,19 @@ export async function PUT(request) {
     const updatedMentee = await Mentee.findOneAndUpdate(
       { MUJid: menteeData.MUJid },
       {
-        ...menteeData,
-        updated_at: new Date()
+        $set: {
+          name: menteeData.name,
+          email: menteeData.email,
+          phone: menteeData.phone,
+          address: menteeData.address,
+          semester: menteeData.semester,
+          parents: {
+            father: menteeData.parents?.father || {},
+            mother: menteeData.parents?.mother || {},
+            guardian: menteeData.parents?.guardian || {}
+          },
+          updated_at: new Date()
+        }
       },
       { new: true }
     );
@@ -344,22 +354,6 @@ export async function PUT(request) {
     if (!updatedMentee) {
       return NextResponse.json({ error: "Mentee not found" }, { status: 404 });
     }
-
-    // Update mentee details in meetings collection
-    await Meeting.updateMany(
-      { "meetings.mentee_ids": menteeData.MUJid },
-      {
-        $set: {
-          "meetings.$[meeting].menteeDetails.$[mentee]": updatedMentee
-        }
-      },
-      {
-        arrayFilters: [
-          { "meeting.mentee_ids": menteeData.MUJid },
-          { "mentee.MUJid": menteeData.MUJid }
-        ]
-      }
-    );
 
     return NextResponse.json({
       success: true,

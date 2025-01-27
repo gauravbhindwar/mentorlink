@@ -171,17 +171,32 @@ const ViewMentee = () => {
       ...selectedMentee,
       address: selectedMentee.address || "",
       email: selectedMentee.email || "",
-      // section: selectedMentee.section || '',
+      name: selectedMentee.name || "",
+      phone: selectedMentee.phone || "",
       semester: selectedMentee.semester || "",
       yearOfRegistration: selectedMentee.yearOfRegistration || "",
       academicSession: selectedMentee.academicSession || "",
       academicYear: selectedMentee.academicYear || "",
       parents: {
-        ...selectedMentee.parents,
-        father: { ...selectedMentee.parents?.father } || {},
-        mother: { ...selectedMentee.parents?.mother } || {},
-        guardian: { ...selectedMentee.parents?.guardian } || {},
-      },
+        father: {
+          name: selectedMentee.parents?.father?.name || "",
+          email: selectedMentee.parents?.father?.email || "",
+          phone: selectedMentee.parents?.father?.phone || "",
+          alternatePhone: selectedMentee.parents?.father?.alternatePhone || ""
+        },
+        mother: {
+          name: selectedMentee.parents?.mother?.name || "",
+          email: selectedMentee.parents?.mother?.email || "",
+          phone: selectedMentee.parents?.mother?.phone || "",
+          alternatePhone: selectedMentee.parents?.mother?.alternatePhone || ""
+        },
+        guardian: {
+          name: selectedMentee.parents?.guardian?.name || "",
+          email: selectedMentee.parents?.guardian?.email || "",
+          phone: selectedMentee.parents?.guardian?.phone || "",
+          relation: selectedMentee.parents?.guardian?.relation || ""
+        }
+      }
     });
   };
 
@@ -695,7 +710,8 @@ const ViewMentee = () => {
                       label='Name'
                       name='name'
                       value={
-                        isEditing ? editedMentee.name : selectedMentee.name
+                        (isEditing ? editedMentee.name : selectedMentee.name) ||
+                        ""
                       }
                       onChange={handleInputChange}
                       disabled={!isEditing}
@@ -705,7 +721,9 @@ const ViewMentee = () => {
                       label='Phone'
                       name='phone'
                       value={
-                        isEditing ? editedMentee.phone : selectedMentee.phone
+                        (isEditing
+                          ? editedMentee.phone
+                          : selectedMentee.phone) || ""
                       }
                       onChange={handleInputChange}
                       disabled={!isEditing}
@@ -717,9 +735,9 @@ const ViewMentee = () => {
                       multiline
                       rows={2}
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.address
-                          : selectedMentee.address
+                          : selectedMentee.address) || ""
                       }
                       onChange={handleInputChange}
                       disabled={!isEditing}
@@ -729,7 +747,9 @@ const ViewMentee = () => {
                       label='Email'
                       name='email'
                       value={
-                        isEditing ? editedMentee.email : selectedMentee.email
+                        (isEditing
+                          ? editedMentee.email
+                          : selectedMentee.email) || ""
                       }
                       onChange={handleInputChange}
                       disabled={!isEditing}
@@ -750,9 +770,9 @@ const ViewMentee = () => {
                       name='semester'
                       type='number'
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.semester
-                          : selectedMentee.semester
+                          : selectedMentee.semester) || ""
                       }
                       onChange={handleInputChange}
                       disabled={!isEditing}
@@ -762,9 +782,9 @@ const ViewMentee = () => {
                       label='Academic Session'
                       name='academicSession'
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.academicSession
-                          : selectedMentee.academicSession
+                          : selectedMentee.academicSession) || ""
                       }
                       disabled={true}
                       fullWidth
@@ -773,9 +793,9 @@ const ViewMentee = () => {
                       label='Academic Year'
                       name='academicYear'
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.academicYear
-                          : selectedMentee.academicYear
+                          : selectedMentee.academicYear) || ""
                       }
                       disabled={true}
                       fullWidth
@@ -793,9 +813,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Father's Name"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.father?.name
-                          : selectedMentee.parents?.father?.name
+                          : selectedMentee.parents?.father?.name) || ""
                       }
                       onChange={(e) => handleInputChange(e, "father", "name")}
                       disabled={!isEditing}
@@ -804,9 +824,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Father's Email"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.father?.email
-                          : selectedMentee.parents?.father?.email
+                          : selectedMentee.parents?.father?.email) || ""
                       }
                       onChange={(e) => handleInputChange(e, "father", "email")}
                       disabled={!isEditing}
@@ -815,9 +835,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Father's Phone"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.father?.phone
-                          : selectedMentee.parents?.father?.phone
+                          : selectedMentee.parents?.father?.phone) || ""
                       }
                       onChange={(e) => handleInputChange(e, "father", "phone")}
                       disabled={!isEditing}
@@ -836,9 +856,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Mother's Name"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.mother?.name
-                          : selectedMentee.parents?.mother?.name
+                          : selectedMentee.parents?.mother?.name) || ""
                       }
                       onChange={(e) => handleInputChange(e, "mother", "name")}
                       disabled={!isEditing}
@@ -847,9 +867,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Mother's Email"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.mother?.email
-                          : selectedMentee.parents?.mother?.email
+                          : selectedMentee.parents?.mother?.email) || ""
                       }
                       onChange={(e) => handleInputChange(e, "mother", "email")}
                       disabled={!isEditing}
@@ -858,9 +878,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Mother's Phone"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.mother?.phone
-                          : selectedMentee.parents?.mother?.phone
+                          : selectedMentee.parents?.mother?.phone) || ""
                       }
                       disabled={!isEditing}
                       fullWidth
@@ -878,9 +898,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Guardian's Name"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.guardian?.name
-                          : selectedMentee.parents?.guardian?.name
+                          : selectedMentee.parents?.guardian?.name) || ""
                       }
                       onChange={(e) => handleInputChange(e, "guardian", "name")}
                       disabled={!isEditing}
@@ -889,9 +909,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Guardian's Email"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.guardian?.email
-                          : selectedMentee.parents?.guardian?.email
+                          : selectedMentee.parents?.guardian?.email) || ""
                       }
                       onChange={(e) =>
                         handleInputChange(e, "guardian", "email")
@@ -902,9 +922,9 @@ const ViewMentee = () => {
                     <TextField
                       label="Guardian's Phone"
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.guardian?.phone
-                          : selectedMentee.parents?.guardian?.phone
+                          : selectedMentee.parents?.guardian?.phone) || ""
                       }
                       onChange={(e) =>
                         handleInputChange(e, "guardian", "phone")
@@ -915,9 +935,9 @@ const ViewMentee = () => {
                     <TextField
                       label='Relation with Guardian'
                       value={
-                        isEditing
+                        (isEditing
                           ? editedMentee.parents?.guardian?.relation
-                          : selectedMentee.parents?.guardian?.relation
+                          : selectedMentee.parents?.guardian?.relation) || ""
                       }
                       onChange={(e) =>
                         handleInputChange(e, "guardian", "relation")
