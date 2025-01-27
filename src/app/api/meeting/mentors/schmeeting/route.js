@@ -47,7 +47,10 @@ export async function POST(request) {
         academicSession: data.session
       }
     );
-
+    const checkMeeting = mentorMeetings.meetings.find(meeting => meeting.meeting_id === data.meeting_id);
+    if (checkMeeting) {
+      return NextResponse.json({ success: false, message: "Meeting already exists" }, { status: 400 });
+    }
     // Create new meeting data
     const newMeeting = {
       meeting_id: data.meeting_id,

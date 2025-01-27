@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import FirstTimeLoginForm from "./FirstTimeLoginForm";
 import { FiX } from "react-icons/fi";
+import { FaExternalLinkAlt } from "react-icons/fa";
 import axios from "axios";
 import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
@@ -72,6 +73,13 @@ const MentorDashBoard = () => {
           throw new Error("Failed to fetch meetings");
         }
         const data = await response.json();
+
+        // Filter out duplicate meetings based on meeting_id
+        const uniqueMeetings = data.meetings.filter((meeting, index, self) =>
+          index === self.findIndex((m) => m.meeting.meeting_id === meeting.meeting.meeting_id)
+        );
+        data.meetings = uniqueMeetings;
+
         return data.meetings || [];
       }
     } catch (error) {
@@ -122,6 +130,8 @@ const MentorDashBoard = () => {
             mentorInfo.academicSession,
             primarySemester
           );
+
+          
 
           // Set initial meetings
           setMeetings(primaryMeetings);
@@ -746,7 +756,7 @@ Contact: ${mentorData?.email || ""}`;
                                                   .venue
                                               }
                                             </span>
-                                            <svg
+                                            {/* <svg
                                               className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
                                               fill='none'
                                               viewBox='0 0 24 24'
@@ -755,9 +765,10 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
+                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
                                               />
-                                            </svg>
+                                            </svg> */}
+                                            <FaExternalLinkAlt />
                                           </a>
                                         ) : (
                                           <a
@@ -772,7 +783,7 @@ Contact: ${mentorData?.email || ""}`;
                                                   .venue
                                               }
                                             </span>
-                                            <svg
+                                            {/* <svg
                                               className='w-4 h-4 transform group-hover:translate-x-1 transition-transform'
                                               fill='none'
                                               viewBox='0 0 24 24'
@@ -781,9 +792,10 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2h10a2 2v-4M14 4h6m0 0v6m0-6L10 14'
+                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
                                               />
-                                            </svg>
+                                            </svg> */}
+                                            <FaExternalLinkAlt />
                                           </a>
                                         )}
                                       </p>
@@ -951,7 +963,7 @@ Contact: ${mentorData?.email || ""}`;
       )}
       {selectedMeeting && (
         <div
-          className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4'
+          className='fixed inset-0 z-[100000000000] flex items-center justify-center bg-black/70 p-4'
           onClick={() => setSelectedMeeting(null)}>
           <div
             className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'

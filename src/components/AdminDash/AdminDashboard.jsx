@@ -55,14 +55,15 @@ const AdminDashboard = () => {
     //     shadowColor: 'rgba(245, 158, 11, 0.4)',
     //     onClick: () => router.push('/pages/admin/mquery')
     // },
-    {
-      title: "Archives",
-      icon: "📚",
-      description: "Access historical records",
-      gradient: "from-slate-500 via-gray-500 to-zinc-500",
-      shadowColor: "rgba(71, 85, 105, 0.4)",
-      onClick: () => router.push("/archives"), // Updated path
-    },
+    //DISABLED FOR NOW
+    // {
+    //   title: "Archives",
+    //   icon: "📚",
+    //   description: "Access historical records",
+    //   gradient: "from-slate-500 via-gray-500 to-zinc-500",
+    //   shadowColor: "rgba(71, 85, 105, 0.4)",
+    //   onClick: () => router.push("/archives"), // Updated path
+    // },
   ];
 
   return (
