@@ -101,33 +101,54 @@ const ViewMentee = () => {
   useEffect(() => {
     setMounted(true);
     try {
-      // Get mentor data and meeting data from session storage
-      const storedMeetingData = sessionStorage.getItem("meetingData");
-      if (storedMeetingData) {
-        const meetings = JSON.parse(storedMeetingData);
-
-        // Extract unique mentees from all meetings
-        const allMentees = meetings.reduce((acc, meeting) => {
-          if (meeting.menteeDetails) {
-            meeting.menteeDetails.forEach((mentee) => {
-              if (!acc.find((m) => m.MUJid === mentee.MUJid)) {
-                acc.push(mentee);
-              }
-            });
-          }
-          return acc;
-        }, []);
-
-        setMentees(allMentees);
+      // Get mentee data directly from session storage instead of meeting data
+      const storedMenteeData = sessionStorage.getItem("menteeData");
+      if (storedMenteeData) {
+        const menteeList = JSON.parse(storedMenteeData);
+        setMentees(menteeList);
         setLoading(false);
       } else {
-        toast.error("No meeting data found");
-        setMentees([]);
+        // If no mentee data in session storage, fetch from API
+        const mentorData = JSON.parse(sessionStorage.getItem("mentorData"));
+        if (mentorData?.email) {
+          axios
+            .get("/api/mentor/manageMentee", {
+              params: {
+                mentorEmail: mentorData.email,
+              },
+            })
+            .then((response) => {
+              if (response.data.success) {
+                const menteeList = response.data.mentees;
+                sessionStorage.setItem(
+                  "menteeData",
+                  JSON.stringify(menteeList)
+                );
+                setMentees(menteeList);
+              } else {
+                toast.error("Failed to load mentee data");
+                setMentees([]);
+              }
+            })
+            .catch((error) => {
+              console.error("Error loading mentee data:", error);
+              toast.error("Error loading mentee data");
+              setMentees([]);
+            })
+            .finally(() => {
+              setLoading(false);
+            });
+        } else {
+          toast.error("Mentor email not found");
+          setMentees([]);
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.error("Error loading mentee data:", error);
       toast.error("Error loading mentee data");
       setMentees([]);
+      setLoading(false);
     }
   }, []);
 
@@ -182,21 +203,21 @@ const ViewMentee = () => {
           name: selectedMentee.parents?.father?.name || "",
           email: selectedMentee.parents?.father?.email || "",
           phone: selectedMentee.parents?.father?.phone || "",
-          alternatePhone: selectedMentee.parents?.father?.alternatePhone || ""
+          alternatePhone: selectedMentee.parents?.father?.alternatePhone || "",
         },
         mother: {
           name: selectedMentee.parents?.mother?.name || "",
           email: selectedMentee.parents?.mother?.email || "",
           phone: selectedMentee.parents?.mother?.phone || "",
-          alternatePhone: selectedMentee.parents?.mother?.alternatePhone || ""
+          alternatePhone: selectedMentee.parents?.mother?.alternatePhone || "",
         },
         guardian: {
           name: selectedMentee.parents?.guardian?.name || "",
           email: selectedMentee.parents?.guardian?.email || "",
           phone: selectedMentee.parents?.guardian?.phone || "",
-          relation: selectedMentee.parents?.guardian?.relation || ""
-        }
-      }
+          relation: selectedMentee.parents?.guardian?.relation || "",
+        },
+      },
     });
   };
 

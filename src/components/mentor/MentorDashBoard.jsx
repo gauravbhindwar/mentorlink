@@ -76,8 +76,12 @@ const MentorDashBoard = () => {
         const data = await response.json();
 
         // Filter out duplicate meetings based on meeting_id
-        const uniqueMeetings = data.meetings.filter((meeting, index, self) =>
-          index === self.findIndex((m) => m.meeting.meeting_id === meeting.meeting.meeting_id)
+        const uniqueMeetings = data.meetings.filter(
+          (meeting, index, self) =>
+            index ===
+            self.findIndex(
+              (m) => m.meeting.meeting_id === meeting.meeting.meeting_id
+            )
         );
         data.meetings = uniqueMeetings;
 
@@ -89,98 +93,104 @@ const MentorDashBoard = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        // 1. Check session storage for mentor data
-        const sessionData = sessionStorage.getItem("mentorData");
-        let mentorInfo;
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      // 1. First get mentor data
+      const sessionData = sessionStorage.getItem("mentorData");
+      let mentorInfo;
 
-        if (sessionData) {
-          mentorInfo = JSON.parse(sessionData);
-          setMentorData(mentorInfo);
-        } else {
-          // Get MUJ ID from session storage if available
-          const storedMUJId = sessionStorage.getItem("mujid");
-          const storedEmail = sessionStorage.getItem("email");
-          const response = await axios.get("/api/mentor", {
-            params: { MUJId: storedMUJId, email: storedEmail },
-          });
-          mentorInfo = response.data;
-          if (!mentorInfo.isFirstTimeLogin) {
-            sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
-          }
-          setMentorData(mentorInfo);
-        }
-
+      if (sessionData) {
+        mentorInfo = JSON.parse(sessionData);
+        setMentorData(mentorInfo);
+      } else {
+        const storedMUJId = sessionStorage.getItem("mujid");
+        const storedEmail = sessionStorage.getItem("email");
+        const response = await axios.get("/api/mentor", {
+          params: { MUJId: storedMUJId, email: storedEmail },
+        });
+        mentorInfo = response.data;
         if (!mentorInfo.isFirstTimeLogin) {
-          setMeetingsLoading(true);
+          sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
+        }
+        setMentorData(mentorInfo);
+      }
 
-          // Get primary semester (4 for Jan-June, 3 for July-Dec)
-          const primarySemester =
-            mentorInfo?.academicSession &&
-            mentorInfo?.academicSession.includes("JANUARY-JUNE")
-              ? 4
-              : 3;
+      // 2. Then fetch mentee data using mentor's email
+      if (mentorInfo && mentorInfo.email) {
+        const menteeResponse = await axios.get("/api/mentor/manageMentee", {
+          params: {
+            mentorEmail: mentorInfo.email, // Use mentor's email to fetch their mentees
+          },
+        });
 
-          // Fetch primary semester meetings first
-          const primaryMeetings = await fetchMeetingsForSemester(
-            mentorInfo.MUJid,
-            mentorInfo.academicYear,
-            mentorInfo.academicSession,
-            primarySemester
-          );
-
-          
-
-          // Set initial meetings
-          setMeetings(primaryMeetings);
+        if (menteeResponse.data && menteeResponse.data.success) {
+          // Store mentee data in session storage
           sessionStorage.setItem(
-            "meetingData",
-            JSON.stringify(primaryMeetings)
-          );
-          setMeetingsLoading(false);
-
-          // Fetch other semesters in background
-          const otherSemesters =
-            mentorInfo?.academicSession &&
-            mentorInfo?.academicSession.includes("JANUARY-JUNE")
-              ? [2, 6, 8]
-              : [1, 5, 7];
-
-          Promise.all(
-            otherSemesters.map(async (semester) => {
-              const semesterMeetings = await fetchMeetingsForSemester(
-                mentorInfo.MUJid,
-                mentorInfo.academicYear,
-                mentorInfo.academicSession,
-                semester
-              );
-
-              if (semesterMeetings.length > 0) {
-                setMeetings((prevMeetings) => {
-                  const updatedMeetings = [
-                    ...prevMeetings,
-                    ...semesterMeetings,
-                  ];
-                  sessionStorage.setItem(
-                    "meetingData",
-                    JSON.stringify(updatedMeetings)
-                  );
-                  return updatedMeetings;
-                });
-              }
-            })
+            "menteeData",
+            JSON.stringify(menteeResponse.data.mentees)
           );
         }
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      } finally {
-        setLoading(false);
       }
-    };
 
+      // 3. Finally fetch meetings if not first time login
+      if (!mentorInfo.isFirstTimeLogin) {
+        setMeetingsLoading(true);
+
+        const primarySemester = mentorInfo?.academicSession?.includes(
+          "JANUARY-JUNE"
+        )
+          ? 4
+          : 3;
+
+        const primaryMeetings = await fetchMeetingsForSemester(
+          mentorInfo.MUJid,
+          mentorInfo.academicYear,
+          mentorInfo.academicSession,
+          primarySemester
+        );
+
+        setMeetings(primaryMeetings);
+        sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+        setMeetingsLoading(false);
+
+        // Fetch other semesters in background
+        const otherSemesters = mentorInfo?.academicSession?.includes(
+          "JANUARY-JUNE"
+        )
+          ? [2, 6, 8]
+          : [1, 5, 7];
+
+        Promise.all(
+          otherSemesters.map(async (semester) => {
+            const semesterMeetings = await fetchMeetingsForSemester(
+              mentorInfo.MUJid,
+              mentorInfo.academicYear,
+              mentorInfo.academicSession,
+              semester
+            );
+
+            if (semesterMeetings.length > 0) {
+              setMeetings((prevMeetings) => {
+                const updatedMeetings = [...prevMeetings, ...semesterMeetings];
+                sessionStorage.setItem(
+                  "meetingData",
+                  JSON.stringify(updatedMeetings)
+                );
+                return updatedMeetings;
+              });
+            }
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching initial data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchInitialData();
   }, []);
 
@@ -419,54 +429,54 @@ Department of Computer Science and Engineering
 Manipal University Jaipur
 Contact: ${mentorData?.email || ""}`;
 
-const sendEmailToMentees = async (meeting) => {
-  const meetingId = meeting.meeting.meeting_id;
-  setEmailInProgress(prev => ({ ...prev, [meetingId]: true }));
-  
-  try {
-    const response = await fetch(
-      `/api/meeting/mentees?mentorId=${mentorData.MUJid}&semester=${meeting.semester}&year=${mentorData.academicYear}&session=${mentorData.academicSession}&meetingId=${meetingId}`
-    );
-    
-    if (!response.ok) {
-      throw new Error("Failed to fetch mentees");
-    }
-    
-    const menteesData = await response.json();
-    const menteeEmails = menteesData.map((mentee) => mentee.email);
+  const sendEmailToMentees = async (meeting) => {
+    const meetingId = meeting.meeting.meeting_id;
+    setEmailInProgress((prev) => ({ ...prev, [meetingId]: true }));
 
-    const emailResponse = await axios.post("/api/meeting/send-email", {
-      emails: menteeEmails,
-      subject: `Meeting Reminder - ${meetingId}`,
-      body: getEmailBody(meeting),
-      meetingId: meetingId,
-    });
-
-    if (emailResponse.data.success) {
-      setShowToast(true);
-      // Update only the specific meeting's email count
-      setMeetings(prevMeetings =>
-        prevMeetings.map(m => {
-          if (m.meeting.meeting_id === meetingId) {
-            return {
-              ...m,
-              meeting: {
-                ...m.meeting,
-                emailsSentCount: (m.meeting.emailsSentCount || 0) + 1
-              }
-            };
-          }
-          return m;
-        })
+    try {
+      const response = await fetch(
+        `/api/meeting/mentees?mentorId=${mentorData.MUJid}&semester=${meeting.semester}&year=${mentorData.academicYear}&session=${mentorData.academicSession}&meetingId=${meetingId}`
       );
-      setTimeout(() => setShowToast(false), 5000);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch mentees");
+      }
+
+      const menteesData = await response.json();
+      const menteeEmails = menteesData.map((mentee) => mentee.email);
+
+      const emailResponse = await axios.post("/api/meeting/send-email", {
+        emails: menteeEmails,
+        subject: `Meeting Reminder - ${meetingId}`,
+        body: getEmailBody(meeting),
+        meetingId: meetingId,
+      });
+
+      if (emailResponse.data.success) {
+        setShowToast(true);
+        // Update only the specific meeting's email count
+        setMeetings((prevMeetings) =>
+          prevMeetings.map((m) => {
+            if (m.meeting.meeting_id === meetingId) {
+              return {
+                ...m,
+                meeting: {
+                  ...m.meeting,
+                  emailsSentCount: (m.meeting.emailsSentCount || 0) + 1,
+                },
+              };
+            }
+            return m;
+          })
+        );
+        setTimeout(() => setShowToast(false), 5000);
+      }
+    } catch (error) {
+      console.error("Error sending emails:", error);
+    } finally {
+      setEmailInProgress((prev) => ({ ...prev, [meetingId]: false }));
     }
-  } catch (error) {
-    console.error("Error sending emails:", error);
-  } finally {
-    setEmailInProgress(prev => ({ ...prev, [meetingId]: false }));
-  }
-};
+  };
 
   const handleSelectAllPresent = () => {
     if (!selectedMeeting?.menteeDetails) return;
@@ -943,12 +953,21 @@ const sendEmailToMentees = async (meeting) => {
                                             sendEmailToMentees(meeting)
                                           }
                                           className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
-                                          disabled={emailInProgress[meeting.meeting.meeting_id]}>
-                                          {emailInProgress[meeting.meeting.meeting_id] ? (
+                                          disabled={
+                                            emailInProgress[
+                                              meeting.meeting.meeting_id
+                                            ]
+                                          }>
+                                          {emailInProgress[
+                                            meeting.meeting.meeting_id
+                                          ] ? (
                                             <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
                                           ) : (
-                                            `Resend Email ${meeting.meeting.emailsSentCount ? 
-                                              `(${meeting.meeting.emailsSentCount})` : ''}`
+                                            `Resend Email ${
+                                              meeting.meeting.emailsSentCount
+                                                ? `(${meeting.meeting.emailsSentCount})`
+                                                : ""
+                                            }`
                                           )}
                                         </button>
                                       </div>
@@ -975,7 +994,7 @@ const sendEmailToMentees = async (meeting) => {
       )}
       {selectedMeeting && (
         <div
-          className='fixed inset-0 z-[100000000000] flex items-center justify-center bg-black/70 p-4'
+          className='fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4'
           onClick={() => setSelectedMeeting(null)}>
           <div
             className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
