@@ -4,7 +4,6 @@ import Joi from "joi";
 import { connect } from "@/lib/dbConfig";
 // import { Meeting } from "@/lib/db/meetingSchema";
 
-
 // Define the Joi schema for validation
 const menteeSchema = Joi.object({
   mujid: Joi.string().alphanum().required(),
@@ -13,12 +12,20 @@ const menteeSchema = Joi.object({
     .min(1900)
     .max(new Date().getFullYear())
     .required(),
-  name: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
+  name: Joi.string()
+    .regex(/^[a-zA-Z\s]+$/)
+    .required(),
   email: Joi.string().email().required(),
   phone: Joi.string().required(),
-  fatherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
-  motherName: Joi.string().regex(/^[a-zA-Z\s]+$/).required(),
-  dateOfBirth: Joi.string().regex(/^\d{2}-\d{2}-\d{4}$/).required(),
+  fatherName: Joi.string()
+    .regex(/^[a-zA-Z\s]+$/)
+    .required(),
+  motherName: Joi.string()
+    .regex(/^[a-zA-Z\s]+$/)
+    .required(),
+  dateOfBirth: Joi.string()
+    .regex(/^\d{2}-\d{2}-\d{4}$/)
+    .required(),
   parentsPhone: Joi.string().required(),
   parentsEmail: Joi.string().email().required(),
   mentorMujid: Joi.string().alphanum().required(),
@@ -41,16 +48,22 @@ export async function POST(req) {
     }
 
     if (!Array.isArray(requestBody)) {
-      return createErrorResponse("Request body must be an array of mentees", 400);
+      return createErrorResponse(
+        "Request body must be an array of mentees",
+        400
+      );
     }
 
     const validationErrors = [];
     const menteesToSave = [];
 
     // Assuming the authenticated mentor's mujid is available in the request headers
-    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    const authenticatedMentorMujid = req.headers.get("mentor-mujid");
     if (!authenticatedMentorMujid) {
-      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+      return createErrorResponse(
+        "Authenticated mentor's mujid is required",
+        400
+      );
     }
 
     for (const menteeData of requestBody) {
@@ -88,16 +101,24 @@ export async function POST(req) {
       }
 
       // Check if the mentee already exists by mujid or email
-      const existingMentee = await Mentee.findOne({ $or: [{ mujid }, { email }] });
+      const existingMentee = await Mentee.findOne({
+        $or: [{ mujid }, { email }],
+      });
       if (existingMentee) {
-        validationErrors.push({ mujid, error: "Mentee with this mujid or email already exists" });
+        validationErrors.push({
+          mujid,
+          error: "Mentee with this mujid or email already exists",
+        });
         continue;
       }
 
       // Check if the mentor exists and is the authenticated mentor
       const mentor = await Mentor.findOne({ mujid: mentorMujid });
       if (!mentor || mentor.mujid !== authenticatedMentorMujid) {
-        validationErrors.push({ mujid, error: "Mentor with this mujid not found or not authorized" });
+        validationErrors.push({
+          mujid,
+          error: "Mentor with this mujid not found or not authorized",
+        });
         continue;
       }
 
@@ -127,7 +148,10 @@ export async function POST(req) {
       return createErrorResponse("Error saving new mentees", 500);
     }
 
-    return NextResponse.json({ message: "Mentees added successfully" }, { status: 201 });
+    return NextResponse.json(
+      { message: "Mentees added successfully" },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
@@ -138,41 +162,43 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     await connect();
-    
+
     const { searchParams } = new URL(req.url);
-    const mentorEmail = searchParams.get('mentorEmail');
+    const mentorEmail = searchParams.get("mentorEmail");
 
     if (!mentorEmail) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "Mentor email is required" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Mentor email is required",
+        },
+        { status: 400 }
+      );
     }
 
-    // console.log("Searching for mentees with mentor email:", mentorEmail);
-
     // Find all mentees assigned to this mentor using mentorEmailid field
-    const mentees = await Mentee.find({ 
-      mentorEmailid: mentorEmail  // Make sure this matches your schema field name
-    })
-    .select('-password -otp -otpExpires -isOtpUsed')
-    .lean();
+    const mentees = await Mentee.find({
+      mentorEmailid: mentorEmail,
+    });
 
-    // console.log("Found mentees:", mentees.length);
-
-    return NextResponse.json({
-      success: true,
-      mentees: mentees,
-      count: mentees.length
-    }, { status: 200 });
-
+    return NextResponse.json(
+      {
+        success: true,
+        mentees: mentees,
+        count: mentees.length,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Server error:", error);
-    return NextResponse.json({ 
-      success: false, 
-      message: "Error fetching mentees",
-      error: error.message 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error fetching mentees",
+        error: error.message,
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -213,12 +239,12 @@ export async function GET(req) {
 //     console.log('Processed updates:', allowedUpdates); // Debug log
 
 //     const updatedMentee = await Mentee.findOneAndUpdate(
-//       { 
+//       {
 //         MUJid: data.MUJid,
 //         mentorEmailid: mentorEmail
 //       },
 //       { $set: allowedUpdates },
-//       { 
+//       {
 //         new: true,
 //         runValidators: true
 //       }
@@ -254,7 +280,7 @@ export async function PATCH(req) {
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch{
+    } catch {
       return createErrorResponse("Invalid JSON input", 400);
     }
 
@@ -270,9 +296,12 @@ export async function PATCH(req) {
     }
 
     // Assuming the authenticated mentor's mujid is available in the request headers
-    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    const authenticatedMentorMujid = req.headers.get("mentor-mujid");
     if (!authenticatedMentorMujid) {
-      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+      return createErrorResponse(
+        "Authenticated mentor's mujid is required",
+        400
+      );
     }
 
     const updatedMentee = await Mentee.findOneAndUpdate(
@@ -285,7 +314,10 @@ export async function PATCH(req) {
       return createErrorResponse("Mentee not found or not authorized", 404);
     }
 
-    return NextResponse.json({ message: "Mentee updated successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: "Mentee updated successfully" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
@@ -297,24 +329,33 @@ export async function DELETE(req) {
   try {
     await connect();
     const { searchParams } = new URL(req.url);
-    const mujid = searchParams.get('mujid');
+    const mujid = searchParams.get("mujid");
 
     if (!mujid) {
       return createErrorResponse("Mujid is required", 400);
     }
 
     // Assuming the authenticated mentor's mujid is available in the request headers
-    const authenticatedMentorMujid = req.headers.get('mentor-mujid');
+    const authenticatedMentorMujid = req.headers.get("mentor-mujid");
     if (!authenticatedMentorMujid) {
-      return createErrorResponse("Authenticated mentor's mujid is required", 400);
+      return createErrorResponse(
+        "Authenticated mentor's mujid is required",
+        400
+      );
     }
 
-    const deletedMentee = await Mentee.findOneAndDelete({ mujid, mentorMujid: authenticatedMentorMujid });
+    const deletedMentee = await Mentee.findOneAndDelete({
+      mujid,
+      mentorMujid: authenticatedMentorMujid,
+    });
     if (!deletedMentee) {
       return createErrorResponse("Mentee not found or not authorized", 404);
     }
 
-    return NextResponse.json({ message: "Mentee deleted successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: "Mentee deleted successfully" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Server error:", error);
     return createErrorResponse("Something went wrong on the server", 500);
@@ -343,10 +384,10 @@ export async function PUT(request) {
           parents: {
             father: menteeData.parents?.father || {},
             mother: menteeData.parents?.mother || {},
-            guardian: menteeData.parents?.guardian || {}
+            guardian: menteeData.parents?.guardian || {},
           },
-          updated_at: new Date()
-        }
+          updated_at: new Date(),
+        },
       },
       { new: true }
     );
@@ -358,9 +399,8 @@ export async function PUT(request) {
     return NextResponse.json({
       success: true,
       message: "Mentee updated successfully",
-      mentee: updatedMentee
+      mentee: updatedMentee,
     });
-
   } catch (error) {
     console.error("Error updating mentee:", error);
     return NextResponse.json(
