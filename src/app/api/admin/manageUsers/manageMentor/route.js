@@ -1,33 +1,6 @@
 import { connect } from "../../../../../lib/dbConfig";
 import { Mentor, Admin } from "../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
-// import Joi from "joi";
-
-// Updated schema with proper validations
-// const mentorSchema = Joi.object({
-//   name: Joi.string().required(),
-//   email: Joi.string().email().required(),
-//   MUJid: Joi.string().required(),
-//   phone_number: Joi.string().required(),
-//   address: Joi.string().allow('', null),
-//   gender: Joi.string().valid('male', 'female', 'other').allow('', null),
-//   profile_picture: Joi.string().allow('', null),
-//   role: Joi.array().items(Joi.string().valid('mentor', 'admin', 'superadmin')).default(['mentor']),
-//   academicYear: Joi.string()
-//     .pattern(/^\d{4}-\d{4}$/)
-//     .custom((value, helpers) => {
-//       const [startYear, endYear] = value.split('-').map(Number);
-//       if (endYear !== startYear + 1) {
-//         return helpers.error('any.invalid');
-//       }
-//       return value;
-//     })
-//     .allow('', null),
-//   academicSession: Joi.string()
-//     .pattern(/^(JULY-DECEMBER|JANUARY-JUNE)\s\d{4}$/)
-//     .allow('', null)
-// });
-
 // Utility function to handle errors
 const createErrorResponse = (message, statusCode = 400) => {
   return NextResponse.json({ error: message }, { status: statusCode });
@@ -98,6 +71,7 @@ export async function GET(req) {
     const batchSize = parseInt(searchParams.get("batchSize")) || 50;
     const offset = parseInt(searchParams.get("offset")) || 0;
 
+    console.log("BATCH SIZE FIX: ",batchSize)
     // Create base query object
     const query = {};
     if (academicYear) query.academicYear = academicYear;
@@ -113,7 +87,6 @@ export async function GET(req) {
     const mentors = await Mentor.find(query)
       .select('-password -otp -otpExpires -isOtpUsed')
       .skip(offset)
-      .limit(batchSize)
       .sort({ email: 1 }); // Sort by email ascending
 
     if (!mentors || mentors.length === 0) {
