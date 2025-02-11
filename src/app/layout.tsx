@@ -3,8 +3,9 @@ import { Inter } from "next/font/google";
 import Navbar from "@/components/subComponents/Navbar";
 import "./globals.css";
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { initializeEncryptedStorage } from '../utils/encryption';
+// import { initializeEncryptedStorage } from '../utils/encryption';
 import { useEffect } from "react";
+import { useRouter } from 'next/navigation';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -13,10 +14,29 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const router = useRouter();
 
   useEffect(() => {
-    initializeEncryptedStorage();
-  }, []);
+    // initializeEncryptedStorage();
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        console.log('Escape key pressed');
+        if (window.location.pathname !== '/pages/admin/admindashboard' && window.location.pathname !== '/pages/mentordashboard' && window.location.pathname !== '/') {
+          router.back();
+        }
+        if (window.location.pathname === '/about' || window.location.pathname === '/pages/meetings/mreport') {
+          router.back();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleEsc);
+
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [router]);
   return (
     <html lang="en">
       <body className={inter.className}>

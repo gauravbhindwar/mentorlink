@@ -28,6 +28,7 @@ const ManageMeeting = () => {
   const [pageSize, setPageSize] = useState(5);
   const [totalRows, setTotalRows] = useState(0);
   const [showTable, setShowTable] = useState(false);
+  const [noData, setNoData] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -53,6 +54,20 @@ const ManageMeeting = () => {
     init();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Enter" && semester) {
+        handleSubmit(event);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [academicYear, academicSession, semester, pageSize]);
+
   const fetchMentorMeetings = async (
     year = academicYear,
     session = academicSession,
@@ -61,6 +76,7 @@ const ManageMeeting = () => {
     size = pageSize
   ) => {
     setLoading(true);
+    setNoData(false); // Reset no data state
     try {
       const params = {
         year,
@@ -72,13 +88,16 @@ const ManageMeeting = () => {
 
       const response = await axios.get("/api/admin/manageMeeting", { params });
 
-      if (response.data) {
+      if (response.data && response.data.meetings.length > 0) {
         setMentorMeetings(response.data.meetings);
         setTotalRows(response.data.total);
         sessionStorage.setItem(
           "mentorMeetings",
           JSON.stringify(response.data.meetings)
         );
+      } else {
+        setNoData(true); // Set no data state
+        setMentorMeetings([]);
       }
     } catch (error) {
       console.error("Error:", error.response?.data || error);
@@ -192,7 +211,7 @@ const ManageMeeting = () => {
 
       // Store in sessionStorage and navigate
       sessionStorage.setItem("reportData", JSON.stringify(initialData));
-      window.open("/pages/meetings/mreport", "_blank");
+      window.location.href = "/pages/meetings/mreport";
     } catch (error) {
       console.error("Error generating report:", error);
       toast.error("Failed to generate report");
@@ -363,13 +382,19 @@ const ManageMeeting = () => {
               <button
                 type='submit'
                 className='w-full btn-orange disabled:opacity-50'
-                disabled={loading}>
-                {loading ? "Fetching..." : "Fetch Mentor Meetings"}
+                disabled={loading || !semester}>
+                {loading ? "Fetching..." : !semester ? "Enter Semester" : "Fetch Mentor Meetings"}
               </button>
             </div>
           </form>
 
           {loading && showTable && <LoadingComponent />}
+
+          {!loading && showTable && noData && (
+            <div className='mt-6 text-center text-gray-300'>
+              No Data Found
+            </div>
+          )}
 
           {!loading && showTable && mentorMeetings.length > 0 && (
             <div className='mt-6 h-[400px] w-full custom-scrollbar'>
