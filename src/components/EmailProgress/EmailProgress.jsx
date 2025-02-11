@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FaEnvelope, FaCheckCircle } from 'react-icons/fa';
 
-const EmailProgress = ({ total, current, onClose }) => {
+const EmailProgress = ({ total, current }) => {
   const progress = (current / total) * 100;
 
   return (
@@ -44,14 +44,14 @@ const EmailProgress = ({ total, current, onClose }) => {
             >
               <FaCheckCircle className="text-3xl text-green-500 mb-2" />
               <p className="text-green-400 mb-4">All emails sent successfully!</p>
-              <button
+              {/* <button
                 className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg 
                           font-medium hover:from-orange-600 hover:to-pink-600 transition-all duration-200 
                           transform hover:scale-[1.02] active:scale-[0.98]"
                 onClick={onClose}
               >
                 Continue
-              </button>
+              </button> */}
             </motion.div>
           )}
         </div>

@@ -94,7 +94,7 @@ const MentorDashBoard = () => {
   };
 
   const fetchInitialData = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       // 1. First get mentor data
       const sessionData = sessionStorage.getItem("mentorData");
@@ -488,7 +488,7 @@ Contact: ${mentorData?.email || ""}`;
     }
   };
 
-  if (loading || meetingsLoading) {
+  if (loading) {
     return (
       <div className='min-h-screen bg-[#0a0a0a] p-4 md:p-6'>
         {/* Header Skeleton */}
