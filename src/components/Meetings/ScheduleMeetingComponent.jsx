@@ -892,9 +892,6 @@ Contact: ${mentorData?.email || ""}`;
           <EmailProgress
             current={emailProgress.current}
             total={emailProgress.total}
-            onClose={() =>
-              setEmailProgress({ current: 0, total: 0, show: false })
-            }
           />
         )}
       </motion.div>
