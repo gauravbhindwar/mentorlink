@@ -14,7 +14,7 @@ import { Button } from "@mui/material";
 const MentorDashBoard = () => {
   const router = useRouter();
   const [mentorData, setMentorData] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [meetings, setMeetings] = useState([]);
   const [meetingsLoading, setMeetingsLoading] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
@@ -116,58 +116,56 @@ const MentorDashBoard = () => {
         setMentorData(mentorInfo);
       }
 
-      
+      // if (!mentorInfo.isFirstTimeLogin) {
+      //   setMeetingsLoading(true);
 
-      // 2. Finally fetch meetings if not first time login
-      if (!mentorInfo.isFirstTimeLogin) {
-        setMeetingsLoading(true);
+      //   const primarySemester = mentorInfo?.academicSession?.includes(
+      //     "JANUARY-JUNE"
+      //   )
+      //     ? 4
+      //     : 3;
 
-        const primarySemester = mentorInfo?.academicSession?.includes(
-          "JANUARY-JUNE"
-        )
-          ? 4
-          : 3;
+      //   const primaryMeetings = await fetchMeetingsForSemester(
+      //     mentorInfo.MUJid,
+      //     mentorInfo.academicYear,
+      //     mentorInfo.academicSession,
+      //     primarySemester
+      //   );
 
-        const primaryMeetings = await fetchMeetingsForSemester(
-          mentorInfo.MUJid,
-          mentorInfo.academicYear,
-          mentorInfo.academicSession,
-          primarySemester
-        );
+      //   setMeetings(primaryMeetings);
+      //   sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
+      //   setMeetingsLoading(false);
 
-        setMeetings(primaryMeetings);
-        sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
-        setMeetingsLoading(false);
+      //   // Fetch other semesters in background
+      //   const otherSemesters = mentorInfo?.academicSession?.includes(
+      //     "JANUARY-JUNE"
+      //   )
+      //     ? [2, 6, 8]
+      //     : [1, 5, 7];
 
-        // Fetch other semesters in background
-        const otherSemesters = mentorInfo?.academicSession?.includes(
-          "JANUARY-JUNE"
-        )
-          ? [2, 6, 8]
-          : [1, 5, 7];
+      //   Promise.all(
+      //     otherSemesters.map(async (semester) => {
+      //       const semesterMeetings = await fetchMeetingsForSemester(
+      //         mentorInfo.MUJid,
+      //         mentorInfo.academicYear,
+      //         mentorInfo.academicSession,
+      //         semester
+      //       );
 
-        Promise.all(
-          otherSemesters.map(async (semester) => {
-            const semesterMeetings = await fetchMeetingsForSemester(
-              mentorInfo.MUJid,
-              mentorInfo.academicYear,
-              mentorInfo.academicSession,
-              semester
-            );
+      //       if (semesterMeetings.length > 0) {
+      //         setMeetings((prevMeetings) => {
+      //           const updatedMeetings = [...prevMeetings, ...semesterMeetings];
+      //           sessionStorage.setItem(
+      //             "meetingData",
+      //             JSON.stringify(updatedMeetings)
+      //           );
+      //           return updatedMeetings;
+      //         });
+      //       }
+      //     })
+      //   );
+      // }
 
-            if (semesterMeetings.length > 0) {
-              setMeetings((prevMeetings) => {
-                const updatedMeetings = [...prevMeetings, ...semesterMeetings];
-                sessionStorage.setItem(
-                  "meetingData",
-                  JSON.stringify(updatedMeetings)
-                );
-                return updatedMeetings;
-              });
-            }
-          })
-        );
-      }
       // 3. Then fetch mentee data using mentor's email
       if (mentorInfo && mentorInfo.email) {
         setLoading(false);
@@ -584,7 +582,7 @@ Contact: ${mentorData?.email || ""}`;
     // }
   ];
 
-  if (loading) {
+  if (loading || meetingsLoading) {
     return (
       <div className='min-h-screen bg-[#0a0a0a] flex items-center justify-center'>
         <div className='text-white'>Loading...</div>

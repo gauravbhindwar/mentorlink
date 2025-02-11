@@ -219,6 +219,24 @@ const ScheduleMeetingComponent = () => {
         }
 
         await sendEmailToMentees(validEmails);
+
+        // Add/edit meetingData in session storage
+        const newMeeting = {
+          mentor_id: mentorId,
+          meeting_id: meetingId,
+          TopicOfDiscussion: meetingTopic,
+          meeting_date: formattedDate,
+          meeting_time: formattedTime,
+          semester: currentSemester,
+          session: academicSession,
+          year: academicYear,
+          isMeetingOnline: isMeetingOnline,
+          venue: venue,
+        };
+
+        const meetingData = JSON.parse(sessionStorage.getItem("meetingData")) || [];
+        const updatedMeetingData = [...meetingData, newMeeting];
+        sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetingData));
       }
     } catch (error) {
       console.error("Error scheduling meeting:", error);
