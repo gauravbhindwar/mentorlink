@@ -116,24 +116,9 @@ const MentorDashBoard = () => {
         setMentorData(mentorInfo);
       }
 
-      // 2. Then fetch mentee data using mentor's email
-      if (mentorInfo && mentorInfo.email) {
-        const menteeResponse = await axios.get("/api/mentor/manageMentee", {
-          params: {
-            mentorEmail: mentorInfo.email, // Use mentor's email to fetch their mentees
-          },
-        });
+      
 
-        if (menteeResponse.data && menteeResponse.data.success) {
-          // Store mentee data in session storage
-          sessionStorage.setItem(
-            "menteeData",
-            JSON.stringify(menteeResponse.data.mentees)
-          );
-        }
-      }
-
-      // 3. Finally fetch meetings if not first time login
+      // 2. Finally fetch meetings if not first time login
       if (!mentorInfo.isFirstTimeLogin) {
         setMeetingsLoading(true);
 
@@ -182,6 +167,23 @@ const MentorDashBoard = () => {
             }
           })
         );
+      }
+      // 3. Then fetch mentee data using mentor's email
+      if (mentorInfo && mentorInfo.email) {
+        setLoading(false);
+        const menteeResponse = await axios.get("/api/mentor/manageMentee", {
+          params: {
+            mentorEmail: mentorInfo.email, // Use mentor's email to fetch their mentees
+          },
+        });
+
+        if (menteeResponse.data && menteeResponse.data.success) {
+          // Store mentee data in session storage
+          sessionStorage.setItem(
+            "menteeData",
+            JSON.stringify(menteeResponse.data.mentees)
+          );
+        }
       }
     } catch (error) {
       console.error("Error fetching initial data:", error);
