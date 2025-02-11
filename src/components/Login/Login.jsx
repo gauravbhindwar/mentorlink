@@ -253,6 +253,15 @@ const Login = () => {
         if (mentorInfo) {
           sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
         }
+        // Fetch and store meeting data
+        if (mentorInfo && mentorInfo.MUJid && mentorInfo.academicYear && mentorInfo.academicSession) {
+          const primarySemester = mentorInfo.academicSession.includes("JANUARY-JUNE") ? 4 : 3;
+          const response = await fetch(
+            `/api/mentor/manageMeeting?mentorId=${mentorInfo.MUJid}&academicYear=${mentorInfo.academicYear}&session=${mentorInfo.academicSession}&semester=${primarySemester}`
+          );
+          const meetingData = await response.json();
+          sessionStorage.setItem("meetingData", JSON.stringify(meetingData.meetings || []));
+        }
         if (data && data.role && data.role.length > 1) {
           setRoles(data.role);
         } else {
@@ -268,6 +277,8 @@ const Login = () => {
               setOtpError("Invalid role assigned");
           }
         }
+
+        
       } else {
         setOtpError(data.message || "Invalid OTP");
       }
