@@ -116,67 +116,27 @@ const MentorDashBoard = () => {
         setMentorData(mentorInfo);
       }
 
-      // if (!mentorInfo.isFirstTimeLogin) {
-      //   setMeetingsLoading(true);
-
-      //   const primarySemester = mentorInfo?.academicSession?.includes(
-      //     "JANUARY-JUNE"
-      //   )
-      //     ? 4
-      //     : 3;
-
-      //   const primaryMeetings = await fetchMeetingsForSemester(
-      //     mentorInfo.MUJid,
-      //     mentorInfo.academicYear,
-      //     mentorInfo.academicSession,
-      //     primarySemester
-      //   );
-
-      //   setMeetings(primaryMeetings);
-      //   sessionStorage.setItem("meetingData", JSON.stringify(primaryMeetings));
-      //   setMeetingsLoading(false);
-
-      //   // Fetch other semesters in background
-      //   const otherSemesters = mentorInfo?.academicSession?.includes(
-      //     "JANUARY-JUNE"
-      //   )
-      //     ? [2, 6, 8]
-      //     : [1, 5, 7];
-
-      //   Promise.all(
-      //     otherSemesters.map(async (semester) => {
-      //       const semesterMeetings = await fetchMeetingsForSemester(
-      //         mentorInfo.MUJid,
-      //         mentorInfo.academicYear,
-      //         mentorInfo.academicSession,
-      //         semester
-      //       );
-
-      //       if (semesterMeetings.length > 0) {
-      //         setMeetings((prevMeetings) => {
-      //           const updatedMeetings = [...prevMeetings, ...semesterMeetings];
-      //           sessionStorage.setItem(
-      //             "meetingData",
-      //             JSON.stringify(updatedMeetings)
-      //           );
-      //           return updatedMeetings;
-      //         });
-      //       }
-      //     })
-      //   );
-      // }
+      if (!mentorInfo.isFirstTimeLogin) {
+        setMeetingsLoading(true);
+        // Get meetings from sessionStorage
+        const storedMeetings = sessionStorage.getItem("meetingData");
+        if (storedMeetings) {
+          const parsedMeetings = JSON.parse(storedMeetings);
+          setMeetings(parsedMeetings);
+        }
+        setMeetingsLoading(false);
+      }
 
       // 3. Then fetch mentee data using mentor's email
       if (mentorInfo && mentorInfo.email) {
         setLoading(false);
         const menteeResponse = await axios.get("/api/mentor/manageMentee", {
           params: {
-            mentorEmail: mentorInfo.email, // Use mentor's email to fetch their mentees
+            mentorEmail: mentorInfo.email,
           },
         });
 
         if (menteeResponse.data && menteeResponse.data.success) {
-          // Store mentee data in session storage
           sessionStorage.setItem(
             "menteeData",
             JSON.stringify(menteeResponse.data.mentees)
@@ -528,6 +488,70 @@ Contact: ${mentorData?.email || ""}`;
     }
   };
 
+  if (loading || meetingsLoading) {
+    return (
+      <div className='min-h-screen bg-[#0a0a0a] p-4 md:p-6'>
+        {/* Header Skeleton */}
+        <div className='pt-20 pb-10'>
+          <div className='flex flex-col items-center space-y-4'>
+            <div className='w-64 h-10 bg-gray-800 rounded-lg animate-pulse'></div>
+            <div className='w-96 h-6 bg-gray-800 rounded-lg animate-pulse'></div>
+          </div>
+        </div>
+
+        {/* Content Skeleton */}
+        <div className='flex flex-col lg:flex-row gap-4'>
+          {/* Cards Grid Skeleton */}
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-[50%] w-full'>
+            {[1, 2, 3].map((index) => (
+              <div
+                key={index}
+                className='bg-gray-800/50 rounded-lg p-6 animate-pulse'>
+                <div className='h-8 w-8 bg-gray-700 rounded-full mb-4'></div>
+                <div className='h-6 w-32 bg-gray-700 rounded mb-3'></div>
+                <div className='h-4 w-full bg-gray-700 rounded'></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Meetings Section Skeleton */}
+          <div className='lg:max-w-[50%] w-full'>
+            <div className='bg-gray-800/50 rounded-lg p-6'>
+              {/* Tabs Skeleton */}
+              <div className='flex space-x-4 mb-6 overflow-x-auto'>
+                {[1, 2, 3, 4].map((index) => (
+                  <div
+                    key={index}
+                    className='h-8 w-24 bg-gray-700 rounded animate-pulse flex-shrink-0'></div>
+                ))}
+              </div>
+
+              {/* Meeting Cards Skeleton */}
+              <div className='space-y-4'>
+                {[1, 2, 3].map((index) => (
+                  <div
+                    key={index}
+                    className='bg-gray-700/50 p-4 rounded-lg animate-pulse'>
+                    <div className='flex justify-between'>
+                      <div className='space-y-2 w-2/3'>
+                        <div className='h-4 bg-gray-600 rounded w-3/4'></div>
+                        <div className='h-4 bg-gray-600 rounded w-1/2'></div>
+                        <div className='h-4 bg-gray-600 rounded w-1/3'></div>
+                      </div>
+                      <div className='w-1/4'>
+                        <div className='h-8 bg-gray-600 rounded'></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const cards = [
     {
       title: "View Mentees",
@@ -581,14 +605,6 @@ Contact: ${mentorData?.email || ""}`;
     //     onClick: () => router.push('/pages/squery')
     // }
   ];
-
-  if (loading || meetingsLoading) {
-    return (
-      <div className='min-h-screen bg-[#0a0a0a] flex items-center justify-center'>
-        <div className='text-white'>Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <div className='min-h-screen bg-[#0a0a0a] overflow-hidden relative'>
