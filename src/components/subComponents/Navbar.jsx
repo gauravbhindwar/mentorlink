@@ -14,6 +14,7 @@ const Navbar = () => {
     initial: "G",
     roles: [],
   });
+  
 
   useEffect(() => {
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData") || "{}");
@@ -69,10 +70,26 @@ const Navbar = () => {
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    localStorage.clear();
-    router.push("/");
+  const handleLogout = async () => {
+    try {
+      // Call the logout API endpoint
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      
+      // Clear client-side storage
+      sessionStorage.clear();
+      localStorage.clear();
+      
+      // Redirect to home page
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Fallback to client-side logout
+      sessionStorage.clear();
+      localStorage.clear();
+      router.push('/');
+    }
   };
 
   const handleRoleSwitch = () => {

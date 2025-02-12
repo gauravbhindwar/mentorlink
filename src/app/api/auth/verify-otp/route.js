@@ -3,6 +3,7 @@ import { connect } from "../../../../lib/dbConfig";
 import { Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { cookies } from 'next/headers';
 
 const verifyOtpForUser = async (email, otp) => {
   let User;
@@ -15,7 +16,6 @@ const verifyOtpForUser = async (email, otp) => {
   }
 
   // Check if already verified
-  // if (user.isOtpUsed) {
   //   return { success: true, message: "Previously verified" };
   // }
 
@@ -80,8 +80,9 @@ export async function POST(req) {
     }
 
     const result = await verifyOtpForUser(email, otp);
-
-    return NextResponse.json(
+    
+    // Create response object with necessary headers
+    const response = NextResponse.json(
       {
         success: result.success,
         message: result.message,
@@ -90,7 +91,21 @@ export async function POST(req) {
         role: result.role,
       },
       { status: 200 }
-    ); // Always return 200 for NextAuth
+    );
+
+    // Set cookie if verification was successful
+    if (result.success && result.role) {
+      // Set cookie with user role that expires in 24 hours
+      await cookies().set('UserRole', result.role.join(','), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24, // 24 hours
+        path: '/'
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("OTP verification error:", error.message);
     return NextResponse.json(
@@ -100,6 +115,6 @@ export async function POST(req) {
         verified: false,
       },
       { status: 200 }
-    ); // Changed to 200 for NextAuth
+    );
   }
 }
