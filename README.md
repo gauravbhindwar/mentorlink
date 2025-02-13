@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MentorLink
 
-## Getting Started
+[![Next.js](https://img.shields.io/badge/Next.js-13%2B-blue)](https://nextjs.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-blue)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)](https://www.typescriptlang.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Latest-green)](https://www.mongodb.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-First, run the development server:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> A modern web platform revolutionizing academic mentorship management.
+
+## 🌐 Live Preview
+
+<a href="https://mentorlink-nu.vercel.app" target="_blank" rel="noopener noreferrer">MentorLink</a> is live on Vercel.
+
+
+## 🎯 Overview
+
+MentorLink streamlines academic mentorship by providing:
+
+- 🤝 Smart mentor-mentee matching
+- 📅 Intuitive meeting management
+- 📊 Comprehensive progress tracking
+- 💬 Real-time communication
+- 📈 Data-driven insights
+
+## 🛠️ Tech Stack
+
+- **Frontend:** Next.js 13+ (App Router),,Javascript, TypeScript, Tailwind CSS,Framer Motion
+- **Backend:** Next.js API Routes, MongoDB, Mongoose
+- **Security:** JWT, Route Protection,Session Management
+- **Deployment:** Vercel
+
+## 🔑 Key Features
+
+### 👥 User Management
+- Multi-role authentication (Admin/Mentor/Mentee)
+- Profile customization
+- Secure session handling
+
+### 🤝 Mentorship System
+- Intelligent matching algorithm
+- Meeting scheduling
+- Progress monitoring
+
+### ⚙️ Administrative Tools
+- Batch operations
+- Analytics dashboard
+- Data management
+
+## 🏗️ Architecture
+
+```
+src/
+├── app/          # App Router pages
+├── components/   # Reusable components
+├── lib/         # Utilities and helpers
+├── models/      # Database models
+└── types/       # TypeScript definitions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Quick Start For Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Create `.env` file
+2. Copy content from `.env.example` to `.env`
+3. Install dependencies: `npm install`
+4. Run development server: `npm run dev`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 📧 Setting up Gmail App Password
 
-## Learn More
+⚠️ Important: Never share your App Password or commit it to version control!
 
-To learn more about Next.js, take a look at the following resources:
+1. Go to your [Google Account Settings](https://myaccount.google.com/)
+2. Enable 2-Step Verification if not already enabled
+3. Navigate to [Security → App Passwords](https://myaccount.google.com/apppasswords)
+4. Select "Mail" and your device
+5. Click "Generate"
+6. Copy the 16-character password
+7. Add to `EMAIL_PASS` in your .env file
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Note: 
+- Keep your App Password secure
+- Use a dedicated email for development
+- Revoke access immediately if compromised
+- Consider using email service providers for production
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 🔐 Setting up reCAPTCHA v3
 
-## Deploy on Vercel
+1. Go to [Google reCAPTCHA Admin Console](https://www.google.com/recaptcha/admin)
+2. Register a new site
+   - Choose reCAPTCHA v3
+   - Add your domain (use localhost for development)
+   - Accept the terms and register
+3. You'll receive two keys:
+   - Site Key: Add to `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY`
+   - Secret Key: Add to `RECAPTCHA_SECRET_V3_KEY`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Visit [http://localhost:3000](http://localhost:3000)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Deployment
+
+Automatically deployed to [Vercel](https://mentorlink-nu.vercel.app/)
+
+## 📄 License
+
+MIT © MentorLink Team
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Open pull request
+
+<!-- ## 📚 Resources
+
+- [Documentation](docs/)
+- [API Reference](docs/api/)
+- [Contributing Guide](CONTRIBUTING.md) -->
