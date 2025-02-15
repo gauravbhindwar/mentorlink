@@ -226,8 +226,7 @@ const MentorDashBoard = () => {
       });
 
       if (response.data.meeting) {
-        // Update attendance records
-        // console.log("Meeting report submitted successfully:", response.data);
+        // Update attendance records in one go with the meeting report
         await axios.post("/api/mentee/meetings-attended", {
           mentor_id: mentorData.MUJid,
           meeting_id: selectedMeeting.meeting.meeting_id,
@@ -237,28 +236,22 @@ const MentorDashBoard = () => {
 
         // Update meetings in state
         setMeetings((prevMeetings) => {
-          const updatedMeetings = prevMeetings.map((meeting) => {
-            if (
-              meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id
-            ) {
-              return {
-                ...meeting,
-                meeting: {
-                  ...meeting.meeting,
-                  meeting_notes: meetingNotes,
-                  present_mentees: meetingNotes.presentMentees,
-                  isReportFilled: true,
-                },
-              };
-            }
-            return meeting;
-          });
+          const updatedMeetings = prevMeetings.map((meeting) => (
+            meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id
+              ? {
+                  ...meeting,
+                  meeting: {
+                    ...meeting.meeting,
+                    meeting_notes: meetingNotes,
+                    present_mentees: meetingNotes.presentMentees,
+                    isReportFilled: true,
+                  },
+                }
+              : meeting
+          ));
 
           // Update session storage with new meeting data
-          sessionStorage.setItem(
-            "meetingData",
-            JSON.stringify(updatedMeetings)
-          );
+          sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
           return updatedMeetings;
         });
 
@@ -449,43 +442,19 @@ Contact: ${mentorData?.email || ""}`;
 
   const handleAttendanceSubmit = async () => {
     try {
-      // Update in database
-      await axios.post("/api/meeting/mentors/reportmeeting", {
-        mentor_id: mentorData.MUJid,
-        meeting_id: selectedMeeting.meeting.meeting_id,
-        meeting_notes: {
-          ...meetingNotes,
-          presentMentees: meetingNotes.presentMentees,
-        },
-      });
-
-      // Update in session storage
-      const meetingData = JSON.parse(
-        sessionStorage.getItem("meetingData") || "[]"
-      );
-      const updatedMeetings = meetingData.map((meeting) => {
-        if (meeting.meeting.meeting_id === selectedMeeting.meeting.meeting_id) {
-          return {
-            ...meeting,
-            meeting: {
-              ...meeting.meeting,
-              present_mentees: meetingNotes.presentMentees,
-            },
-          };
-        }
-        return meeting;
-      });
-      sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetings));
-
-      // Close the dialog
       setShowAttendance(false);
-
-      // Show success toast or notification
-      toast.success("Attendance saved successfully");
+      // Don't make API call here, just update the local state
+      // The API call will be made when submitting the entire report
     } catch (error) {
       console.error("Error saving attendance:", error);
-      toast.error("Failed to save attendance");
     }
+  };
+
+  const handleAttendanceUpdate = (updatedPresentMentees) => {
+    setMeetingNotes((prev) => ({
+      ...prev,
+      presentMentees: updatedPresentMentees,
+    }));
   };
 
   if (loading) {
@@ -1130,16 +1099,7 @@ Contact: ${mentorData?.email || ""}`;
                   onClose={() => setShowAttendance(false)}
                   mentees={selectedMeeting?.menteeDetails || []}
                   presentMentees={meetingNotes.presentMentees}
-                  onUpdateAttendance={(mujId) => {
-                    setMeetingNotes((prev) => ({
-                      ...prev,
-                      presentMentees:
-                        prev?.presentMentees &&
-                        prev?.presentMentees.includes(mujId)
-                          ? prev.presentMentees.filter((id) => id !== mujId)
-                          : [...prev.presentMentees, mujId],
-                    }));
-                  }}
+                  onUpdateAttendance={handleAttendanceUpdate}
                   onSelectAll={handleSelectAllPresent}
                   onSubmit={handleAttendanceSubmit}
                 />
