@@ -27,6 +27,34 @@ import {
   getCurrentAcademicYear 
 } from './utils/academicUtils';
 
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from "@mui/material";
+
+// Add this new component at the top level of the file
+const EmailConflictDialog = ({ open, onClose, conflictingMentor }) => {
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle sx={{ backgroundColor: 'rgb(17, 24, 39)', color: 'white' }}>
+        Email Already in Use
+      </DialogTitle>
+      <DialogContent sx={{ backgroundColor: 'rgb(17, 24, 39)', color: 'white', pt: 2 }}>
+        <Typography>
+          This email is already associated with another mentor:
+        </Typography>
+        <Box sx={{ mt: 2 }}>
+          <Typography>Name: {conflictingMentor?.name}</Typography>
+          <Typography>Email: {conflictingMentor?.email}</Typography>
+          <Typography>MUJID: {conflictingMentor?.MUJid}</Typography>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ backgroundColor: 'rgb(17, 24, 39)', color: 'white' }}>
+        <Button onClick={onClose} sx={{ color: 'white' }}>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 const MentorManagement = () => {
   // Add mounted state near the top with other state declarations
   const [mounted, setMounted] = useState(false);
@@ -73,6 +101,8 @@ const MentorManagement = () => {
     academicSession: '',
     MUJid: ''
   });
+  // Add new state for email conflict dialog
+  const [emailConflict, setEmailConflict] = useState({ open: false, mentor: null });
 
 
   const theme = createTheme({
@@ -173,15 +203,29 @@ const MentorManagement = () => {
 
 const handleEditMentor = async (updatedMentor) => {
   try {
-    setMentors(prev => prev.map(mentor => 
-      mentor.MUJid === updatedMentor.MUJid ? updatedMentor : mentor
-    ));
-    await fetchMentors(currentFilters);
+    const response = await axios.patch(
+      `/api/admin/manageUsers/editMentor/${updatedMentor.MUJid}`,
+      updatedMentor
+    );
+    
+    if (response.data.success) {
+      setMentors(prev => prev.map(mentor => 
+        mentor.MUJid === updatedMentor.MUJid ? updatedMentor : mentor
+      ));
+      // Remove extra fetch since we already updated the state
+      setEditDialog(false);
+      // Show single toast notification
+      showAlert("Mentor updated successfully", "success");
+    }
   } catch (error) {
-    toast.error(error.response?.data?.error || "Error updating mentor list", {
-      style: toastStyles.error.style,
-      iconTheme: toastStyles.error.iconTheme,
-    });
+    if (error.response?.status === 409) {
+      setEmailConflict({
+        open: true,
+        mentor: error.response.data.conflictingMentor
+      });
+    } else {
+      showAlert(error.response?.data?.error || "Error updating mentor", "error");
+    }
   }
 };
 
@@ -362,10 +406,7 @@ const handleEditMentor = async (updatedMentor) => {
   // Add this new function to handle patch update
   const handlePatchUpdate = async () => {
     if (!existingMentorData?.MUJid) {
-      toast.error("Invalid mentor data", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
+      showAlert("Error", "Invalid mentor data", "error");
       return;
     }
 
@@ -376,19 +417,13 @@ const handleEditMentor = async (updatedMentor) => {
       );
 
       if (response.data) {
-        toast.success("Mentor updated successfully", {
-          style: toastStyles.success.style,
-          iconTheme: toastStyles.success.iconTheme,
-        });
+        showAlert("Success", "Mentor updated successfully", "success");
         setDuplicateMentorDialog(false);
         setDuplicateEditMode(false);
         await fetchMentors(currentFilters);
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Error updating mentor", {
-        style: toastStyles.error.style,
-        iconTheme: toastStyles.error.iconTheme,
-      });
+      showAlert("Error", error.response?.data?.error || "Error updating mentor", "error");
     }
   };
 
@@ -766,6 +801,12 @@ const handleEditMentor = async (updatedMentor) => {
           selectedRoles={selectedRoles}
           setSelectedRoles={setSelectedRoles}
           handleRoleBasedDelete={handleRoleBasedDelete}
+        />
+
+        <EmailConflictDialog
+          open={emailConflict.open}
+          onClose={() => setEmailConflict({ open: false, mentor: null })}
+          conflictingMentor={emailConflict.mentor}
         />
       </div>
     </ThemeProvider>
