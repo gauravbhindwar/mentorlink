@@ -15,7 +15,7 @@ import { Toaster, toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
 import MentorTable from "./MentorTable";
-import FilterSection from "./MentorFilterSection";
+import MentorFilterSection from "./MentorFilterSection";  // Update import name
 import AddMentorDialog from "./mentorSubComponents/AddMentorDialog";
 import EditMentorDialog from "./mentorSubComponents/EditMentorDialog";
 import DuplicateMentorDialog from "./mentorSubComponents/DuplicateMentorDialog";
@@ -523,8 +523,8 @@ const handleEditMentor = async (updatedMentor) => {
   
     setSearchingMentor(true);
     try {
-      // Check if email exists
-      const response = await axios.get(`/api/admin/manageUsers/manageMentor?email=${mentorDetails.email}`);
+      // Update to use the correct parameter name
+      const response = await axios.get(`/api/admin/manageUsers/manageMentor?email=${encodeURIComponent(mentorDetails.email.trim())}`);
       
       if (response.data.mentors?.length > 0) {
         const existingMentor = response.data.mentors[0];
@@ -579,6 +579,42 @@ const handleEditMentor = async (updatedMentor) => {
   // Update handleFilterChange to trigger fetch
   const handleFilterChange = (filters) => {
     fetchMentors(filters);
+  };
+
+  // Add effect to handle screen size changes
+  useEffect(() => {
+    if (!isSmallScreen && !showFilters) {
+      setShowFilters(true);
+    }
+  }, [isSmallScreen]);
+
+  // Add this animation configuration
+  const filterAnimation = {
+    initial: false,
+    animate: {
+      width: showFilters ? '100%' : '0%',
+      opacity: showFilters ? 1 : 0,
+      marginLeft: showFilters ? '0px' : '-300px',
+    },
+    transition: {
+      type: "spring",
+      stiffness: 200,
+      damping: 25,
+      mass: 0.5,
+      duration: 0.3
+    },
+    layout: true
+  };
+
+  const tableAnimation = {
+    layout: true,
+    transition: {
+      type: "spring",
+      stiffness: 200,
+      damping: 25,
+      mass: 0.5,
+      duration: 0.3
+    }
   };
 
   return (
@@ -637,25 +673,11 @@ const handleEditMentor = async (updatedMentor) => {
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-4 p-4 h-[calc(100vh-100px)] lg:overflow-hidden overflow-auto">
             {/* Filter Panel - Update max-width */}
             <motion.div 
-              className="lg:h-full max-w-full lg:max-w-[300px]"
-              initial={false} // Add this to prevent initial animation
-              animate={{
-                height: showFilters ? 'auto' : 0,
-                opacity: showFilters ? 1 : 0,
-                marginBottom: showFilters ? '12px' : 0
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 30
-              }}
-              style={{
-                overflow: showFilters ? 'visible' : 'hidden', // Change to visible when shown
-                display: showFilters ? 'block' : 'none'
-              }}
+              className={`${!isSmallScreen ? 'lg:block' : showFilters ? 'block' : 'hidden'}`}
+              {...filterAnimation}
             >
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4 h-full">
-                <FilterSection 
+                <MentorFilterSection  // Update component name
                   filters={{
                     academicYear,
                     academicSession,
@@ -672,15 +694,8 @@ const handleEditMentor = async (updatedMentor) => {
 
             {/* Right Column - Table */}
             <motion.div
-              className="h-auto lg:h-full min-w-0" // Updated height
-              animate={{
-                gridColumn: (!showFilters && isSmallScreen) ? 'span 2' : 'auto'
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 30
-              }}
+              className="h-full min-w-0" // Updated height
+              {...tableAnimation}
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                 <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}

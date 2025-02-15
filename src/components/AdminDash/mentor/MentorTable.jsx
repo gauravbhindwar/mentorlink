@@ -434,41 +434,70 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
     { 
       field: 'serialNumber',    
       headerName: 'S.No',
-      flex: 0.4,
+      width: 70,
+      minWidth: 70,
+      disableColumnMenu: true,
       renderCell: (params) => {
-        const index = params.api.getRowIndexRelativeToVisibleRows(params.row.id);
-        return index !== undefined ? index + 1 : '';
+        const index = processedMentors.findIndex(mentor => mentor.id === params.row.id);
+        return index + 1;
       },
-      sortable: true,
-    },
-    {
-      field: 'MUJid',
-      headerName: 'MUJ ID', 
-      flex: 0.8,
-      sortable: true,
+      sortable: false,
+      headerAlign: 'center',
+      align: 'center',
     },
     {
       field: 'name',
       headerName: 'Name',
       flex: 1,
+      minWidth: 180,
       sortable: true,
+            renderCell: (params) => (
+        <Typography sx={{ 
+          fontWeight: 500,
+          whiteSpace: 'normal',
+          lineHeight: 1.2
+        }}>
+          {params.value}
+        </Typography>
+      ),
     },
     {
       field: 'email',
       headerName: 'Email',
       flex: 1.2,
-      sortable: false,
+      minWidth: 220,
+      sortable: true,
+      renderCell: (params) => (
+        <Typography sx={{
+          fontSize: '0.9rem',
+          whiteSpace: 'normal',
+          lineHeight: 1.2
+        }}>
+          {params.value}
+        </Typography>
+      ),
     },
     {
       field: 'phone_number',
       headerName: 'Phone',
       flex: 0.8,
+      minWidth: 130,
       sortable: false,
+      renderCell: (params) => (
+        <Typography sx={{ 
+          fontFamily: 'monospace',
+          letterSpacing: '0.5px'
+        }}>
+          {params.value}
+        </Typography>
+      ),
     },
     {
       field: 'isActive',
       headerName: 'Status',
-      flex: 0.6,
+      width: 120,
+      minWidth: 120,
+      sortable: true,
       renderCell: (params) => (
         <Box sx={{
           display: 'flex',
@@ -477,6 +506,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
           backgroundColor: params.value ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
           padding: '4px 8px',
           borderRadius: '12px',
+          width: '90px',
+          justifyContent: 'center'
         }}>
           <div className={`w-2 h-2 rounded-full ${params.value ? 'bg-green-500' : 'bg-red-500'}`} />
           <Typography sx={{ 
@@ -491,13 +522,19 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
     {
       field: 'actions',
       headerName: 'Actions',
-      headerAlign: 'center',
-      align: 'center',
-      width: 200,
+      width: 160,
+      minWidth: 160,
+      sortable: false,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 0.5,
+          justifyContent: 'center',
+          width: '100%'
+        }}>
           <IconButton
             onClick={() => setDetailsDialog({ open: true, mentor: params.row })}
+            size="small"
             sx={{
               color: '#3b82f6',
               '&:hover': {
@@ -521,6 +558,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
               };
               onEditClick(mentor);
             }}
+            size="small"
             sx={{
               color: '#ea580c',
               '&:hover': {
@@ -534,6 +572,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
           </IconButton>
           <IconButton
             onClick={() => handleDeleteClick(params.row.MUJid)}
+            size="small"
             sx={{
               color: '#ef4444',
               '&:hover': {
@@ -550,6 +589,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
               open: true,
               fromMentor: params.row
             })}
+            size="small"
             sx={{
               color: '#10B981',
               '&:hover': {
@@ -568,17 +608,26 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
     ...col,
     headerAlign: 'center',
     align: 'center',
-    sortable: col.field !== 'actions' && col.field !== 'serialNumber',
+    sortable: col.sortable !== undefined ? col.sortable : true,
     renderHeader: (params) => (
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#333',  // Updated text color
+        color: '#f5f5f5', // Changed from rgba(255, 255, 255, 0.9) to be more visible
         fontSize: '0.95rem',
-        backgroundColor: '#f5f5f5',  // Updated header color
         fontWeight: 600,
-        width: '100%'
+        width: '100%',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        padding: '8px',
+        // Add text shadow for better contrast
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+        // Add hover effect for better interaction feedback
+        '&:hover': {
+          color: '#ffffff',
+          textShadow: '0 1px 4px rgba(249, 115, 22, 0.3)',
+        }
       }}>
         {params.colDef.headerName}
       </Box>
@@ -661,7 +710,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
         position: 'relative', 
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
+        height: '100%',
+        // flexDirection: 'column',
         transition: 'all 0.3s ease',
           }}>
         <ToastContainer
@@ -727,8 +777,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
           width: '100%',
           '& .MuiDataGrid-main': {
             overflow: 'auto',
-            minHeight: { xs: '300px', lg: '200px' }, // Responsive minHeight
-            maxHeight: { xs: '500px', lg: 'calc(100vh - 300px)' }, // Responsive maxHeight
+            minHeight: { xs: '300px', lg: '100vh-250px' }, // Responsive minHeight
+            maxHeight: { xs: '500px', lg: 'calc(100vh - 250px)' }, // Responsive maxHeight
             height: '100%', // Ensure full height
             flex: 1,
           },
@@ -778,7 +828,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '60px !important',
+            minHeight: '50px !important',
             maxHeight: 'unset !important',
             whiteSpace: 'normal',
             lineHeight: '1.5',
@@ -789,10 +839,15 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)', // Darker black background
+            backgroundColor: 'rgba(249, 115, 22, 0.15)', // Changed to match MenteeTable
             borderBottom: '2px solid rgba(249, 115, 22, 0.3)',
             transition: 'none !important',
-            background: 'rgba(0, 0, 0, 0.9)', // Remove gradient, use solid black
+            minHeight: '56px !important', // Ensure minimum height
+            '& .MuiDataGrid-columnHeader': {
+              outline: 'none !important', // Remove focus outline
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              
+            }
           },
           '& .MuiDataGrid-columnHeader': {
             transition: 'background-color 0.2s ease',
@@ -864,8 +919,8 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
         }}
         columnBuffer={5}
         rowBuffer={10}
-        rowHeight={60}
-        headerHeight={56}
+        rowHeight={50}
+        headerHeight={50}
         pageSize={10}
         rowsPerPageOptions={[10, 25, 50]}
         pagination
