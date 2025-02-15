@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -22,50 +22,36 @@ const AttendanceDialog = ({
   onSubmit,
 }) => {
   const [selectAll, setSelectAll] = useState(false);
-  const [localPresentMentees, setLocalPresentMentees] = useState([]);
-
-  // Initialize local state when dialog opens
-  useEffect(() => {
-    if (open) {
-      setLocalPresentMentees([...presentMentees]);
-    }
-  }, [open, presentMentees]);
 
   const handleSelectAll = () => {
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
 
+    // Get all mentee IDs
     const allMenteeIds = mentees?.map((m) => m.MUJid) || [];
+
+    // Update attendance for all mentees
     if (newSelectAll) {
-      setLocalPresentMentees(allMenteeIds);
+      // Select all mentees
+      allMenteeIds.forEach((id) => {
+        if (!presentMentees.includes(id)) {
+          onUpdateAttendance(id);
+        }
+      });
     } else {
-      setLocalPresentMentees([]);
+      // Unselect all mentees
+      allMenteeIds.forEach((id) => {
+        if (presentMentees.includes(id)) {
+          onUpdateAttendance(id);
+        }
+      });
     }
-  };
-
-  const handleAttendanceChange = (mujId) => {
-    setLocalPresentMentees((prev) =>
-      prev.includes(mujId)
-        ? prev.filter((id) => id !== mujId)
-        : [...prev, mujId]
-    );
-  };
-
-  const handleClose = () => {
-    setSelectAll(false);
-    onClose();
-  };
-
-  const handleSubmit = () => {
-    // Update parent state with final attendance
-    onUpdateAttendance(localPresentMentees);
-    onSubmit();
   };
 
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       maxWidth='sm'
       fullWidth
       sx={{ zIndex: 100000 }} // Add this line
@@ -118,7 +104,7 @@ const AttendanceDialog = ({
                 borderRadius: "0.5rem",
               }}>
               <Typography sx={{ color: "white" }}>
-                {localPresentMentees.length} / {mentees?.length || 0} Present
+                {presentMentees.length} / {mentees?.length || 0} Present
               </Typography>
               <Divider
                 orientation='vertical'
@@ -127,7 +113,7 @@ const AttendanceDialog = ({
               />
               <Typography sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
                 {(
-                  (localPresentMentees.length / (mentees?.length || 1)) *
+                  (presentMentees.length / (mentees?.length || 1)) *
                   100
                 ).toFixed(0)}
                 %
@@ -136,7 +122,7 @@ const AttendanceDialog = ({
           </Box>
         </DialogTitle>
         <IconButton
-          onClick={handleClose}
+          onClick={onClose}
           sx={{
             position: "absolute",
             right: 8,
@@ -208,18 +194,18 @@ const AttendanceDialog = ({
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <Typography
                     sx={{
-                      color: localPresentMentees.includes(mentee.MUJid)
+                      color: presentMentees.includes(mentee.MUJid)
                         ? "#22c55e"
                         : "#ef4444",
                       fontWeight: "medium",
                     }}>
-                    {localPresentMentees.includes(mentee.MUJid)
+                    {presentMentees.includes(mentee.MUJid)
                       ? "Present"
                       : "Absent"}
                   </Typography>
                   <Checkbox
-                    checked={localPresentMentees.includes(mentee.MUJid)}
-                    onChange={() => handleAttendanceChange(mentee.MUJid)}
+                    checked={presentMentees.includes(mentee.MUJid)}
+                    onChange={() => onUpdateAttendance(mentee.MUJid)}
                     sx={{
                       color: "rgba(255, 255, 255, 0.7)",
                       "&.Mui-checked": {
@@ -236,7 +222,7 @@ const AttendanceDialog = ({
       <DialogActions
         sx={{ p: 2, borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
         <Button
-          onClick={handleSubmit}
+          onClick={onSubmit}
           fullWidth
           variant='contained'
           sx={{
