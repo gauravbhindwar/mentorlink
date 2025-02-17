@@ -33,7 +33,7 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
     }
   }, [mentee]);
 
-  // Modified validateField function to only validate editable fields
+  // Modify validateField function to make semester and academic year required
   const validateField = (name, value) => {
     switch (name) {
       case 'name':
@@ -45,10 +45,25 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
       case 'yearOfRegistration':
         return value ? (value >= 2000 && value <= new Date().getFullYear() ? '' : 'Invalid year') : '';
       case 'semester':
-        return value ? (value >= 1 && value <= 8 ? '' : 'Semester must be between 1 and 8') : 'Semester is required';
+        return !value ? 'Semester is required' : (value >= 1 && value <= 8 ? '' : 'Semester must be between 1 and 8');
+      case 'academicYear':
+        return !value ? 'Academic Year is required' : '';
       default:
         return '';
     }
+  };
+
+  // Update the areRequiredFieldsFilled function
+  const areRequiredFieldsFilled = () => {
+    return (
+      editedMentee?.semester && 
+      editedMentee?.yearOfRegistration &&
+      !isNaN(editedMentee.semester) && 
+      !isNaN(editedMentee.yearOfRegistration) &&
+      editedMentee.semester.toString().trim() !== '' &&
+      editedMentee.yearOfRegistration.toString().trim() !== '' &&
+      !Object.values(errors).some(error => error !== '')
+    );
   };
 
   const handleEditInputChange = (e, category, subcategory) => {
@@ -91,14 +106,9 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
 
     setEditedMentee(updatedMentee);
     setHasChanges(true);
-
-    // Only show toast for errors other than email validation
-    if (error && name !== 'email') {
-      toast.error(error, {
-        duration: 3000,
-        position: 'bottom-right'
-      });
-    }
+    
+    // Remove the toast notifications from here
+    // Toast errors will only show when trying to update
   };
 
   // Modified handleUpdate function
@@ -338,8 +348,7 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
           <Button 
             onClick={handleUpdate}
             variant="contained"
-            // Modified disabled logic to check only validation errors
-            disabled={Object.values(errors).some(error => error !== '')}
+            disabled={!areRequiredFieldsFilled()}
             sx={{
               bgcolor: '#f97316',
               '&:hover': {

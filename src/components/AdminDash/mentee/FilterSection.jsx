@@ -19,7 +19,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import DeleteIcon from '@mui/icons-material/Delete';
+// import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
@@ -694,14 +694,14 @@ const FilterSection = ({
       icon: <UploadFileIcon sx={{ fontSize: '1.2rem' }} />,
       fullWidth: false
     },
-    { 
-      label: 'Delete',
-      onClick: () => setDeleteDialog(true),
-      color: 'danger',
-      disabled: deleteLoading,
-      icon: <DeleteIcon sx={{ fontSize: '1.2rem' }} />,
-      fullWidth: false
-    }
+    // { 
+    //   label: 'Delete',
+    //   onClick: () => setDeleteDialog(true),
+    //   color: 'danger',
+    //   disabled: deleteLoading,
+    //   icon: <DeleteIcon sx={{ fontSize: '1.2rem' }} />,
+    //   fullWidth: false
+    // }
   ];
 
   useEffect(() => {

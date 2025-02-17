@@ -9,10 +9,17 @@ import {
   determineAcademicPeriod,
   generateAcademicSessions,
 } from "../mentee/utils/academicUtils";
+import { motion } from "framer-motion";
 
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
+    primary: {
+      main: '#f97316'
+    },
+    background: {
+      default: 'rgba(0,0,0,0.2)'
+    }
   },
 });
 
@@ -219,15 +226,15 @@ const ManageMeeting = () => {
   };
 
   const columns = [
-    {
-      field: "MUJid",
-      headerName: "MUJ ID",
-      flex: 0.7,
-      width: 130,
-      sortable: true,
-      headerAlign: "center",
-      align: "center",
-    },
+    // {
+    //   field: "MUJid",
+    //   headerName: "MUJ ID",
+    //   flex: 0.7,
+    //   width: 130,
+    //   sortable: true,
+    //   headerAlign: "center",
+    //   align: "center",
+    // },
     {
       field: "mentorName",
       headerName: "Name",
@@ -299,146 +306,172 @@ const ManageMeeting = () => {
   }));
 
   return (
-    <div className='min-h-screen h-auto bg-[#0a0a0a] overflow-hidden relative'>
-      <div className='absolute inset-0 z-0'>
-        <div className='absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient' />
-        <div className='absolute inset-0 backdrop-blur-3xl' />
+    <div className="min-h-screen bg-[#0a0a0a] max-h-screen overflow-y-auto lg:overflow-auto custom-scrollbar">
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
+        <div className="absolute inset-0 backdrop-blur-3xl" />
       </div>
 
-      <div className='relative z-10 container mx-auto px-4 pt-24 max-w-7xl'>
-        <div className='text-center mb-8'>
-          <h1 className='text-4xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-6'>
+      <div className="relative z-10 container mx-auto px-2 sm:px-4 py-4 pt-20">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full"
+        >
+          <h1 className="text-2xl md:text-4xl font-bold text-center bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mb-4">
             Manage Meetings
           </h1>
-        </div>
 
-        <div className='bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10'>
-          <form onSubmit={handleSubmit} className='flex flex-wrap gap-4'>
-            <div className='space-y-3 flex-1 min-w-[200px]'>
-              <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-3 sm:p-4 md:p-6 border border-white/10 shadow-2xl">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {/* Academic Year Input */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-300">
                   Academic Year
                 </label>
                 <input
-                  type='text'
-                  list='academicYears'
-                  placeholder='YYYY-YYYY'
+                  type="text"
+                  list="academicYears"
+                  placeholder="YYYY-YYYY"
                   value={academicYear}
                   onChange={handleAcademicYearChange}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-white placeholder:text-gray-500
+                  focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all text-sm"
                 />
-                <datalist id='academicYears'>
+                <datalist id="academicYears">
                   {academicYears.map((year, index) => (
                     <option key={index} value={year} />
                   ))}
                 </datalist>
               </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+              {/* Academic Session Input */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-300">
                   Academic Session
                 </label>
                 <input
-                  type='text'
-                  list='academicSessions'
-                  placeholder='MONTH-MONTH YYYY'
+                  type="text"
+                  list="academicSessions"
+                  placeholder="MONTH-MONTH YYYY"
                   value={academicSession}
                   onChange={handleAcademicSessionChange}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase'
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-white placeholder:text-gray-500
+                  focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all text-sm uppercase"
                 />
-                <datalist id='academicSessions'>
+                <datalist id="academicSessions">
                   {academicSessions.map((session, index) => (
                     <option key={index} value={session} />
                   ))}
                 </datalist>
               </div>
-            </div>
 
-            <div className='space-y-3 flex-1 min-w-[200px]'>
-              <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+              {/* Semester Input */}
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <label className="text-sm font-medium text-gray-300">
                   Semester
                 </label>
-                <input
-                  type='number'
-                  min='1'
-                  max='8'
-                  placeholder='Enter Semester (1-8)'
-                  value={semester}
-                  onChange={handleSemesterChange}
-                  onKeyDown={(e) => {
-                    // Prevent typing non-numeric characters
-                    if (!/[0-9]|\Backspace|\Tab/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  maxLength={1}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    placeholder="Enter Semester (1-8)"
+                    value={semester}
+                    onChange={handleSemesterChange}
+                    className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-white placeholder:text-gray-500
+                    focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all text-sm
+                    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || !semester}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg font-medium transition-all
+                    bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600
+                    disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {loading ? "Loading..." : "Fetch"}
+                  </button>
+                </div>
               </div>
-            </div>
+            </form>
 
-            <div className='space-y-3 flex-1 min-w-[200px] mt-6 '>
-              <button
-                type='submit'
-                className='w-full btn-orange disabled:opacity-50'
-                disabled={loading || !semester}>
-                {loading ? "Fetching..." : !semester ? "Enter Semester" : "Fetch Mentor Meetings"}
-              </button>
-            </div>
-          </form>
+            {/* Results Section */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-4 h-[calc(100vh-280px)] min-h-[400px] custom-scrollbar"
+            >
+              {loading && <LoadingComponent />}
 
-          {loading && showTable && <LoadingComponent />}
+              {!loading && showTable && noData && (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <svg className="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium">No meetings found</h3>
+                  <p className="mt-1 text-sm text-gray-500">Try different search criteria</p>
+                </div>
+              )}
 
-          {!loading && showTable && noData && (
-            <div className='mt-6 text-center text-gray-300'>
-              No Data Found
-            </div>
-          )}
-
-          {!loading && showTable && mentorMeetings.length > 0 && (
-            <div className='mt-6 h-[400px] w-full custom-scrollbar'>
-              <ThemeProvider theme={darkTheme}>
-                <DataGrid
-                  rows={rows}
-                  columns={columns}
-                  rowCount={totalRows}
-                  page={page}
-                  pageSize={pageSize}
-                  paginationMode='server'
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={handlePageSizeChange}
-                  pageSizeOptions={[5, 10, 20]}
-                  loading={loading}
-                  disableRowSelectionOnClick
-                  disableColumnMenu={true}
-                  disableColumnFilter={false}
-                  sx={{
-                    "& .MuiDataGrid-virtualScroller": {
-                      overflowX: "auto",
-                      overflowY: "auto",
-                      "&::-webkit-scrollbar": {
-                        width: "8px",
-                        height: "8px",
-                      },
-                      "&::-webkit-scrollbar-track": {
-                        background: "rgba(255, 255, 255, 0.1)",
-                        borderRadius: "4px",
-                      },
-                      "&::-webkit-scrollbar-thumb": {
-                        background: "rgba(249, 115, 22, 0.5)",
-                        borderRadius: "4px",
-                        "&:hover": {
-                          background: "rgba(249, 115, 22, 0.7)",
+              {!loading && showTable && mentorMeetings.length > 0 && (
+                <div className="h-full w-full rounded-lg overflow-hidden border border-white/10">
+                  <ThemeProvider theme={darkTheme}>
+                    <DataGrid
+                      rows={rows}
+                      columns={columns.map(col => ({
+                        ...col,
+                        width: undefined, // Remove fixed widths
+                        flex: 1, // Make all columns flexible
+                        minWidth: col.field === 'actions' ? 200 : 130, // Set minimum widths
+                      }))}
+                      rowCount={totalRows}
+                      page={page}
+                      pageSize={pageSize}
+                      paginationMode='server'
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      pageSizeOptions={[5, 10, 20]}
+                      loading={loading}
+                      disableRowSelectionOnClick
+                      disableColumnMenu={true}
+                      disableColumnFilter={false}
+                      autoHeight={false}
+                      sx={{
+                        height: '100%',
+                        width: '100%',
+                        border: 'none',
+                        '& .MuiDataGrid-cell': {
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                          padding: '8px',
                         },
-                      },
-                    },
-                  }}
-                />
-              </ThemeProvider>
-            </div>
-          )}
-        </div>
+                        '& .MuiDataGrid-columnHeaders': {
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                        },
+                        '& .MuiDataGrid-row:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        },
+                        '& .MuiDataGrid-footerContainer': {
+                          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        },
+                        "& .MuiDataGrid-virtualScroller": {
+                          overflow: "auto",
+                          '&::-webkit-scrollbar': {
+                            display: 'none' // Hide default scrollbar
+                          },
+                          '-ms-overflow-style': 'none',
+                          'scrollbar-width': 'none'
+                        },
+                      }}
+                      className="custom-scrollbar"
+                    />
+                  </ThemeProvider>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

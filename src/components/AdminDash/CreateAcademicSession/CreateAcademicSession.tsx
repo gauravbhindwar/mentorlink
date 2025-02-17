@@ -32,6 +32,10 @@ const CreateAcademicSession = () => {
   const [semesters, setSemesters] = useState('');
   const [semesterError, setSemesterError] = useState('');
   const [existingSessions, setExistingSessions] = useState<AcademicSessionType[]>([]);
+  const [showPastYearWarning, setShowPastYearWarning] = useState(false);
+  const [pendingYearValue, setPendingYearValue] = useState('');
+  const [activeButton, setActiveButton] = useState<'cancel' | 'confirm'>('cancel');
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const validateAndParseSemesters = (input: string): number[] | null => {
     const semesterArray: number[] = input.split(',').map(s => parseInt(s.trim()));
@@ -117,8 +121,9 @@ const CreateAcademicSession = () => {
     const currentYear = new Date().getFullYear();
     const suggestions = [];
 
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
+    // Only allow current year and next year
+    for (let i = 0; i < 2; i++) {
+      const year = currentYear + i;
       const academicYear = `${year}-${year + 1}`;
       if (academicYear.startsWith(input)) {
         suggestions.push(academicYear);
@@ -140,16 +145,45 @@ const CreateAcademicSession = () => {
     );
   };
 
+  const handlePastYearConfirmation = () => {
+    setAcademicYear(pendingYearValue);
+    setShowPastYearWarning(false);
+    const sessions = generateSessionSuggestions(pendingYearValue);
+    if (sessions.length > 0) {
+      setAcademicSession(sessions[0]);
+    }
+  };
+
   const handleAcademicYearInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.toUpperCase();
+    const currentYear = new Date().getFullYear();
 
     if (value.length === 4 && !value.includes('-')) {
-      value = `${value}-${parseInt(value) + 1}`;
+      const startYear = parseInt(value);
+      // Auto-complete year range for any valid year
+      if (!isNaN(startYear)) {
+        value = `${value}-${startYear + 1}`;
+      }
     }
 
-    // Auto-hide dropdown if a valid year pattern is entered (YYYY-YYYY)
+    // Validate the full year range
     if (/^\d{4}-\d{4}$/.test(value)) {
-      setShowYearOptions(false);
+      const [startYear, endYear] = value.split('-').map(Number);
+      
+      // Only show warning for past years
+      if (startYear < currentYear) {
+        setPendingYearValue(value);
+        setShowPastYearWarning(true);
+        return;
+      }
+      
+      // Validate that end year is start year + 1
+      if (endYear !== startYear + 1) {
+        value = '';
+        setCustomAlert('Invalid year range. End year must be start year + 1');
+      } else {
+        setShowYearOptions(false);
+      }
     } else if (value.length > 0) {
       setYearSuggestions(generateYearSuggestions(value));
       setShowYearOptions(true);
@@ -215,6 +249,40 @@ const CreateAcademicSession = () => {
     const showError = value.length > 0 && formatted.length === 0;
     setSemesterError(showError ? 'Invalid semesters' : '');
   };
+
+  const handleDialogKeyDown = (e: KeyboardEvent) => {
+    if (!showPastYearWarning) return;
+
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault(); // Prevent any default escape behavior
+        setShowPastYearWarning(false);
+        break;
+      case 'ArrowRight':
+        setActiveButton('confirm');
+        break;
+      case 'ArrowLeft':
+        setActiveButton('cancel');
+        break;
+      case 'Enter':
+        if (activeButton === 'cancel') {
+          setShowPastYearWarning(false);
+        } else {
+          handlePastYearConfirmation();
+        }
+        break;
+    }
+  };
+
+  useEffect(() => {
+    if (showPastYearWarning) {
+      document.addEventListener('keydown', handleDialogKeyDown);
+      dialogRef.current?.focus();
+    }
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
+    };
+  }, [showPastYearWarning, activeButton]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -293,6 +361,76 @@ const CreateAcademicSession = () => {
                       transition={{ duration: 3, ease: "linear" }}
                       className="h-full bg-gradient-to-r from-orange-500 to-pink-500"
                     />
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showPastYearWarning && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm"
+            >
+              <motion.div
+                ref={dialogRef}
+                tabIndex={-1}
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-gray-900 border border-white/10 rounded-xl p-6 shadow-2xl max-w-md w-full"
+              >
+                <div className="text-center space-y-4">
+                  <div className="flex justify-center">
+                    <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                      <svg
+                        className="w-6 h-6 text-yellow-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">
+                    Past Academic Year Warning
+                  </h3>
+                  <p className="text-gray-400">
+                    You are creating an academic session for a past year. Are you sure you want to continue?
+                  </p>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setShowPastYearWarning(false)}
+                      className={`flex-1 px-4 py-2 rounded-lg border transition-colors text-white ${
+                        activeButton === 'cancel'
+                          ? 'border-red-500 bg-red-500/10'
+                          : 'border-white/10 hover:bg-white/5'
+                      }`}
+                      onFocus={() => setActiveButton('cancel')}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePastYearConfirmation}
+                      className={`flex-1 px-4 py-2 rounded-lg transition-all text-white ${
+                        activeButton === 'confirm'
+                          ? 'bg-gradient-to-r from-orange-500 to-pink-500'
+                          : 'bg-white/5 hover:bg-white/10'
+                      }`}
+                      onFocus={() => setActiveButton('confirm')}
+                    >
+                      Continue Anyway
+                    </button>
                   </div>
                 </div>
               </motion.div>
