@@ -688,9 +688,7 @@ Contact: ${mentorData?.email || ""}`;
 
             {/* Upcoming Meetings Section */}
             <motion.div
-              className={`lg:max-w-[50%] w-full ${
-                meetings.length > 0 ? "" : "hidden lg:block"
-              }`}
+              className={`lg-max-w-[50%] w-full`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               style={{
@@ -704,10 +702,47 @@ Contact: ${mentorData?.email || ""}`;
                 borderRadius: "1rem",
               }}>
               <div className='bg-white/10 rounded-lg p-6 backdrop-blur-sm overflow-y-auto max-h-[448px] custom-scrollbar'>
-                {meetings.length > 0 || meetingsLoading ? (
+                {meetingsLoading ? (
+                  // Skeleton Loader
+                  <div className="space-y-4">
+                    {/* Skeleton for title */}
+                    <div className="h-8 w-48 bg-gray-700/50 rounded-lg animate-pulse mb-6"></div>
+                    
+                    {/* Skeleton for tabs */}
+                    <div className="flex space-x-4 mb-6 overflow-x-auto">
+                      {[1, 2, 3, 4].map((index) => (
+                        <div
+                          key={index}
+                          className="h-8 w-24 bg-gray-700/50 rounded-lg animate-pulse"
+                        ></div>
+                      ))}
+                    </div>
+                    
+                    {/* Skeleton for meeting cards */}
+                    {[1, 2, 3].map((index) => (
+                      <div
+                        key={index}
+                        className="bg-gray-700/30 rounded-lg p-4 animate-pulse"
+                      >
+                        <div className="flex justify-between">
+                          <div className="space-y-3 w-2/3">
+                            <div className="h-4 w-3/4 bg-gray-600/50 rounded"></div>
+                            <div className="h-4 w-1/2 bg-gray-600/50 rounded"></div>
+                            <div className="h-4 w-1/3 bg-gray-600/50 rounded"></div>
+                            <div className="h-4 w-2/3 bg-gray-600/50 rounded"></div>
+                          </div>
+                          <div className="w-1/4 flex flex-col space-y-2">
+                            <div className="h-8 bg-gray-600/50 rounded"></div>
+                            <div className="h-8 bg-gray-600/50 rounded"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : meetings.length > 0 ? (
                   <>
                     <h2 className='text-2xl font-bold text-white mb-4'>
-                      Upcoming Meetings
+                      Manage Meetings
                     </h2>
                     <div className='mb-4 border-b border-gray-700'>
                       <div className='flex overflow-x-auto space-x-4 custom-scrollbar'>

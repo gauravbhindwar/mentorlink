@@ -1,4 +1,5 @@
 {
   "editor.guides.indentation": true,
-  "editor.wrappingIndent": "indent"
+  "editor.wrappingIndent": "indent",
+  "postman.settings.dotenv-detection-notification-visibility": false
 }
