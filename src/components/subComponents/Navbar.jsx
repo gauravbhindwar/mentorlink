@@ -151,7 +151,7 @@ const Navbar = () => {
         { label: "Manage Mentors", path: "/pages/admin/managementor" },
       ];
     }
-    if (pathname === "/pages/admin/createacademicsession") {
+    if (pathname === "/pages/admin/mngacademicsession") {
       return [
         { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
         {
