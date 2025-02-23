@@ -32,12 +32,12 @@ const AdminDashboard = () => {
       onClick: () => router.push("/pages/admin/managemeeting"),
     },
     {
-      title: "Create New Academic Session",
+      title: "Manage Academic Session",
       icon: "📅",
-      description: "Create and manage academic sessions",
+      description: "Manage Academic Sessions",
       gradient: "from-green-500 via-emerald-500 to-teal-500",
       shadowColor: "rgba(16, 185, 129, 0.4)",
-      onClick: () => router.push("/pages/admin/createacademicsession"),
+      onClick: () => router.push("/pages/admin/mngacademicsession"),
     },
     // {
     //     title: 'Student Queries',

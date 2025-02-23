@@ -56,19 +56,126 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
     }
   }, [isUploading]);
 
+  const EmptyCell = () => (
+    <Typography
+      component="span"
+      sx={{
+        color: '#64748b',
+        fontSize: '0.875rem',
+        fontStyle: 'italic'
+      }}
+    >
+      Not Added
+    </Typography>
+  );
+
   const columns = type === 'mentee' ? [
-    { field: 'MUJid', headerName: 'Mentee MUJid', flex: 0.75, minWidth: 130, headerAlign: 'center', align: 'center' },
-    { field: 'name', headerName: 'Mentee Name', flex: 1, minWidth: 150, headerAlign: 'center', align: 'center' },
-    { field: 'email', headerName: 'Mentee Email', flex: 1.5, minWidth: 250, headerAlign: 'center', align: 'center' },
-    { field: 'semester', headerName: 'Semester', flex: 0.5, minWidth: 100, headerAlign: 'center', align: 'center' },
-    { field: 'mentorEmail', headerName: 'Mentor Email', flex: 1.3, minWidth: 180, headerAlign: 'center', align: 'center' }
+    { 
+      field: 'MUJid', 
+      headerName: 'Mentee MUJid', 
+      flex: 0.75, 
+      minWidth: 130, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'name', 
+      headerName: 'Mentee Name', 
+      flex: 1, 
+      minWidth: 150, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'email', 
+      headerName: 'Mentee Email', 
+      flex: 1.5, 
+      minWidth: 250, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'semester', 
+      headerName: 'Semester', 
+      flex: 0.5, 
+      minWidth: 100, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'mentorEmail', 
+      headerName: 'Mentor Email', 
+      flex: 1.3, 
+      minWidth: 180, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'fatherEmail', 
+      headerName: "Father's Email", 
+      width: 200,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'motherEmail', 
+      headerName: "Mother's Email", 
+      width: 200,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'guardianEmail', 
+      headerName: "Guardian's Email", 
+      width: 200,
+      renderCell: (params) => params.value || <EmptyCell />
+    }
   ] : [
-    { field: 'MUJid', headerName: 'MUJid', flex: 1, minWidth: 130 },
-    { field: 'name', headerName: 'Name', flex: 1.5, minWidth: 180 },
-    { field: 'email', headerName: 'Email', flex: 1.5, minWidth: 200 },
-    { field: 'phone_number', headerName: 'Phone', flex: 1, minWidth: 120 },
-    { field: 'gender', headerName: 'Gender', flex: 0.5, minWidth: 80 },
-    { field: 'role', headerName: 'Role', flex: 0.5, minWidth: 80 }
+    { 
+      field: 'MUJid', 
+      headerName: 'MUJid', 
+      flex: 1, 
+      minWidth: 130,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'name', 
+      headerName: 'Name', 
+      flex: 1.5, 
+      minWidth: 180,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'email', 
+      headerName: 'Email', 
+      flex: 1.5, 
+      minWidth: 200,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'phone_number', 
+      headerName: 'Phone', 
+      flex: 1, 
+      minWidth: 120,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'gender', 
+      headerName: 'Gender', 
+      flex: 0.5, 
+      minWidth: 80,
+      renderCell: (params) => params.value || <EmptyCell />
+    },
+    { 
+      field: 'role', 
+      headerName: 'Role', 
+      flex: 0.5, 
+      minWidth: 80,
+      renderCell: (params) => params.value || <EmptyCell />
+    }
   ];
 
   const rows = data
