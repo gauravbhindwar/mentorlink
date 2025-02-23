@@ -533,12 +533,12 @@ Contact: ${mentorData?.email || ""}`;
             animate={{ opacity: 1, y: 0 }}
             className='max-w-6xl mx-auto' // Changed from max-w-4xl to max-w-6xl
           >
-            <div className='bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10'>
+            <div className='bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 md:max-h-none max-h-[85vh] overflow-y-auto'>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                 }}
-                className='grid grid-cols-3 gap-4'>
+                className='grid md:grid-cols-3 gap-4 overflow-auto '>
                 {" "}
                 {/* Changed from grid-cols-2 to grid-cols-3 */}
                 {/* Left Column */}

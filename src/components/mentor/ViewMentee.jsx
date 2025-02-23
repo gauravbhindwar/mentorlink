@@ -372,18 +372,11 @@ const ViewMentee = () => {
   };
 
   const columns = [
-    {
-      field: "MUJid",
-      headerName: "MUJ ID",
-      flex: 1,
-      headerClassName: "super-app-theme--header",
-      headerAlign: "center",
-      align: "center",
-    },
+    
     {
       field: "name",
       headerName: "Name",
-      flex: 1.2,
+      flex: 1.4,
       headerClassName: "super-app-theme--header",
       headerAlign: "center",
       align: "center",
@@ -399,6 +392,14 @@ const ViewMentee = () => {
     {
       field: "phone",
       headerName: "Phone",
+      flex: 1,
+      headerClassName: "super-app-theme--header",
+      headerAlign: "center",
+      align: "center",
+    },
+    {
+      field: "MUJid",
+      headerName: "MUJ ID",
       flex: 1,
       headerClassName: "super-app-theme--header",
       headerAlign: "center",
@@ -556,7 +557,7 @@ const ViewMentee = () => {
               sx={{
                 overflowX: "auto",
                 minHeight: "400px",
-                height: "calc(100vh - 250px)", // Adjusted height
+                height: { xs: "calc(100vh - 200px)", md: "calc(100vh - 250px)" }, // Adjusted height for responsiveness
                 overflowY: "auto",
               }}>
               {loading ? (

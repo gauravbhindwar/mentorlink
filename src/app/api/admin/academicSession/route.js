@@ -15,6 +15,9 @@ export async function POST(request) {
       );
     }
 
+    // Check if any current session exists
+    const currentSessionExists = await AcademicSession.findOne({ isCurrent: true });
+
     // Check if academic session already exists
     const existingSession = await AcademicSession.findOne({
       start_year: data.start_year,
@@ -34,12 +37,15 @@ export async function POST(request) {
       start_year: data.start_year,
       end_year: data.end_year,
       sessions: data.sessions,
+      isCurrent: !currentSessionExists, // Set as current if no current session exists
+      created_at: new Date(),
+      updated_at: new Date()
     });
 
     await newSession.save();
 
     return NextResponse.json(
-      { message: "Academic session created successfully" },
+      { message: "Academic session created successfully", isCurrent: !currentSessionExists },
       { status: 200 }
     );
   } catch (error) {
@@ -54,11 +60,35 @@ export async function POST(request) {
 export async function GET() {
   try {
     await connect();
-    const sessions = await AcademicSession.find({})
-      .sort({ start_year: -1, 'sessions.name': -1 })
-      .select('start_year end_year sessions');
+    
+    // Select only necessary fields and lean() for faster queries
+    const sessions = await AcademicSession.find({}, {
+      'start_year': 1,
+      'end_year': 1,
+      'sessions.name': 1,
+      'sessions.semesters.semester_number': 1,
+      'archivedAt': 1,
+      'isCurrent': 1
+    })
+    .lean()
+    .exec();
 
-    return NextResponse.json(sessions);
+    // Pre-calculate the sort order to avoid multiple comparisons
+    const getSortPriority = (session) => {
+      if (session.isCurrent) return 0;
+      if (!session.archivedAt) return 1;
+      return 2;
+    };
+
+    const sortedSessions = sessions.sort((a, b) => {
+      const priorityA = getSortPriority(a);
+      const priorityB = getSortPriority(b);
+      
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return b.start_year - a.start_year;
+    });
+
+    return NextResponse.json(sortedSessions);
   } catch (error) {
     console.error("Error fetching academic sessions:", error);
     return NextResponse.json(

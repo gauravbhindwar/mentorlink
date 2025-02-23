@@ -688,7 +688,7 @@ Contact: ${mentorData?.email || ""}`;
 
             {/* Upcoming Meetings Section */}
             <motion.div
-              className={`lg-max-w-[50%] w-full`}
+              className={`lg-max-w-[50%] w-full md:bg-opacity-100 bg-opacity-0`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               style={{

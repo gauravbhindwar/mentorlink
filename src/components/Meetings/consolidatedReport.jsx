@@ -330,20 +330,20 @@ const ConsolidatedReport = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 pt-16">
-      <div className="h-[calc(100vh-4rem)] max-w-[85rem] mx-auto p-8 flex flex-col overflow-hidden"> {/* Added overflow-hidden */}
-        <div className="flex gap-6 flex-1 min-h-0"> {/* Added min-h-0 to allow flex child to shrink */}
+      <div className="h-[calc(100vh-4rem)] max-w-[85rem] mx-auto p-4 md:p-8 flex flex-col overflow-hidden"> {/* Adjusted padding */}
+        <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0"> {/* Adjusted flex direction */}
           {/* Left side container for header and table */}
-          <div className="flex-1 max-w-[calc(100%-16rem)] flex flex-col min-h-0"> {/* Added min-h-0 */}
+          <div className="flex-1 max-w-full md:max-w-[calc(100%-16rem)] flex flex-col min-h-0"> {/* Adjusted max-width */}
             {/* Static Header - now matches table width */}
-            <div className="bg-gray-800/50 p-6 rounded-xl shadow-lg backdrop-blur-sm mb-8">
+            <div className="bg-gray-800/50 p-4 md:p-6 rounded-xl shadow-lg backdrop-blur-sm mb-4 md:mb-8"> {/* Adjusted padding and margin */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="space-y-1">
-                  <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
+                  <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500"> {/* Adjusted font size */}
                     Consolidated Report
                   </h2>
-                  <p className="text-gray-400">View and manage all mentee reports</p>
+                  <p className="text-gray-400 hidden md:block">View and manage all mentee reports</p>
                 </div>
-                <div className="flex items-center gap-2 bg-gray-700/50 px-4 py-2 rounded-lg">
+                <div className=" items-center gap-2 bg-gray-700/50 px-4 py-2 rounded-lg hidden md:flex">
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -367,19 +367,19 @@ const ConsolidatedReport = () => {
                     </colgroup>
                     <thead>
                       <tr className='bg-gray-900/50'>
-                        <th className='px-6 py-4 text-sm font-semibold text-orange-500 text-center'>
+                        <th className='px-2 md:px-6 py-2 md:py-4 text-sm font-semibold text-orange-500 text-center'> {/* Adjusted padding */}
                           Sr. No.
                         </th>
-                        <th className='px-6 py-4 text-sm font-semibold text-orange-500'>
+                        <th className='px-2 md:px-6 py-2 md:py-4 text-sm font-semibold text-orange-500'> {/* Adjusted padding */}
                           Registration No.
                         </th>
-                        <th className='px-6 py-4 text-sm font-semibold text-orange-500'>
+                        <th className='px-2 md:px-6 py-2 md:py-4 text-sm font-semibold text-orange-500'> {/* Adjusted padding */}
                           Student Name
                         </th>
-                        <th className='px-6 py-4 text-sm font-semibold text-orange-500 text-center'>
+                        <th className='px-2 md:px-6 py-2 md:py-4 text-sm font-semibold text-orange-500 text-center'> {/* Adjusted padding */}
                           No. of Meetings Attended
                         </th>
-                        <th className='px-6 py-4 text-sm font-semibold text-orange-500'>
+                        <th className='px-2 md:px-6 py-2 md:py-4 text-sm font-semibold text-orange-500'> {/* Adjusted padding */}
                           Mentor Remark/Special Cases
                         </th>
                       </tr>
@@ -440,7 +440,7 @@ const ConsolidatedReport = () => {
           </div>
 
           {/* Right Side Actions - Updated Logic */}
-          <div className="w-60 space-y-4 flex-shrink-0 overflow-y-auto">
+          <div className="w-full md:w-60 space-y-4 flex-shrink-0 overflow-y-auto"> {/* Adjusted width */}
             {/* Semester Selection Chips */}
             <div className="bg-gray-800/50 p-4 rounded-xl shadow-lg">
               <h3 className="text-sm font-medium text-gray-400 mb-3">Select Semester</h3>
