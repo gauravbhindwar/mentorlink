@@ -30,7 +30,7 @@ export async function POST(req) {
     const headers = filteredData[0];
     const rows = filteredData.slice(1);
 
-    // Column mapping for standardization
+    // Update the column mapping for standardization
     const columnMap = {
       'mentee mujid': 'MUJid',
       'mentee name': 'name',
@@ -42,10 +42,13 @@ export async function POST(req) {
       'mentee address': 'address',
       "mentee's father name": 'fatherName',
       "mentee's father phone": 'fatherPhone',
+      "mentee's father email": 'fatherEmail',
       "mentee's mother name": 'motherName',
       "mentee's mother phone": 'motherPhone',
+      "mentee's mother email": 'motherEmail',
       "mentee's guardian name": 'guardianName',
       "mentee's guardian phone": 'guardianPhone',
+      "mentee's guardian email": 'guardianEmail',
       'assigned mentor email': 'mentorEmail'
     };
 

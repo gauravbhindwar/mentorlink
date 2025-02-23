@@ -111,15 +111,18 @@ export async function POST(req) {
           parents: {
             father: {
               name: mentee.fatherName || null,
-              phone: mentee.fatherPhone || null
+              phone: mentee.fatherPhone || null,
+              email: mentee.fatherEmail || null
             },
             mother: {
               name: mentee.motherName || null,
-              phone: mentee.motherPhone || null
+              phone: mentee.motherPhone || null,
+              email: mentee.motherEmail || null
             },
             guardian: {
               name: mentee.guardianName || null,
-              phone: mentee.guardianPhone || null
+              phone: mentee.guardianPhone || null,
+              email: mentee.guardianEmail || null
             }
           },
           mentorMujid: mentorInfo?.MUJid,
@@ -273,12 +276,21 @@ export async function POST(req) {
         updatedMentors.map(m => [m.email, { MUJid: m.MUJid, email: m.email }])
       );
 
+      // Get all existing mentees with matching MUJids
+      const existingMentees = await Mentee.find({
+        MUJid: { $in: data.map(m => m.MUJid) }
+      }).lean();
+
+      const existingMenteeMap = new Map(
+        existingMentees.map(m => [m.MUJid, m])
+      );
+
       // Prepare mentee records
       const menteeRecords = data.map(mentee => {
         const mentorInfo = mentorEmailMap.get(mentee.mentorEmail);
-        // console.log(`Mentor info for ${mentee.mentorEmail}:`, mentorInfo);
+        const existingMentee = existingMenteeMap.get(mentee.MUJid);
 
-        return {
+        const updatedRecord = {
           name: mentee.name,
           email: mentee.email,
           MUJid: mentee.MUJid,
@@ -291,21 +303,42 @@ export async function POST(req) {
           parents: {
             father: {
               name: mentee.fatherName || null,
-              phone: mentee.fatherPhone || null
+              phone: mentee.fatherPhone || null,
+              email: mentee.fatherEmail || null
             },
             mother: {
               name: mentee.motherName || null,
-              phone: mentee.motherPhone || null
+              phone: mentee.motherPhone || null,
+              email: mentee.motherEmail || null
             },
             guardian: {
               name: mentee.guardianName || null,
-              phone: mentee.guardianPhone || null
+              phone: mentee.guardianPhone || null,
+              email: mentee.guardianEmail || null
             }
           },
           mentorMujid: mentorInfo?.MUJid || null,
           mentorEmailid: mentorInfo?.email || null,
           updated_at: new Date()
         };
+
+        // Preserve existing fields that aren't being updated
+        if (existingMentee) {
+          updatedRecord.created_at = existingMentee.created_at;
+          updatedRecord.role = existingMentee.role;
+          updatedRecord.isActive = existingMentee.isActive;
+          // Preserve any other fields you want to keep from existing record
+          updatedRecord.meetingsAttended = existingMentee.meetingsAttended || [];
+          updatedRecord.mentorRemarks = existingMentee.mentorRemarks || '';
+        } else {
+          updatedRecord.role = ['mentee'];
+          updatedRecord.isActive = true;
+          updatedRecord.created_at = new Date();
+          updatedRecord.meetingsAttended = [];
+          updatedRecord.mentorRemarks = '';
+        }
+
+        return updatedRecord;
       });
 
       // Verify mentor associations
@@ -319,10 +352,7 @@ export async function POST(req) {
       const bulkOps = menteeRecords.map(record => ({
         updateOne: {
           filter: { MUJid: record.MUJid },
-          update: { 
-            $set: record,
-            $setOnInsert: { created_at: new Date() }
-          },
+          update: { $set: record },
           upsert: true
         }
       }));
