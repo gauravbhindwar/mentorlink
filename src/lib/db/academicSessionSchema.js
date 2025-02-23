@@ -17,15 +17,93 @@ const academicSessionsSchema = new mongoose.Schema({
           message: "Session must be JULY-DECEMBER YYYY or JANUARY-JUNE YYYY",
         },
       },
+      mentors: [{
+        MUJid: String,
+        name: String,
+        email: String,
+        phone_number: String,
+        mentees: [{
+          MUJid: String,
+          name: String,
+          email: String,
+          semester: Number,
+          mentorRemarks: String
+        }]
+      }],
+      graduatedMentees: [{
+        MUJid: String,
+        name: String,
+        email: String,
+        mentorMujid: String,
+        semester: Number,
+        academicYear: String,
+        academicSession: String,
+        mentorRemarks: String,
+        meetingsAttended: [String],
+        graduatedAt: Date
+      }],
       semesters: [
         {
           semester_number: { type: Number }, // Semester number (1-8)
           start_date: { type: Date }, // Start date of the semester
           end_date: { type: Date }, // End date of the semester
-          meetings: [
+          meetingPages: [
             {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: 'Meeting'
+              pageNumber: { type: Number },
+              meetings: [
+                {
+                  meeting_id: { type: String },
+                  mentorMUJid: { type: String },
+                  mentorDetails: {
+                    name: String,
+                    email: String,
+                    phone_number: String
+                  },
+                  semester: { type: Number },
+                  meeting_date: { type: Date },
+                  meeting_time: {
+                    type: String,
+                    validate: {
+                      validator: function(v) {
+                        return /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(v);
+                      },
+                      message: "Invalid time format, please enter time in hh:mm AM/PM format"
+                    }
+                  },
+                  isReportFilled: { type: Boolean, default: false },
+                  meeting_notes: {
+                    TopicOfDiscussion: String,
+                    TypeOfInformation: String,
+                    NotesToStudent: String,
+                    isMeetingOnline: { type: Boolean, default: false },
+                    venue: { type: String },
+                    feedbackFromMentee: String,
+                    issuesRaisedByMentee: String,
+                    outcome: String,
+                    closureRemarks: String
+                  },
+                  mentees: {
+                    type: [{
+                      MUJid: String,
+                      name: String,
+                      email: String,
+                      isPresent: Boolean,
+                      mentorRemarks: String
+                    }],
+                    validate: [arrayLimit, 'Exceeds the limit of 50 mentees per meeting']
+                  },
+                  scheduledAT: {
+                    scheduleDate: { type: Date },
+                    scheduleTime: String
+                  },
+                  emailsSentCount: { type: Number, default: 0 },
+                  attendance: {
+                    total: { type: Number, default: 0 },
+                    present: { type: Number, default: 0 },
+                    percentage: { type: Number, default: 0 }
+                  }
+                }
+              ]
             }
           ]
         },
@@ -34,12 +112,21 @@ const academicSessionsSchema = new mongoose.Schema({
   ],
   created_at: { type: Date, default: Date.now }, // Creation date of the session
   updated_at: { type: Date, default: Date.now }, // Last updated date
+  isArchived: { type: Boolean, default: false },
+  archivedAt: { type: Date, default: null },
+  isCurrent: { type: Boolean, default: false } // Add at root level
 });
+
+// Add validator function for array limits
+function arrayLimit(val) {
+  return val.length <= 50;
+}
 
 // Add indexes for frequently queried fields
 academicSessionsSchema.index({ start_year: 1 });
 academicSessionsSchema.index({ "sessions.name": 1 });
 academicSessionsSchema.index({ "sessions.semesters.semester_number": 1 });
+academicSessionsSchema.index({ "sessions.semesters.meetingPages.pageNumber": 1 });
 
 // Middleware to enforce `session_id` equals `start_year`
 academicSessionsSchema.pre("save", function (next) {
@@ -118,6 +205,30 @@ academicSessionsSchema.statics.findMeetingsByCriteria = async function(year, ses
   }).populate('mentee_ids present_mentees');
   
   return meetings;
+};
+
+// Replace the existing changeCurrentSession method with this new one
+academicSessionsSchema.statics.changeCurrentSession = async function(academicYear, sessionName) {
+  // First, unset all current sessions
+  await this.updateMany(
+    { isCurrent: true },
+    { $set: { isCurrent: false } }
+  );
+
+  // Set the new current session
+  const result = await this.findOneAndUpdate(
+    {
+      $or: [
+        { start_year: parseInt(academicYear.split('-')[0]) },
+        { end_year: parseInt(academicYear.split('-')[1]) }
+      ],
+      "sessions.name": sessionName
+    },
+    { $set: { isCurrent: true } },
+    { new: true }
+  );
+
+  return result;
 };
 
 const AcademicSession =
