@@ -82,6 +82,7 @@ const EditMentorDialog = ({
 
   const handleSubmit = async () => {
     try {
+      // console.log(firstName, lastName, email, phone_number, role);
       const response = await axios.patch(
         `/api/admin/manageUsers/editMentor/${selectedMentor.MUJid}`,
         {

@@ -67,27 +67,28 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const academicYear = searchParams.get("academicYear");
     const academicSession = searchParams.get("academicSession");
-    const email = searchParams.get("mentorEmailid"); // Changed from email to mentorEmailid
-    const batchSize = parseInt(searchParams.get("batchSize")) || 50;
+    const searchEmail = searchParams.get("email"); // Get email parameter directly
+    // const batchSize = parseInt(searchParams.get("batchSize")) || 50;
     const offset = parseInt(searchParams.get("offset")) || 0;
 
-    console.log("BATCH SIZE FIX: ",batchSize)
     // Create base query object
     const query = {};
     if (academicYear) query.academicYear = academicYear;
     if (academicSession) query.academicSession = academicSession;
-    if (email) {
-      query.email = { $regex: email, $options: 'i' }; // Case-insensitive email search
+    
+    // If searching by exact email (for duplicate check)
+    if (searchEmail) {
+      query.email = searchEmail.toLowerCase(); // Exact match, case-insensitive
     }
 
     // Get total count for pagination
     const totalCount = await Mentor.countDocuments(query);
 
-    // Get paginated mentors
+    // Get mentors with exact match if searching by email
     const mentors = await Mentor.find(query)
       .select('-password -otp -otpExpires -isOtpUsed')
       .skip(offset)
-      .sort({ email: 1 }); // Sort by email ascending
+      .sort({ email: 1 });
 
     if (!mentors || mentors.length === 0) {
       return NextResponse.json({ 

@@ -1,5 +1,5 @@
 import { connect } from "../../../../../../lib/dbConfig";
-import { Mentor, Admin } from "../../../../../../lib/dbModels";
+import { Mentor, Admin, Mentee } from "../../../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 
 export async function PATCH(request) {
@@ -10,11 +10,8 @@ export async function PATCH(request) {
     const mujid = segments[segments.length - 1];
 
     const data = await request.json();
-
-    // Remove MUJid from update data if present
     const { ...updateData } = data;
 
-    // Ensure role is always an array
     if (typeof updateData.role === 'string') {
       updateData.role = [updateData.role];
     }
@@ -28,6 +25,31 @@ export async function PATCH(request) {
     const existingMentor = await Mentor.findOne({ MUJid: mujid });
     if (!existingMentor) {
       return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+    }
+
+    // Check email uniqueness if email is being updated
+    if (updateData.email && updateData.email !== existingMentor.email) {
+      const emailExists = await Mentor.findOne({
+        email: updateData.email,
+        MUJid: { $ne: mujid } // Exclude current mentor from check
+      });
+
+      if (emailExists) {
+        return NextResponse.json({
+          error: "Email already exists",
+          conflictingMentor: {
+            name: emailExists.name,
+            email: emailExists.email,
+            MUJid: emailExists.MUJid
+          }
+        }, { status: 409 });
+      }
+
+      // Update mentee records with new mentor email
+      await Mentee.updateMany(
+        { mentorMujid: mujid },
+        { $set: { mentorEmailid: updateData.email } }
+      );
     }
 
     // Extract updatable fields (excluding MUJid)
@@ -44,15 +66,11 @@ export async function PATCH(request) {
     );
 
     // Handle admin role changes
-    // const wasAdmin = existingMentor.role.includes('admin') || existingMentor.role.includes('superadmin');
-    const wasAdmin = existingMentor.role.includes('admin') 
-    // const wasAdmin = existingMentor.role.includes('admin') || existingMentor.role.includes('superadmin');
-    const isNowAdmin = updateData.role.includes('admin')
-    // const isNowAdmin = updateData.role.includes('admin') || updateData.role.includes('superadmin');
+    const wasAdmin = existingMentor.role.includes('admin');
+    const isNowAdmin = updateData.role.includes('admin');
     const adminRoles = updateData.role.filter(r => ['admin'].includes(r));
 
     if (isNowAdmin) {
-      // Update or create admin record
       await Admin.findOneAndUpdate(
         { MUJid: mujid },
         { 
@@ -62,7 +80,6 @@ export async function PATCH(request) {
         { upsert: true, new: true }
       );
     } else if (wasAdmin && !isNowAdmin) {
-      // Remove from Admin collection if admin roles were removed
       await Admin.deleteOne({ MUJid: mujid });
     }
 
