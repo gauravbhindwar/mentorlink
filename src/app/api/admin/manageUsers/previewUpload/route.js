@@ -30,22 +30,26 @@ export async function POST(req) {
     const headers = filteredData[0];
     const rows = filteredData.slice(1);
 
-    // Column mapping for standardization
+    // Update the column mapping for standardization
     const columnMap = {
       'mentee mujid': 'MUJid',
       'mentee name': 'name',
       'mentee email': 'email',
       'year of registration': 'yearOfRegistration',
-      'section': 'section',
       'semester': 'semester',
+      'cgpa': 'cgpa',        // Add this line
+      'backlogs': 'backlogs', // Add this line
       'mentee phone numer': 'phone_number',
       'mentee address': 'address',
       "mentee's father name": 'fatherName',
       "mentee's father phone": 'fatherPhone',
+      "mentee's father email": 'fatherEmail',
       "mentee's mother name": 'motherName',
       "mentee's mother phone": 'motherPhone',
+      "mentee's mother email": 'motherEmail',
       "mentee's guardian name": 'guardianName',
       "mentee's guardian phone": 'guardianPhone',
+      "mentee's guardian email": 'guardianEmail',
       'assigned mentor email': 'mentorEmail'
     };
 
@@ -64,16 +68,18 @@ export async function POST(req) {
         const normalizedHeader = header.toLowerCase().trim();
         const mappedKey = columnMap[normalizedHeader];
         if (mappedKey) {
-          entry[mappedKey] = row[index]?.toString().trim() ?? '';
+          let value = row[index]?.toString().trim() ?? '';
+          
+          // Special handling for numeric fields
+          if (mappedKey === 'cgpa' && value) {
+            value = parseFloat(value);
+          } else if (mappedKey === 'backlogs' && value) {
+            value = parseInt(value);
+          }
+          
+          entry[mappedKey] = value;
         }
       });
-
-      // Debug log
-      // console.log('Processing row:', {
-      //   MUJid: entry.MUJid,
-      //   mentorEmail: entry.mentorEmail,
-      //   motherName: entry.motherName // Added to verify mother's name is captured
-      // });
       
       return entry;
     });
