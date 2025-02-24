@@ -106,6 +106,8 @@ export async function POST(req) {
           address: mentee.address,
           yearOfRegistration: parseInt(mentee.yearOfRegistration),
           semester: parseInt(mentee.semester),
+          cgpa: mentee.cgpa ? parseFloat(mentee.cgpa) : null,
+          backlogs: mentee.backlogs ? parseInt(mentee.backlogs) : null,
           academicYear: mentee.academicYear,
           academicSession: mentee.academicSession,
           parents: {
@@ -298,6 +300,8 @@ export async function POST(req) {
           address: mentee.address,
           yearOfRegistration: parseInt(mentee.yearOfRegistration),
           semester: parseInt(mentee.semester),
+          cgpa: mentee.cgpa ? parseFloat(mentee.cgpa) : null,
+          backlogs: mentee.backlogs ? parseInt(mentee.backlogs) : null,
           academicYear: mentee.academicYear,
           academicSession: mentee.academicSession,
           parents: {

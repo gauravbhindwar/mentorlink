@@ -12,6 +12,11 @@ import {
   TextField,
   IconButton,
   CircularProgress,
+  Card,
+  CardContent,
+  CardActions,
+  Collapse,
+  Stack,
 } from "@mui/material";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
@@ -26,6 +31,33 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import * as XLSX from "xlsx";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import Pagination from '@mui/material/Pagination';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import PersonIcon from '@mui/icons-material/Person';
+import SchoolIcon from '@mui/icons-material/School';
+import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
+import EmailIcon from '@mui/icons-material/Email';
+import PhoneIcon from '@mui/icons-material/Phone';
+import HomeIcon from '@mui/icons-material/Home';
+import GradeIcon from '@mui/icons-material/Grade';
+// import WarningIcon from '@mui/icons-material/Warning';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import BadgeIcon from '@mui/icons-material/Badge';
+// import LockIcon from '@mui/icons-material/Lock';
+// import DateRangeIcon from '@mui/icons-material/DateRange';
+// import LocationOnIcon from '@mui/icons-material/LocationOn';
+// import WorkIcon from '@mui/icons-material/Work';
+// import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';
+// import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
+// import BusinessIcon from '@mui/icons-material/Business';
+// import AssignmentIcon from '@mui/icons-material/Assignment';
+import SendIcon from '@mui/icons-material/Send';
+import DialogContentText from '@mui/material/DialogContentText';
+// import Preview from '@mui/icons-material/Preview';
 
 const ViewMentee = () => {
   const [mentees, setMentees] = useState([]);
@@ -38,9 +70,18 @@ const ViewMentee = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredMentees, setFilteredMentees] = useState([]);
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [page, setPage] = useState(1);
+  const [tabValue, setTabValue] = useState(0);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailPreview, setEmailPreview] = useState(false);
+  const [emailContent, setEmailContent] = useState({ subject: '', body: '' });
+  const cardsPerPage = 5;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Complete theme configuration
-  const theme = createTheme({
+  const themeConfig = createTheme({
     palette: {
       primary: {
         main: "#f97316",
@@ -94,9 +135,84 @@ const ViewMentee = () => {
     },
   });
 
-  // useEffect(() => {
-  //     setMounted(true);
-  // }, []);
+  // Add this style object near the top of your component
+  const dialogStyles = {
+    dialog: {
+      '& .MuiDialog-paper': {
+        maxHeight: '85vh',
+        minHeight: '70vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }
+    },
+    dialogContent: {
+      flex: 1,
+      overflowY: 'auto',
+      p: 0, // Remove default padding
+      '&::-webkit-scrollbar': {
+        width: '8px',
+      },
+      '&::-webkit-scrollbar-track': {
+        background: 'rgba(255, 255, 255, 0.05)',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        background: 'rgba(249, 115, 22, 0.5)',
+        borderRadius: '4px',
+      },
+      '&::-webkit-scrollbar-thumb:hover': {
+        background: '#f97316',
+      },
+    },
+    contentWrapper: {
+      p: 3, // Add padding to wrapper instead
+      height: '100%',
+    },
+    tabPanel: {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+    }
+  };
+
+  // Add this style object at the top of your component
+  const tabContentStyles = {
+    wrapper: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-start',
+      minHeight: '400px',
+      p: 2
+    },
+    contentCard: {
+      width: '100%',
+      maxWidth: '900px',
+      p: 2.5,
+      bgcolor: 'rgba(255, 255, 255, 0.03)',
+      borderRadius: '1rem',
+    },
+    academicCard: {
+      p: 2,
+      height: '100%',
+      background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
+      border: '1px solid rgba(249, 115, 22, 0.2)',
+      borderRadius: '0.75rem',
+    },
+    sectionTitle: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 1,
+      mb: 2,
+      '& .MuiSvgIcon-root': { 
+        fontSize: '1.25rem'
+      }
+    },
+    statBox: {
+      p: 1.5,
+      bgcolor: 'rgba(255, 255, 255, 0.03)',
+      borderRadius: '0.75rem',
+      textAlign: 'center'
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -371,6 +487,130 @@ const ViewMentee = () => {
     }
   };
 
+  const handleExpandCard = (mujId) => {
+    setExpandedCard(expandedCard === mujId ? null : mujId);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const getCurrentCards = () => {
+    const startIndex = (page - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    return filteredMentees.slice(startIndex, endIndex);
+  };
+
+  const MenteeCard = ({ mentee }) => {
+    const isExpanded = expandedCard === mentee.MUJid;
+
+    return (
+      <Card
+        sx={{
+          width: '100%',
+          bgcolor: 'rgba(17, 17, 17, 0.8)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '1rem',
+          color: 'white',
+          transition: 'all 0.3s ease',
+          mb: 2,
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+          },
+        }}>
+        <CardContent>
+          <Stack spacing={1}>
+            <Typography variant="h6" color="#f97316">
+              {mentee.name}
+            </Typography>
+            <Typography variant="body2" color="rgba(255,255,255,0.7)">
+              MUJ ID: {mentee.MUJid}
+            </Typography>
+            <Typography variant="body2" color="rgba(255,255,255,0.7)">
+              Semester: {mentee.semester}
+            </Typography>
+            <Typography variant="body2" color="rgba(255,255,255,0.7)">
+              Email: {mentee.email}
+            </Typography>
+            <Typography variant="body2" color="rgba(255,255,255,0.7)">
+              Phone: {mentee.phone}
+            </Typography>
+          </Stack>
+        </CardContent>
+        <CardActions>
+          <Button
+            size="small"
+            onClick={() => handleEditClick(mentee)}
+            startIcon={<EditIcon />}
+            sx={{
+              color: '#f97316',
+              '&:hover': { bgcolor: 'rgba(249, 115, 22, 0.1)' },
+            }}>
+            Edit
+          </Button>
+          <Button
+            size="small"
+            onClick={() => handleExpandCard(mentee.MUJid)}
+            endIcon={<ExpandMoreIcon sx={{
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)',
+              transition: 'transform 0.3s',
+            }}/>}
+            sx={{
+              color: 'white',
+              ml: 'auto',
+              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' },
+            }}>
+            {isExpanded ? 'Show Less' : 'Show More'}
+          </Button>
+        </CardActions>
+        <Collapse in={isExpanded}>
+          <CardContent>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="subtitle2" color="#f97316">Parents Information</Typography>
+                <Typography variant="body2">
+                  Father: {mentee.parents?.father?.name}
+                  {mentee.parents?.father?.phone && ` (${mentee.parents.father.phone})`}
+                </Typography>
+                <Typography variant="body2">
+                  Mother: {mentee.parents?.mother?.name}
+                  {mentee.parents?.mother?.phone && ` (${mentee.parents.mother.phone})`}
+                </Typography>
+                {mentee.parents?.guardian?.name && (
+                  <Typography variant="body2">
+                    Guardian: {mentee.parents.guardian.name}
+                    {mentee.parents?.guardian?.relation && ` (${mentee.parents.guardian.relation})`}
+                  </Typography>
+                )}
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" color="#f97316">Academic</Typography>
+                <Typography variant="body2">
+                  Session: {mentee.academicSession}
+                </Typography>
+                <Typography variant="body2">
+                  Year: {mentee.academicYear}
+                </Typography>
+              </Box>
+              {mentee.address && (
+                <Box>
+                  <Typography variant="subtitle2" color="#f97316">Address</Typography>
+                  <Typography variant="body2">{mentee.address}</Typography>
+                </Box>
+              )}
+            </Stack>
+          </CardContent>
+        </Collapse>
+      </Card>
+    );
+  };
+
   const columns = [
     {
       field: "MUJid",
@@ -444,8 +684,98 @@ const ViewMentee = () => {
     return null;
   }
 
+  // const TabPanel = ({ children, value, index }) => (
+  //   <motion.div
+  //     initial={{ opacity: 0, y: 10 }}
+  //     animate={{ opacity: value === index ? 1 : 0, y: value === index ? 0 : 10 }}
+  //     transition={{ duration: 0.2 }}
+  //     style={{ display: value === index ? 'block' : 'none' }}
+  //   >
+  //     {value === index && children}
+  //   </motion.div>
+  // );
+
+  const generateEmailContent = (mentee, mentorData) => {
+    const subject = `Academic Update for ${mentee.name} (${mentee.MUJid})`;
+    const body = `
+  Dear Parent,
+  
+  I hope this email finds you well. I am writing to provide you with an academic update for your ward, ${mentee.name}.
+  
+  Academic Details:
+  - Current Semester: ${mentee.semester}
+  - CGPA: ${mentee.cgpa || 'Not available'}
+  ${mentee.backlogs > 0 ? `- Number of Backlogs: ${mentee.backlogs}` : '- No backlogs pending'}
+  
+  ${mentee.academicPerformance ? `Additional Notes:\n${mentee.academicPerformance}` : ''}
+  
+  Please feel free to reach out if you have any concerns or would like to discuss your ward's academic progress.
+  
+  Best regards,
+  ${mentorData?.name || 'Faculty Mentor'}
+  ${mentorData?.designation || 'Faculty Mentor'}
+  Department of Computer Science and Engineering
+  Manipal University Jaipur`;
+  
+    return { subject, body };
+  };
+
+  const handleSendEmailToParents = async () => {
+    if (!selectedMentee || !selectedMentee.parents) {
+      toast.error('Parent contact information not available');
+      return;
+    }
+  
+    const parentEmails = [
+      selectedMentee.parents.father?.email,
+      selectedMentee.parents.mother?.email,
+      selectedMentee.parents.guardian?.email,
+    ].filter(Boolean);
+  
+    if (parentEmails.length === 0) {
+      toast.error('No parent email addresses available');
+      return;
+    }
+  
+    const mentorData = JSON.parse(sessionStorage.getItem('mentorData'));
+    const content = generateEmailContent(selectedMentee, mentorData);
+    setEmailContent(content);
+    setEmailPreview(true);
+  };
+
+  const handleConfirmSendEmail = async () => {
+    setEmailPreview(false);
+    setIsSendingEmail(true);
+    try {
+      const parentEmails = [
+        selectedMentee.parents.father?.email,
+        selectedMentee.parents.mother?.email,
+        selectedMentee.parents.guardian?.email,
+      ].filter(Boolean);
+  
+      const mentorData = JSON.parse(sessionStorage.getItem('mentorData'));
+      
+      const response = await axios.post('/api/mentor/send-email-parents', {
+        parentEmails,
+        subject: emailContent.subject,
+        body: emailContent.body,
+        menteeId: selectedMentee.MUJid,
+        mentorData
+      });
+  
+      if (response.data.success) {
+        toast.success('Email sent to parents successfully');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send email to parents');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={themeConfig}>
       <div className='min-h-screen bg-[#0a0a0a] overflow-hidden relative'>
         {/* Background Effects */}
         <div className='absolute inset-0 z-0'>
@@ -514,158 +844,179 @@ const ViewMentee = () => {
             </Menu>
           </motion.div>
 
-          {/* Table Section */}
+          {/* Search Field */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              variant='outlined'
+              placeholder='Search mentees by name, ID, email, phone, section, or semester...'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <SearchIcon
+                    sx={{
+                      mr: 1,
+                      color: "rgba(255, 255, 255, 0.7)",
+                    }}
+                  />
+                ),
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "1rem",
+                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 0.08)",
+                  },
+                  "&.Mui-focused": {
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  },
+                },
+              }}
+            />
+          </Box>
+
+          {/* Content */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className='bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden'>
-            <Box sx={{ mb: 3 }}>
-              <TextField
-                fullWidth
-                variant='outlined'
-                placeholder='Search mentees by name, ID, email, phone, section, or semester...'
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <SearchIcon
+            className='bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden p-4'>
+            {loading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "400px",
+                  flexDirection: "column",
+                  gap: 2,
+                }}>
+                <CircularProgress sx={{ color: "#f97316" }} />
+                <Typography sx={{ color: "white", opacity: 0.7 }}>
+                  Loading mentees...
+                </Typography>
+              </Box>
+            ) : filteredMentees.length > 0 ? (
+              isMobile ? (
+                // Card view for mobile
+                <Box>
+                  {getCurrentCards().map((mentee) => (
+                    <MenteeCard key={mentee.MUJid} mentee={mentee} />
+                  ))}
+                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                    <Pagination
+                      count={Math.ceil(filteredMentees.length / cardsPerPage)}
+                      page={page}
+                      onChange={handlePageChange}
                       sx={{
-                        mr: 1,
-                        color: "rgba(255, 255, 255, 0.7)",
+                        '& .MuiPaginationItem-root': {
+                          color: 'white',
+                          '&.Mui-selected': {
+                            backgroundColor: '#f97316',
+                          },
+                        },
                       }}
                     />
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "1rem",
-                    backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    backdropFilter: "blur(10px)",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      backgroundColor: "rgba(255, 255, 255, 0.08)",
-                    },
-                    "&.Mui-focused": {
-                      backgroundColor: "rgba(255, 255, 255, 0.1)",
-                    },
-                  },
-                }}
-              />
-            </Box>
-            <Box
-              sx={{
-                overflowX: "auto",
-                minHeight: "400px",
-                height: "calc(100vh - 250px)", // Adjusted height
-                overflowY: "auto",
-              }}>
-              {loading ? (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "400px",
-                    flexDirection: "column",
-                    gap: 2,
-                  }}>
-                  <CircularProgress sx={{ color: "#f97316" }} />
-                  <Typography sx={{ color: "white", opacity: 0.7 }}>
-                    Loading mentees...
-                  </Typography>
+                  </Box>
                 </Box>
-              ) : filteredMentees.length > 0 ? (
-                <DataGrid
-                  rows={filteredMentees}
-                  columns={columns}
-                  getRowId={(row) => row.MUJid}
-                  disableRowSelectionOnClick
-                  disableSelectionOnClick={true}
-                  disableColumnMenu={true}
-                  disableColumnFilter={false}
-                  // totalRows={mentees.length}
-                  pageSizeOptions={[5, 10, 25, 50]}
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 10 } },
-                  }}
-                  sx={{
-                    height: "100%", // Fill available height
-                    backgroundColor: "transparent",
-                    border: "none",
-                    color: "white",
-                    "& .MuiDataGrid-cell": {
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                    },
-                    "& .MuiDataGrid-columnHeaders": {
-                      backgroundColor: "rgba(10, 10, 10, 0.9)",
-                      color: "#f97316",
-                      fontWeight: "bold",
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                    },
-                    "& .MuiDataGrid-footerContainer": {
-                      backgroundColor: "rgba(0, 0, 0, 0.2)",
-                      borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                      minHeight: "56px", // Increased footer height
-                      padding: "8px 0", // Added padding
-                    },
-                    "& .MuiDataGrid-row:hover": {
-                      backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    },
-                    "& .MuiDataGrid-menuIcon": {
-                      color: "white",
-                    },
-                    "& .MuiDataGrid-sortIcon": {
-                      color: "white",
-                    },
-                    "& .MuiDataGrid-pagination": {
-                      color: "white",
-                    },
-                    "& .MuiTablePagination-root": {
-                      color: "white",
-                    },
-                    "& .MuiTablePagination-select": {
-                      color: "white",
-                    },
-                    "& .MuiTablePagination-selectIcon": {
-                      color: "white",
-                    },
-                    "& .MuiIconButton-root": {
-                      color: "white",
-                    },
-                  }}
-                  className='custom-scrollbar'
-                />
               ) : (
-                <Box
-                  sx={{
-                    p: 4,
-                    textAlign: "center",
-                    color: "white",
-                    backdropFilter: "blur(8px)",
-                    backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    borderRadius: "1rem",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                  }}>
-                  <Typography variant='h6' sx={{ mb: 2, color: "#f97316" }}>
-                    No Mentees Found
-                  </Typography>
-                  <Typography sx={{ mb: 2, color: "rgba(255, 255, 255, 0.7)" }}>
-                    Try adjusting your filters or add new mentees
-                  </Typography>
-                  <Typography
-                    variant='body2'
-                    sx={{ color: "rgba(255, 255, 255, 0.5)" }}>
-                    Academic Year:{" "}
-                    {JSON.parse(sessionStorage.getItem("mentorData"))
-                      ?.academicYear || "N/A"}
-                    <br />
-                    Session:{" "}
-                    {JSON.parse(sessionStorage.getItem("mentorData"))
-                      ?.academicSession || "N/A"}
-                  </Typography>
+                // Table view for desktop
+                <Box sx={{ overflowX: 'auto', minHeight: '400px' }}>
+                  <DataGrid
+                    rows={filteredMentees}
+                    columns={columns}
+                    getRowId={(row) => row.MUJid}
+                    disableRowSelectionOnClick
+                    disableSelectionOnClick={true}
+                    disableColumnMenu={true}
+                    disableColumnFilter={false}
+                    // totalRows={mentees.length}
+                    pageSizeOptions={[5, 10, 25, 50]}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 10 } },
+                    }}
+                    sx={{
+                      height: "100%", // Fill available height
+                      backgroundColor: "transparent",
+                      border: "none",
+                      color: "white",
+                      "& .MuiDataGrid-cell": {
+                        borderColor: "rgba(255, 255, 255, 0.1)",
+                      },
+                      "& .MuiDataGrid-columnHeaders": {
+                        backgroundColor: "rgba(10, 10, 10, 0.9)",
+                        color: "#f97316",
+                        fontWeight: "bold",
+                        borderColor: "rgba(255, 255, 255, 0.1)",
+                      },
+                      "& .MuiDataGrid-footerContainer": {
+                        backgroundColor: "rgba(0, 0, 0, 0.2)",
+                        borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                        minHeight: "56px", // Increased footer height
+                        padding: "8px 0", // Added padding
+                      },
+                      "& .MuiDataGrid-row:hover": {
+                        backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      },
+                      "& .MuiDataGrid-menuIcon": {
+                        color: "white",
+                      },
+                      "& .MuiDataGrid-sortIcon": {
+                        color: "white",
+                      },
+                      "& .MuiDataGrid-pagination": {
+                        color: "white",
+                      },
+                      "& .MuiTablePagination-root": {
+                        color: "white",
+                      },
+                      "& .MuiTablePagination-select": {
+                        color: "white",
+                      },
+                      "& .MuiTablePagination-selectIcon": {
+                        color: "white",
+                      },
+                      "& .MuiIconButton-root": {
+                        color: "white",
+                      },
+                    }}
+                    className='custom-scrollbar'
+                  />
                 </Box>
-              )}
-            </Box>
+              )
+            ) : (
+              <Box
+                sx={{
+                  p: 4,
+                  textAlign: "center",
+                  color: "white",
+                  backdropFilter: "blur(8px)",
+                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  borderRadius: "1rem",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                }}>
+                <Typography variant='h6' sx={{ mb: 2, color: "#f97316" }}>
+                  No Mentees Found
+                </Typography>
+                <Typography sx={{ mb: 2, color: "rgba(255, 255, 255, 0.7)" }}>
+                  Try adjusting your filters or add new mentees
+                </Typography>
+                <Typography
+                  variant='body2'
+                  sx={{ color: "rgba(255, 255, 255, 0.5)" }}>
+                  Academic Year:{" "}
+                  {JSON.parse(sessionStorage.getItem("mentorData"))
+                    ?.academicYear || "N/A"}
+                  <br />
+                  Session:{" "}
+                  {JSON.parse(sessionStorage.getItem("mentorData"))
+                    ?.academicSession || "N/A"}
+                </Typography>
+              </Box>
+            )}
           </motion.div>
         </div>
 
@@ -675,6 +1026,7 @@ const ViewMentee = () => {
           onClose={handleEditClose}
           maxWidth='md'
           fullWidth
+          sx={dialogStyles.dialog}
           PaperProps={{
             sx: {
               background:
@@ -708,267 +1060,340 @@ const ViewMentee = () => {
               </IconButton>
             )}
           </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
+          <DialogContent sx={dialogStyles.dialogContent}>
             {(isEditing ? editedMentee : selectedMentee) && (
-              <Grid2 container spacing={3}>
-                {/* Personal Information */}
-                <Grid2 xs={12} md={6}>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Typography variant='subtitle2' color='#f97316'>
-                      Personal Information
-                    </Typography>
-                    <TextField
-                      label='MUJ ID'
-                      name='MUJid'
-                      value={
-                        isEditing ? editedMentee.MUJid : selectedMentee.MUJid
-                      }
-                      disabled={true}
-                      fullWidth
-                    />
-                    <TextField
-                      label='Name'
-                      name='name'
-                      value={
-                        (isEditing ? editedMentee.name : selectedMentee.name) ||
-                        ""
-                      }
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label='Phone'
-                      name='phone'
-                      value={
-                        (isEditing
-                          ? editedMentee.phone
-                          : selectedMentee.phone) || ""
-                      }
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label='Address'
-                      name='address'
-                      multiline
-                      rows={2}
-                      value={
-                        (isEditing
-                          ? editedMentee.address
-                          : selectedMentee.address) || ""
-                      }
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label='Email'
-                      name='email'
-                      value={
-                        (isEditing
-                          ? editedMentee.email
-                          : selectedMentee.email) || ""
-                      }
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                  </Box>
-                </Grid2>
+              <Box sx={dialogStyles.contentWrapper}>
+                {/* Editable Fields Card - Update its styles */}
+                <Card sx={{
+                  background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.05))',
+                  borderRadius: '1rem',
+                  border: '1px solid rgba(249, 115, 22, 0.2)',
+                  p: 3,
+                  mb: 3
+                }}>
+                  <Typography variant="h6" color="#f97316" gutterBottom>
+                    Editable Information
+                  </Typography>
+                  <Grid2 container spacing={2}>
+                    <Grid2 xs={12} md={6}>
+                      <TextField
+                        label='Name'
+                        name='name'
+                        value={(isEditing ? editedMentee.name : selectedMentee.name) || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        fullWidth
+                        InputProps={{
+                          startAdornment: <PersonIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.5)' }} />
+                        }}
+                        sx={{ mb: 2 }}
+                      />
+                      <TextField
+                        label='Phone'
+                        name='phone'
+                        value={(isEditing ? editedMentee.phone : selectedMentee.phone) || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        fullWidth
+                        InputProps={{
+                          startAdornment: <PhoneIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.5)' }} />
+                        }}
+                      />
+                    </Grid2>
+                    <Grid2 xs={12} md={6}>
+                      <TextField
+                        label='Address'
+                        name='address'
+                        multiline
+                        rows={4}
+                        value={(isEditing ? editedMentee.address : selectedMentee.address) || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        fullWidth
+                        InputProps={{
+                          startAdornment: <HomeIcon sx={{ mr: 1, color: 'rgba(255,255,255,0.5)', alignSelf: 'flex-start', mt: 1 }} />
+                        }}
+                      />
+                    </Grid2>
+                  </Grid2>
+                </Card>
 
-                {/* Academic Information */}
-                <Grid2 xs={12} md={6}>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Typography variant='subtitle2' color='#f97316'>
-                      Academic Information
-                    </Typography>
-                    <TextField
-                      label='Semester'
-                      name='semester'
-                      type='number'
-                      value={
-                        (isEditing
-                          ? editedMentee.semester
-                          : selectedMentee.semester) || ""
-                      }
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      fullWidth
+                {/* Tabs Section - Update styles */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  flex: 1,
+                  minHeight: 0 // Important for flex layout
+                }}>
+                  <Tabs 
+                    value={tabValue} 
+                    onChange={handleTabChange}
+                    variant="fullWidth"
+                    sx={{
+                      minHeight: '64px',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)',
+                      mb: 3,
+                      '& .MuiTab-root': {
+                        minHeight: '64px',
+                        color: 'rgba(255,255,255,0.7)',
+                        fontSize: '1rem',
+                        transition: 'all 0.3s',
+                        '&.Mui-selected': {
+                          color: '#f97316',
+                        },
+                        '& .MuiSvgIcon-root': {
+                          mb: 0.5,
+                          fontSize: '1.5rem',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                          color: '#f97316',
+                        },
+                      },
+                      '& .MuiTabs-indicator': {
+                        backgroundColor: '#f97316',
+                        height: '3px',
+                      },
+                    }}
+                  >
+                    <Tab 
+                      icon={<PersonIcon />} 
+                      label="Personal" 
                     />
-                    <TextField
-                      label='Academic Session'
-                      name='academicSession'
-                      value={
-                        (isEditing
-                          ? editedMentee.academicSession
-                          : selectedMentee.academicSession) || ""
-                      }
-                      disabled={true}
-                      fullWidth
+                    <Tab 
+                      icon={<SchoolIcon />} 
+                      label="Academic" 
                     />
-                    <TextField
-                      label='Academic Year'
-                      name='academicYear'
-                      value={
-                        (isEditing
-                          ? editedMentee.academicYear
-                          : selectedMentee.academicYear) || ""
-                      }
-                      disabled={true}
-                      fullWidth
+                    <Tab 
+                      icon={<FamilyRestroomIcon />} 
+                      label="Family" 
                     />
-                  </Box>
-                </Grid2>
+                  </Tabs>
 
-                {/* Father's Details */}
-                <Grid2 xs={12} md={6}>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Typography variant='subtitle2' color='#f97316'>
-                      Father&apos;s Details
-                    </Typography>
-                    <TextField
-                      label="Father's Name"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.father?.name
-                          : selectedMentee.parents?.father?.name) || ""
-                      }
-                      onChange={(e) => handleInputChange(e, "father", "name")}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Father's Email"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.father?.email
-                          : selectedMentee.parents?.father?.email) || ""
-                      }
-                      onChange={(e) => handleInputChange(e, "father", "email")}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Father's Phone"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.father?.phone
-                          : selectedMentee.parents?.father?.phone) || ""
-                      }
-                      onChange={(e) => handleInputChange(e, "father", "phone")}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                  </Box>
-                </Grid2>
+                  {/* Update each TabPanel container */}
+                  <Box sx={{ flex: 1, overflowY: 'auto', px: 0.5 }}>
+                    {tabValue === 0 && (
+                      <Box sx={tabContentStyles.wrapper}>
+                        <Card sx={tabContentStyles.contentCard}>
+                          <Grid2 container spacing={3} justifyContent="center">
+                            <Grid2 xs={12} md={6}>
+                              <Stack spacing={2}>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <BadgeIcon sx={{ color: '#f97316' }} />
+                                  <Box>
+                                    <Typography variant="caption" color="rgba(255,255,255,0.7)">MUJ ID</Typography>
+                                    <Typography>{selectedMentee.MUJid}</Typography>
+                                  </Box>
+                                </Box>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <EmailIcon sx={{ color: '#f97316' }} />
+                                  <Box>
+                                    <Typography variant="caption" color="rgba(255,255,255,0.7)">Email</Typography>
+                                    <Typography>{selectedMentee.email}</Typography>
+                                  </Box>
+                                </Box>
+                              </Stack>
+                            </Grid2>
+                            <Grid2 xs={12} md={6}>
+                              <Stack spacing={2}>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <HomeIcon sx={{ color: '#f97316' }} />
+                                  <Box>
+                                    <Typography variant="caption" color="rgba(255,255,255,0.7)">Current Address</Typography>
+                                    <Typography>{selectedMentee.address}</Typography>
+                                  </Box>
+                                </Box>
+                              </Stack>
+                            </Grid2>
+                          </Grid2>
+                        </Card>
+                      </Box>
+                    )}
 
-                {/* Mother's Details */}
-                <Grid2 xs={12} md={6}>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Typography variant='subtitle2' color='#f97316'>
-                      Mother&apos;s Details
-                    </Typography>
-                    <TextField
-                      label="Mother's Name"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.mother?.name
-                          : selectedMentee.parents?.mother?.name) || ""
-                      }
-                      onChange={(e) => handleInputChange(e, "mother", "name")}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Mother's Email"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.mother?.email
-                          : selectedMentee.parents?.mother?.email) || ""
-                      }
-                      onChange={(e) => handleInputChange(e, "mother", "email")}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Mother's Phone"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.mother?.phone
-                          : selectedMentee.parents?.mother?.phone) || ""
-                      }
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                  </Box>
-                </Grid2>
+                    {tabValue === 1 && (
+                      <Box sx={tabContentStyles.wrapper}>
+                        <Card sx={tabContentStyles.contentCard}>
+                          <Grid2 container spacing={3} justifyContent="center">
+                            {/* Current Academic Status */}
+                            <Grid2 xs={12} md={6}>
+                              <Card elevation={0} sx={tabContentStyles.academicCard}>
+                                <Typography 
+                                  variant="subtitle1" 
+                                  color="#f97316"
+                                  sx={tabContentStyles.sectionTitle}
+                                >
+                                  <SchoolIcon /> Current Status
+                                </Typography>
+                                <Stack spacing={2}>
+                                  {/* CGPA Display */}
+                                  <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    p: 1.5,
+                                    bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '0.75rem'
+                                  }}>
+                                    <GradeIcon sx={{ color: '#f97316', fontSize: '1.75rem' }} />
+                                    <Box>
+                                      <Typography variant="h4" color="white">
+                                        {selectedMentee.cgpa || 'N/A'}
+                                      </Typography>
+                                      <Typography variant="caption" color="rgba(255,255,255,0.7)">
+                                        Current CGPA
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                  
+                                  {/* Semester and Backlogs */}
+                                  <Grid2 container spacing={2}>
+                                    <Grid2 xs={6}>
+                                      <Box sx={tabContentStyles.statBox}>
+                                        <Typography variant="body1" color="white" sx={{ fontSize: '1.25rem' }}>
+                                          {selectedMentee.semester || 'N/A'}
+                                        </Typography>
+                                        <Typography variant="caption" color="rgba(255,255,255,0.7)">
+                                          Semester
+                                        </Typography>
+                                      </Box>
+                                    </Grid2>
+                                    <Grid2 xs={6}>
+                                      <Box sx={tabContentStyles.statBox}>
+                                        <Typography variant="body1" color="white" sx={{ fontSize: '1.25rem' }}>
+                                          {selectedMentee.backlogs || '0'}
+                                        </Typography>
+                                        <Typography variant="caption" color="rgba(255,255,255,0.7)">
+                                          Backlogs
+                                        </Typography>
+                                      </Box>
+                                    </Grid2>
+                                  </Grid2>
+                                </Stack>
+                              </Card>
+                            </Grid2>
 
-                {/* Guardian's Details */}
-                <Grid2 xs={12} md={6}>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Typography variant='subtitle2' color='#f97316'>
-                      Guardian&apos;s Details
-                    </Typography>
-                    <TextField
-                      label="Guardian's Name"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.guardian?.name
-                          : selectedMentee.parents?.guardian?.name) || ""
-                      }
-                      onChange={(e) => handleInputChange(e, "guardian", "name")}
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Guardian's Email"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.guardian?.email
-                          : selectedMentee.parents?.guardian?.email) || ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange(e, "guardian", "email")
-                      }
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Guardian's Phone"
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.guardian?.phone
-                          : selectedMentee.parents?.guardian?.phone) || ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange(e, "guardian", "phone")
-                      }
-                      disabled={!isEditing}
-                      fullWidth
-                    />
-                    <TextField
-                      label='Relation with Guardian'
-                      value={
-                        (isEditing
-                          ? editedMentee.parents?.guardian?.relation
-                          : selectedMentee.parents?.guardian?.relation) || ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange(e, "guardian", "relation")
-                      }
-                      disabled={!isEditing}
-                      fullWidth
-                    />
+                            {/* Academic Details */}
+                            <Grid2 xs={12} md={6}>
+                              <Card elevation={0} sx={tabContentStyles.academicCard}>
+                                <Typography 
+                                  variant="subtitle1" 
+                                  color="#f97316"
+                                  sx={tabContentStyles.sectionTitle}
+                                >
+                                  <CalendarTodayIcon /> Academic Information
+                                </Typography>
+                                <Stack spacing={2}>
+                                  <Box sx={{ 
+                                    p: 1.5,
+                                    bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '0.75rem'
+                                  }}>
+                                    <Grid2 container spacing={2}>
+                                      <Grid2 xs={12} sm={6}>
+                                        <Typography variant="caption" color="rgba(255,255,255,0.7)">
+                                          Academic Year
+                                        </Typography>
+                                        <Typography variant="body2" color="white">
+                                          {selectedMentee.academicYear}
+                                        </Typography>
+                                      </Grid2>
+                                      <Grid2 xs={12} sm={6}>
+                                        <Typography variant="caption" color="rgba(255,255,255,0.7)">
+                                          Academic Session
+                                        </Typography>
+                                        <Typography variant="body2" color="white">
+                                          {selectedMentee.academicSession}
+                                        </Typography>
+                                      </Grid2>
+                                    </Grid2>
+                                  </Box>
+                                  {selectedMentee.academicPerformance && (
+                                    <Box sx={{ 
+                                      p: 1.5,
+                                      bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                      borderRadius: '0.75rem'
+                                    }}>
+                                      <Typography variant="caption" color="rgba(255,255,255,0.7)" gutterBottom>
+                                        Performance Notes
+                                      </Typography>
+                                      <Typography variant="body2" color="white" sx={{ 
+                                        whiteSpace: 'pre-wrap',
+                                        fontSize: '0.875rem'
+                                      }}>
+                                        {selectedMentee.academicPerformance}
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Stack>
+                              </Card>
+                            </Grid2>
+                          </Grid2>
+                        </Card>
+                      </Box>
+                    )}
+
+                    {tabValue === 2 && (
+                      <Box sx={tabContentStyles.wrapper}>
+                        <Card sx={tabContentStyles.contentCard}>
+                          <Grid2 container spacing={3} justifyContent="center">
+                            <Grid2 xs={12} md={4}>
+                              <Typography variant="subtitle2" color="#f97316" gutterBottom>Father&apos;s Details</Typography>
+                              <Stack spacing={1}>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Name</Typography>
+                                  <Typography>{selectedMentee.parents?.father?.name}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Phone</Typography>
+                                  <Typography>{selectedMentee.parents?.father?.phone}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Email</Typography>
+                                  <Typography>{selectedMentee.parents?.father?.email}</Typography>
+                                </Box>
+                              </Stack>
+                            </Grid2>
+                            <Grid2 xs={12} md={4}>
+                              <Typography variant="subtitle2" color="#f97316" gutterBottom>Mother&apos;s Details</Typography>
+                              <Stack spacing={1}>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Name</Typography>
+                                  <Typography>{selectedMentee.parents?.mother?.name}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Phone</Typography>
+                                  <Typography>{selectedMentee.parents?.mother?.phone}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Email</Typography>
+                                  <Typography>{selectedMentee.parents?.mother?.email}</Typography>
+                                </Box>
+                              </Stack>
+                            </Grid2>
+                            <Grid2 xs={12} md={4}>
+                              <Typography variant="subtitle2" color="#f97316" gutterBottom>Guardian&apos;s Details</Typography>
+                              <Stack spacing={1}>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Name</Typography>
+                                  <Typography>{selectedMentee.parents?.guardian?.name}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Relation</Typography>
+                                  <Typography>{selectedMentee.parents?.guardian?.relation}</Typography>
+                                </Box>
+                                <Box>
+                                  <Typography variant="caption" color="rgba(255,255,255,0.7)">Phone</Typography>
+                                  <Typography>{selectedMentee.parents?.guardian?.phone}</Typography>
+                                </Box>
+                              </Stack>
+                            </Grid2>
+                          </Grid2>
+                        </Card>
+                      </Box>
+                    )}
                   </Box>
-                </Grid2>
-              </Grid2>
+                </Box>
+              </Box>
             )}
           </DialogContent>
           <DialogActions
@@ -990,6 +1415,26 @@ const ViewMentee = () => {
               }}>
               Cancel
             </Button>
+            <Button
+              onClick={handleSendEmailToParents}
+              variant='contained'
+              disabled={isSendingEmail}
+              startIcon={isSendingEmail ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <SendIcon />
+              )}
+              sx={{
+                bgcolor: "#2563eb",
+                "&:hover": {
+                  bgcolor: "#1d4ed8",
+                },
+                "&.Mui-disabled": {
+                  bgcolor: "rgba(37, 99, 235, 0.5)",
+                },
+              }}>
+              {isSendingEmail ? 'Sending...' : 'Email Parents'}
+            </Button>
             {isEditing && (
               <Button
                 onClick={handleUpdate}
@@ -1004,6 +1449,141 @@ const ViewMentee = () => {
                 Save Changes
               </Button>
             )}
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={emailPreview}
+          onClose={() => setEmailPreview(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              background: 'linear-gradient(135deg, rgba(17, 17, 17, 0.95), rgba(31, 41, 55, 0.95))',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '1rem',
+              color: 'white',
+            },
+          }}>
+          <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            Email Preview
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <DialogContentText sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
+              Please review and edit the email content before sending:
+            </DialogContentText>
+            
+            {/* Recipients Section */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                Recipients:
+              </Typography>
+              <Box sx={{ 
+                color: 'white', 
+                bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                p: 2, 
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1
+              }}>
+                {selectedMentee?.parents?.father?.email && (
+                  <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ fontSize: '0.9rem', color: '#f97316' }} />
+                    Father: {selectedMentee.parents.father.email}
+                  </Typography>
+                )}
+                {selectedMentee?.parents?.mother?.email && (
+                  <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ fontSize: '0.9rem', color: '#f97316' }} />
+                    Mother: {selectedMentee.parents.mother.email}
+                  </Typography>
+                )}
+                {selectedMentee?.parents?.guardian?.email && (
+                  <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ fontSize: '0.9rem', color: '#f97316' }} />
+                    Guardian: {selectedMentee.parents.guardian.email}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+
+            {/* Subject Section */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                Subject:
+              </Typography>
+              <TextField
+                fullWidth
+                value={emailContent.subject}
+                onChange={(e) => setEmailContent(prev => ({ ...prev, subject: e.target.value }))}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    bgcolor: 'rgba(255, 255, 255, 0.05)',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.08)',
+                    },
+                  }
+                }}
+              />
+            </Box>
+
+            {/* Body Section */}
+            <Box>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                Body:
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={12}
+                value={emailContent.body}
+                onChange={(e) => setEmailContent(prev => ({ ...prev, body: e.target.value }))}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    bgcolor: 'rgba(255, 255, 255, 0.05)',
+                    fontFamily: 'monospace',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.08)',
+                    },
+                  }
+                }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2.5, gap: 1 }}>
+            <Button
+              onClick={() => setEmailPreview(false)}
+              variant="outlined"
+              sx={{
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                },
+              }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSendEmail}
+              variant="contained"
+              disabled={isSendingEmail || !emailContent.subject.trim() || !emailContent.body.trim()}
+              startIcon={isSendingEmail ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+              sx={{
+                bgcolor: '#2563eb',
+                '&:hover': {
+                  bgcolor: '#1d4ed8',
+                },
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(37, 99, 235, 0.5)',
+                },
+              }}>
+              {isSendingEmail ? 'Sending...' : 'Confirm & Send'}
+            </Button>
           </DialogActions>
         </Dialog>
 
@@ -1024,5 +1604,19 @@ const ViewMentee = () => {
     </ThemeProvider>
   );
 };
+
+// const InfoItem = ({ icon, label, value, multiline = false }) => (
+//   <Box display="flex" alignItems={multiline ? "flex-start" : "center"} gap={1}>
+//     {React.cloneElement(icon, { sx: { color: '#f97316', mt: multiline ? 0.5 : 0 } })}
+//     <Box>
+//       <Typography variant="caption" color="rgba(255,255,255,0.7)" display="block">
+//         {label}
+//       </Typography>
+//       <Typography variant="body2" style={{ whiteSpace: multiline ? 'pre-wrap' : 'normal' }}>
+//         {value || 'N/A'}
+//       </Typography>
+//     </Box>
+//   </Box>
+// );
 
 export default ViewMentee;

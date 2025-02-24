@@ -107,6 +107,30 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
       renderCell: (params) => params.value || <EmptyCell />
     },
     { 
+      field: 'cgpa', 
+      headerName: 'CGPA', 
+      flex: 0.5, 
+      minWidth: 100, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => 
+        params.value !== null && params.value !== undefined ? 
+        parseFloat(params.value).toFixed(2) : 
+        <EmptyCell />
+    },
+    { 
+      field: 'backlogs', 
+      headerName: 'Backlogs', 
+      flex: 0.5, 
+      minWidth: 100, 
+      headerAlign: 'center', 
+      align: 'center',
+      renderCell: (params) => 
+        params.value !== null && params.value !== undefined ? 
+        parseInt(params.value) : 
+        <EmptyCell />
+    },
+    { 
       field: 'mentorEmail', 
       headerName: 'Mentor Email', 
       flex: 1.3, 
