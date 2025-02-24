@@ -1,126 +1,80 @@
 import { NextResponse } from "next/server";
-import {connect }from "@/lib/dbConfig";
+import { connect } from "@/lib/dbConfig";
 import { AcademicSession } from "@/lib/db/academicSessionSchema";
-import { Mentor } from "@/lib/db/mentorSchema";
 
 export async function GET(request) {
   try {
+    await connect();
+    
     const { searchParams } = new URL(request.url);
     const academicYear = searchParams.get('academicYear');
     const academicSession = searchParams.get('academicSession');
+    const page = parseInt(searchParams.get('page')) || 0;
+    const pageSize = parseInt(searchParams.get('pageSize')) || 10;
 
     if (!academicYear || !academicSession) {
-      return NextResponse.json(
-        { message: "Academic year and session are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Missing parameters" }, { status: 400 });
     }
 
-    await connect();
-
-    // Split academic year into start and end years
     const [startYear, endYear] = academicYear.split('-').map(Number);
 
-    // Find the academic session record
-    const sessionRecord = await AcademicSession.findOne({
-      start_year: startYear,
-      end_year: endYear,
-      'sessions.name': academicSession
-    });
-
-    if (!sessionRecord) {
-      return NextResponse.json(
-        { message: "No records found for the specified academic period" },
-        { status: 404 }
-      );
-    }
-
-    // Get unique mentor MUJIDs from the meetings in this session
-    const mentorMUJids = new Set();
-    sessionRecord.sessions.forEach(session => {
-      if (session.name === academicSession) {
-        session.semesters.forEach(semester => {
-          semester.sections.forEach(section => {
-            section.meetings.forEach(meeting => {
-              if (meeting.mentorMUJid) {
-                mentorMUJids.add(meeting.mentorMUJid);
-              }
-            });
-          });
-        });
-      }
-    });
-
-    // Fetch mentor details with aggregate to get mentee count
-    const mentors = await Mentor.aggregate([
+    // Split into two simpler queries for better performance
+    const totalCount = await AcademicSession.aggregate([
       {
         $match: {
-          MUJid: { $in: Array.from(mentorMUJids) }
+          start_year: startYear,
+          end_year: endYear,
+          'sessions.name': academicSession
         }
       },
+      { $unwind: '$sessions' },
+      { $match: { 'sessions.name': academicSession } },
+      { $unwind: '$sessions.mentors' },
+      { $count: 'total' }
+    ]).exec();
+
+    const mentors = await AcademicSession.aggregate([
       {
-        $lookup: {
-          from: "academicsessions",
-          let: { mentorMUJid: "$MUJid" },
-          pipeline: [
-            {
-              $match: {
-                start_year: startYear,
-                end_year: endYear,
-                "sessions.name": academicSession
-              }
-            },
-            { $unwind: "$sessions" },
-            { $unwind: "$sessions.semesters" },
-            { $unwind: "$sessions.semesters.sections" },
-            { $unwind: "$sessions.semesters.sections.meetings" },
-            {
-              $match: {
-                $expr: {
-                  $eq: ["$sessions.semesters.sections.meetings.mentorMUJid", "$$mentorMUJid"]
-                }
-              }
-            },
-            {
-              $group: {
-                _id: null,
-                mentees: { $addToSet: "$sessions.semesters.sections.meetings.mentee_ids" }
-              }
-            }
-          ],
-          as: "menteeData"
+        $match: {
+          start_year: startYear,
+          end_year: endYear,
+          'sessions.name': academicSession
         }
       },
-      {
-        $addFields: {
-          mentees: {
-            $reduce: {
-              input: { $arrayElemAt: ["$menteeData.mentees", 0] },
-              initialValue: [],
-              in: { $setUnion: ["$$value", "$$this"] }
-            }
-          }
-        }
-      },
+      { $unwind: '$sessions' },
+      { $match: { 'sessions.name': academicSession } },
+      { $unwind: '$sessions.mentors' },
       {
         $project: {
-          _id: 1,
-          MUJid: 1,
-          name: 1,
-          email: 1,
-          department: 1,
-          phone_number: 1,
-          mentees: 1
+          _id: 0,
+          MUJid: '$sessions.mentors.MUJid',
+          name: '$sessions.mentors.name',
+          email: '$sessions.mentors.email',
+          phone_number: '$sessions.mentors.phone_number',
+          mentees: '$sessions.mentors.mentees'
         }
-      }
-    ]);
+      },
+      { $sort: { name: 1 } }
+    ]).exec();
 
-    return NextResponse.json(mentors);
+    const items = mentors.map((mentor, index) => ({
+      id: `mentor-${index + 1}`,
+      serialNumber: index + 1,
+      ...mentor,
+      mentee_count: mentor.mentees?.length || 0
+    }));
+
+    return NextResponse.json({ 
+      items, 
+      total: totalCount[0]?.total || 0,
+      page,
+      pageSize 
+    });
 
   } catch (error) {
     console.error('Archive fetch error:', error);
     return NextResponse.json(
-      { message: "Error fetching archive data" },
+      { message: "Failed to fetch archive data" },
       { status: 500 }
     );
   }

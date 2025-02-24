@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   getCurrentAcademicYear, 
   generateAcademicSessions, 
@@ -19,6 +19,8 @@ const YearSessionSelector = ({ onSearch }) => {
   const [sessions, setSessions] = useState([]);
   const [yearError, setYearError] = useState('');
   const [sessionError, setSessionError] = useState('');
+  const [opacity, setOpacity] = useState(0); // Add this line
+  const containerRef = useRef(null); // Add this line
 
   useEffect(() => {
     const currentYear = getCurrentAcademicYear();
@@ -38,6 +40,14 @@ const YearSessionSelector = ({ onSearch }) => {
     }
   }, [academicYear]);
 
+  // Replace the problematic useEffect with this one
+  useEffect(() => {
+    const timer = requestAnimationFrame(() => {
+      setOpacity(1);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, []);
+
   const handleSearch = () => {
     if (!academicYear || !academicSession) {
       if (!academicYear) setYearError('Academic year is required');
@@ -48,7 +58,14 @@ const YearSessionSelector = ({ onSearch }) => {
   };
 
   return (
-    <div className="year-selector-container">
+    <div 
+      ref={containerRef}
+      className="year-selector-container"
+      style={{ 
+        opacity: opacity,
+        transition: 'opacity 0.3s ease-in-out'
+      }}
+    >
       <div className="header">
         <SearchIcon />
         <h2>Archive Filters</h2>
@@ -108,6 +125,8 @@ const YearSessionSelector = ({ onSearch }) => {
           display: flex;
           flex-direction: column;
           gap: 24px;
+          background: rgba(26, 26, 26, 0.8);
+          backdrop-filter: blur(10px);
         }
 
         .header {
@@ -145,8 +164,22 @@ const YearSessionSelector = ({ onSearch }) => {
           letter-spacing: 0.5px;
           transition: all 0.3s ease;
           color: #000000;
+          cursor: text;
+          transition: all 0.2s ease;
           &::placeholder {
             color: rgba(49, 49, 49, 0.5);
+          }
+          &:hover {
+            border-color: #f97316;
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2);
+          }
+        }
+
+        .custom-select {
+          cursor: pointer;
+          &:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
           }
         }
 
@@ -185,9 +218,20 @@ const YearSessionSelector = ({ onSearch }) => {
           font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           margin-top: 16px;
           box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+          cursor: pointer;
+          &:hover:not(.disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+          }
+          &:active:not(.disabled) {
+            transform: translateY(0);
+          }
+          &.disabled {
+            cursor: not-allowed;
+          }
         }
 
         .search-button:hover:not(.disabled) {

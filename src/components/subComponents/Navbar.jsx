@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { FiChevronDown, FiLogOut, FiGrid, FiInfo } from "react-icons/fi";
+import { FiChevronDown, FiLogOut, FiGrid, FiInfo, FiUser, FiShield } from "react-icons/fi";
 import { usePathname, useRouter } from "next/navigation";
 
 const Navbar = () => {
@@ -14,18 +14,15 @@ const Navbar = () => {
     initial: "G",
     roles: [],
   });
-  
+  const [currentRole, setCurrentRole] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    const role = sessionStorage.getItem("role");
+    setCurrentRole(role);
+    setIsLoaded(true);
+
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData") || "{}");
-
-    // if (!mentorData.email) {
-    //   // Auto logout if no email found
-    //   sessionStorage.clear();
-    //   router.push("/");
-    //   return;
-    // }
-
     setUser({
       name: mentorData.name || "Guest",
       email: mentorData.email,
@@ -52,21 +49,10 @@ const Navbar = () => {
     setIsDropdownOpen(false);
   }, [pathname]);
 
-  // Don't render navbar on root route
-  if (pathname === "/") {
+  // Don't render navbar on root route or before client-side load
+  if (pathname === "/" || !isLoaded) {
     return null;
   }
-
-  const getRandomColor = () => {
-    const colors = [
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-yellow-500",
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
@@ -151,12 +137,12 @@ const Navbar = () => {
         { label: "Manage Mentors", path: "/pages/admin/managementor" },
       ];
     }
-    if (pathname === "/pages/admin/createacademicsession") {
+    if (pathname === "/pages/admin/mngacademicsession") {
       return [
         { label: "Admin Dashboard", path: "/pages/admin/admindashboard" },
         {
-          label: "Create Academic Session",
-          path: "/pages/admin/createacademicsession",
+          label: "Manage Academic Session",
+          path: "/pages/admin/mngacademicsession",
         },
       ];
     }
@@ -200,9 +186,23 @@ const Navbar = () => {
     }
     return [{ label: "Home", path: "/" }];
   };
-  const role = typeof window !== "undefined" ? sessionStorage.getItem("role") : null;
 
-  if (role) {
+  const getRoleDetails = () => {
+    if (currentRole === 'admin') {
+      return {
+        icon: <FiShield className="h-5 w-5" />,
+        color: 'bg-red-500 hover:bg-red-600',
+        label: 'Admin'
+      };
+    }
+    return {
+      icon: <FiUser className="h-5 w-5" />,
+      color: 'bg-blue-500 hover:bg-blue-600',
+      label: 'Mentor'
+    };
+  };
+
+  if (currentRole) {
     return (
       <nav className='bg-gradient-to-r from-orange-500/10 via-orange-400/10 to-pink-500/10 border-b border-orange-200/20 absolute w-full max-w-[100vw] z-[100]'>
         <div className='max-w-[90vw] px-4 sm:px-6 lg:px-8'>
@@ -269,59 +269,57 @@ const Navbar = () => {
             <div className='relative z-[1000000]' ref={dropdownRef}>
               <button
                 onClick={toggleDropdown}
-                className='flex items-center space-x-3 focus:outline-none'
+                className="flex items-center space-x-2 rounded-full pr-3 pl-1 py-1 transition-all duration-200 ease-in-out border border-transparent hover:border-orange-500/30"
                 aria-label='User menu'
                 aria-expanded={isDropdownOpen}>
-                <div
-                  className={`${getRandomColor()} h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold`}>
-                  {user.initial}
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white ${getRoleDetails().color} transition-colors duration-200`}>
+                  {getRoleDetails().icon}
                 </div>
-                <FiChevronDown />
+                <span className="text-gray-300 text-sm hidden sm:block">{user.name}</span>
+                <FiChevronDown className={`text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isDropdownOpen && (
-                <div className='absolute right-0 mt-2 w-[fit-content] rounded-md shadow-lg py-1 bg-gradient-to-r from-gray-900 to-gray-800 ring-1 ring-orange-500/20'>
-                  <div className='px-4 py-2 border-b border-orange-500/20'>
-                    <p className='text-sm font-medium text-orange-100'>
-                      {user.name}
-                    </p>
-                    <p className='text-sm text-orange-200/60'>{user.email}</p>
+                <div className="absolute right-0 mt-2 w-64 rounded-lg shadow-lg py-1 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 ring-1 ring-orange-500/20 backdrop-blur-sm transform origin-top scale-y-100 transition-all duration-200">
+                  <div className="px-4 py-3 border-b border-orange-500/20">
+                    <div className="flex items-center space-x-3">
+                      <div className={`h-12 w-12 rounded-full flex items-center justify-center ${getRoleDetails().color}`}>
+                        {getRoleDetails().icon}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-orange-100">{user.name}</p>
+                        <p className="text-xs text-orange-200/60">{user.email}</p>
+                        <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded text-xs font-medium bg-orange-500/10 text-orange-400">
+                          {getRoleDetails().label}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  {user.roles && user.roles.length >= 2 && (
-                    <button
-                      onClick={handleRoleSwitch}
-                      className='flex w-full items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
-                      <FiGrid className='mr-3 h-5 w-5 text-orange-400' />
-                      {sessionStorage.getItem("role") === "mentor"
-                        ? "Admin"
-                        : "Mentor"}{" "}
-                      Dashboard
-                    </button>
-                  )}
+                  <div className="py-1">
+                    {user.roles && user.roles.length >= 2 && (
+                      <button
+                        onClick={handleRoleSwitch}
+                        className="flex w-full items-center px-4 py-2 text-sm text-orange-100 hover:bg-orange-500/10 transition-colors duration-150">
+                        <FiGrid className="mr-3 h-5 w-5 text-orange-400" />
+                        Switch to {currentRole === "mentor" ? "Admin" : "Mentor"}
+                      </button>
+                    )}
 
-                  {/* {user.roles && user.roles.length >= 2 && (
                     <a
-                      href='/dashboard'
-                      className='flex items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
-                      <FiGrid className='mr-3 h-5 w-5 text-orange-400' />
-                      Dashboard
+                      href="/about"
+                      className="flex items-center px-4 py-2 text-sm text-orange-100 hover:bg-orange-500/10 transition-colors duration-150">
+                      <FiInfo className="mr-3 h-5 w-5 text-orange-400" />
+                      About Us
                     </a>
-                  )} */}
 
-                  <a
-                    href='/about'
-                    className='flex items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
-                    <FiInfo className='mr-3 h-5 w-5 text-orange-400' />
-                    About Us
-                  </a>
-
-                  <button
-                    onClick={handleLogout}
-                    className='flex w-full items-center px-4 py-2 text-sm text-orange-100 hover:bg-gray-700/50 transition-colors duration-150'>
-                    <FiLogOut className='mr-3 h-5 w-5 text-orange-400' />
-                    Logout
-                  </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center px-4 py-2 text-sm text-red-300 hover:bg-red-500/10 transition-colors duration-150">
+                      <FiLogOut className="mr-3 h-5 w-5 text-red-400" />
+                      Logout
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

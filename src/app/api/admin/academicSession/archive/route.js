@@ -56,40 +56,46 @@ export async function PUT(request) {
     }, {});
 
     // Store complete mentor information with their mentees
-    academicSession.sessions[0].mentors = mentors.map(mentor => ({
-      MUJid: mentor.MUJid,
-      name: mentor.name,
-      email: mentor.email,
-      phone_number: mentor.phone_number,
-      gender: mentor.gender,
-      profile_picture: mentor.profile_picture,
-      role: mentor.role,
-      academicYear: mentor.academicYear,
-      academicSession: mentor.academicSession,
-      mentees: (menteesByMentor[mentor.MUJid] || []).map(mentee => ({
-        MUJid: mentee.MUJid,
-        name: mentee.name,
-        email: mentee.email,
-        semester: mentee.semester,
-        mentorRemarks: mentee.mentorRemarks
-      }))
-    }));
-
-    // Store graduating mentees (semester 8)
-    academicSession.sessions[0].graduatedMentees = mentees
-      .filter(mentee => mentee.semester === 8)
-      .map(mentee => ({
-        MUJid: mentee.MUJid,
-        name: mentee.name,
-        email: mentee.email,
-        mentorMujid: mentee.mentorMujid,
-        semester: mentee.semester,
-        academicYear: mentee.academicYear,
-        academicSession: mentee.academicSession,
-        mentorRemarks: mentee.mentorRemarks,
-        meetingsAttended: mentee.meetingsAttended || [],
-        graduatedAt: new Date()
-      }));
+    academicSession.sessions[0].mentors = mentors.map(mentor => {
+      const mentorMentees = menteesByMentor[mentor.MUJid] || [];
+      return {
+        MUJid: mentor.MUJid,
+        name: mentor.name,
+        email: mentor.email,
+        phone_number: mentor.phone_number,
+        gender: mentor.gender,
+        profile_picture: mentor.profile_picture,
+        role: Array.isArray(mentor.role) ? mentor.role.join(', ') : mentor.role,
+        mentees: mentorMentees.map(mentee => ({
+          MUJid: mentee.MUJid,
+          name: mentee.name,
+          email: mentee.email,
+          phone: mentee.phone,
+          address: mentee.address,
+          semester: mentee.semester,
+          yearOfRegistration: mentee.yearOfRegistration,
+          mentorRemarks: mentee.mentorRemarks,
+          isGraduated: mentee.semester === 8,
+          graduatedAt: mentee.semester === 8 ? new Date() : null,
+          parents: {
+            father: {
+              name: mentee.parents?.father?.name || '',
+              phone: mentee.parents?.father?.phone || '',
+            },
+            mother: {
+              name: mentee.parents?.mother?.name || '',
+              phone: mentee.parents?.mother?.phone || '',
+            },
+            guardian: {
+              name: mentee.parents?.guardian?.name || '',
+              phone: mentee.parents?.guardian?.phone || '',
+              relation: mentee.parents?.guardian?.relation || '',
+            }
+          },
+          meetingsAttended: mentee.meetingsAttended || []
+        }))
+      };
+    });
 
     // Process meetings with complete mentor details
     const processedMeetings = meetings.flatMap(meetingDoc => {
@@ -157,7 +163,10 @@ export async function PUT(request) {
       message: "Academic session archived successfully",
       stats: {
         archivedMeetings: processedMeetings.length,
-        graduatedMentees: academicSession.sessions[0].graduatedMentees.length,
+        totalMentees: academicSession.sessions[0].mentors.reduce((acc, mentor) => 
+          acc + mentor.mentees.length, 0),
+        graduatedMentees: academicSession.sessions[0].mentors.reduce((acc, mentor) => 
+          acc + mentor.mentees.filter(m => m.isGraduated).length, 0),
         archivedMentors: academicSession.sessions[0].mentors.length
       }
     });

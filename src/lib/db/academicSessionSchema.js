@@ -22,31 +22,41 @@ const academicSessionsSchema = new mongoose.Schema({
         name: String,
         email: String,
         phone_number: String,
+        gender: String,
+        profile_picture: String,
+        role: [String],  // Changed from String to [String] to support array of roles
         mentees: [{
           MUJid: String,
           name: String,
           email: String,
+          phone: String,
+          address: String,
           semester: Number,
-          mentorRemarks: String
+          yearOfRegistration: Number,
+          mentorRemarks: String,
+          isGraduated: { type: Boolean, default: false },
+          graduatedAt: Date,
+          parents: {
+            father: {
+              name: String,
+              phone: String,
+            },
+            mother: {
+              name: String,
+              phone: String,
+            },
+            guardian: {
+              name: String,
+              phone: String,
+              relation: String,
+            }
+          },
+          meetingsAttended: [String]
         }]
-      }],
-      graduatedMentees: [{
-        MUJid: String,
-        name: String,
-        email: String,
-        mentorMujid: String,
-        semester: Number,
-        academicYear: String,
-        academicSession: String,
-        mentorRemarks: String,
-        meetingsAttended: [String],
-        graduatedAt: Date
       }],
       semesters: [
         {
-          semester_number: { type: Number }, // Semester number (1-8)
-          start_date: { type: Date }, // Start date of the semester
-          end_date: { type: Date }, // End date of the semester
+          semester_number: { type: Number },
           meetingPages: [
             {
               pageNumber: { type: Number },
@@ -61,22 +71,14 @@ const academicSessionsSchema = new mongoose.Schema({
                   },
                   semester: { type: Number },
                   meeting_date: { type: Date },
-                  meeting_time: {
-                    type: String,
-                    validate: {
-                      validator: function(v) {
-                        return /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(v);
-                      },
-                      message: "Invalid time format, please enter time in hh:mm AM/PM format"
-                    }
-                  },
+                  meeting_time: String,
                   isReportFilled: { type: Boolean, default: false },
                   meeting_notes: {
                     TopicOfDiscussion: String,
                     TypeOfInformation: String,
                     NotesToStudent: String,
-                    isMeetingOnline: { type: Boolean, default: false },
-                    venue: { type: String },
+                    isMeetingOnline: Boolean,
+                    venue: String,
                     feedbackFromMentee: String,
                     issuesRaisedByMentee: String,
                     outcome: String,
@@ -92,23 +94,18 @@ const academicSessionsSchema = new mongoose.Schema({
                     }],
                     validate: [arrayLimit, 'Exceeds the limit of 50 mentees per meeting']
                   },
-                  scheduledAT: {
-                    scheduleDate: { type: Date },
-                    scheduleTime: String
-                  },
-                  emailsSentCount: { type: Number, default: 0 },
                   attendance: {
-                    total: { type: Number, default: 0 },
-                    present: { type: Number, default: 0 },
-                    percentage: { type: Number, default: 0 }
+                    total: Number,
+                    present: Number,
+                    percentage: Number
                   }
                 }
               ]
             }
           ]
-        },
-      ],
-    },
+        }
+      ]
+    }
   ],
   created_at: { type: Date, default: Date.now }, // Creation date of the session
   updated_at: { type: Date, default: Date.now }, // Last updated date

@@ -460,8 +460,8 @@ const ManageMeeting = () => {
                           '&::-webkit-scrollbar': {
                             display: 'none' // Hide default scrollbar
                           },
-                          '-ms-overflow-style': 'none',
-                          'scrollbar-width': 'none'
+                          msOverflowStyle: 'none',
+                          scrollbarWidth: 'none'
                         },
                       }}
                       className="custom-scrollbar"

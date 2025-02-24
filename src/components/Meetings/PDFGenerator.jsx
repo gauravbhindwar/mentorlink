@@ -151,6 +151,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "grey",
   },
+  heading: {
+    textAlign: 'center',
+    marginBottom: 8,
+    fontWeight: 'bold',
+  },
+  consolidatedTable: {
+    width: '100%',
+    marginBottom: 20,
+    borderCollapse: 'collapse'
+  },
+  consolidatedRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    borderBottomStyle: 'solid',
+    minHeight: 25,
+  },
+  consolidatedCell: {
+    padding: 5,
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid'
+  },
+  consolidatedHeader: {
+    backgroundColor: '#f0f0f0',
+    fontWeight: 'bold'
+  }
 });
 
 const Header = () => (
@@ -431,223 +458,96 @@ export const MOMDocument = ({
 // consolidated document template
 export const ConsolidatedDocument = ({
   meetings,
-  // academicYear,
-  // semester,
   mentorName,
   mentees,
-  selectedSemester, // Add this parameter
+  selectedSemester,
 }) => {
-  // Ensure we have valid arrays to work with
-  const safeMentees = mentees || [];
-  const filteredMentees = safeMentees.filter(
-    (mentee) => mentee && mentee.semester === selectedSemester
-  );
-
-  // Ensure we have valid chunks even with empty array
-  const chunkedMentees = filteredMentees.length
-    ? filteredMentees.reduce((resultArray, item, index) => {
-        const chunkIndex = Math.floor(index / 12);
-        if (!resultArray[chunkIndex]) {
-          resultArray[chunkIndex] = [];
-        }
-        resultArray[chunkIndex].push(item);
-        return resultArray;
-      }, [])
-    : [[]];
-
-  // Wrap the return in error boundary
   try {
+    const filteredMentees = (mentees || [])
+      .filter(mentee => mentee && mentee.semester === selectedSemester)
+      .map((mentee, index) => ({
+        srNo: index + 1,
+        regNo: mentee.MUJid || '',
+        name: mentee.name || '',
+        meetingsCount: mentee.meetingsCount || 0,
+        remarks: mentee.mentorRemarks || 'N/A'
+      }));
+
+    const semesterMeetings = (meetings || [])
+      .filter(meeting => meeting && meeting.semester === selectedSemester);
+
+    // Create chunks of 12 mentees per page
+    const chunkedMentees = [];
+    for (let i = 0; i < filteredMentees.length; i += 12) {
+      chunkedMentees.push(filteredMentees.slice(i, i + 12));
+    }
+
+    if (chunkedMentees.length === 0) {
+      return (
+        <Document>
+          <Page size="A4">
+            <View style={styles.page}>
+              <Text>No data available for the selected semester</Text>
+            </View>
+          </Page>
+        </Document>
+      );
+    }
+
     return (
       <Document>
         {chunkedMentees.map((menteeGroup, pageIndex) => (
-          <Page
-            key={pageIndex}
-            size='A4'
-            orientation='landscape'
-            style={styles.page}>
+          <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
             <Header />
-            <View style={styles.section}>
-              {pageIndex === 0 && ( // Only render on first page
-                <>
-                  <Text style={styles.detailItem}>
-                    Name of Mentor: {mentorName || "N/A"}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.detailItem,
-                      { marginBottom: 20, marginTop: 10 },
-                    ]}>
-                    Number of Meetings Taken: {meetings?.length || 0}
-                  </Text>
-                </>
-              )}
+            
+            {pageIndex === 0 && (
+              <View style={styles.section}>
+                <Text style={styles.detailItem}>Name of Mentor: {mentorName || "N/A"}</Text>
+                <Text style={[styles.detailItem, { marginBottom: 20 }]}>Number of Meetings Taken: {semesterMeetings.length}</Text>
+              </View>
+            )}
 
-              {/* Table header */}
-              <View style={styles.tableRow}>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.05",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 1,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>Sr No.</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.15",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>Registration No.</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.30",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>Student Name</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.13",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>No. of Meeting Attended</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.50",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>Mentor Remark/Special Cases</Text>
-                </View>
+            <View style={styles.consolidatedTable}>
+              {/* Table Header */}
+              <View style={[styles.consolidatedRow, styles.consolidatedHeader]}>
+                <View style={[styles.consolidatedCell, { width: '8%' }]}><Text>Sr No.</Text></View>
+                <View style={[styles.consolidatedCell, { width: '17%' }]}><Text>Registration No.</Text></View>
+                <View style={[styles.consolidatedCell, { width: '30%' }]}><Text>Student Name</Text></View>
+                <View style={[styles.consolidatedCell, { width: '15%' }]}><Text>Meetings Attended</Text></View>
+                <View style={[styles.consolidatedCell, { width: '30%', borderRightWidth: 0 }]}><Text>Remarks</Text></View>
               </View>
 
-              {/* Table body - now using menteeGroup instead of mentees */}
-              {menteeGroup.map((mentee, index) => (
-                <View style={styles.tableRow} key={index}>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.05",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 1,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{pageIndex * 12 + index + 1}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.15",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.MUJid}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.30",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.name}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.13",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.meetingsCount || 0}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.50",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.mentorRemarks || "N/A"}</Text>
-                  </View>
+              {/* Table Body */}
+              {menteeGroup.map(mentee => (
+                <View key={mentee.srNo} style={styles.consolidatedRow}>
+                  <View style={[styles.consolidatedCell, { width: '8%' }]}><Text>{mentee.srNo}</Text></View>
+                  <View style={[styles.consolidatedCell, { width: '17%' }]}><Text>{mentee.regNo}</Text></View>
+                  <View style={[styles.consolidatedCell, { width: '30%' }]}><Text>{mentee.name}</Text></View>
+                  <View style={[styles.consolidatedCell, { width: '15%' }]}><Text>{mentee.meetingsCount}</Text></View>
+                  <View style={[styles.consolidatedCell, { width: '30%', borderRightWidth: 0 }]}><Text>{mentee.remarks}</Text></View>
                 </View>
               ))}
-
-              {pageIndex === chunkedMentees.length - 1 && (
-                <View
-                  style={[
-                    styles.signatureSection,
-                    { marginTop: 30, marginLeft: 0 },
-                  ]}>
-                  <Text style={[styles.signatureDate, { marginLeft: 0 }]}>
-                    ___________________________
-                  </Text>
-                  <Text style={styles.signatureText}>Signature with Date</Text>
-                  {/* <Text style={styles.signatureDate}>
-                    Date: {new Date().toLocaleDateString()}
-                  </Text> */}
-                </View>
-              )}
             </View>
-            <Footer
-              pageNumber={pageIndex + 1}
-              totalPages={chunkedMentees.length}
-            />
+
+            {pageIndex === chunkedMentees.length - 1 && (
+              <View style={[styles.signatureSection, { marginTop: 30 }]}>
+                <Text>___________________________</Text>
+                <Text style={styles.signatureText}>Signature with Date</Text>
+              </View>
+            )}
+
+            <Footer pageNumber={pageIndex + 1} totalPages={chunkedMentees.length} />
           </Page>
         ))}
       </Document>
     );
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    console.error('Error generating consolidated document:', error);
     return (
       <Document>
-        <Page size='A4'>
-          <View>
-            <Text>Error generating report</Text>
+        <Page size="A4">
+          <View style={styles.page}>
+            <Text>Error generating report: {error.message}</Text>
           </View>
         </Page>
       </Document>
@@ -694,23 +594,19 @@ export const generateMOMPdf = (meeting, mentorName) => {
 // consolidated report pdf generator
 export const generateConsolidatedPdf = (
   meetings,
-  // academicYear,
   semester,
-  // section,
   mentorName,
-  mentees // add mentees prop
+  mentees,
+  selectedSemester // Add this parameter
 ) => {
-  return React.createElement(
-    Document,
-    null,
-    React.createElement(ConsolidatedDocument, {
-      meetings,
-      // academicYear,
-      semester,
-      // section,
-      mentorName,
-      mentees, // pass mentees prop
-    })
+  return (
+    <ConsolidatedDocument
+      meetings={meetings}
+      semester={semester}
+      mentorName={mentorName}
+      mentees={mentees}
+      selectedSemester={selectedSemester} // Pass it to ConsolidatedDocument
+    />
   );
 };
 
