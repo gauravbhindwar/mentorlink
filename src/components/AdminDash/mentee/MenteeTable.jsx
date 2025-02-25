@@ -678,14 +678,12 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
         <TableSkeleton rowsNum={8} />
       ) : (
         <Box sx={{ 
-          height: { xs: 'auto', lg: 'calc(100vh - 200px)' },
+          height: '100%', // Changed from calc value to 100%
           width: '100%',
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          transition: 'all 0.3s ease',
-          className: 'custom-scrollbar', // Add custom scrollbar class
         }}>
           {loading && (
             <Box sx={{
@@ -710,8 +708,13 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
             columns={columns}
             getRowId={(row) => row._id || row.id}
             sx={{
-              height: { xs: '500px', lg: '100%' },
-              width: '100%',
+              flex: 1, // Added flex: 1
+              height: 'auto', // Changed from fixed height
+              border: 'none',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: 2,
+              // ... rest of existing DataGrid styles ...
               '& .MuiDataGrid-main': {
                 overflow: 'auto',
                 minHeight: { xs: '300px', lg: '200px' },

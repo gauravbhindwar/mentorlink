@@ -28,6 +28,8 @@ import AssignMentorDialog from './menteeSubComponents/AssignMentorDialog';
 import BulkUploadDialog from './menteeSubComponents/BulkUploadDialog';
 import { calculateCurrentSemester, getCurrentAcademicYear, generateAcademicSessions } from './utils/academicUtils';
 import TableSkeleton from './TableSkeleton';  // Add this import at the top
+import MenteeCard from '@/components/mentor/MenteeCard';
+import Pagination from '@mui/material/Pagination';
 
 // Move filterData function up before it's used
 const filterData = (data, filters) => {
@@ -199,15 +201,8 @@ const MenteeManagement = () => {
 
   const [tableVisible, setTableVisible] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(() => {
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('showFilters');
-      return saved !== null ? JSON.parse(saved) : true;
-    }
-    return true;
-  });
-  const [showTable] = useState(true); // Add new state for table visibility
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
 
   const handleFileUpload = async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -548,8 +543,6 @@ const handleUpdate = (updatedMentee) => {
     }
   };
 
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-
   // Modify useEffect for mounting
   useEffect(() => {
     // Remove localStorage clear
@@ -565,10 +558,6 @@ const handleUpdate = (updatedMentee) => {
       }
     }
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('showFilters', JSON.stringify(showFilters));
-  }, [showFilters]);
 
   const handleSearch = async () => {
     if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) return;
@@ -876,9 +865,28 @@ const handleUpdate = (updatedMentee) => {
     }
   };
 
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [page, setPage] = useState(1);
+  const cardsPerPage = 5;
+
+  const handleExpandCard = (mujId) => {
+    setExpandedCard(expandedCard === mujId ? null : mujId);
+  };
+
+  const getCurrentCards = () => {
+    const startIndex = (page - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    return mentees.slice(startIndex, endIndex);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    window.scrollTo(0, 0);
+  };
+
   return (
     <ThemeProvider theme={theme}>
-      <div className="fixed inset-0 bg-gray-900 text-white overflow-hidden">
+      <div className="fixed inset-0 bg-gray-900 text-white overflow-auto pt-16"> {/* Added pt-16 for navbar */}
         {/* Single Toaster instance with updated configuration */}
         <Toaster 
           position="bottom-right"
@@ -909,110 +917,30 @@ const handleUpdate = (updatedMentee) => {
         </div>
 
         {/* Main Content Container */}
-        <div className="relative z-10 h-screen flex flex-col pt-[60px]">
+        <div className="relative z-10 min-h-screen flex flex-col">
           {/* Header Section - Updated with center alignment */}
-          <div className="flex items-center justify-center px-4 lg:px-6 relative">
+          <div className="flex items-center justify-center px-4 lg:px-6 pt-4 pb-2">
             <motion.h1 
-              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2 text-center"
+              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 text-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
               Mentee Management
             </motion.h1>
-
-            {/* Position toggle buttons absolutely to maintain header centering */}
-            {isSmallScreen && (
-              <motion.div
-                initial={false}
-                animate={{
-                  position: 'absolute',
-                  right: '1rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
-                transition={{ duration: 0.3 }}
-              >
-                <IconButton
-                  onClick={() => setShowFilters(prev => !prev)}
-                  sx={{
-                    color: '#f97316',
-                    bgcolor: 'rgba(0, 0, 0, 0.6)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(249, 115, 22, 0.3)',
-                    '&:hover': {
-                      bgcolor: 'rgba(249, 115, 22, 0.2)',
-                    },
-                    transition: 'all 0.3s ease',
-                    transform: showFilters ? 'rotate(180deg)' : 'rotate(0deg)',
-                  }}
-                >
-                  <FilterListIcon />
-                </IconButton>
-              </motion.div>
-            )}
           </div>
 
-          {/* Add this after the header section */}
-          {isSmallScreen && (
-            <Box sx={{
-              position: 'fixed',
-              left: '1rem',
-              top: '1rem',
-              zIndex: 1000,
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-            }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: showFilters ? '#f97316' : 'rgba(255, 255, 255, 0.5)',
-                  transition: 'color 0.3s ease',
-                  fontSize: '0.75rem',
-                }}
-              >
-                Filters {showFilters ? 'Shown' : 'Hidden'}
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: showTable ? '#f97316' : 'rgba(255, 255, 255, 0.5)',
-                  transition: 'color 0.3s ease',
-                  fontSize: '0.75rem',
-                }}
-              >
-                Table {showTable ? 'Shown' : 'Hidden'}
-              </Typography>
-            </Box>
-          )}
-
-          {/* Main Grid Layout - Updated grid and padding */}
-          <div className={`flex-1 grid gap-4 p-4 h-[calc(100vh-100px)] transition-all duration-300 ease-in-out ${
-            isSmallScreen ? 'grid-cols-1' : 'grid-cols-[400px,1fr] lg:overflow-hidden'
+          {/* Main Grid Layout - Updated with better mobile/tablet handling */}
+          <div className={`flex-1 grid gap-2 p-2 ${
+            isSmallScreen || isTablet ? 'grid-cols-1' : 'grid-cols-[350px,1fr]'
           }`}>
-            {/* Filter Panel - Updated width and padding */}
-            <motion.div 
-              className={`bg-black/20 backdrop-blur-xl rounded-3xl border border-white/10 transition-all duration-300 ease-in-out ${
-                isSmallScreen ? 'w-full' : 'w-[400px]'
-              }`}
-              initial={false}
-              animate={{
-                height: showFilters ? 'auto' : '0px',
-                opacity: showFilters ? 1 : 0,
-                marginBottom: showFilters ? '1rem' : '0px'
-              }}
-              transition={{ duration: 0.3 }}
-              style={{
-                display: showFilters ? 'block' : 'none',
-                position: isSmallScreen ? 'relative' : 'sticky',
-                top: isSmallScreen ? 'auto' : '1rem',
-                maxHeight: isSmallScreen ? '80vh' : 'calc(100vh - 120px)',
-                overflowY: 'auto',
-                zIndex: isSmallScreen ? 50 : 'auto'
-              }}
-            >
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 h-full">
+            {/* Filter Panel - Updated positioning for mobile/tablet */}
+            <div className={`${
+              isSmallScreen || isTablet 
+                ? 'h-auto max-h-[40vh]' 
+                : 'h-[calc(100vh-100px)]'
+            } overflow-auto`}>
+              <div className="bg-black/80 backdrop-blur-xl rounded-3xl border border-white/10 p-4">
                 <FilterSection 
                   filters={filterConfig}
                   onFilterChange={handleFilterChange}
@@ -1027,35 +955,94 @@ const handleUpdate = (updatedMentee) => {
                   isLoading={loadingStates.fetching}
                 />
               </div>
-            </motion.div>
+            </div>
 
-            {/* Table Section - Updated for initial loading state */}
-            <motion.div
-              className={`h-full min-w-0 transition-all duration-300 ease-in-out ${
-                !showFilters && isSmallScreen ? 'col-span-full' : ''
-              }`}
-              animate={{
-                gridColumn: (!showFilters && isSmallScreen) ? 'span 2' : 'auto'
-              }}
-            >
+            {/* Table/Cards Section - Updated to handle filter overlay */}
+            <div className={`${
+              isSmallScreen || isTablet 
+                ? 'h-[calc(60vh-1rem)]' 
+                : 'h-[calc(100vh-100px)]'
+            } overflow-auto relative`}> {/* Added relative positioning */}
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
-                <div className="h-full flex flex-col p-4 pb-2">
+                <div className="h-full p-4">
                   {loadingStates.initial || loading ? (
                     <TableSkeleton rowsNum={8} />
                   ) : mentees.length > 0 ? (
                     <div className="h-full">
-                      <MenteeTable 
-                        mentees={mentees}
-                        onEditClick={handleEditClick}
-                        onDeleteClick={handleDelete}
-                        isSmallScreen={isSmallScreen}
-                        onDataUpdate={handleDataUpdate}
-                        isLoading={loadingStates.fetching}
-                        currentFilters={currentFilters} // Pass filters to table
-                      />
+                      {isTablet || isSmallScreen ? (
+                        // Card view for mobile and tablet
+                        <div className="h-full overflow-auto pb-16"> {/* Added pb-16 to prevent content hiding behind pagination */}
+                          {getCurrentCards().map((mentee) => (
+                            <MenteeCard
+                              key={mentee.MUJid}
+                              mentee={mentee}
+                              onEditClick={handleEditClick}
+                              onDeleteClick={handleDelete}
+                              expanded={expandedCard === mentee.MUJid}
+                              onExpandClick={handleExpandCard}
+                            />
+                          ))}
+                          {mentees.length > cardsPerPage && (
+                            <Box sx={{ 
+                              position: 'fixed',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              display: 'flex', 
+                              justifyContent: 'center',
+                              backgroundColor: 'rgba(0,0,0,0.8)',
+                              backdropFilter: 'blur(10px)',
+                              py: 2,
+                              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                              zIndex: 10,
+                            }}>
+                              <Pagination
+                                count={Math.ceil(mentees.length / cardsPerPage)}
+                                page={page}
+                                onChange={handlePageChange}
+                                size={isSmallScreen ? "small" : "medium"} // Adjust size based on screen
+                                siblingCount={isSmallScreen ? 0 : 1} // Show fewer page numbers on mobile
+                                sx={{
+                                  '& .MuiPaginationItem-root': {
+                                    color: 'white',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    minWidth: isSmallScreen ? '30px' : '40px', // Smaller touch targets on mobile
+                                    height: isSmallScreen ? '30px' : '40px',
+                                    fontSize: isSmallScreen ? '0.875rem' : '1rem',
+                                    '&.Mui-selected': {
+                                      backgroundColor: '#f97316',
+                                      fontWeight: 'bold',
+                                      boxShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
+                                      '&:hover': {
+                                        backgroundColor: '#ea580c',
+                                      },
+                                    },
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                                    },
+                                  },
+                                }}
+                              />
+                            </Box>
+                          )}
+                        </div>
+                      ) : (
+                        // Table view for desktop
+                        <div className="h-full overflow-auto">
+                          <MenteeTable 
+                            mentees={mentees}
+                            onEditClick={handleEditClick}
+                            onDeleteClick={handleDelete}
+                            isSmallScreen={isSmallScreen}
+                            onDataUpdate={handleDataUpdate}
+                            isLoading={loadingStates.fetching}
+                            currentFilters={currentFilters}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex-1 flex items-center justify-center h-full">
                       <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                         {tableVisible ? 'No mentees found' : 'Select filters to load data'}
                       </Typography>
@@ -1063,7 +1050,7 @@ const handleUpdate = (updatedMentee) => {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div> 
         </div>
 
