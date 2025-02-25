@@ -155,7 +155,7 @@ const DuplicateMentorDialog = ({
                 >
                   <MenuItem value="mentor">Mentor</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
-                  <MenuItem value="superadmin">Super Admin</MenuItem>
+                  {/* <MenuItem value="superadmin">Super Admin</MenuItem> */}
                 </TextField>
               </Grid>
               <Grid item xs={12}>
