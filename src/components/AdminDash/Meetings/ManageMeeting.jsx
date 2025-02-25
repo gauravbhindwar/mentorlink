@@ -23,6 +23,8 @@ import PersonIcon from "@mui/icons-material/Person";
 import CircularProgress from "@mui/material/CircularProgress";
 import SendIcon from "@mui/icons-material/Send";
 import Backdrop from '@mui/material/Backdrop';
+import dynamic from 'next/dynamic';
+import searchAnimation from '@/assets/animations/searchData.json';
 
 const darkTheme = createTheme({
   palette: {
@@ -35,6 +37,9 @@ const darkTheme = createTheme({
     }
   },
 });
+
+// Dynamically import Lottie with SSR disabled
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 const ManageMeeting = () => {
   const [academicYear, setAcademicYear] = useState("");
@@ -459,6 +464,22 @@ Admin Team`;
                 className="mt-4 h-[calc(100vh-280px)] min-h-[400px] custom-scrollbar"
               >
                 {loading && <LoadingComponent />}
+
+                {!loading && !showTable && (
+                  <div className="h-full flex flex-col items-center justify-center">
+                    <div className="w-64 h-64">
+                      {typeof window !== 'undefined' && (
+                        <Lottie
+                          animationData={searchAnimation}
+                          loop={true}
+                          autoplay={true}
+                        />
+                      )}
+                    </div>
+                    <h3 className="mt-4 text-lg font-medium text-gray-400">Enter Semester to View Meetings</h3>
+                    <p className="mt-2 text-sm text-gray-500">Select the academic details and enter a semester number to get started</p>
+                  </div>
+                )}
 
                 {!loading && showTable && noData && (
                   <div className="flex flex-col items-center justify-center h-full text-gray-400">
