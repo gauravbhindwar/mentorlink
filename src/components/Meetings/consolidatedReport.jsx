@@ -24,6 +24,7 @@ const ConsolidatedReport = () => {
   });
   // const [meetingsCount, setMeetingsCount] = useState({});
   const [meetings, setMeetings] = useState([]);  // Ensure meetings state is properly initialized
+  const [unfilledMeetings, setUnfilledMeetings] = useState([]); // New state for unfilled meetings
 
   useEffect(() => {
     const mentorData = JSON.parse(sessionStorage.getItem("mentorData"));
@@ -40,69 +41,79 @@ const ConsolidatedReport = () => {
   }, []);
 
   const fetchLocalMeetingData = async () => {
-    // console.log("Fetching meeting data from session storage");
     try {
       const meetingData = sessionStorage.getItem('meetingData');
       if (!meetingData) {
         throw new Error("No meeting data found in session storage");
       }
       const parsedData = JSON.parse(meetingData);
-      // setParsedMeetingdata(parsedData);
 
-      // Extract meetings data from parsedData
-      const allMeetings = parsedData.flatMap(entry => ({
-        ...entry.meeting,
-        semester: entry.semester,
-        section: entry.section,
-        sessionName: entry.sessionName
-      }));
+      // Extract meetings data, filtering for meetings with reports filled
+      const allMeetings = parsedData
+        .filter(entry => entry.meeting.isReportFilled === true)
+        .flatMap(entry => ({
+          ...entry.meeting,
+          semester: entry.semester,
+          section: entry.section,
+          sessionName: entry.sessionName
+        }));
       setMeetings(allMeetings);
 
-      // Process meetings and attendance
+      // Extract unfilled meetings
+      const unfilledMeetings = parsedData
+        .filter(entry => entry.meeting.isReportFilled === false)
+        .flatMap(entry => ({
+          ...entry.meeting,
+          semester: entry.semester,
+          section: entry.section,
+          sessionName: entry.sessionName
+        }));
+      setUnfilledMeetings(unfilledMeetings);
+
+      // Process meetings and attendance (only for meetings with reports)
       const attendanceCount = {};
       const processedMentees = new Map();
       const meetingsBySemester = {};
 
       // Process each meeting entry
-      parsedData.forEach(meetingEntry => {
-        const { meeting, menteeDetails, semester } = meetingEntry;
-        const presentMentees = meeting.present_mentees || [];
+      parsedData
+        .filter(entry => entry.meeting.isReportFilled === true)
+        .forEach(meetingEntry => {
+          const { meeting, menteeDetails, semester } = meetingEntry;
+          const presentMentees = meeting.present_mentees || [];
 
-        // Initialize meetingsBySemester if not already
-        if (!meetingsBySemester[semester]) {
-          meetingsBySemester[semester] = [];
-        }
-        meetingsBySemester[semester].push(meetingEntry);
+          if (!meetingsBySemester[semester]) {
+            meetingsBySemester[semester] = [];
+          }
+          meetingsBySemester[semester].push(meetingEntry);
 
-        // Count attendance for present mentees
-        presentMentees.forEach(menteeMUJid => {
-          attendanceCount[menteeMUJid] = (attendanceCount[menteeMUJid] || 0) + 1;
-        });
-
-        // Process all mentees in the meeting
-        if (Array.isArray(menteeDetails)) {
-          menteeDetails.forEach(mentee => {
-            if (!processedMentees.has(mentee.MUJid)) {
-              processedMentees.set(mentee.MUJid, {
-                ...mentee,
-                meetingsCount: 0,
-                meetingsTotal: 0 // will be updated later
-              });
-            }
+          presentMentees.forEach(menteeMUJid => {
+            attendanceCount[menteeMUJid] = (attendanceCount[menteeMUJid] || 0) + 1;
           });
-        }
+
+          if (Array.isArray(menteeDetails)) {
+            menteeDetails.forEach(mentee => {
+              if (!processedMentees.has(mentee.MUJid)) {
+                processedMentees.set(mentee.MUJid, {
+                  ...mentee,
+                  meetingsCount: 0,
+                  meetingsTotal: 0
+                });
+              }
+            });
+          }
       });
 
       // Update meetings count for each mentee
       processedMentees.forEach((mentee, MUJid) => {
         mentee.meetingsCount = attendanceCount[MUJid] || 0;
+        // Only count meetings with filled reports for total
         mentee.meetingsTotal = meetingsBySemester[mentee.semester]?.length || 0;
       });
 
       // Convert processed mentees to array
       const uniqueMentees = Array.from(processedMentees.values());
       setMentees(uniqueMentees);
-      // setMeetingsBySemester(meetingsBySemester);
 
       // Set remarks map
       const remarksMap = uniqueMentees.reduce((acc, mentee) => {
@@ -110,13 +121,13 @@ const ConsolidatedReport = () => {
         return acc;
       }, {});
       setOriginalRemarks(remarksMap);
-      // setMeetingsCount(attendanceCount);
 
     } catch (error) {
       console.error("Error fetching mentee data from session storage:", error);
       console.error("Error details:", error.stack);
       setMentees([]);
       setMeetings([]);
+      setUnfilledMeetings([]);
     } finally {
       setLoading(false);
     }
@@ -237,10 +248,10 @@ const ConsolidatedReport = () => {
         <td className="px-6 py-4 text-center">
           <div className="flex flex-col gap-1">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500">
-              {mentee.meetingsCount} / {mentee.meetingsTotal} meetings
+              {mentee.meetingsCount} / {mentee.meetingsTotal} reported meetings
             </span>
             <span className="text-xs text-gray-400">
-              {Math.round((mentee.meetingsCount / mentee.meetingsTotal) * 100) || 0}% attendance
+              {Math.round((mentee.meetingsCount / (mentee.meetingsTotal || 1)) * 100)}% attendance in reported meetings
             </span>
           </div>
         </td>
@@ -278,9 +289,11 @@ const ConsolidatedReport = () => {
     const semester = currentDate.getMonth() < 6 ? "Even" : "Odd";
     
     try {
-      // Filter meetings for the selected semester
+      // Filter meetings for the selected semester and with reports filled
       const semesterMeetings = meetings.filter(meeting => 
-        meeting && meeting.semester === selectedSemester
+        meeting && 
+        meeting.semester === selectedSemester &&
+        meeting.isReportFilled === true
       );
 
       return (
@@ -343,12 +356,12 @@ const ConsolidatedReport = () => {
                   </h2>
                   <p className="text-gray-400">View and manage all mentee reports</p>
                 </div>
-                <div className="flex items-center gap-2 bg-gray-700/50 px-4 py-2 rounded-lg">
+                {/* <div className="flex items-center gap-2 bg-gray-700/50 px-4 py-2 rounded-lg">
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   <span className="text-gray-300">{mentorName}</span>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -484,7 +497,9 @@ const ConsolidatedReport = () => {
             {/* PDF Download Section */}
             {(() => {
               const semesterMeetings = meetings.filter(
-                (meeting) => meeting && meeting.semester === selectedSemester
+                (meeting) => meeting && 
+                meeting.semester === selectedSemester && 
+                meeting.isReportFilled === true
               );
 
               return semesterMeetings.length < 3 ? (
@@ -505,7 +520,7 @@ const ConsolidatedReport = () => {
                     <span className='font-medium'>Not Enough Meetings</span>
                   </div>
                   <p className='text-sm text-red-400'>
-                    Please conduct at least three meetings in this semester
+                    Please conduct at least three meetings with filled reports in this semester
                     before generating the report.
                   </p>
                 </div>
@@ -535,6 +550,31 @@ const ConsolidatedReport = () => {
                 </PDFDownloadComponent>
               );
             })()}
+
+            {/* Unfilled Meetings Section */}
+            {unfilledMeetings.filter(meeting => meeting.semester === selectedSemester).length > 0 && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-red-400 mb-3">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="font-medium">Pending Reports</h3>
+                </div>
+                <div className="space-y-2">
+                  {unfilledMeetings
+                    .filter(meeting => meeting.semester === selectedSemester)
+                    .map((meeting, index) => (
+                      <div key={index} className="bg-gray-800/50 rounded-lg p-3 text-sm">
+                        <div className="text-gray-300 font-medium">{meeting?.meeting_notes?.TopicOfDiscussion}</div>
+                        <div className="text-gray-500 text-xs mt-1">
+                          <div>{meeting?.meeting_notes?.isMeetingOnline ? 'Link' : 'Venue'}: {meeting?.meeting_notes?.venue}</div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -163,9 +163,12 @@ const MeetingReportGenerator = () => {
   };
 
   const generatePDFDocument = () => {
+    // Filter meetings to only include those with filled reports
+    const meetingsWithReports = meetings.filter(meeting => meeting.isReportFilled);
+
     // Convert mentee_details array into a Map for quick lookups
     const menteeDetailsMap = new Map();
-    meetings.forEach((meeting) => {
+    meetingsWithReports.forEach((meeting) => {
       meeting.menteeDetails?.forEach((mentee) => {
         if (!menteeDetailsMap.has(mentee.MUJid)) {
           menteeDetailsMap.set(mentee.MUJid, {
@@ -179,8 +182,8 @@ const MeetingReportGenerator = () => {
       });
     });
 
-    // Count meeting attendance for each mentee
-    meetings.forEach((meeting) => {
+    // Count meeting attendance for each mentee (only for meetings with reports)
+    meetingsWithReports.forEach((meeting) => {
       const presentMentees = meeting.present_mentees || [];
       presentMentees.forEach((menteeMUJid) => {
         if (menteeDetailsMap.has(menteeMUJid)) {
@@ -197,7 +200,7 @@ const MeetingReportGenerator = () => {
     try {
       return (
         <ConsolidatedDocument
-          meetings={meetings}
+          meetings={meetingsWithReports}
           mentorName={mentorName}
           mentees={processedMentees}
           selectedSemester={semester}
@@ -209,7 +212,7 @@ const MeetingReportGenerator = () => {
       return null;
     }
   };
-  // Render components
+
   const renderFilterControls = () => (
     <div className='bg-white/10 backdrop-blur-md rounded-2xl p-4 lg:p-6 h-full'>
       <h2 className='text-xl font-semibold text-white mb-4 lg:mb-6'>Filters</h2>
@@ -381,30 +384,34 @@ const MeetingReportGenerator = () => {
       </div>
 
       {/* Dynamic MOM Button */}
-      <div className='flex gap-3 mt-auto pt-3 border-t border-white/10'>
-        <PDFDownloadComponent
-          document={generateMOMPdf(
-            {
-              ...meeting,
-              semester,
-              menteeDetails: meeting.menteeDetails
-                .filter((mentee) =>
-                  meeting.present_mentees.includes(mentee.MUJid)
-                )
-                .map((mentee) => ({
-                  MUJid: mentee.MUJid,
-                  name: mentee.name,
-                  mujId: mentee.MUJid, // Add this line to ensure registration number is passed
-                })),
-              meeting_notes: meeting.meeting_notes || {},
-            },
-            mentorName
-          )}
-          fileName={`MOM_${meeting.meeting_id}_${new Date().toLocaleDateString(
-            "en-US"
-          )}.pdf`}>
-          {`MOM ${index + 1}`}
-        </PDFDownloadComponent>
+      <div className='flex justify-center gap-3 mt-auto pt-3 border-t border-white/10'>
+        {meeting.isReportFilled ? (
+          <PDFDownloadComponent
+            document={generateMOMPdf(
+              {
+                ...meeting,
+                semester,
+                menteeDetails: meeting.menteeDetails
+                  .filter((mentee) =>
+                    meeting.present_mentees.includes(mentee.MUJid)
+                  )
+                  .map((mentee) => ({
+                    MUJid: mentee.MUJid,
+                    name: mentee.name,
+                    mujId: mentee.MUJid, // Add this line to ensure registration number is passed
+                  })),
+                meeting_notes: meeting.meeting_notes || {},
+              },
+              mentorName
+            )}
+            fileName={`MOM_${meeting.meeting_id}_${new Date().toLocaleDateString(
+              "en-US"
+            )}.pdf`}>
+            {`Download MOM ${index + 1} Report`}
+          </PDFDownloadComponent>
+        ) : (
+          <div className="text-orange-400 text-sm">Report not filled</div>
+        )}
       </div>
     </motion.div>
   );
@@ -424,50 +431,44 @@ const MeetingReportGenerator = () => {
             <div className='text-white/70'>No meetings found</div>
           </div>
         ) : (
-          <div className='space-y-4 lg:space-y-6'>
-            {" "}
-            {/* Removed pb-16 */}
-            <div className='grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-3 lg:gap-4'>
-              {meetings.map((meeting, index) =>
-                renderMeetingCard(meeting, index)
-              )}
-            </div>
-            {/* Consolidated Report Button - Show in both mobile and desktop */}
-            {meetings.length >= 3 ? (
-              <PDFDownloadComponent
-                document={generatePDFDocument()}
-                page={`consolidatedReport`}
-                fileName={`consolidated_report_${mentorName.replace(
-                  /\s+/g,
-                  "_"
-                )}_sem${semester}.pdf`}>
-                <div className='w-full flex items-center justify-center px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl text-white font-medium shadow-lg transition-all duration-300'>
-                  <svg
-                    className='w-5 h-5 mr-2'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth='2'
-                      d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
-                    />
-                  </svg>
-                  Download PDF Report
-                </div>
-              </PDFDownloadComponent>
-            ) : meetings.length > 0 ? (
-              <div className='w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-center'>
-                <span className='text-sm text-white/70'>
-                  Complete {3 - meetings.length} more{" "}
-                  {3 - meetings.length === 1 ? "meeting" : "meetings"} to
-                  generate consolidated report
-                </span>
-              </div>
-            ) : null}
+          <div className='grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-3 lg:gap-4'>
+            {meetings
+              .filter(meeting => meeting.isReportFilled)
+              .map((meeting, index) => renderMeetingCard(meeting, index))}
           </div>
         )}
+      </div>
+      {/* Consolidated Report Button - Fixed at bottom */}
+      <div className='p-4 lg:p-6 border-t border-white/10 flex justify-center'> {/* Added flex justify-center */}
+        {meetings.filter(m => m.isReportFilled).length >= 3 ? (
+          <PDFDownloadComponent
+            document={generatePDFDocument()}
+            page={`consolidatedReport`}
+            fileName={`consolidated_report_${mentorName.replace(/\s+/g, "_")}_sem${semester}.pdf`}>
+            <div className='w-96 flex items-center justify-center px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl text-white font-medium shadow-lg transition-all duration-300'>
+              <svg
+                className='w-5 h-5 mr-2'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth='2'
+                  d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
+                />
+              </svg>
+              Download Consolidated Report
+            </div>
+          </PDFDownloadComponent>
+        ) : meetings.filter(m => m.isReportFilled).length > 0 ? (
+          <div className='w-96 px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-center'>
+            <span className='text-sm text-white/70'>
+              Need {3 - meetings.filter(m => m.isReportFilled).length} more completed meeting reports to
+              generate consolidated report
+            </span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

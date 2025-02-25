@@ -503,7 +503,7 @@ export const ConsolidatedDocument = ({
             {pageIndex === 0 && (
               <View style={styles.section}>
                 <Text style={styles.detailItem}>Name of Mentor: {mentorName || "N/A"}</Text>
-                <Text style={[styles.detailItem, { marginBottom: 20 }]}>Number of Meetings Taken: {semesterMeetings.length}</Text>
+                <Text style={[styles.detailItem, { marginBottom: 20 }]}>Number of Meetings Taken: {meetings.length}</Text>
               </View>
             )}
 
