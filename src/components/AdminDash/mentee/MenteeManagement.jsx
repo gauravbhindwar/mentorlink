@@ -27,6 +27,7 @@ import EditMenteeDialog from './menteeSubComponents/EditMenteeDialog';
 import AssignMentorDialog from './menteeSubComponents/AssignMentorDialog';
 import BulkUploadDialog from './menteeSubComponents/BulkUploadDialog';
 import { calculateCurrentSemester, getCurrentAcademicYear, generateAcademicSessions } from './utils/academicUtils';
+import TableSkeleton from './TableSkeleton';  // Add this import at the top
 
 // Move filterData function up before it's used
 const filterData = (data, filters) => {
@@ -140,7 +141,7 @@ const MenteeManagement = () => {
   }, []);
 
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [loading, setLoading] = useState(false); // Set initial loading state to false
+  const [loading, setLoading] = useState(true); // Start with true
   const [mounted, setMounted] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
@@ -549,20 +550,11 @@ const handleUpdate = (updatedMentee) => {
 
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Modify useEffect for mounting
   useEffect(() => {
-    // // Clear session storage on mount
-    // console.log("Mentee Management Mounted    and removing session storage");
-    // console.log("Session Storage",localStorage.getItem('menteeData'));
-    localStorage.removeItem('mentee data');
-    
+    // Remove localStorage clear
     setMounted(true);
 
-    // // Handle screen size changes
-    // if (!isSmallScreen) {
-    //   setShowFilters(true);
-    // }
-
-    // Try to get data from session storage
     const storedData = localStorage.getItem('menteeData');
     if (storedData) {
       try {
@@ -570,11 +562,9 @@ const handleUpdate = (updatedMentee) => {
         setMentees(parsedData);
       } catch (error) {
         console.log('Error parsing stored data:', error);
-        localStorage.removeItem('menteeData');
       }
     }
   }, []);
-
 
   useEffect(() => {
     localStorage.setItem('showFilters', JSON.stringify(showFilters));
@@ -807,6 +797,7 @@ const handleUpdate = (updatedMentee) => {
     const initializeComponent = async () => {
       if (!mounted) return;
 
+      // Get current academic year and session
       const currentAcadYear = getCurrentAcademicYear();
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
@@ -816,27 +807,23 @@ const handleUpdate = (updatedMentee) => {
         ? `JULY-DECEMBER ${startYear}`
         : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
 
-      // Update filters instead of using setAcademicYear
+      // Set initial filters without triggering search
       setFilters(prev => ({
         ...prev,
         academicYear: currentAcadYear,
         academicSession: currentSession
       }));
 
-      try {
-        setLoadingStates(prev => ({ ...prev, fetching: true }));
-        await fetchMenteeData({
-          academicYear: currentAcadYear,
-          academicSession: currentSession
-        });
-        setTableVisible(true);
-      } catch (error) {
-        if (error.response?.status !== 400) {
-          showAlert(error.response?.data?.error || 'Error loading data', 'error');
-        }
-      } finally {
-        setLoadingStates(prev => ({ ...prev, fetching: false }));
-      }
+      // Add a small delay before resetting loading states
+      setTimeout(() => {
+        setLoadingStates(prev => ({ ...prev, initial: false }));
+        setLoading(false);
+      }, 1000); // 1 second delay
+
+      // Clear existing data
+      setMentees([]);
+      setTableVisible(false);
+      setCurrentFilters(null);
     };
 
     initializeComponent();
@@ -1042,7 +1029,7 @@ const handleUpdate = (updatedMentee) => {
               </div>
             </motion.div>
 
-            {/* Table Section - Updated for better responsiveness */}
+            {/* Table Section - Updated for initial loading state */}
             <motion.div
               className={`h-full min-w-0 transition-all duration-300 ease-in-out ${
                 !showFilters && isSmallScreen ? 'col-span-full' : ''
@@ -1053,10 +1040,8 @@ const handleUpdate = (updatedMentee) => {
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                 <div className="h-full flex flex-col p-4 pb-2">
-                  {loading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <CircularProgress sx={{ color: "#f97316" }} />
-                    </div>
+                  {loadingStates.initial || loading ? (
+                    <TableSkeleton rowsNum={8} />
                   ) : mentees.length > 0 ? (
                     <div className="h-full">
                       <MenteeTable 

@@ -10,6 +10,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenteeDetailsDialog from './MenteeDetailsDialog';
 import axios from 'axios';
+import TableSkeleton from './TableSkeleton';
 
 const CustomLoadingOverlay = () => (
   <Box sx={{
@@ -413,12 +414,10 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [currentFilters]);
 
-  // Modify processedMentees to use localData directly
+  // Update processedMentees to handle initial loading state
   const processedMentees = useMemo(() => {
-    if (!mounted || !localData) return [];
+    if (!mounted) return [];
 
-    // console.log("Processing mentees with filters:", filters);
-    
     return localData.map((mentee, index) => ({
       id: mentee._id || mentee.id || `temp-${index}-${Date.now()}`,
       MUJid: (mentee?.MUJid || '').toUpperCase(),
@@ -430,7 +429,6 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
       ...mentee,
     }));
   }, [mounted, localData]);
-
 
   const headerContent = useMemo(() => ({
     title: 'Mentee Management',
@@ -675,298 +673,305 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
   );
 
   return (
-    <Box sx={{ 
-      height: { xs: 'auto', lg: 'calc(100vh - 200px)' },
-      width: '100%',
-      position: 'relative',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'all 0.3s ease',
-      className: 'custom-scrollbar', // Add custom scrollbar class
-    }}>
-      {loading && (
-        <Box sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+    <>
+      {isLoading ? (
+        <TableSkeleton rowsNum={8} />
+      ) : (
+        <Box sx={{ 
+          height: { xs: 'auto', lg: 'calc(100vh - 200px)' },
+          width: '100%',
+          position: 'relative',
+          overflow: 'hidden',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1,
-          borderRadius: 2
+          flexDirection: 'column',
+          transition: 'all 0.3s ease',
+          className: 'custom-scrollbar', // Add custom scrollbar class
         }}>
-          <CircularProgress sx={{ color: '#f97316' }} />
+          {loading && (
+            <Box sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1,
+              borderRadius: 2
+            }}>
+              <CircularProgress sx={{ color: '#f97316' }} />
+            </Box>
+          )}
+          
+          <DataGrid
+            rows={processedMentees || []}
+            columns={columns}
+            getRowId={(row) => row._id || row.id}
+            sx={{
+              height: { xs: '500px', lg: '100%' },
+              width: '100%',
+              '& .MuiDataGrid-main': {
+                overflow: 'auto',
+                minHeight: { xs: '300px', lg: '200px' },
+                maxHeight: { xs: '500px', lg: 'calc(100vh - 300px)' },
+                height: '100%',
+                flex: 1,
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                overflow: 'auto !important',
+                className: 'custom-scrollbar', // Add custom scrollbar class
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                  height: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: 'rgba(249, 115, 22, 0.5)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    background: 'rgba(249, 115, 22, 0.7)',
+                  },
+                },
+                height: '100% !important',
+                minHeight: { xs: '300px', lg: '200px' },
+                maxHeight: { xs: '500px', lg: 'unset !important' },
+                scrollBehavior: 'smooth',
+                '@media (prefers-reduced-motion: no-preference)': {
+                  scrollBehavior: 'smooth',
+                },
+                animation: 'fadeIn 0.2s ease-out',
+              },
+              '& .MuiDataGrid-virtualScrollerContent': {
+                minWidth: 'fit-content',
+                height: '100%',
+              },
+              '& .MuiDataGrid-virtualScrollerRenderZone': {
+                width: '100%',
+                height: '100%',
+              },
+              width: '100%',
+              height: '100%',
+              minHeight: '400px',
+              border: 'none',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: 2,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '16px',
+                fontSize: '0.95rem',
+                color: 'rgba(255, 255, 255, 0.9)',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60px !important',
+                maxHeight: 'unset !important',
+                whiteSpace: 'normal',
+                lineHeight: '1.5',
+                transition: 'all 0.2s ease',
+              },
+              '& .MuiDataGrid-row': {
+                transition: 'background-color 0.2s ease',
+                cursor: 'pointer',
+                '&:hover': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                  transform: 'translateY(-1px)',
+                  transition: 'transform 0.2s ease, background-color 0.2s ease',
+                },
+              },
+              transition: 'all 0.3s ease',
+              '& .MuiDataGrid-columnHeader': {
+                transition: 'background-color 0.2s ease',
+                '& .MuiDataGrid-columnSeparator': {
+                  transition: 'opacity 0.3s ease',
+                },
+                '&:hover': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.15)',
+                  transition: 'background-color 0.3s ease',
+                },
+              },
+              '& .MuiDataGrid-columnSeparator': {
+                transition: 'none !important',
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                position: 'sticky',
+                top: 0,
+                zIndex: 2,
+                backgroundColor: 'rgba(249, 115, 22, 0.15)',
+                transition: 'none !important',
+              },
+              '& .MuiDataGrid-sortIcon': {
+                color: '#f97316',
+                opacity: 0.5,
+              },
+              '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
+                opacity: 1,
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontWeight: 600,
+              },
+              '@keyframes fadeIn': {
+                from: { opacity: 0.8 },
+                to: { opacity: 1 }
+              },
+              '& .MuiIconButton-root': {
+                transition: 'background-color 0.2s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                }
+              },
+              '& .MuiDataGrid-columnHeader': {
+                transition: 'background-color 0.2s ease',
+              },
+              '& .MuiDataGrid-cell': {
+                transition: 'background-color 0.2s ease',
+              },
+              '& .MuiDataGrid-footerContainer': {
+                transition: 'opacity 0.2s ease',
+              },
+              animation: 'none',
+              '& *': {
+                animation: 'none !important',
+              },
+              '& .MuiTablePagination-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                '& .MuiTablePagination-select': {
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                  borderRadius: 1,
+                  padding: '4px 8px',
+                  '&:focus': {
+                    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                  },
+                  '& .MuiSelect-select': {
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'transparent', // Ensure dropdown has no opaque color
+                  },
+                },
+                '& .MuiTablePagination-selectIcon': {
+                  color: '#f97316',
+                },
+                '& .MuiTablePagination-displayedRows': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
+                '& .MuiTablePagination-actions .MuiIconButton-root': {
+                  color: '#f97316',
+                  '&:hover': {
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                  },
+                },
+                '& .MuiTablePagination-menuItem': {
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  backgroundColor: 'transparent', // Remove transparency from menu item
+                },
+                '& .MuiButtonBase-root.MuiMenuItem-root.MuiMenuItem-gutters.MuiMenuItem-root.MuiMenuItem-gutters.MuiTablePagination-menuItem': {
+                  backgroundColor: 'transparent',
+                },
+              },
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              },
+            }}
+            components={{
+              Toolbar: GridToolbar,
+              LoadingOverlay: CustomLoadingOverlay,
+              NoRowsOverlay: CustomNoRowsOverlay,
+              Header: CustomHeaderComponent,
+              Footer: CustomFooterComponent,
+              Pagination: CustomPagination,
+            }}
+            componentsProps={{
+              columnHeaders: {
+                sx: {
+                  transition: 'none !important',
+                },
+              },
+              virtualScroller: {
+                sx: {
+                  scrollBehavior: 'smooth',
+                },
+              },
+            }}
+            columnBuffer={5}
+            rowBuffer={10}
+            rowHeight={60}
+            headerHeight={56}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            pagination
+            disableSelectionOnClick={true}
+            disableColumnMenu={true}
+            disableColumnFilter={false}
+          />
+
+          <CustomFooterComponent />
+
+          {(isLoading) && <LoadingOverlay />}
+
+          <MenteeDetailsDialog
+            open={detailsDialog.open}
+            onClose={() => setDetailsDialog({ open: false, mentee: null })}
+            mentee={detailsDialog.mentee}
+          />
+
+          <Dialog
+            open={deleteDialog.open}
+            onClose={() => setDeleteDialog({ open: false, mujid: null })}
+            PaperProps={{
+              sx: {
+                backgroundColor: '#1a1a1a',
+                color: 'white',
+                borderRadius: '12px',
+                border: '1px solid rgba(249, 115, 22, 0.2)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+              }
+            }}
+          >
+            <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              Confirm Delete
+            </DialogTitle>
+            <DialogContent sx={{ my: 2 }}>
+              Are you sure you want to delete this mentee? This action cannot be undone.
+            </DialogContent>
+            <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+              <Button
+                onClick={() => setDeleteDialog({ open: false, mujid: null })}
+                variant="outlined"
+                sx={{
+                  color: 'white',
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  } 
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmDelete}
+                variant="contained"
+                sx={{
+                  bgcolor: '#ef4444',
+                  '&:hover': { bgcolor: '#dc2626' }
+                }}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
-      
-      <DataGrid
-        rows={processedMentees || []}
-        columns={columns}
-        getRowId={(row) => row._id || row.id}
-        sx={{
-          height: { xs: '500px', lg: '100%' },
-          width: '100%',
-          '& .MuiDataGrid-main': {
-            overflow: 'auto',
-            minHeight: { xs: '300px', lg: '200px' },
-            maxHeight: { xs: '500px', lg: 'calc(100vh - 300px)' },
-            height: '100%',
-            flex: 1,
-          },
-          '& .MuiDataGrid-virtualScroller': {
-            overflow: 'auto !important',
-            className: 'custom-scrollbar', // Add custom scrollbar class
-            '&::-webkit-scrollbar': {
-              width: '8px',
-              height: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'rgba(249, 115, 22, 0.5)',
-              borderRadius: '4px',
-              '&:hover': {
-                background: 'rgba(249, 115, 22, 0.7)',
-              },
-            },
-            height: '100% !important',
-            minHeight: { xs: '300px', lg: '200px' },
-            maxHeight: { xs: '500px', lg: 'unset !important' },
-            scrollBehavior: 'smooth',
-            '@media (prefers-reduced-motion: no-preference)': {
-              scrollBehavior: 'smooth',
-            },
-            animation: 'fadeIn 0.2s ease-out',
-          },
-          '& .MuiDataGrid-virtualScrollerContent': {
-            minWidth: 'fit-content',
-            height: '100%',
-          },
-          '& .MuiDataGrid-virtualScrollerRenderZone': {
-            width: '100%',
-            height: '100%',
-          },
-          width: '100%',
-          height: '100%',
-          minHeight: '400px',
-          border: 'none',
-          backgroundColor: 'rgba(0, 0, 0, 0.2)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: 2,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-          '& .MuiDataGrid-cell': {
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            padding: '16px',
-            fontSize: '0.95rem',
-            color: 'rgba(255, 255, 255, 0.9)',
-            textAlign: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '60px !important',
-            maxHeight: 'unset !important',
-            whiteSpace: 'normal',
-            lineHeight: '1.5',
-            transition: 'all 0.2s ease',
-          },
-          '& .MuiDataGrid-row': {
-            transition: 'background-color 0.2s ease',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.08)',
-              transform: 'translateY(-1px)',
-              transition: 'transform 0.2s ease, background-color 0.2s ease',
-            },
-          },
-          transition: 'all 0.3s ease',
-          '& .MuiDataGrid-columnHeader': {
-            transition: 'background-color 0.2s ease',
-            '& .MuiDataGrid-columnSeparator': {
-              transition: 'opacity 0.3s ease',
-            },
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.15)',
-              transition: 'background-color 0.3s ease',
-            },
-          },
-          '& .MuiDataGrid-columnSeparator': {
-            transition: 'none !important',
-          },
-          '& .MuiDataGrid-columnHeaders': {
-            position: 'sticky',
-            top: 0,
-            zIndex: 2,
-            backgroundColor: 'rgba(249, 115, 22, 0.15)',
-            transition: 'none !important',
-          },
-          '& .MuiDataGrid-sortIcon': {
-            color: '#f97316',
-            opacity: 0.5,
-          },
-          '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
-            opacity: 1,
-          },
-          '& .MuiDataGrid-columnHeaderTitle': {
-            fontWeight: 600,
-          },
-          '@keyframes fadeIn': {
-            from: { opacity: 0.8 },
-            to: { opacity: 1 }
-          },
-          '& .MuiIconButton-root': {
-            transition: 'background-color 0.2s ease',
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.08)',
-            }
-          },
-          '& .MuiDataGrid-columnHeader': {
-            transition: 'background-color 0.2s ease',
-          },
-          '& .MuiDataGrid-cell': {
-            transition: 'background-color 0.2s ease',
-          },
-          '& .MuiDataGrid-footerContainer': {
-            transition: 'opacity 0.2s ease',
-          },
-          animation: 'none',
-          '& *': {
-            animation: 'none !important',
-          },
-          '& .MuiTablePagination-root': {
-            color: 'rgba(255, 255, 255, 0.7)',
-            '& .MuiTablePagination-select': {
-              color: 'rgba(255, 255, 255, 0.9)',
-              backgroundColor: 'rgba(249, 115, 22, 0.2)',
-              borderRadius: 1,
-              padding: '4px 8px',
-              '&:focus': {
-                backgroundColor: 'rgba(249, 115, 22, 0.2)',
-              },
-              '& .MuiSelect-select': {
-                color: 'rgba(255, 255, 255, 0.9)',
-                backgroundColor: 'transparent', // Ensure dropdown has no opaque color
-              },
-            },
-            '& .MuiTablePagination-selectIcon': {
-              color: '#f97316',
-            },
-            '& .MuiTablePagination-displayedRows': {
-              color: 'rgba(255, 255, 255, 0.7)',
-            },
-            '& .MuiTablePagination-actions .MuiIconButton-root': {
-              color: '#f97316',
-              '&:hover': {
-                backgroundColor: 'rgba(249, 115, 22, 0.1)',
-              },
-            },
-            '& .MuiTablePagination-menuItem': {
-              color: 'rgba(255, 255, 255, 0.9)',
-              backgroundColor: 'transparent', // Remove transparency from menu item
-            },
-            '& .MuiButtonBase-root.MuiMenuItem-root.MuiMenuItem-gutters.MuiMenuItem-root.MuiMenuItem-gutters.MuiTablePagination-menuItem': {
-              backgroundColor: 'transparent',
-            },
-          },
-          '& .MuiDataGrid-footerContainer': {
-            borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-          },
-        }}
-        components={{
-          Toolbar: GridToolbar,
-          LoadingOverlay: CustomLoadingOverlay,
-          NoRowsOverlay: CustomNoRowsOverlay,
-          Header: CustomHeaderComponent,
-          Footer: CustomFooterComponent,
-          Pagination: CustomPagination,
-        }}
-        componentsProps={{
-          columnHeaders: {
-            sx: {
-              transition: 'none !important',
-            },
-          },
-          virtualScroller: {
-            sx: {
-              scrollBehavior: 'smooth',
-            },
-          },
-        }}
-        columnBuffer={5}
-        rowBuffer={10}
-        rowHeight={60}
-        headerHeight={56}
-        pageSize={10}
-        rowsPerPageOptions={[10, 25, 50]}
-        pagination
-        disableSelectionOnClick={true}
-        disableColumnMenu={true}
-        disableColumnFilter={false}
-      />
-
-      <CustomFooterComponent />
-
-      {(isLoading) && <LoadingOverlay />}
-
-      <MenteeDetailsDialog
-        open={detailsDialog.open}
-        onClose={() => setDetailsDialog({ open: false, mentee: null })}
-        mentee={detailsDialog.mentee}
-      />
-
-      <Dialog
-        open={deleteDialog.open}
-        onClose={() => setDeleteDialog({ open: false, mujid: null })}
-        PaperProps={{
-          sx: {
-            backgroundColor: '#1a1a1a',
-            color: 'white',
-            borderRadius: '12px',
-            border: '1px solid rgba(249, 115, 22, 0.2)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          }
-        }}
-      >
-        <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          Confirm Delete
-        </DialogTitle>
-        <DialogContent sx={{ my: 2 }}>
-          Are you sure you want to delete this mentee? This action cannot be undone.
-        </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
-          <Button
-            onClick={() => setDeleteDialog({ open: false, mujid: null })}
-            variant="outlined"
-            sx={{
-              color: 'white',
-              borderColor: 'rgba(255, 255, 255, 0.2)',
-              '&:hover': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              } 
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmDelete}
-            variant="contained"
-            sx={{
-              bgcolor: '#ef4444',
-              '&:hover': { bgcolor: '#dc2626' }
-            }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );};
+    </>
+  );
+};
 
 export default MenteeTable;

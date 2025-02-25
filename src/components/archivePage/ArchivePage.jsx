@@ -5,6 +5,11 @@ import YearSessionSelector from "./archiveComponents/YearSessionSelector";
 import ArchiveResults from "./archiveComponents/ArchiveResults";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { ArchiveDataProvider } from '@/context/ArchiveDataContext';
+import dynamic from 'next/dynamic';
+import searchAnimation from '@/assets/animations/searchData.json';
+
+// Dynamically import Lottie with SSR disabled
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 const ArchivePage = () => {
   const [searchParams, setSearchParams] = useState(null);
@@ -160,7 +165,23 @@ const ArchivePage = () => {
               transition={{ duration: 0.3 }}
               className='h-full'
             >
-              {searchParams && <ArchiveResults searchParams={searchParams} />}
+              {searchParams ? (
+                <ArchiveResults searchParams={searchParams} />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <div className="w-64 h-64">
+                    {typeof window !== 'undefined' && (
+                      <Lottie
+                        animationData={searchAnimation}
+                        loop={true}
+                        autoplay={true}
+                      />
+                    )}
+                  </div>
+                  <h3 className="mt-4 text-lg font-medium text-gray-400">Select Academic Details</h3>
+                  <p className="mt-2 text-sm text-gray-500">Choose the academic year and session to view archived data</p>
+                </div>
+              )}
             </motion.div>
           </div>
         </div>

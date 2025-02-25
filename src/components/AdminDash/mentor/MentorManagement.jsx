@@ -6,7 +6,6 @@ import {
   // Button,
   useMediaQuery,
   IconButton,
-  CircularProgress,
 } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 // import CloseIcon from "@mui/icons-material/Close";
@@ -26,8 +25,16 @@ import {
   generateAcademicSessions,
   getCurrentAcademicYear 
 } from './utils/academicUtils';
+import MentorSkeleton from "./MentorSkeleton";
 
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from "@mui/material";
+
+// Add these imports at the top
+import dynamic from 'next/dynamic';
+import noData from '@/assets/animations/noData.json';
+
+// Add this after the imports
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 // Add this new component at the top level of the file
 const EmailConflictDialog = ({ open, onClose, conflictingMentor }) => {
@@ -734,11 +741,7 @@ const handleEditMentor = async (updatedMentor) => {
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                 <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}
-                  {loading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <CircularProgress sx={{ color: "#f97316" }} />
-                    </div>
-                  ) : mentors.length > 0 ? (
+                  {mentors.length > 0 ? (
                     <div className="h-full"> {/* Removed overflow-hidden */}
                       <MentorTable 
                         mentors={mentors}
@@ -749,10 +752,41 @@ const handleEditMentor = async (updatedMentor) => {
                         onDataUpdate={(updatedMentors) => setMentors(updatedMentors)}
                       />
                     </div>
+                  ) : loading ? (
+                    <div className="h-full bg-black/20 rounded-xl backdrop-blur-sm">
+                      <MentorSkeleton />
+                    </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                      <div className="w-64 h-64">
+                        {typeof window !== 'undefined' && (
+                          <Lottie
+                            animationData={noData}
+                            loop={true}
+                            autoplay={true}
+                          />
+                        )}
+                      </div>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          mt: 2,
+                          fontWeight: 500 
+                        }}
+                      >
                         {tableVisible ? 'No mentors found' : 'Use the filters to search for mentors'}
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          mt: 1 
+                        }}
+                      >
+                        {tableVisible ? 
+                          'Try different search criteria or add a new mentor' : 
+                          'Select academic year and session to get started'}
                       </Typography>
                     </div>
                   )}
