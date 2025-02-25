@@ -222,7 +222,7 @@ const handleEditMentor = async (updatedMentor) => {
       // Remove extra fetch since we already updated the state
       setEditDialog(false);
       // Show single toast notification
-      showAlert("Mentor updated successfully", "success");
+      // showAlert("Mentor updated successfully", "success");
     }
   } catch (error) {
     if (error.response?.status === 409) {
@@ -251,7 +251,7 @@ const handleEditMentor = async (updatedMentor) => {
         await axios.delete("/api/admin/manageUsers/manageMentor", {
           data: { MUJid, roles: ['mentor'] }
         });
-        showAlert("Mentor deleted successfully", "success");
+        // showAlert("Mentor deleted successfully", "success");
         fetchMentors(currentFilters);
       }
     } catch (error) {
@@ -424,7 +424,7 @@ const handleEditMentor = async (updatedMentor) => {
       );
 
       if (response.data) {
-        showAlert("Success", "Mentor updated successfully", "success");
+        // showAlert("Success", "Mentor updated successfully", "success");
         setDuplicateMentorDialog(false);
         setDuplicateEditMode(false);
         await fetchMentors(currentFilters);
@@ -619,9 +619,36 @@ const handleEditMentor = async (updatedMentor) => {
   // };
 
   // Update handleFilterChange to trigger fetch
-  const handleFilterChange = (filters) => {
-    fetchMentors(filters);
+  const handleFilterChange = async (filters) => {
+    // Don't search if required filters are missing
+    if (!filters.academicYear || !filters.academicSession) {
+      return;
+    }
+  
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentor', {
+        params: filters
+      });
+      
+      if (response.data) {
+        setMentors(response.data);
+        setTableVisible(true);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error fetching mentors');
+      setMentors([]);
+      setTableVisible(false);
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  // Update email search handling to not trigger API calls
+  // const handleEmailFilter = (value) => {
+  //   setEmailFilter(value); // This will be used by MentorTable to filter existing data
+  // };
+  
 
   // Add effect to handle screen size changes
   useEffect(() => {

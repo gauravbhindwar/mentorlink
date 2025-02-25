@@ -35,11 +35,18 @@ const mentorsSchema = new mongoose.Schema({
   otp: { type: String, default: null },
   otpExpires: { type: Date, default: null },
   isOtpUsed: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true },
+  isActive: { 
+    type: Boolean, 
+    default: true,
+    required: true // Make it required to ensure it's always set
+  },
 });
 
-// Add a pre-save middleware to ensure MUJid is uppercase
+// Add a pre-save middleware to ensure MUJid is uppercase and isActive is always boolean
 mentorsSchema.pre("save", function (next) {
+  if (this.isModified('isActive')) {
+    this.isActive = Boolean(this.isActive);
+  }
   if (this.MUJid) {
     this.MUJid = this.MUJid.toUpperCase();
   }

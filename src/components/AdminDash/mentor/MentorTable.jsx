@@ -70,6 +70,36 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
   const cachedData = useRef(new Map());
   const batchKey = useRef('');
 
+  const [menteeStats, setMenteeStats] = useState(null);
+  const [selectedSemester, setSelectedSemester] = useState(null);
+  const [semesterMentees, setSemesterMentees] = useState([]);
+  const [loadingMentees, setLoadingMentees] = useState(false);
+
+  // Add function to fetch mentee statistics
+  const fetchMenteeStats = async (mentorId) => {
+    try {
+      const response = await axios.get(`/api/admin/getMenteesCount?mentorMujid=${mentorId}`);
+      setMenteeStats(response.data.counts);
+    } catch (error) {
+      console.error('Error fetching mentee stats:', error);
+      toast.error('Error loading mentee statistics', toastConfig);
+    }
+  };
+
+  // Add function to fetch mentees for a specific semester
+  const fetchSemesterMentees = async (mentorId, semester) => {
+    setLoadingMentees(true);
+    try {
+      const response = await axios.get(`/api/admin/getMenteesByMentor?mentorMujid=${mentorId}&semester=${semester}`);
+      setSemesterMentees(response.data.mentees);
+    } catch (error) {
+      console.error('Error fetching semester mentees:', error);
+      toast.error('Error loading mentee details', toastConfig);
+    } finally {
+      setLoadingMentees(false);
+    }
+  };
+
   // Add this function to get data from cache or fetch
   const getDataFromCacheOrFetch = async (academicYear, academicSession) => {
     const cacheKey = `${academicYear}-${academicSession}`;
@@ -140,7 +170,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       setLoading(true);
       try {
         await onDeleteClick(deleteDialog.mujid);
-        toast.success('Mentor deleted successfully', toastConfig);
+        // toast.success('Mentor deleted successfully', toastConfig);
         // Update local data
         if (onDataUpdate) {
           onDataUpdate(prevMentors => 
@@ -148,7 +178,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
           );
         }
       } catch (error) {
-        toast.error('Error deleting mentor', toastConfig);
+        // toast.error('Error deleting mentor', toastConfig);
         console.log('Error deleting mentor:', error);
       } finally {
         setLoading(false);
@@ -176,7 +206,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       
       if (!foundMentor) {
         setTransferError('No mentor found with this email in the same academic year and session');
-        toast.error('No mentor found with this email in the same academic year and session', toastConfig);
+        // toast.error('No mentor found with this email in the same academic year and session', toastConfig);
         setSearchingMentor(false);
         return;
       }
@@ -184,18 +214,18 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       // Prevent self-transfer
       if (foundMentor.MUJid === transferDialog.fromMentor.MUJid) {
         setTransferError('Cannot transfer mentees to the same mentor');
-        toast.error('Cannot transfer mentees to the same mentor', toastConfig);
+        // toast.error('Cannot transfer mentees to the same mentor', toastConfig);
         setSearchingMentor(false);
         return;
       }
 
       setTargetMentor(foundMentor);
-      toast.success('Mentor found successfully', toastConfig);
+      // toast.success('Mentor found successfully', toastConfig);
       setSearchingMentor(false);
 
     } catch (error) {
       setTransferError(error.response?.data?.message || 'Error finding mentor');
-      toast.error(error.response?.data?.message || 'Error finding mentor', toastConfig);
+      // toast.error(error.response?.data?.message || 'Error finding mentor', toastConfig);
       setSearchingMentor(false);
     }
   };
@@ -224,24 +254,34 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
         }
       }
     } catch (error) {
-      toast.error(
-        `Error transferring mentees: ${error.response?.data?.message || 'Unknown error'}`,
-        toastConfig
-      );
+      // toast.error(
+      //   // `Error transferring mentees: ${error.response?.data?.message || 'Unknown error'}`,
+      //   toastConfig
+      // );
       setTransferError(error.response?.data?.message || 'Error transferring mentees');
     } finally {
       setTransferLoading(false);
     }
   };
 
-  // Process mentors data - Update this to include all necessary fields
+  // Update processedMentors function to include comprehensive search
   const processedMentors = useMemo(() => {
-    const mentorsToProcess = emailFilter 
-      ? mentors.filter(mentor => 
-          mentor.email.toLowerCase().includes(emailFilter.toLowerCase()))
+    // Return empty array if mentors is null/undefined
+    if (!mentors) return [];
+
+    const searchFields = ['name', 'email', 'MUJid', 'phone_number', 'academicYear', 'academicSession'];
+    
+    // Only filter if we have data and a filter value
+    const menteesToProcess = (emailFilter && mentors.length > 0)
+      ? mentors.filter(mentor => {
+          const searchValue = emailFilter.toLowerCase();
+          return searchFields.some(field => 
+            mentor[field]?.toString().toLowerCase().includes(searchValue)
+          );
+        })
       : mentors;
 
-    return mentorsToProcess.map((item) => ({
+    return menteesToProcess.map((item) => ({
       ...item,
       id: item._id || item.id,
       MUJid: (item.MUJid || '').toUpperCase(),
@@ -430,6 +470,41 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
   //   }
   // }, [mentors, emailFilter]);
 
+  // Update the column definitions to highlight search matches
+  const highlightSearchMatch = (text, searchValue) => {
+    if (!text || !searchValue) return text;
+    
+    const parts = text.toString().split(new RegExp(`(${searchValue})`, 'gi'));
+    
+    return (
+      <Box sx={{
+        width: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
+      }}>
+        {parts.map((part, i) => 
+          part.toLowerCase() === searchValue.toLowerCase() ? (
+            <span
+              key={i}
+              style={{ 
+                backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                color: '#f97316',
+                padding: '2px 4px',
+                borderRadius: '4px',
+                fontWeight: 600
+              }}
+            >
+              {part}
+            </span>
+          ) : (
+            part
+          )
+        )}
+      </Box>
+    );
+  };
+
   const columns = [
     { 
       field: 'serialNumber',    
@@ -451,15 +526,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       flex: 1,
       minWidth: 180,
       sortable: true,
-            renderCell: (params) => (
-        <Typography sx={{ 
-          fontWeight: 500,
-          whiteSpace: 'normal',
-          lineHeight: 1.2
-        }}>
-          {params.value}
-        </Typography>
-      ),
+      renderCell: (params) => highlightSearchMatch(params.value, emailFilter)
     },
     {
       field: 'email',
@@ -467,15 +534,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       flex: 1.2,
       minWidth: 220,
       sortable: true,
-      renderCell: (params) => (
-        <Typography sx={{
-          fontSize: '0.9rem',
-          whiteSpace: 'normal',
-          lineHeight: 1.2
-        }}>
-          {params.value}
-        </Typography>
-      ),
+      renderCell: (params) => highlightSearchMatch(params.value, emailFilter)
     },
     {
       field: 'phone_number',
@@ -483,14 +542,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       flex: 0.8,
       minWidth: 130,
       sortable: false,
-      renderCell: (params) => (
-        <Typography sx={{ 
-          fontFamily: 'monospace',
-          letterSpacing: '0.5px'
-        }}>
-          {params.value}
-        </Typography>
-      ),
+      renderCell: (params) => highlightSearchMatch(params.value, emailFilter)
     },
     {
       field: 'isActive',
@@ -702,6 +754,164 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
       cachedData.current.set(cacheKey, mentors);
     }
   }, [mentors, filters.academicYear, filters.academicSession]);
+
+  // Update the transfer dialog content
+  const renderTransferDialogContent = () => (
+    <DialogContent sx={{ my: 2, px: 3 }}>
+      <Typography variant="body2" sx={{ mb: 3, color: 'rgba(255, 255, 255, 0.7)' }}>
+        Transfer mentees from {transferDialog.fromMentor?.name} ({transferDialog.fromMentor?.MUJid})
+      </Typography>
+      
+      {menteeStats && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ color: '#10B981', mb: 2 }}>
+            Current Mentees Distribution:
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 2 }}>
+            {Object.entries(menteeStats).map(([semester, count]) => (
+              <Button
+                key={semester}
+                onClick={() => {
+                  setSelectedSemester(parseInt(semester));
+                  fetchSemesterMentees(transferDialog.fromMentor.MUJid, semester);
+                }}
+                variant={selectedSemester === parseInt(semester) ? "contained" : "outlined"}
+                sx={{
+                  color: selectedSemester === parseInt(semester) ? 'white' : '#10B981',
+                  borderColor: '#10B981',
+                  bgcolor: selectedSemester === parseInt(semester) ? '#10B981' : 'transparent',
+                  '&:hover': {
+                    bgcolor: selectedSemester === parseInt(semester) ? '#059669' : 'rgba(16, 185, 129, 0.1)',
+                  }
+                }}
+              >
+                Sem {semester}: {count}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+      )}
+
+      {selectedSemester && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ color: '#10B981', mb: 2 }}>
+            Semester {selectedSemester} Mentees:
+          </Typography>
+          {loadingMentees ? (
+            <CircularProgress size={24} sx={{ color: '#10B981' }} />
+          ) : (
+            <Box sx={{ 
+              maxHeight: '200px', 
+              overflowY: 'auto',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+              borderRadius: 1,
+              p: 1
+            }}>
+              {semesterMentees.map((mentee) => (
+                <Box key={mentee.MUJid} sx={{ 
+                  p: 1, 
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  '&:last-child': { borderBottom: 'none' }
+                }}>
+                  <Typography variant="body2" sx={{ color: 'white' }}>
+                    {mentee.name} ({mentee.MUJid})
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {!targetMentor ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            fullWidth
+            label="Enter Mentor Email"
+            value={transferEmail}
+            onChange={(e) => setTransferEmail(e.target.value)}
+            error={!!transferError}
+            helperText={transferError}
+            disabled={searchingMentor}
+            sx={{
+              '& .MuiInputBase-root': {
+                color: 'white',
+              },
+              '& .MuiFormLabel-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+              },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.7)',
+                },
+              },
+              '& .MuiFormHelperText-root': {
+                color: '#ef4444',
+              },
+            }}
+          />
+          <Button
+            onClick={handleTransferMentees}
+            variant="contained"
+            disabled={!transferEmail || searchingMentor}
+            sx={{
+              bgcolor: '#ea580c',
+              '&:hover': { bgcolor: '#ea580c' }
+            }}
+          >
+            {searchingMentor ? <CircularProgress size={24} /> : 'Find Mentor'}
+          </Button>
+        </Box>
+      ) : (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" sx={{ color: '#ea580c', mb: 2 }}>
+            Transfer to:
+          </Typography>
+          <Box sx={{ 
+            p: 3,
+            bgcolor: 'rgba(249, 115, 22, 0.1)',
+            borderRadius: 2,
+            border: '1px solid rgba(249, 115, 22, 0.2)'
+          }}>
+            <Typography variant="body1" sx={{ color: 'white', mb: 2, fontWeight: 500 }}>
+              {targetMentor.name}
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                <strong>MUJ ID:</strong> {targetMentor.MUJid}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                <strong>Email:</strong> {targetMentor.email}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
+                <strong>Academic Year:</strong> {targetMentor.academicYear}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                <strong>Session:</strong> {targetMentor.academicSession}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      )}
+    </DialogContent>
+  );
+
+  // Update useEffect to fetch mentee stats when transfer dialog opens
+  useEffect(() => {
+    if (transferDialog.open && transferDialog.fromMentor) {
+      fetchMenteeStats(transferDialog.fromMentor.MUJid);
+    } else {
+      setMenteeStats(null);
+      setSelectedSemester(null);
+      setSemesterMentees([]);
+    }
+  }, [transferDialog.open, transferDialog.fromMentor]);
 
   return (
     <Box sx={{ 
@@ -1001,88 +1211,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
         <DialogTitle sx={{ color: '#10B981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
           Transfer Mentees
         </DialogTitle>
-        <DialogContent sx={{ my: 2, px: 3 }}>
-          <Typography variant="body2" sx={{ mb: 3, color: 'rgba(255, 255, 255, 0.7)' }}>
-            Transfer mentees from {transferDialog.fromMentor?.name} ({transferDialog.fromMentor?.MUJid})
-          </Typography>
-          
-          {!targetMentor ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <TextField
-                fullWidth
-                label="Enter Mentor Email"
-                value={transferEmail}
-                onChange={(e) => setTransferEmail(e.target.value)}
-                error={!!transferError}
-                helperText={transferError}
-                disabled={searchingMentor}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    color: 'white',
-                  },
-                  '& .MuiFormLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                  },
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.7)',
-                    },
-                  },
-                  '& .MuiFormHelperText-root': {
-                    color: '#ef4444',
-                  },
-                }}
-              />
-              <Button
-                onClick={handleTransferMentees}
-                variant="contained"
-                disabled={!transferEmail || searchingMentor}
-                sx={{
-                  bgcolor: '#ea580c',
-                  '&:hover': { bgcolor: '#ea580c' }
-                }}
-              >
-                {searchingMentor ? <CircularProgress size={24} /> : 'Find Mentor'}
-              </Button>
-            </Box>
-          ) : (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: '#ea580c', mb: 2 }}>
-                Transfer to:
-              </Typography>
-              <Box sx={{ 
-                p: 3,
-                bgcolor: 'rgba(249, 115, 22, 0.1)',
-                borderRadius: 2,
-                border: '1px solid rgba(249, 115, 22, 0.2)'
-              }}>
-                <Typography variant="body1" sx={{ color: 'white', mb: 2, fontWeight: 500 }}>
-                  {targetMentor.name}
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    <strong>MUJ ID:</strong> {targetMentor.MUJid}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    <strong>Email:</strong> {targetMentor.email}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
-                    <strong>Academic Year:</strong> {targetMentor.academicYear}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    <strong>Session:</strong> {targetMentor.academicSession}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
+        {renderTransferDialogContent()}
         <DialogActions sx={{ borderTop: '1px solid rgba(16, 185, 129, 0.2)', p: 2 }}>
           <Button
             onClick={() => {
@@ -1112,7 +1241,7 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter }) => {
                 bgcolor: '#ea580c',
                 '&:hover': { bgcolor: '#ea580c' }
               }}
-            >
+            > 
               {transferLoading ? <CircularProgress size={24} /> : 'Confirm Transfer'}
             </Button>
           )}

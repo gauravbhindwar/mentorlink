@@ -125,7 +125,7 @@ const FilterSection = ({
       endYear = academicYear + 1;
     } 
     // Handle if academicYear is a string with format "YYYY-YYYY"
-    else if (typeof academicYear === 'string' && academicYear.includes('-')) {
+    else if (typeof academicYear=== 'string' && academicYear.includes('-')) {
       [startYear, endYear] = academicYear.split('-').map(Number);
     } 
   
@@ -230,33 +230,72 @@ const FilterSection = ({
     const baseParams = {
       academicYear: filters.academicYear.trim(),
       academicSession: filters.academicSession.trim().toUpperCase(),
+      page: 1,
+      limit: 50, // Initial page size
     };
   
     try {
+      // Set loading state immediately
+      onSearch([], { ...filters, isLoading: true });
+
       let data;
-      const localData = localStorage.getItem('mentee data');
+      const cachedData = localStorage.getItem('mentee data');
+      const cachedYear = localStorage.getItem('currentAcademicYear');
+      const cachedSession = localStorage.getItem('currentAcademicSession');
       
-      if (!localData || (!filters.semester && !filters.menteeMujid && !filters.mentorEmailid)) {
+      const shouldFetchFromAPI = !cachedData || 
+        (filters.academicYear !== cachedYear || 
+         filters.academicSession !== cachedSession);
+
+      if (shouldFetchFromAPI) {
         const response = await axios.get('/api/admin/manageUsers/manageMentee', {
           params: baseParams
         });
+        
         data = response.data;
-        localStorage.setItem('mentee data', JSON.stringify(data));
+        
+        // Keep loading state while we process data
+        if (data && data.length > 0) {
+          // Set data but keep loading state true
+          onSearch(data, { ...filters, isLoading: true });
+          
+          // Store in localStorage asynchronously
+          localStorage.setItem('mentee data', JSON.stringify(data));
+          localStorage.setItem('currentAcademicYear', filters.academicYear);
+          localStorage.setItem('currentAcademicSession', filters.academicSession);
+          
+          // Turn off loading with a slight delay to prevent flashing
+          setTimeout(() => {
+            onSearch(data, { ...filters, isLoading: false });
+          }, 100);
+        } else {
+          // If no data, turn off loading immediately
+          onSearch(data || [], { ...filters, isLoading: false });
+        }
       } else {
-        data = JSON.parse(localData);
-        const filteredData = filterData(data, filters);
-        localStorage.setItem('menteeFilteredData', JSON.stringify(filteredData));
-        data = filteredData;
+        data = JSON.parse(cachedData);
+        
+        if (filters.semester || filters.menteeMujid || filters.mentorEmailid) {
+          data = filterData(data, filters);
+        }
+        
+        // For cached data, use the same pattern
+        if (data && data.length > 0) {
+          onSearch(data, { ...filters, isLoading: true });
+          setTimeout(() => {
+            onSearch(data, { ...filters, isLoading: false });
+          }, 100);
+        } else {
+          onSearch(data || [], { ...filters, isLoading: false });
+        }
       }
-  
-      onSearch(data, filters); // Pass both data and filters to parent
     } catch (error) {
       console.error('Search error:', error);
       showAlert('Error searching mentees', 'error');
+      onSearch([], { ...filters, error: true, isLoading: false });
     }
   };
-  
-  // to do avi
+
   const handleFilterChange = (name, value) => {
     onFilterChange(name, value);
   };
@@ -591,6 +630,7 @@ const FilterSection = ({
                   bgcolor: 'rgba(17, 24, 39, 0.95)',
                   borderRadius: '8px',
                   border: '1px solid rgba(249, 115, 22, 0.2)',
+                  backdropFilter: 'blur(10px)',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                   maxHeight: '200px',
                   overflow: 'hidden',
@@ -629,35 +669,72 @@ const FilterSection = ({
       )
     },
     {
-      name: 'menteeMujid',
-      label: 'Mentee MUJID',
+      name: 'email',
+      label: 'Search',
+      placeholder: 'Search across all fields',
       customRender: (
-        <TextField
-          size="small"
-          label="Mentee MUJID"
-          value={filters.menteeMujid || ''}
-          onChange={(e) => handleFilterChange('menteeMujid', e.target.value)}
-          inputProps={{
-            style: { textTransform: 'uppercase' }
-          }}
-          sx={textFieldStyles}
-        />
-      )
-    },
-    {
-      name: 'mentorEmailid',
-      label: 'Mentor Email',
-      customRender: (
-        <TextField
-          size="small"
-          label="Mentor Email"
-          value={filters.mentorEmailid || ''}
-          onChange={(e) => handleFilterChange('mentorEmailid', e.target.value)}
-          inputProps={{
-            style: { textTransform: 'lowercase' }
-          }}
-          sx={textFieldStyles}
-        />
+        <Box sx={{ position: 'relative', width: '100%' }}>
+          <TextField
+            size="small"
+            label="Search"
+            value={filters.email || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              handleFilterChange('email', value);
+            }}
+            placeholder="Search name, email, ID, etc."
+            InputProps={{
+              startAdornment: (
+                <SearchIcon sx={{ 
+                  color: 'rgba(249, 115, 22, 0.5)',
+                  marginRight: '8px',
+                  fontSize: '1.5rem'
+                }} />
+              ),
+              sx: {
+                height: '56px',
+                padding: '0 16px',
+                fontSize: '1rem',
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  opacity: 1,
+                }
+              }
+            }}
+            sx={{
+              width: '100%',
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(17, 24, 39, 0.6)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '16px',
+                transition: 'all 0.3s ease',
+                border: '2px solid rgba(249, 115, 22, 0.1)',
+                '&:hover': {
+                  backgroundColor: 'rgba(17, 24, 39, 0.8)',
+                  border: '2px solid rgba(249, 115, 22, 0.2)',
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                  border: '2px solid rgba(249, 115, 22, 0.5)',
+                  boxShadow: '0 0 0 4px rgba(249, 115, 22, 0.1)',
+                }
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(249, 115, 22, 0.7)',
+                '&.Mui-focused': {
+                  color: 'rgba(249, 115, 22, 1)',
+                }
+              },
+              '& .MuiInputBase-input': {
+                color: 'white',
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  opacity: 1,
+                }
+              }
+            }}
+          />
+        </Box>
       )
     }
   ];
@@ -692,8 +769,7 @@ const FilterSection = ({
       color: 'secondary',
       disabled: isLoading.bulkAdd,
       icon: <UploadFileIcon sx={{ fontSize: '1.2rem' }} />,
-      fullWidth: false
-    },
+      fullWidth: false },
     // { 
     //   label: 'Delete',
     //   onClick: () => setDeleteDialog(true),
@@ -708,25 +784,37 @@ const FilterSection = ({
     const initializeAndFetch = async () => {
       if (!isClient) return; // Don't run on server
 
-      if (filters.academicYear && filters.academicSession) {
-        await handleSearch();
-      } else {
-        const currentYear = getCurrentAcademicYear();
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const startYear = currentYear.split('-')[0];
-        
-        const currentSession = currentMonth >= 7 ? 
-          `JULY-DECEMBER ${startYear}` : 
-          `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+      const currentYear = getCurrentAcademicYear();
+      const startYear = currentYear.split('-')[0];
+      const currentMonth = new Date().getMonth() + 1;
+      
+      const currentSession = currentMonth >= 7 ? 
+        `JULY-DECEMBER ${startYear}` : 
+        `JANUARY-JUNE ${parseInt(startYear) + 1}`;
 
-        handleFilterChange('academicYear', currentYear);
-        handleFilterChange('academicSession', currentSession);
-      }
+      // Set filters silently without triggering search yet
+      const updatedFilters = {
+        academicYear: currentYear,
+        academicSession: currentSession
+      };
+      
+      // Set these filters in UI
+      handleFilterChange('academicYear', currentYear);
+      handleFilterChange('academicSession', currentSession);
+      
+      // Show loading state immediately
+      onSearch([], { ...updatedFilters, isLoading: true });
+      
+      // Then trigger actual search
+      setTimeout(() => {
+        handleSearch();
+      }, 0);
     };
 
-    initializeAndFetch();
-  }, [isClient, filters.academicYear, filters.academicSession]);
+    if (!filters.academicYear || !filters.academicSession) {
+      initializeAndFetch();
+    }
+  }, [isClient]);
 
   if (!isClient) {
     return (
@@ -1022,7 +1110,7 @@ const dialogStyles = {
   paper: {
     backgroundColor: '#1a1a1a',
     color: 'white',
-    borderRadius: '12px',    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',    border: '1px solid rgba(255,2nd Chhattisgarh.  255, 255, 0.1)',
   },
   title: {
     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',

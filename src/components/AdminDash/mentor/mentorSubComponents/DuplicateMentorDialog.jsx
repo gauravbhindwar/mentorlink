@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';  // Add this import
 import {
   Dialog,
   DialogTitle,
@@ -16,6 +17,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { dialogStyles } from '../mentorStyle';
+import { toast } from "react-hot-toast"; // Add this import
 
 const DuplicateMentorDialog = ({
   open,
@@ -25,7 +27,7 @@ const DuplicateMentorDialog = ({
   existingMentorData,
   mentorDetails,
   setMentorDetails,
-  handlePatchUpdate,
+  handlePatchUpdate: onPatchUpdate, // Rename the prop here
 }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +35,41 @@ const DuplicateMentorDialog = ({
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleUpdate = async () => { // Renamed function
+    try {
+      const response = await axios.patch(
+        `/api/admin/manageUsers/manageMentor/${mentorDetails.MUJid}`,
+        mentorDetails
+      );
+
+      if (response.data.success) {
+        toast.success("Mentor updated successfully", {
+          style: {
+            background: '#22c55e',
+            color: 'white',
+            padding: '16px',
+          },
+          duration: 3000,
+        });
+        onClose();
+        if (onPatchUpdate) { // Use renamed prop
+          await onPatchUpdate(response.data.mentor);
+        }
+      } else {
+        throw new Error(response.data.error || "Failed to update mentor");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Error updating mentor", {
+        style: {
+          background: '#ef4444',
+          color: 'white',
+          padding: '16px',
+        },
+        duration: 3000,
+      });
+    }
   };
 
   return (
@@ -125,7 +162,7 @@ const DuplicateMentorDialog = ({
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={mentorDetails.isActive || false}
+                      checked={Boolean(mentorDetails.isActive)}
                       onChange={(e) => handleInputChange({
                         target: {
                           name: 'isActive',
@@ -161,17 +198,62 @@ const DuplicateMentorDialog = ({
                 border: "1px solid rgba(249, 115, 22, 0.2)",
               }}
             >
-              {Object.entries(existingMentorData).map(([key, value]) => {
-                if (value && key !== "_id") {
-                  return (
-                    <Typography key={key} variant="body2" sx={{ mb: 1 }}>
-                      <strong>{key}:</strong>{" "}
-                      {Array.isArray(value) ? value.join(", ") : value}
-                    </Typography>
-                  );
-                }
-                return null;
-              })}
+              {Object.entries(existingMentorData)
+                .filter(([key]) => [
+                  'name',
+                  'email',
+                  'phone_number',
+                  'MUJid',
+                  'role',
+                  'academicSession',
+                  'academicYear',
+                  'gender',
+                  'isActive'
+                ].includes(key))
+                .map(([key, value]) => {
+                  if (value !== undefined && value !== null) {
+                    const formattedKey = key === 'MUJid' 
+                      ? 'MUJid'
+                      : key.replace(/([A-Z])/g, ' $1')
+                          .replace(/_/g, ' ')
+                          .toLowerCase()
+                          .split(' ')
+                          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                          .join(' ');
+                    
+                    let displayValue = value;
+                    if (key === 'isActive') {
+                      displayValue = value ? 'Active' : 'Inactive';
+                    } else if (Array.isArray(value)) {
+                      displayValue = value.join(", ");
+                    }
+
+                    return (
+                      <Typography 
+                        key={key} 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 1.5,
+                          display: 'flex',
+                          alignItems: 'flex-start'
+                        }}
+                      >
+                        <strong style={{ width: '140px', display: 'inline-block' }}>
+                          {formattedKey}:
+                        </strong>
+                        <span style={{ 
+                          flex: 1,
+                          color: key === 'isActive' 
+                            ? (value ? '#4caf50' : '#f44336')
+                            : 'inherit'
+                        }}>
+                          {displayValue}
+                        </span>
+                      </Typography>
+                    );
+                  }
+                  return null;
+                })}
             </Box>
           </Box>
         )}
@@ -200,7 +282,7 @@ const DuplicateMentorDialog = ({
         </Button>
         {duplicateEditMode ? (
           <Button
-            onClick={handlePatchUpdate}
+            onClick={handleUpdate} // Use renamed function
             variant="contained"
             sx={{
               bgcolor: "#f97316",

@@ -473,8 +473,8 @@ export const ConsolidatedDocument = ({
         remarks: mentee.mentorRemarks || 'N/A'
       }));
 
-    const semesterMeetings = (meetings || [])
-      .filter(meeting => meeting && meeting.semester === selectedSemester);
+    // const semesterMeetings = (meetings || [])
+    //   .filter(meeting => meeting && meeting.semester === selectedSemester);
 
     // Create chunks of 12 mentees per page
     const chunkedMentees = [];

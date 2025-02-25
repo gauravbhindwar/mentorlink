@@ -9,23 +9,69 @@ export async function PATCH(request) {
     const segments = url.pathname.split("/");
     const mujid = segments[segments.length - 1];
 
-    const data = await request.json();
-    const { ...updateData } = data;
-
-    if (typeof updateData.role === 'string') {
-      updateData.role = [updateData.role];
-    }
-
     // Validate required fields
     if (!mujid) {
       return NextResponse.json({ error: "MUJid is required" }, { status: 400 });
     }
 
-    // Find existing mentor
+    // Find existing mentor first
     const existingMentor = await Mentor.findOne({ MUJid: mujid });
     if (!existingMentor) {
       return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
     }
+
+    const data = await request.json();
+    
+    // Clean update data by removing any _id field
+    const { ...cleanData } = data;
+    
+    // Find all mentors with the same email (case-insensitive)
+    const relatedMentors = await Mentor.find({
+      email: { $regex: new RegExp(`^${cleanData.email}$`, 'i') }
+    });
+
+    // If multiple records found, sync their active status
+    if (relatedMentors.length > 1) {
+      console.log(`Found ${relatedMentors.length} related mentor records`);
+      
+      // Update all related mentor records with the same active status
+      await Promise.all(relatedMentors.map(mentor => 
+        Mentor.findByIdAndUpdate(mentor._id, {
+          $set: {
+            isActive: Boolean(cleanData.isActive),
+            updated_at: new Date()
+          }
+        })
+      ));
+
+      // Also update any admin records for these mentors
+      if (cleanData.role?.includes('admin')) {
+        await Admin.updateMany(
+          { MUJid: { $in: relatedMentors.map(m => m.MUJid) } },
+          { 
+            $set: { 
+              isActive: Boolean(cleanData.isActive),
+              updated_at: new Date()
+            } 
+          }
+        );
+      }
+    }
+
+    // Always ensure isActive is properly set as boolean
+    const updateData = {
+      ...cleanData,
+      isActive: cleanData.hasOwnProperty('isActive') ? Boolean(cleanData.isActive) : existingMentor.isActive,
+      updated_at: new Date()
+    };
+
+    // Log the values for debugging after we have existingMentor
+    // console.log('Update request:', {
+    //   mujid,
+    //   currentStatus: existingMentor.isActive,
+    //   requestedStatus: updateData.isActive,
+    //   rawData: data
+    // });
 
     // Check email uniqueness if email is being updated
     if (updateData.email && updateData.email !== existingMentor.email) {
@@ -52,41 +98,40 @@ export async function PATCH(request) {
       );
     }
 
-    // Extract updatable fields (excluding MUJid)
-    const updateFields = {
-      ...updateData,
-      updated_at: new Date()
-    };
-
     // Update mentor in Mentor collection
     const updatedMentor = await Mentor.findOneAndUpdate(
       { MUJid: mujid },
-      { $set: updateFields },
+      { $set: updateData },
       { new: true }
     );
 
     // Handle admin role changes
-    const wasAdmin = existingMentor.role.includes('admin');
-    const isNowAdmin = updateData.role.includes('admin');
-    const adminRoles = updateData.role.filter(r => ['admin'].includes(r));
+    if (updateData.role?.includes('admin')) {
+      const adminData = {
+        ...updateData,
+        MUJid: mujid,
+      };
+      delete adminData._id;
 
-    if (isNowAdmin) {
       await Admin.findOneAndUpdate(
         { MUJid: mujid },
-        { 
-          ...updateFields,
-          role: adminRoles 
-        },
+        { $set: adminData },
         { upsert: true, new: true }
       );
-    } else if (wasAdmin && !isNowAdmin) {
+    } else if (existingMentor.role.includes('admin')) {
+      // Remove from Admin collection if admin role was removed
       await Admin.deleteOne({ MUJid: mujid });
     }
 
     return NextResponse.json({
       mentor: updatedMentor,
       success: true,
-      message: "Mentor updated successfully"
+      message: "Mentor updated successfully",
+      statusUpdate: {
+        previous: existingMentor.isActive,
+        current: updatedMentor.isActive,
+        relatedRecordsUpdated: relatedMentors.length > 1
+      }
     });
 
   } catch (error) {

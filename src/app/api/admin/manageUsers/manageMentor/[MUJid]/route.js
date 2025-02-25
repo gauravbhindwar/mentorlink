@@ -3,12 +3,12 @@ import { Mentor } from "@/lib/db/mentorSchema";
 import { Admin } from "@/lib/db/adminSchema";
 import { NextResponse } from "next/server";
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request) {
   try {
     await connect();
     
-    // Get MUJid from params directly
-    const { MUJid } = params;
+    // Get MUJid from URL path instead of params
+    const MUJid = request.url.split('/').pop();
     
     if (!MUJid) {
       return NextResponse.json({
@@ -94,9 +94,10 @@ export async function PATCH(request, { params }) {
 }
 
 // Update GET handler to use params correctly
-export async function GET(request, { params }) {
+export async function GET(request) {
   try {
-    const { MUJid } = params;
+    // Get MUJid from URL path instead of params
+    const MUJid = request.url.split('/').pop();
     
     if (!MUJid) {
       return NextResponse.json(

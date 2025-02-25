@@ -1,47 +1,47 @@
 'use client';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Typography } from '@mui/material';
+import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Typography, TablePagination } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenteeDetailsDialog from './MenteeDetailsDialog';
-import axios from 'axios';
+// import axios from 'axios';
 import TableSkeleton from './TableSkeleton';
 
-const CustomLoadingOverlay = () => (
-  <Box sx={{
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: 2
-  }}>
-    <CircularProgress sx={{ color: '#f97316' }} />
-    <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-      Loading data...
-    </Typography>
-  </Box>
-);
+// const CustomLoadingOverlay = () => (
+//   <Box sx={{
+//     display: 'flex',
+//     flexDirection: 'column',
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//     height: '100%',
+//     gap: 2
+//   }}>
+//     <CircularProgress sx={{ color: '#f97316' }} />
+//     <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+//       Loading data...
+//     </Typography>
+//   </Box>
+// );
 
-const CustomNoRowsOverlay = () => (
-  <Box sx={{
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: 2
-  }}>
-    <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-      No data available
-    </Typography>
-  </Box>
-);
+// const CustomNoRowsOverlay = () => (
+//   <Box sx={{
+//     display: 'flex',
+//     flexDirection: 'column',
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//     height: '100%',
+//     gap: 2
+//   }}>
+//     <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+//       No data available
+//     </Typography>
+//   </Box>
+// );
 
 const StyledPaginationItem = styled(IconButton)(() => ({
   padding: '4px',
@@ -56,7 +56,8 @@ const StyledPaginationItem = styled(IconButton)(() => ({
   transition: 'all 0.2s ease',
 }));
 
-const CustomPagination = () => {
+// Update CustomPagination to handle actual data
+const CustomPagination = ({ total }) => {
   return (
     <Box
       sx={{
@@ -74,15 +75,30 @@ const CustomPagination = () => {
         },
       }}
     >
+      <TablePagination
+        component="div"
+        count={total}
+        page={0}
+        onPageChange={() => {}}
+        rowsPerPage={10}
+        onRowsPerPageChange={() => {}}
+        labelRowsPerPage="Rows:"
+        sx={{
+          color: 'rgba(255, 255, 255, 0.7)',
+          '.MuiTablePagination-actions': {
+            display: 'none',
+          },
+        }}
+      />
       <StyledPaginationItem
         size="small"
-        onClick={() => document.querySelector('.MuiTablePagination-actions button:first-of-type').click()}
+        onClick={() => document.querySelector('.MuiTablePagination-actions button:first-of-type')?.click()}
       >
         <ArrowBackIosNewIcon sx={{ fontSize: '1rem' }} />
       </StyledPaginationItem>
       <StyledPaginationItem
         size="small"
-        onClick={() => document.querySelector('.MuiTablePagination-actions button:last-of-type').click()}
+        onClick={() => document.querySelector('.MuiTablePagination-actions button:last-of-type')?.click()}
       >
         <ArrowForwardIosIcon sx={{ fontSize: '1rem' }} />
       </StyledPaginationItem>
@@ -90,605 +106,361 @@ const CustomPagination = () => {
   );
 };
 
-const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, currentFilters }) => {
+const CustomHeaderComponent = () => (
+  <Box sx={{
+    p: 2,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottom: '1px solid rgba(249, 115, 22, 0.3)',
+    background: 'rgba(0, 0, 0, 0.8)',
+  }}>
+    <Typography variant="h6" sx={{ 
+      color: '#ea580c', 
+      fontWeight: 600,
+      textShadow: '0 0 10px rgba(249, 115, 22, 0.3)'
+    }}>
+      Mentee Records
+    </Typography>
+  </Box>
+);
+
+// Update CustomFooterComponent to pass total count
+const CustomFooterComponent = ({ total }) => (
+  <Box sx={{
+    p: 1.5,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTop: '1px solid rgba(249, 115, 22, 0.3)',
+    background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
+  }}>
+    <Box className="flex items-center gap-2">
+      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+        Total Records: {total}
+      </Typography>
+    </Box>
+    <CustomPagination total={total} />
+  </Box>
+);
+
+const ActionButtons = ({ row, onEditClick, setDetailsDialog, setDeleteDialog }) => (
+  <Box sx={{ display: 'flex', gap: 1 }}>
+    <IconButton
+      size="small"
+      onClick={() => setDetailsDialog({ open: true, mentee: row })}
+      sx={{
+        color: '#3b82f6',
+        '&:hover': {
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        },
+      }}
+    >
+      <InfoIcon fontSize="small" />
+    </IconButton>
+    <IconButton
+      size="small"
+      onClick={() => onEditClick(row)}
+      sx={{
+        color: '#f97316',
+        '&:hover': {
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        },
+      }}
+    >
+      <EditOutlinedIcon fontSize="small" />
+    </IconButton>
+    <IconButton
+      size="small"
+      onClick={() => setDeleteDialog({ open: true, mujid: row.MUJid })}
+      sx={{
+        color: '#ef4444',
+        '&:hover': {
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        },
+      }}
+    >
+      <DeleteOutlineIcon fontSize="small" />
+    </IconButton>
+  </Box>
+);
+
+// Update the container height since it's now in its own container
+const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoading, currentFilters }) => {
+  // Remove isDataReady state since we don't need it
   const [mounted, setMounted] = useState(false);
-  const dataCache = useRef(new Map());
-  const [filters, setFilters] = useState({
-    academicYear: '',
-    academicSession: '',
-    semester: '',
-    section: '',
-    mentorMujid: '',
-    menteeMujid: '',
-    mentorEmailid: ''
-  });
-
-  // Update filters when currentFilters changes
-  useEffect(() => {
-    if (currentFilters) {
-      setFilters(currentFilters);
-    }
-  }, [currentFilters]);
-
-  // Simplified data fetching
-  // const fetchData = useCallback(async (params) => {
-  //   const cacheKey = `${params.academicYear}-${params.academicSession}`;
-    
-  //   if (dataCache.current.has(cacheKey)) {
-  //     return dataCache.current.get(cacheKey);
-  //   }
-
-  //   setLoadingState(prev => ({ ...prev, initial: true }));
-  //   try {
-  //     const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
-  //     const processedData = response.data.map(mentee => ({
-  //       ...mentee,
-  //       id: mentee._id || `temp-${Math.random().toString(36).substr(2, 9)}`
-  //     }));
-      
-  //     dataCache.current.set(cacheKey, processedData);
-  //     return processedData;
-  //   } catch (error) {
-  //     console.error('Error fetching data:', error);
-  //     return [];
-  //   } finally {
-  //     setLoadingState(prev => ({ ...prev, initial: false }));
-  //   }
-  // }, []);
-  // console.log("fetchData:", fetchData);
-
-
-  // Handle data updates
-  // useEffect(() => {
-  //   if (mentees?.length > 0) {
-  //     setTableData(mentees);
-  //   }
-  // }, [mentees]);
-
-  // Initialize component
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
-
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
-  const [loading, setLoading] = useState(false);
-  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
-  const cachedData = useRef(new Map());
-  // const batchKey = useRef('');
-  // const [filters, setFilters] = useState({
-  //   academicYear: '',
-  //   academicSession: '',
-  //   semester: '',
-  //   section: '',
-  //   mentorMujid: '',
-  //   menteeMujid: '',
-  //   mentorEmailid: ''
-  // });
   const [localData, setLocalData] = useState([]);
-  const [baseData, setBaseData] = useState([]); // Add this new state to store initial data
+  // const [baseData, setBaseData] = useState([]);
+  // const previousMentees = useRef([]);
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
+  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!currentFilters) {
-      const baseData = localStorage.getItem('mentee data');
-      setLocalData(baseData ? JSON.parse(baseData) : []);
-    } else {
-      const filteredData = localStorage.getItem('menteeFilteredData');
-      setLocalData(filteredData ? JSON.parse(filteredData) : []);
-    }
-  }, [currentFilters]);
-
-  // Add new effect to sync with localStorage
-  useEffect(() => {
-    if (currentFilters) {
-      const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
-      const storedData = localStorage.getItem(storageKey);
-      if (storedData) {
-        try {
-          const parsedData = JSON.parse(storedData);
-          setLocalData(parsedData);
-          setBaseData(parsedData); // Also update base data
-        } catch (error) {
-          console.error('Error parsing stored data:', error);
-        }
-      }
-    }
-  }, [currentFilters?.academicYear, currentFilters?.academicSession, currentFilters?.timestamp]); // Add timestamp dependency
-
-  const handleDeleteClick = (mujid) => {
-    setDeleteDialog({ open: true, mujid });
-  };
-
-  // Update handleEditClick to always get fresh data from localStorage
-  const handleEditClick = async (rowData) => {
-    if (onEditClick && rowData) {
-      const storageKey = `${currentFilters?.academicYear}-${currentFilters?.academicSession}`;
-      const storedData = localStorage.getItem(storageKey);
-      
-      try {
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          const freshData = parsedData.find(item => item.MUJid === rowData.MUJid);
-          if (freshData) {
-            onEditClick({ ...freshData, id: rowData.id }); // Preserve the id
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('Error accessing stored data:', error);
-      }
-      onEditClick(rowData);
-    }
-  };
-
+  // Add handleConfirmDelete function
   const handleConfirmDelete = async () => {
     if (deleteDialog.mujid) {
-      setLoading(true);
       try {
         await onDeleteClick([deleteDialog.mujid]);
         
-        // Update local data immediately
-        setLocalData(prevData => 
-          prevData.filter(m => m.MUJid !== deleteDialog.mujid)
-        );
+        // Update local data
+        setLocalData(prev => prev.filter(mentee => mentee.MUJid !== deleteDialog.mujid));
+        // setBaseData(prev => prev.filter(mentee => mentee.MUJid !== deleteDialog.mujid));
         
-        // Update baseData to maintain consistency
-        setBaseData(prevData => 
-          prevData.filter(m => m.MUJid !== deleteDialog.mujid)
-        );
-        
-        // Update cache
-        const currentKey = `${filters.academicYear}-${filters.academicSession}`;
-        const cachedData = dataCache.current.get(currentKey);
-        if (cachedData) {
-          dataCache.current.set(
-            currentKey, 
-            cachedData.filter(m => m.MUJid !== deleteDialog.mujid)
-          );
-        }
-
-        // Update local storage
-        const localData = localStorage.getItem(currentKey);
-        if (localData) {
-          const parsedData = JSON.parse(localData);
-          const updatedData = parsedData.filter(m => m.MUJid !== deleteDialog.mujid);
-          localStorage.setItem(currentKey, JSON.stringify(updatedData));
-        }
-
-        // Notify parent component if needed
-        if (onDataUpdate) {
-          onDataUpdate(prevMentees => 
-            prevMentees.filter(m => m.MUJid !== deleteDialog.mujid)
-          );
-        }
       } catch (error) {
-        // Add error handling if needed
-        console.error('Delete failed:', error);
+        console.error('Error deleting mentee:', error);
       } finally {
-        setLoading(false);
         setDeleteDialog({ open: false, mujid: null });
       }
     }
   };
 
-  // Add this function to properly handle semester comparison
-  // const compareSemester = (menteeSemester, filterSemester) => {
-  //   const menteeNum = parseInt(menteeSemester);
-  //   const filterNum = parseInt(filterSemester);
-  //   return !filterSemester || (!isNaN(menteeNum) && !isNaN(filterNum) && menteeNum === filterNum);
-  // };
+  // Initialize mounting state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Add new function to get data from cache or fetch
-  const getDataFromCacheOrFetch = async (academicYear, academicSession) => {
-    const cacheKey = `${academicYear}-${academicSession}`;
-    // console.log("Checking cache for:", cacheKey);
-
-    if (cachedData.current.has(cacheKey)) {
-      // console.log("Found data in cache");
-      const data = cachedData.current.get(cacheKey);
-      setBaseData(data);
-      return data;
+  // Handle data updates - simplified
+  useEffect(() => {
+    if (Array.isArray(mentees)) {
+      setLocalData(mentees);
+      // setBaseData(mentees);
     }
+  }, [mentees]);
 
-    // console.log("Fetching fresh data");
-    try {
-      const response = await axios.get('/api/admin/manageUsers/manageMentee', {
-        params: { academicYear, academicSession }
-      });
-      const data = response.data;
-      cachedData.current.set(cacheKey, data);
-      setBaseData(data);
-      return data;
-    } catch (error) {
-      console.log("Error fetching data:", error);
-      return [];
-    }
+  // Process data for table
+  // Update the processedMentees function to ensure unique keys
+  const processedMentees = useMemo(() => {
+    if (!mounted || !localData.length) return [];
+    
+    // Filter by email if emailFilter exists
+    const menteesToProcess = emailFilter 
+      ? localData.filter(mentee => 
+          mentee.email?.toLowerCase().includes(emailFilter.toLowerCase()) ||
+          mentee.mentorEmailid?.toLowerCase().includes(emailFilter.toLowerCase())
+        )
+      : localData;
+
+    return menteesToProcess.map((mentee, index) => {
+      // Create a unique composite key using multiple fields
+      const uniqueKey = `${mentee._id || ''}-${mentee.MUJid || ''}-${mentee.timestamp || Date.now()}-${index}`;
+      
+      return {
+        ...mentee,
+        // Use the uniqueKey as the id
+        id: uniqueKey,
+        MUJid: (mentee?.MUJid || '').toUpperCase(),
+        name: mentee?.name || '',
+        email: mentee?.email || '',
+        mentorEmailid: mentee?.mentorEmailid || '',
+        semester: mentee?.semester || '',
+        section: mentee?.section || '',
+        // Add searchScore for better sorting of results
+        searchScore: emailFilter ? 
+          ((mentee.email?.toLowerCase().includes(emailFilter.toLowerCase()) ? 2 : 0) +
+           (mentee.mentorEmailid?.toLowerCase().includes(emailFilter.toLowerCase()) ? 1 : 0)) 
+          : 0
+      };
+    }).sort((a, b) => b.searchScore - a.searchScore); // Sort by search relevance when filtering
+  }, [mounted, localData, emailFilter]);
+
+  // Simplify loading condition - show skeleton only when initially loading
+  if (isLoading && !localData.length) {
+    return <TableSkeleton rowsNum={8} />;
+  }
+
+  // Add this near other column definitions
+  const emailSearchColumn = {
+    field: 'email',
+    headerName: 'Mentee Email',
+    flex: 1.5,
+    minWidth: 200,
+    renderCell: (params) => {
+      const value = params.value?.toString() || '';
+      if (!emailFilter) return value;
+      
+      const index = value.toLowerCase().indexOf(emailFilter.toLowerCase());
+      if (index === -1) return value;
+      
+      return (
+        <Box sx={{
+          width: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {value.substring(0, index)}
+          <span style={{ 
+            backgroundColor: 'rgba(249, 115, 22, 0.2)',
+            color: '#f97316',
+            padding: '2px 4px',
+            borderRadius: '4px',
+            fontWeight: 600
+          }}>
+            {value.substring(index, index + emailFilter.length)}
+          </span>
+          {value.substring(index + emailFilter.length)}
+        </Box>
+      );
+    },
   };
 
-  // Update useEffect to handle filters
-  useEffect(() => {
-    const applyFilters = async () => {
-      let dataToFilter = baseData;
-
-      // If we don't have base data and have academic year/session, fetch it
-      if (!dataToFilter.length && filters.academicYear && filters.academicSession) {
-        dataToFilter = await getDataFromCacheOrFetch(filters.academicYear, filters.academicSession);
-      }
-
-      // console.log("Applying filters to data:", {
-      //   totalRecords: dataToFilter.length,
-      //   filters: filters
-      // });
-
-      const filteredResults = dataToFilter.filter(mentee => {
-        const matchesSemester = !filters.semester || 
-          mentee.semester === (typeof filters.semester === 'string' ? 
-            parseInt(filters.semester) : filters.semester);
-        const matchesSection = !filters.section || 
-          mentee.section?.toUpperCase() === filters.section.toUpperCase();
-        const matchesMenteeMujid = !filters.menteeMujid || 
-          mentee.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
-        const matchesMentorMujid = !filters.mentorMujid || 
-          mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
-        const matchesMentorEmail = !filters.mentorEmailid || 
-          mentee.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
-
-        return matchesSemester && matchesSection && matchesMenteeMujid && 
-               matchesMentorMujid && matchesMentorEmail;
-      });
-
-
-      setLocalData(filteredResults);
-    };
-
-    applyFilters();
-  }, [filters, baseData]);
-
-  // Add new effect to handle filter changes
-  useEffect(() => {
-    const updateTableData = () => {
-      if (filters && Object.keys(filters).some(key => filters[key])) {
-        const filteredResults = baseData.filter(mentee => {
-          const matchesSemester = !filters.semester || 
-            mentee.semester === (typeof filters.semester === 'string' ? 
-              parseInt(filters.semester) : filters.semester);
-          const matchesSection = !filters.section || 
-            mentee.section?.toUpperCase() === filters.section.toUpperCase();
-          const matchesMenteeMujid = !filters.menteeMujid || 
-            mentee.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
-          const matchesMentorMujid = !filters.mentorMujid || 
-            mentee.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
-          const matchesMentorEmail = !filters.mentorEmailid || 
-            mentee.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
-
-          return matchesSemester && matchesSection && matchesMenteeMujid && 
-                matchesMentorMujid && matchesMentorEmail;
-        });
-        
-        setLocalData(filteredResults);
-      } else {
-        setLocalData(baseData);
-      }
-    };
-
-    updateTableData();
-  }, [filters, baseData]); // Add dependency on filters and baseData
-
-  // Add function to update local data
-  // const updateLocalData = (newMentee) => {
-  //   if (!currentFilters?.academicYear || !currentFilters?.academicSession) return;
-
-  //   const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
-  //   const updatedData = [...localData, newMentee];
-    
-  //   // Update localStorage
-  //   localStorage.setItem(storageKey, JSON.stringify(updatedData));
-    
-  //   // Update state immediately
-  //   setLocalData(updatedData);
-  //   setBaseData(updatedData);
-  // };
-
-  // Add useEffect to listen for localStorage changes
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (!currentFilters?.academicYear || !currentFilters?.academicSession) return;
+  const mentorEmailColumn = {
+    field: 'mentorEmailid',
+    headerName: 'Mentor Email',
+    flex: 1.5,
+    minWidth: 200,
+    renderCell: (params) => {
+      const value = params.value?.toString() || '';
+      if (!emailFilter) return value;
       
-      const storageKey = `${currentFilters.academicYear}-${currentFilters.academicSession}`;
-      if (e.key === storageKey) {
-        try {
-          const newData = JSON.parse(e.newValue || '[]');
-          setLocalData(newData);
-          setBaseData(newData);
-        } catch (error) {
-          console.error('Error parsing updated data:', error);
-        }
-      }
-    };
+      const index = value.toLowerCase().indexOf(emailFilter.toLowerCase());
+      if (index === -1) return value;
+      
+      return (
+        <Box sx={{
+          width: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {value.substring(0, index)}
+          <span style={{ 
+            backgroundColor: 'rgba(249, 115, 22, 0.2)',
+            color: '#f97316',
+            padding: '2px 4px',
+            borderRadius: '4px',
+            fontWeight: 600
+          }}>
+            {value.substring(index, index + emailFilter.length)}
+          </span>
+          {value.substring(index + emailFilter.length)}
+        </Box>
+      );
+    },
+  };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [currentFilters]);
-
-  // Update processedMentees to handle initial loading state
-  const processedMentees = useMemo(() => {
-    if (!mounted) return [];
-
-    return localData.map((mentee, index) => ({
-      id: mentee._id || mentee.id || `temp-${index}-${Date.now()}`,
-      MUJid: (mentee?.MUJid || '').toUpperCase(),
-      name: mentee?.name || '',
-      email: mentee?.email || '',
-      mentorEmailid: mentee?.mentorEmailid || '',
-      semester: mentee?.semester || '',
-      section: mentee?.section || '',
-      ...mentee,
-    }));
-  }, [mounted, localData]);
-
-  const headerContent = useMemo(() => ({
-    title: 'Mentee Management',
-    count: processedMentees?.length || 0
-  }), [processedMentees?.length]);
-
-  const footerContent = useMemo(() => ({
-    lastUpdated: new Date().toLocaleDateString()
-  }), []);
-
-  const CustomHeaderComponent = () => (
-    <Box sx={{
-      p: 2,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      borderBottom: '1px solid rgba(249, 115, 22, 0.3)',
-      background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
-    }}>
-      <Typography variant="h6" sx={{ 
-        color: '#f97316', 
-        fontWeight: 600,
-        textShadow: '0 0 10px rgba(249, 115, 22, 0.3)'
-      }}>
-        {headerContent.title}
-      </Typography>
-      <Typography variant="body2" sx={{ 
-        color: 'rgba(249, 115, 22, 0.9)',
-        fontWeight: 500
-      }}>
-        Total Mentees: {headerContent.count}
-      </Typography>
-    </Box>
-  );
-
-  const CustomFooterComponent = () => (
-    <Box sx={{
-      p: 1.5,
-      display: 'flex',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-      borderTop: '1px solid rgba(249, 115, 22, 0.3)',
-      background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
-    }}>
-      <Typography variant="body2" sx={{ 
-        color: 'rgba(249, 115, 22, 0.9)',
-        fontWeight: 500
-      }}>
-        Last updated: {footerContent.lastUpdated}
-      </Typography>
-    </Box>
-  );
-
-  if (!mounted) {
-    return null;
-  }
-
-  if (isLoading) {
+  const highlightSearchMatch = (text, searchValue) => {
+    if (!text || !searchValue) return text;
+    
+    const parts = text.toString().split(new RegExp(`(${searchValue})`, 'gi'));
+    
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        height: '200px'
+      <Box sx={{
+        width: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap'
       }}>
-        <CircularProgress sx={{ color: '#f97316' }} />
+        {parts.map((part, i) => 
+          part.toLowerCase() === searchValue.toLowerCase() ? (
+            <span
+              key={i}
+              style={{ 
+                backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                color: '#f97316',
+                padding: '2px 4px',
+                borderRadius: '4px',
+                fontWeight: 600
+              }}
+            >
+              {part}
+            </span>
+          ) : (
+            part
+          )
+        )}
       </Box>
     );
-  }
+  };
 
-  if (!processedMentees.length) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center',
-        height: '200px',
-        gap: 2,
-        color: 'rgba(255, 255, 255, 0.5)'
-      }}>
-        <Typography variant="h6">
-          No mentees found for the selected criteria
-        </Typography>
-        <Typography variant="body2">
-          Try adjusting your filters or add new mentees
-        </Typography>
-      </Box>
-    );
-  }
-
+  // Update columns definition to use ActionButtons component
   const columns = [
-    { 
-      field: 'serialNumber',    
+    {
+      field: 'serialNumber',
       headerName: 'S.No',
-      flex: 0.4,
+      width: 70,
       renderCell: (params) => {
-        const index = processedMentees.findIndex(mentee => mentee.id === params.row.id);
-        return index + 1;
+        // Find index using processedMentees array instead of params.api
+        return processedMentees.findIndex(row => row.id === params.row.id) + 1;
       },
-      sortable: true,
-      headerAlign: 'center',
-      align: 'center',
+      sortable: false,
+      hideSortIcons: true, // Add this to remove sort icons
     },
     {
       field: 'MUJid',
-      headerName: 'MUJ ID', 
-      flex: 0.8,
-      sortable: true,
-      headerAlign: 'center',
-      align: 'center',
+      headerName: 'Mentee MUJ ID',
+      flex: 1,
+      minWidth: 130,
+      renderCell: (params) => highlightSearchMatch(params.value, emailFilter),
+      hideSortIcons: true,
     },
+    
     {
       field: 'name',
-      headerName: 'Name',
-      flex: 1,
-      sortable: true,
-      headerAlign: 'center',
-      align: 'center',
-    },
-    {
-      field: 'email',
-      headerName: 'Email',
+      headerName: 'Mentee Name',
       flex: 1.2,
-      sortable: true,
-      headerAlign: 'center',
-      align: 'center',
+      minWidth: 180,
+      renderCell: (params) => highlightSearchMatch(params.value, emailFilter)
     },
+    emailSearchColumn,
+    mentorEmailColumn,
     {
-      field: 'mentorEmailid',
-      headerName: 'Mentor Email',
-      flex: 1.2,
-      sortable: true,
-      headerAlign: 'center',
-      align: 'center',
+      field: 'semester',
+      headerName: 'Semester',
+      width: 100,
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      headerAlign: 'center',
-      align: 'center',
-      flex: 0.8,
+      width: 150,
       sortable: false,
-      renderCell: (params) => {
-        if (!params?.row) return null;
-        const rowData = {
-          ...params.row,
-          _id: params.row._id || params.row.id, // Ensure _id is preserved
-          academicYear: params.row.academicYear,
-          academicSession: params.row.academicSession,
-          // Ensure all necessary fields are included
-          MUJid: params.row.MUJid,
-          name: params.row.name,
-          email: params.row.email,
-          phone: params.row.phone,
-          section: params.row.section,
-          semester: params.row.semester,
-          mentorMujid: params.row.mentorMujid,
-          mentorEmailid: params.row.mentorEmailid,
-          yearOfRegistration: params.row.yearOfRegistration
-        };
-
-        return (
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-            <IconButton
-              onClick={() => setDetailsDialog({ open: true, mentee: params.row })}
-              sx={{ 
-                color: '#3b82f6',
-                '&:hover': {
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  transform: 'scale(1.1)',
-                }
-              }}
-            >
-              <InfoIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              onClick={() => handleEditClick(rowData)}
-              sx={{ 
-                color: '#f97316',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                  transform: 'scale(1.1)',
-                }
-              }}
-            >
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              onClick={() => handleDeleteClick(params.row.MUJid)}
-              sx={{ 
-                color: '#ef4444',
-                '&:hover': {
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  transform: 'scale(1.1)',
-                }
-              }}
-            >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        );
-      },
-    }
-  ].map(col => ({
-    ...col,
-    headerAlign: 'center',
-    align: 'center',
-    sortable: col.field !== 'actions',
-    renderHeader: (params) => (
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'rgba(255, 255, 255, 0.9)',
-        fontSize: '0.95rem',
-        fontWeight: 600,
-        width: '100%'
-      }}>
-        {params.colDef.headerName}
-      </Box>
-    ),
-  }));
-
-  const LoadingOverlay = () => (
-    <Box
-      sx={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        zIndex: 1,
-      }}
-    >
-    </Box>
-  );
+      renderCell: (params) => (
+        <ActionButtons
+          row={params.row}
+          onEditClick={onEditClick}
+          setDetailsDialog={setDetailsDialog}
+          setDeleteDialog={setDeleteDialog}
+        />
+      ),
+    },
+  ];
 
   return (
-    <>
-      {isLoading ? (
-        <TableSkeleton rowsNum={8} />
-      ) : (
-        <Box sx={{ 
-          height: { xs: 'auto', lg: 'calc(100vh - 200px)' },
-          width: '100%',
-          position: 'relative',
-          overflow: 'hidden',
+    <Box sx={{ 
+      height: 'calc(100vh - 145px)', // Adjust this value to control overall container height
+      width: '100%', 
+      bgcolor: 'rgba(0, 0, 0, 0.2)',
+      borderRadius: 2,
+      overflow: 'hidden',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+      border: '1px solid rgba(249, 115, 22, 0.2)',
+    }}>
+      {/* Loading overlay for subsequent data fetches */}
+      {isLoading && localData.length > 0 && (
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           display: 'flex',
-          flexDirection: 'column',
-          transition: 'all 0.3s ease',
-          className: 'custom-scrollbar', // Add custom scrollbar class
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1,
+          borderRadius: 2
         }}>
-          {loading && (
-            <Box sx={{
+          <CircularProgress sx={{ color: '#f97316' }} />
+        </Box>
+      )}
+      
+      <DataGrid
+        rows={processedMentees}
+        columns={columns}
+        loading={isLoading && localData.length > 0}
+        getRowId={(row) => row.id} // Use the new id field directly
+        components={{
+          LoadingOverlay: () => (
+            <Box sx={{ 
               position: 'absolute',
               top: 0,
               left: 0,
@@ -697,280 +469,346 @@ const MenteeTable = ({ onDeleteClick, onDataUpdate, onEditClick, isLoading, curr
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 1,
-              borderRadius: 2
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              zIndex: 1
             }}>
               <CircularProgress sx={{ color: '#f97316' }} />
             </Box>
-          )}
-          
-          <DataGrid
-            rows={processedMentees || []}
-            columns={columns}
-            getRowId={(row) => row._id || row.id}
-            sx={{
-              height: { xs: '500px', lg: '100%' },
-              width: '100%',
-              '& .MuiDataGrid-main': {
-                overflow: 'auto',
-                minHeight: { xs: '300px', lg: '200px' },
-                maxHeight: { xs: '500px', lg: 'calc(100vh - 300px)' },
-                height: '100%',
-                flex: 1,
-              },
-              '& .MuiDataGrid-virtualScroller': {
-                overflow: 'auto !important',
-                className: 'custom-scrollbar', // Add custom scrollbar class
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                  height: '8px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '4px',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: 'rgba(249, 115, 22, 0.5)',
-                  borderRadius: '4px',
-                  '&:hover': {
-                    background: 'rgba(249, 115, 22, 0.7)',
-                  },
-                },
-                height: '100% !important',
-                minHeight: { xs: '300px', lg: '200px' },
-                maxHeight: { xs: '500px', lg: 'unset !important' },
-                scrollBehavior: 'smooth',
-                '@media (prefers-reduced-motion: no-preference)': {
-                  scrollBehavior: 'smooth',
-                },
-                animation: 'fadeIn 0.2s ease-out',
-              },
-              '& .MuiDataGrid-virtualScrollerContent': {
-                minWidth: 'fit-content',
-                height: '100%',
-              },
-              '& .MuiDataGrid-virtualScrollerRenderZone': {
-                width: '100%',
-                height: '100%',
-              },
-              width: '100%',
+          ),
+          NoRowsOverlay: () => (
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
               height: '100%',
-              minHeight: '400px',
-              border: 'none',
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(10px)',
-              borderRadius: 2,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                padding: '16px',
-                fontSize: '0.95rem',
-                color: 'rgba(255, 255, 255, 0.9)',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '60px !important',
-                maxHeight: 'unset !important',
-                whiteSpace: 'normal',
-                lineHeight: '1.5',
-                transition: 'all 0.2s ease',
+              gap: 2
+            }}>
+              <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                {currentFilters ? 'No mentees found' : 'Select filters to load data'}
+              </Typography>
+            </Box>
+          ),
+          Toolbar: GridToolbar,
+          Header: CustomHeaderComponent,
+          Footer: CustomFooterComponent,
+          // No need for separate Pagination component as it's included in CustomFooterComponent
+          // Other components...
+        }}
+        componentsProps={{
+          columnHeaders: {
+            sx: {
+              transition: 'none !important',
+            },
+          },
+          virtualScroller: {
+            sx: {
+              scrollBehavior: 'smooth',
+            },
+          },
+          footer: {
+            totalRecords: processedMentees.length, // Pass total records count
+          },
+        }}
+        initialState={{
+          pagination: {
+            paginationModel: { pageSize: 10, page: 0 },
+          },
+          sorting: {
+            sortModel: [{ field: 'serialNumber', sort: 'asc' }],
+          },
+        }}
+        pageSizeOptions={[10, 25, 50]}
+        paginationMode="client"
+        disableColumnFilter
+        disableColumnMenu
+        columnBuffer={5}
+        rowBuffer={10}
+        rowHeight={60}
+        headerHeight={56}
+        pagination
+        disableSelectionOnClick={true}
+        sx={{
+          height: '100%',
+          '& .MuiDataGrid-main': {
+            overflow: 'auto',
+            height: 'calc(100% - 108px)', // Adjust this to leave space for header and footer
+            minHeight: 'auto',
+            maxHeight: 'none',
+          },
+          '& .MuiDataGrid-virtualScroller': {
+            overflow: 'auto !important',
+            className: 'custom-scrollbar', // Add custom scrollbar class
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              height: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(249, 115, 22, 0.5)',
+              borderRadius: '4px',
+              '&:hover': {
+                background: 'rgba(249, 115, 22, 0.7)',
               },
-              '& .MuiDataGrid-row': {
-                transition: 'background-color 0.2s ease',
-                cursor: 'pointer',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.08)',
-                  transform: 'translateY(-1px)',
-                  transition: 'transform 0.2s ease, background-color 0.2s ease',
-                },
+            },
+            height: '100% !important',
+            minHeight: { xs: '300px', lg: '200px' },
+            maxHeight: { xs: '500px', lg: 'unset !important' },
+            scrollBehavior: 'smooth',
+            '@media (prefers-reduced-motion: no-preference)': {
+              scrollBehavior: 'smooth',
+            },
+            animation: 'fadeIn 0.2s ease-out',
+            minHeight: 'auto',
+            maxHeight: 'none',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              height: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'rgba(249, 115, 22, 0.05)',
+              borderRadius: '10px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(249, 115, 22, 0.3)',
+              borderRadius: '10px',
+              border: '2px solid transparent',
+              backgroundClip: 'content-box',
+              '&:hover': {
+                background: 'rgba(249, 115, 22, 0.5)',
+                backgroundClip: 'content-box',
               },
-              transition: 'all 0.3s ease',
-              '& .MuiDataGrid-columnHeader': {
-                transition: 'background-color 0.2s ease',
-                '& .MuiDataGrid-columnSeparator': {
-                  transition: 'opacity 0.3s ease',
-                },
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.15)',
-                  transition: 'background-color 0.3s ease',
-                },
-              },
-              '& .MuiDataGrid-columnSeparator': {
-                transition: 'none !important',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                position: 'sticky',
-                top: 0,
-                zIndex: 2,
-                backgroundColor: 'rgba(249, 115, 22, 0.15)',
-                transition: 'none !important',
-              },
-              '& .MuiDataGrid-sortIcon': {
-                color: '#f97316',
-                opacity: 0.5,
-              },
-              '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
-                opacity: 1,
-              },
-              '& .MuiDataGrid-columnHeaderTitle': {
-                fontWeight: 600,
-              },
-              '@keyframes fadeIn': {
-                from: { opacity: 0.8 },
-                to: { opacity: 1 }
-              },
-              '& .MuiIconButton-root': {
-                transition: 'background-color 0.2s ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.08)',
-                }
-              },
-              '& .MuiDataGrid-columnHeader': {
-                transition: 'background-color 0.2s ease',
-              },
-              '& .MuiDataGrid-cell': {
-                transition: 'background-color 0.2s ease',
-              },
-              '& .MuiDataGrid-footerContainer': {
-                transition: 'opacity 0.2s ease',
-              },
-              animation: 'none',
-              '& *': {
-                animation: 'none !important',
-              },
-              '& .MuiTablePagination-root': {
-                color: 'rgba(255, 255, 255, 0.7)',
-                '& .MuiTablePagination-select': {
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                  borderRadius: 1,
-                  padding: '4px 8px',
-                  '&:focus': {
-                    backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                  },
-                  '& .MuiSelect-select': {
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    backgroundColor: 'transparent', // Ensure dropdown has no opaque color
-                  },
-                },
-                '& .MuiTablePagination-selectIcon': {
-                  color: '#f97316',
-                },
-                '& .MuiTablePagination-displayedRows': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                },
-                '& .MuiTablePagination-actions .MuiIconButton-root': {
-                  color: '#f97316',
-                  '&:hover': {
-                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                  },
-                },
-                '& .MuiTablePagination-menuItem': {
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  backgroundColor: 'transparent', // Remove transparency from menu item
-                },
-                '& .MuiButtonBase-root.MuiMenuItem-root.MuiMenuItem-gutters.MuiMenuItem-root.MuiMenuItem-gutters.MuiTablePagination-menuItem': {
-                  backgroundColor: 'transparent',
-                },
-              },
-              '& .MuiDataGrid-footerContainer': {
-                borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              },
-            }}
-            components={{
-              Toolbar: GridToolbar,
-              LoadingOverlay: CustomLoadingOverlay,
-              NoRowsOverlay: CustomNoRowsOverlay,
-              Header: CustomHeaderComponent,
-              Footer: CustomFooterComponent,
-              Pagination: CustomPagination,
-            }}
-            componentsProps={{
-              columnHeaders: {
-                sx: {
-                  transition: 'none !important',
-                },
-              },
-              virtualScroller: {
-                sx: {
-                  scrollBehavior: 'smooth',
-                },
-              },
-            }}
-            columnBuffer={5}
-            rowBuffer={10}
-            rowHeight={60}
-            headerHeight={56}
-            pageSize={10}
-            rowsPerPageOptions={[10, 25, 50]}
-            pagination
-            disableSelectionOnClick={true}
-            disableColumnMenu={true}
-            disableColumnFilter={false}
-          />
-
-          <CustomFooterComponent />
-
-          {(isLoading) && <LoadingOverlay />}
-
-          <MenteeDetailsDialog
-            open={detailsDialog.open}
-            onClose={() => setDetailsDialog({ open: false, mentee: null })}
-            mentee={detailsDialog.mentee}
-          />
-
-          <Dialog
-            open={deleteDialog.open}
-            onClose={() => setDeleteDialog({ open: false, mujid: null })}
-            PaperProps={{
-              sx: {
-                backgroundColor: '#1a1a1a',
-                color: 'white',
-                borderRadius: '12px',
-                border: '1px solid rgba(249, 115, 22, 0.2)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-              }
+            },
+            '&::-webkit-scrollbar-corner': {
+              background: 'transparent',
+            },
+          },
+          // Add custom scrollbar for Firefox
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(249, 115, 22, 0.3) rgba(249, 115, 22, 0.05)',
+          '& .MuiDataGrid-virtualScrollerContent': {
+            minWidth: 'fit-content',
+            height: '100%',
+          },
+          '& .MuiDataGrid-virtualScrollerRenderZone': {
+            width: '100%',
+            height: '100%',
+          },
+          width: '100%',
+          height: '100%',
+          minHeight: '400px',
+          border: 'none',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 2,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          '& .MuiDataGrid-cell': {
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: '16px',
+            fontSize: '0.95rem',
+            color: 'rgba(255, 255, 255, 0.9)',
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60px !important',
+            maxHeight: 'unset !important',
+            whiteSpace: 'normal',
+            lineHeight: '1.5',
+            transition: 'all 0.2s ease',
+          },
+          '& .MuiDataGrid-row': {
+            transition: 'background-color 0.2s ease',
+            cursor: 'pointer',
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.08)',
+              transform: 'translateY(-1px)',
+              transition: 'transform 0.2s ease, background-color 0.2s ease',
+            },
+          },
+          transition: 'all 0.3s ease',
+          '& .MuiDataGrid-columnHeader': {
+            transition: 'background-color 0.2s ease',
+            '& .MuiDataGrid-columnSeparator': {
+              transition: 'opacity 0.3s ease',
+            },
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.15)',
+              transition: 'background-color 0.3s ease',
+            },
+          },
+          '& .MuiDataGrid-columnSeparator': {
+            transition: 'none !important',
+          },
+          '& .MuiDataGrid-columnHeaders': {
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+            backgroundColor: 'rgba(249, 115, 22, 0.15)',
+            transition: 'none !important',
+          },
+          '& .MuiDataGrid-sortIcon': {
+            color: '#f97316',
+            opacity: 0.5,
+          },
+          '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
+            opacity: 1,
+          },
+          '& .MuiDataGrid-columnHeaderTitle': {
+            fontWeight: 600,
+          },
+          '@keyframes fadeIn': {
+            from: { opacity: 0.8 },
+            to: { opacity: 1 }
+          },
+          '& .MuiIconButton-root': {
+            transition: 'background-color 0.2s ease',
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.08)',
+            }
+          },
+          '& .MuiDataGrid-columnHeader': {
+            transition: 'background-color 0.2s ease',
+          },
+          '& .MuiDataGrid-cell': {
+            transition: 'background-color 0.2s ease',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            transition: 'opacity 0.2s ease',
+            position: 'sticky',
+            bottom: 0,
+            padding: '8px 16px', // Reduced padding
+            borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            minHeight: '52px', // Reduced height
+            height: 'auto',
+          },
+          animation: 'none',
+          '& *': {
+            animation: 'none !important',
+          },
+          '& .MuiTablePagination-root': {
+            color: 'rgba(255, 255, 255, 0.7)',
+            marginLeft: 'auto',
+            '& .MuiTablePagination-select': {
+              color: 'white',
+            },
+            '& .MuiTablePagination-selectIcon': {
+              color: '#f97316',
+            },
+            '& .MuiTablePagination-displayedRows': {
+              color: 'rgba(255, 255, 255, 0.7)',
+            },
+          },
+          '& .MuiDataGrid-footerContainer': {
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '0.25rem 1rem',
+            borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            minheight: '20px',
+          },
+        }}
+      />
+      
+      {/* Details Dialog */}
+      <Dialog 
+        open={detailsDialog.open}
+        onClose={() => setDetailsDialog({ open: false, mentee: null })}
+        PaperProps={{
+          sx: {
+            backgroundColor: '#1a1a1a',
+            color: 'white',
+            borderRadius: '12px',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          Mentee Details
+        </DialogTitle>
+        <DialogContent sx={{ my: 2 }}>
+          {/* Render mentee details here */}
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+          <Button
+            onClick={() => setDetailsDialog({ open: false, mentee: null })}
+            variant="outlined"
+            sx={{
+              color: 'white',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              } 
             }}
           >
-            <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              Confirm Delete
-            </DialogTitle>
-            <DialogContent sx={{ my: 2 }}>
-              Are you sure you want to delete this mentee? This action cannot be undone.
-            </DialogContent>
-            <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
-              <Button
-                onClick={() => setDeleteDialog({ open: false, mujid: null })}
-                variant="outlined"
-                sx={{
-                  color: 'white',
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  '&:hover': {
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  } 
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmDelete}
-                variant="contained"
-                sx={{
-                  bgcolor: '#ef4444',
-                  '&:hover': { bgcolor: '#dc2626' }
-                }}
-              >
-                Delete
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Box>
-      )}
-    </>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, mujid: null })}
+        PaperProps={{
+          sx: {
+            backgroundColor: '#1a1a1a',
+            color: 'white',
+            borderRadius: '12px',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent sx={{ my: 2 }}>
+          Are you sure you want to delete this mentee? This action cannot be undone.
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+          <Button
+            onClick={() => setDeleteDialog({ open: false, mujid: null })}
+            variant="outlined"
+            sx={{
+              color: 'white',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              } 
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            sx={{
+              bgcolor: '#ef4444',
+              '&:hover': { bgcolor: '#dc2626' }
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Update MenteeDetailsDialog */}
+      <MenteeDetailsDialog
+        open={detailsDialog.open}
+        onClose={() => setDetailsDialog({ open: false, mentee: null })}
+        mentee={detailsDialog.mentee} // Pass the selected mentee data
+      />
+    </Box>
   );
 };
 

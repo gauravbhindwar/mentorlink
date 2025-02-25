@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -18,6 +18,13 @@ import { dialogStyles } from '../mentorStyle';
 import { determineAcademicPeriod } from '../utils/academicUtils';
 
 const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handleAddMentor, handleSearchMentor, searchingMentor }) => {
+  // Add state for errors
+  const [errors, setErrors] = useState({
+    email: '',
+    name: '',
+    phone_number: '',
+  });
+
   // Initialize dialog only with academic details
   useEffect(() => {
     if (open) {
@@ -39,23 +46,61 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
     }
   }, [open, setMentorDetails]);
 
+  // Validation functions
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return "Email is required";
+    if (!regex.test(email)) return "Invalid email format";
+    return "";
+  };
+
+  const validateName = (name) => {
+    if (!name) return "Name is required";
+    if (name.length < 2) return "Name must be at least 2 characters";
+    if (!/^[a-zA-Z\s]+$/.test(name)) return "Name can only contain letters and spaces";
+    return "";
+  };
+
+  const validatePhone = (phone) => {
+    const regex = /^[0-9]{10}$/;
+    if (!phone) return "Phone number is required";
+    if (!regex.test(phone)) return "Phone number must be 10 digits";
+    return "";
+  };
+
+  // Modified handleInputChange with validation
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'email') {
-      // When email is cleared, also clear MUJid
-      if (!value.trim()) {
-        setMentorDetails(prev => ({
-          ...prev,
-          email: '',
-          MUJid: ''
-        }));
-        return;
-      }
-    }
     setMentorDetails(prev => ({
       ...prev,
       [name]: value,
     }));
+
+    // Clear error when user starts typing
+    setErrors(prev => ({
+      ...prev,
+      [name]: '',
+    }));
+  };
+
+  // Add validation before submitting
+  const handleSubmit = () => {
+    // Validate all fields
+    const newErrors = {
+      email: validateEmail(mentorDetails.email),
+      name: validateName(mentorDetails.name),
+      phone_number: validatePhone(mentorDetails.phone_number),
+    };
+
+    setErrors(newErrors);
+
+    // Check if there are any errors
+    if (Object.values(newErrors).some(error => error !== "")) {
+      return; // Don't submit if there are errors
+    }
+
+    // If no errors, proceed with adding mentor
+    handleAddMentor();
   };
 
   return (
@@ -208,53 +253,60 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
 
             {/* Email with Search - Place this before MUJid field */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  value={mentorDetails.email}
-                  onChange={handleInputChange}
-                  required
-                  sx={{
-                    ...dialogStyles.textField,
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(249, 115, 22, 0.5)',
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexDirection: 'column' }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%' }}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    value={mentorDetails.email}
+                    onChange={handleInputChange}
+                    error={!!errors.email}
+                    helperText={errors.email}
+                    required
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(249, 115, 22, 0.5)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#f97316',
+                        },
                       },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#f97316',
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#f97316',
                       },
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': {
-                      color: '#f97316',
-                    },
-                    '& .MuiInputBase-input': {
-                      color: 'white',
-                    },
-                  }}
-                />
-                <IconButton 
-                  onClick={handleSearchMentor}
-                  disabled={searchingMentor || !mentorDetails.email}
-                  sx={{
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    '&:hover': { 
-                      bgcolor: 'rgba(249, 115, 22, 0.2)',
-                    },
-                    '&.Mui-disabled': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                    },
-                    width: '48px',
-                    height: '48px',
-                  }}
-                >
-                  {searchingMentor ? (
-                    <CircularProgress size={24} sx={{ color: '#f97316' }} />
-                  ) : (
-                    <SearchIcon sx={{ color: '#f97316' }} />
-                  )}
-                </IconButton>
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: '#ef4444',
+                      },
+                    }}
+                  />
+                  <IconButton 
+                    onClick={handleSearchMentor}
+                    disabled={searchingMentor || !mentorDetails.email}
+                    sx={{
+                      bgcolor: 'rgba(249, 115, 22, 0.1)',
+                      '&:hover': { 
+                        bgcolor: 'rgba(249, 115, 22, 0.2)',
+                      },
+                      '&.Mui-disabled': {
+                        bgcolor: 'rgba(255, 255, 255, 0.05)',
+                      },
+                      width: '48px',
+                      height: '48px',
+                    }}
+                  >
+                    {searchingMentor ? (
+                      <CircularProgress size={24} sx={{ color: '#f97316' }} />
+                    ) : (
+                      <SearchIcon sx={{ color: '#f97316' }} />
+                    )}
+                  </IconButton>
+                </Box>
               </Box>
             </Grid>
 
@@ -294,6 +346,8 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                 name="name"
                 value={mentorDetails.name}
                 onChange={handleInputChange}
+                error={!!errors.name}
+                helperText={errors.name}
                 required
                 sx={{
                   ...dialogStyles.textField,
@@ -310,6 +364,9 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                   },
                   '& .MuiInputBase-input': {
                     color: 'white',
+                  },
+                  '& .MuiFormHelperText-root': {
+                    color: '#ef4444',
                   },
                 }}
               />
@@ -323,6 +380,8 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                 name="phone_number"
                 value={mentorDetails.phone_number}
                 onChange={handleInputChange}
+                error={!!errors.phone_number}
+                helperText={errors.phone_number}
                 required
                 sx={{
                   ...dialogStyles.textField,
@@ -339,6 +398,9 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                   },
                   '& .MuiInputBase-input': {
                     color: 'white',
+                  },
+                  '& .MuiFormHelperText-root': {
+                    color: '#ef4444',
                   },
                 }}
               />
@@ -375,7 +437,7 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
           Cancel
         </Button>
         <Button
-          onClick={handleAddMentor}
+          onClick={handleSubmit}
           variant="contained"
           sx={{
             bgcolor: "#f97316",

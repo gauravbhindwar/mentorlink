@@ -118,30 +118,48 @@ export async function DELETE(req) {
     const { MUJid, roles } = await req.json();
 
     if (!MUJid || !roles || roles.length === 0) {
-      return NextResponse.json({ message: "Mentor deleted successfully" });
+      return NextResponse.json({ message: "Invalid request data" }, { status: 400 });
+    }
+
+    // Get current mentor to access their roles
+    const mentor = await Mentor.findOne({ MUJid });
+    if (!mentor) {
+      return NextResponse.json({ message: "Mentor not found" }, { status: 404 });
+    }
+
+    // Calculate remaining roles
+    const remainingRoles = mentor.role.filter(role => !roles.includes(role));
+
+    // If no roles will remain, delete the mentor completely
+    if (remainingRoles.length === 0) {
+      // Delete from both collections
+      await Promise.all([
+        Mentor.deleteOne({ MUJid }),
+        Admin.deleteOne({ MUJid })
+      ]);
+
+      return NextResponse.json({ 
+        message: "Mentor deleted successfully",
+        deleted: true
+      });
     }
 
     // If only removing admin/superadmin roles
     if (roles.includes('admin') || roles.includes('superadmin')) {
-      // Remove from Admin collection
       await Admin.deleteOne({ MUJid });
-      
-      // Update roles in Mentor collection
-      await Mentor.updateOne(
-        { MUJid },
-        { 
-          $pull: { role: { $in: roles } },
-          $set: { role: remainingRoles }
-        }
-      );
-
-      return NextResponse.json({ 
-        message: "Roles deleted successfully",
-        remainingRoles
-      });
     }
+    
+    // Update roles in Mentor collection
+    await Mentor.updateOne(
+      { MUJid },
+      { $set: { role: remainingRoles } }
+    );
 
-    return NextResponse.json({ message: "No changes made" });
+    return NextResponse.json({ 
+      message: "Roles updated successfully",
+      remainingRoles,
+      deleted: false
+    });
 
   } catch (error) {
     console.error("Error deleting:", error);

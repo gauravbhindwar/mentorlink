@@ -10,7 +10,8 @@ const adminSchema = new mongoose.Schema({
     updated_at: { type: Date, default: Date.now },
     otp: { type: String },
     otpExpires: { type: Date },
-    isOtpUsed: { type: Boolean, default: false }
+    isOtpUsed: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true }
 });
 
 const Admin = mongoose.models.Admin || mongoose.model("Admin", adminSchema);

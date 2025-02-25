@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { FiChevronDown, FiLogOut, FiGrid, FiInfo, FiUser, FiShield } from "react-icons/fi";
+import { FiChevronDown, FiLogOut, FiGrid, FiInfo, FiUser} from "react-icons/fi";
+import { FaUserShield } from "react-icons/fa";
 import { usePathname, useRouter } from "next/navigation";
 
 const Navbar = () => {
@@ -190,7 +191,7 @@ const Navbar = () => {
   const getRoleDetails = () => {
     if (currentRole === 'admin') {
       return {
-        icon: <FiShield className="h-5 w-5" />,
+        icon: <FaUserShield className="h-5 w-5" />,
         color: 'bg-red-500 hover:bg-red-600',
         label: 'Admin'
       };

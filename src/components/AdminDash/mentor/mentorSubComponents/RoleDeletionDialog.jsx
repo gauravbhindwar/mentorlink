@@ -21,6 +21,12 @@ const RoleDeletionDialog = ({
   setSelectedRoles,
   handleRoleBasedDelete,
 }) => {
+  // Get only the roles that the mentor currently has
+  const availableRoles = deleteRoleDialog.mentor?.role || [];
+  
+  // Check if all roles are selected
+  const isAllRolesSelected = selectedRoles.length === availableRoles.length;
+
   return (
     <Dialog
       open={open}
@@ -40,7 +46,7 @@ const RoleDeletionDialog = ({
           component="div"
           sx={{ color: "#f97316", fontWeight: 600 }}
         >
-          Confirm Role Deletion
+          {isAllRolesSelected ? 'Confirm Mentor Deletion' : 'Confirm Role Deletion'}
         </Typography>
         <IconButton
           aria-label="close"
@@ -63,10 +69,12 @@ const RoleDeletionDialog = ({
         }}
       >
         <Typography variant="body1" sx={{ mb: 2 }}>
-          The mentor has the following roles. Please select the roles you want to delete:
+          {isAllRolesSelected 
+            ? 'Warning: Selecting all roles will completely delete the mentor. Are you sure?'
+            : 'Select the roles you want to remove:'}
         </Typography>
         <Box sx={{ color: "white" }}>
-          {deleteRoleDialog.mentor?.role.map((role) => (
+          {availableRoles.map((role) => (
             <Box key={role} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
               <Checkbox
                 checked={selectedRoles.includes(role)}
@@ -115,13 +123,13 @@ const RoleDeletionDialog = ({
           onClick={handleRoleBasedDelete}
           variant="contained"
           sx={{
-            bgcolor: "#f97316",
+            bgcolor: isAllRolesSelected ? "#dc2626" : "#f97316",
             "&:hover": {
-              bgcolor: "#ea580c",
+              bgcolor: isAllRolesSelected ? "#b91c1c" : "#ea580c",
             },
           }}
         >
-          Delete Selected Roles
+          {isAllRolesSelected ? 'Delete Mentor' : 'Delete Selected Roles'}
         </Button>
       </DialogActions>
     </Dialog>

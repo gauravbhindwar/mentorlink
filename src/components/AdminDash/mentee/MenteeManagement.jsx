@@ -11,10 +11,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
+  Button,
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import FilterListIcon from '@mui/icons-material/FilterList';
+// import CloseIcon from '@mui/icons-material/Close';
 import MenteeTable from './MenteeTable';
 import FilterSection from './FilterSection';
 import { motion } from 'framer-motion';
@@ -28,6 +29,26 @@ import AssignMentorDialog from './menteeSubComponents/AssignMentorDialog';
 import BulkUploadDialog from './menteeSubComponents/BulkUploadDialog';
 import { calculateCurrentSemester, getCurrentAcademicYear, generateAcademicSessions } from './utils/academicUtils';
 import TableSkeleton from './TableSkeleton';  // Add this import at the top
+import dynamic from 'next/dynamic';
+import noData from '@/assets/animations/noData.json';
+import LoadingDialog from '@/components/common/LoadingDialog';
+// import ConfirmDialog from '@/components/common/ConfirmDialog';
+
+// Add dynamic import for Lottie
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+
+// Add debounce function at the top of the file, before any component code
+const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
 
 // Move filterData function up before it's used
 const filterData = (data, filters) => {
@@ -60,34 +81,49 @@ const filterData = (data, filters) => {
   });
 };
 
+// Add this helper function before the component
+const determineCurrentSession = () => {
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear();
+  
+  return currentMonth >= 7 && currentMonth <= 12
+    ? `JULY-DECEMBER ${currentYear}`
+    : `JANUARY-JUNE ${currentYear}`;
+};
+
+// Update the filters state to remove menteeMujid
 const MenteeManagement = () => {
+  const [emailSearch, setEmailSearch] = useState('');
   const [mentees, setMentees] = useState([]);
   const [filters, setFilters] = useState({
     academicYear: '',
     academicSession: '',
     semester: '',
-    mentorMujid: '',
-    menteeMujid: '',
-    mentorEmailid: ''
+    email: '', // Changed from mentorEmailid/menteeMujid
   });
   const dataCache = useRef(new Map());
 
-  // Add new centralized loading state
-  const [loadingStates, setLoadingStates] = useState({
-    initial: true,
-    fetching: false,
-    updating: false
+  // Simplify loading state
+  const [loadingState, setLoadingState] = useState({
+    isLoading: false,
+    type: null
   });
 
   // Add currentFilters state
   const [currentFilters, setCurrentFilters] = useState(null);
 
-  // Replace debounce with simple delay using setTimeout
+  // Add data ready state
+  // const [isDataReady, setIsDataReady] = useState(false);
+
+  // Add data initialization state
+  // const [isInitialized, setIsInitialized] = useState(false);
+
+  // Optimize data fetching
   const fetchMenteeData = useCallback(async (params) => {
     if (!params.academicYear || !params.academicSession) return;
     
-    const storageKey = `${params.academicYear}-${params.academicSession}`;
-    setLoadingStates(prev => ({ ...prev, fetching: true }));
+    setLoadingState({ isLoading: true, type: 'fetch' });
     
     try {
       const response = await axios.get('/api/admin/manageUsers/manageMentee', { params });
@@ -98,23 +134,75 @@ const MenteeManagement = () => {
         mentorMujid: mentee.mentorMujid?.toUpperCase()
       }));
       
-      // Update storage and state together
-      localStorage.setItem(storageKey, JSON.stringify(processedData));
       setMentees(processedData);
-      setTableVisible(true);
+      // setTableVisible(true);
+      // setIsInitialized(true);
       return processedData;
     } catch (error) {
       console.error('Error fetching mentees:', error);
+      setMentees([]);
       return [];
     } finally {
-      setLoadingStates(prev => ({ ...prev, fetching: false }));
+      setLoadingState({ isLoading: false, type: null });
     }
-  }, []);
+  }, []); 
 
   // Handle filter changes with timeout
   const filterTimeout = useRef(null);
+
+  // Move debouncedSearch declaration before it's used in handleFilterChange
+  const handleEmailSearch = useCallback((value) => {
+    setEmailSearch(value);
+    
+    const storageKey = `${filters.academicYear}-${filters.academicSession}`;
+    const localData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  
+    if (localData.length > 0) {
+      const searchValue = value.toLowerCase();
+      
+      if (!searchValue) {
+        // If search is cleared, restore original data with timestamps
+        setMentees(localData.map(mentee => ({
+          ...mentee,
+          timestamp: mentee.timestamp || Date.now()
+        })));
+        return;
+      }
+  
+      // Filter and sort the data locally
+      const filteredAndSortedData = localData
+        .map(mentee => {
+          // Calculate match score
+          const emailMatch = mentee.email?.toLowerCase().includes(searchValue) ? 2 : 0;
+          const mentorEmailMatch = mentee.mentorEmailid?.toLowerCase().includes(searchValue) ? 1 : 0;
+          const score = emailMatch + mentorEmailMatch;
+  
+          return {
+            ...mentee,
+            timestamp: mentee.timestamp || Date.now(),
+            searchScore: score
+          };
+        })
+        .filter(mentee => mentee.searchScore > 0)
+        .sort((a, b) => b.searchScore - a.searchScore);
+  
+      setMentees(filteredAndSortedData);
+    }
+  }, [filters.academicYear, filters.academicSession]); // Add dependencies
+  
+  // Debounce the search for smoothness
+  const debouncedSearch = useCallback(
+    debounce((value) => handleEmailSearch(value), 300),
+    [handleEmailSearch] // Add handleEmailSearch as dependency
+  );
+
+  // Now we can use debouncedSearch in handleFilterChange
   const handleFilterChange = useCallback((name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'email') {
+      debouncedSearch(value);
+    }
 
     // For base filters, fetch new data with a small delay
     if (['academicYear', 'academicSession'].includes(name)) {
@@ -129,7 +217,7 @@ const MenteeManagement = () => {
         });
       }, 300);
     }
-  }, [filters.academicYear, filters.academicSession, fetchMenteeData]);
+  }, [filters.academicYear, filters.academicSession, fetchMenteeData, debouncedSearch]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -141,7 +229,6 @@ const MenteeManagement = () => {
   }, []);
 
   const [academicSessions, setAcademicSessions] = useState([]);
-  const [loading, setLoading] = useState(true); // Start with true
   const [mounted, setMounted] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [menteeDetails, setMenteeDetails] = useState({
@@ -196,9 +283,12 @@ const MenteeManagement = () => {
   const [uploading, setUploading] = useState(false);
   const [previewData, setPreviewData] = useState({ data: [], errors: [] });
   const [showPreview, setShowPreview] = useState(false);
+  const [loadingDialog, setLoadingDialog] = useState({
+    open: false,
+    message: ''
+  });
 
-  const [tableVisible, setTableVisible] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
+  // const [tableVisible, setTableVisible] = useState(false);
   const [showFilters, setShowFilters] = useState(() => {
     // Only run on client side
     if (typeof window !== 'undefined') {
@@ -410,7 +500,7 @@ const MenteeManagement = () => {
 
   const handleEditClick = async (mentee) => {
     console.log("Received mentee for editing:", mentee); // Debug log
-    setEditLoading(true);
+    setLoadingState({ isLoading: true, type: 'update' });
     try {
       // Use the mentee data directly from the table
       setSelectedMentee(mentee);
@@ -418,7 +508,7 @@ const MenteeManagement = () => {
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error fetching mentee details', 'error');
     } finally {
-      setEditLoading(false);
+      setLoadingState({ isLoading: false, type: 'update' });
     }
   };
 
@@ -570,10 +660,11 @@ const handleUpdate = (updatedMentee) => {
     localStorage.setItem('showFilters', JSON.stringify(showFilters));
   }, [showFilters]);
 
+  // Update handleSearch to use combined email filter
   const handleSearch = async () => {
     if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) return;
 
-    setLoading(true);
+    setLoadingState({ isLoading: true, type: 'search' });
 
     const baseParams = {
       academicYear: filters.academicYear.trim(),
@@ -588,7 +679,7 @@ const handleUpdate = (updatedMentee) => {
       const localData = localStorage.getItem(storageKey);
       
       // Check if we need to fetch new data
-      if (!localData || (!filters.semester && !filters.menteeMujid && !filters.mentorEmailid)) {
+      if (!localData || (!filters.semester && !filters.email)) {
         // Fetch new data from API
         const response = await axios.get('/api/admin/manageUsers/manageMentee', {
           params: baseParams
@@ -623,47 +714,41 @@ const handleUpdate = (updatedMentee) => {
           const matchSemester = !filters.semester || 
             parseInt(item.semester) === parseInt(filters.semester);
 
-          const matchMenteeMujid = !filters.menteeMujid || 
-            item.MUJid?.toUpperCase().includes(filters.menteeMujid.toUpperCase());
+          const matchEmail = !filters.email || 
+            item.email?.toLowerCase().includes(filters.email.toLowerCase()) ||
+            item.mentorEmailid?.toLowerCase().includes(filters.email.toLowerCase());
 
-          const matchMentorMujid = !filters.mentorMujid || 
-            item.mentorMujid?.toUpperCase().includes(filters.mentorMujid.toUpperCase());
-
-          const matchMentorEmail = !filters.mentorEmailid || 
-            item.mentorEmailid?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
-
-          return matchSemester && matchMenteeMujid && 
-                 matchMentorMujid && matchMentorEmail;
+          return matchSemester && matchEmail;
         });
       }
 
       setMentees(data);
-      setTableVisible(true);
+      // setTableVisible(true);
       setCurrentFilters({ ...filters, key: storageKey });
 
     } catch (error) {
       console.error('Search error:', error);
       showAlert('Error searching mentees', 'error');
       setMentees([]);
-      setTableVisible(false);
+      // setTableVisible(false);
     } finally {
-      setLoading(false);
+      setLoadingState({ isLoading: false, type: 'search' });
     }
   };
 
+  // Update handleReset
   const handleReset = () => {
     setFilters({
       academicYear: '',
       academicSession: '',
       semester: '',
-      mentorMujid: '',
-      menteeMujid: '',
-      mentorEmailid: ''
+      email: ''  // Updated to match new structure
     });
     setMentees([]); // Clear mentees data
-    setTableVisible(false);
+    // setTableVisible(false);
     localStorage.removeItem('mentee data');
-    setLoading(false); // Ensure loading state is set to false after reset
+    // Ensure loading state is set to false after reset
+    setLoadingState({ isLoading: false, type: 'reset' });
     // Reset current filters
     setCurrentFilters(null);
   };
@@ -736,20 +821,43 @@ const handleUpdate = (updatedMentee) => {
     }
   };
 
-  const handleMenteeAdded = ({ mentee, storageKey }) => {
-    // Update mentees state immediately
-    setMentees(prev => [...prev, mentee]);
+  const handleMenteeAdded = async ({ mentee, storageKey }) => {
+    setLoadingDialog({ open: true, message: 'Processing new mentee...' });
     
-    // Update localStorage for the specific academic period
-    const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    const updatedData = [...existingData, mentee];
-    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+    try {
+      const menteeWithTimestamp = {
+        ...mentee,
+        timestamp: Date.now(),
+        id: `${mentee._id || ''}-${mentee.MUJid || ''}-${Date.now()}`
+      };
     
-    // Update current filters to trigger table refresh
-    setCurrentFilters(prev => ({
-      ...prev,
-      timestamp: Date.now()
-    }));
+      // Update mentees state
+      setMentees(prev => {
+        const filtered = prev.filter(m => m.MUJid !== menteeWithTimestamp.MUJid);
+        return [...filtered, menteeWithTimestamp];
+      });
+      
+      // Update localStorage
+      const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const updatedData = [
+        ...existingData.filter(m => m.MUJid !== menteeWithTimestamp.MUJid),
+        menteeWithTimestamp
+      ];
+      localStorage.setItem(storageKey, JSON.stringify(updatedData));
+      
+      setCurrentFilters(prev => ({
+        ...prev,
+        timestamp: Date.now()
+      }));
+
+      toast.success('Mentee added successfully');
+    } catch (error) {
+      console.error('Error processing new mentee:', error);
+      toast.error('Error processing new mentee');
+      // Optionally revert changes here
+    } finally {
+      setLoadingDialog({ open: false, message: '' });
+    }
   };
 
   useEffect(() => {
@@ -784,50 +892,46 @@ const handleUpdate = (updatedMentee) => {
     return () => clearTimeout(timeout);
   }, []);
 
+  // Update filterConfig to reflect new structure
   const filterConfig = {
     academicYear: filters.academicYear,
     academicSession: filters.academicSession,
     semester: filters.semester,
-    menteeMujid: filters.menteeMujid, // Add setter for menteeMujid
-    mentorMujid: filters.mentorMujid,  // Add setter for mentorMujid,
-    mentorEmailid: filters.mentorEmailid
+    email: filters.email  // Single email filter
   };
   
  useEffect(() => {
     const initializeComponent = async () => {
       if (!mounted) return;
 
-      // Get current academic year and session
-      const currentAcadYear = getCurrentAcademicYear();
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
-      const [startYear] = currentAcadYear.split('-');
-      
-      const currentSession = currentMonth >= 7 && currentMonth <= 12
-        ? `JULY-DECEMBER ${startYear}`
-        : `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+      try {
+        // Set loading state immediately
+        setLoadingState({ isLoading: true, type: 'fetch' });
 
-      // Set initial filters without triggering search
-      setFilters(prev => ({
-        ...prev,
-        academicYear: currentAcadYear,
-        academicSession: currentSession
-      }));
+        const currentAcadYear = getCurrentAcademicYear();
+        const currentSession = determineCurrentSession();
 
-      // Add a small delay before resetting loading states
-      setTimeout(() => {
-        setLoadingStates(prev => ({ ...prev, initial: false }));
-        setLoading(false);
-      }, 1000); // 1 second delay
+        // Set initial filters
+        setFilters(prev => ({
+          ...prev,
+          academicYear: currentAcadYear,
+          academicSession: currentSession
+        }));
 
-      // Clear existing data
-      setMentees([]);
-      setTableVisible(false);
-      setCurrentFilters(null);
+        // Fetch initial data
+        await fetchMenteeData({
+          academicYear: currentAcadYear,
+          academicSession: currentSession
+        });
+
+      } catch (error) {
+        console.error('Initialization error:', error);
+        showAlert('Error initializing data', 'error');
+      }
     };
 
     initializeComponent();
-  }, [mounted]);
+  }, [mounted, fetchMenteeData]);
 
   const handleDataUpdate = (updateFn) => {
     setMentees(prevMentees => {
@@ -849,7 +953,7 @@ const handleUpdate = (updatedMentee) => {
 
   const handleConfirmUpdate = async () => {
     try {
-      setLoadingStates(prev => ({ ...prev, updating: true }));
+      setLoadingState({ isLoading: true, type: 'update' });
       
       if (confirmDialog.mentee) {
         await handleUpdate(confirmDialog.mentee);
@@ -872,7 +976,7 @@ const handleUpdate = (updatedMentee) => {
       console.error('Error in handleConfirmUpdate:', error);
       toast.error('Failed to update mentee');
     } finally {
-      setLoadingStates(prev => ({ ...prev, updating: false }));
+      setLoadingState({ isLoading: false, type: 'update' });
     }
   };
 
@@ -1024,7 +1128,7 @@ const handleUpdate = (updatedMentee) => {
                   onDelete={handleDelete}
                   mentees={mentees}
                   filterData={filterData} // Pass filterData as prop
-                  isLoading={loadingStates.fetching}
+                  isLoading={loadingState.isLoading && loadingState.type === 'fetching'}
                 />
               </div>
             </motion.div>
@@ -1039,8 +1143,8 @@ const handleUpdate = (updatedMentee) => {
               }}
             >
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
-                <div className="h-full flex flex-col p-4 pb-2">
-                  {loadingStates.initial || loading ? (
+                <div className="h-full flex flex-col">
+                  {!mounted || loadingState.isLoading ? (
                     <TableSkeleton rowsNum={8} />
                   ) : mentees.length > 0 ? (
                     <div className="h-full">
@@ -1050,24 +1154,51 @@ const handleUpdate = (updatedMentee) => {
                         onDeleteClick={handleDelete}
                         isSmallScreen={isSmallScreen}
                         onDataUpdate={handleDataUpdate}
-                        isLoading={loadingStates.fetching}
-                        currentFilters={currentFilters} // Pass filters to table
+                        isLoading={loadingState.isLoading}
+                        currentFilters={currentFilters}
+                        emailFilter={emailSearch}
                       />
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {tableVisible ? 'No mentees found' : 'Select filters to load data'}
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                      <div className="w-64 h-64">
+                        {typeof window !== 'undefined' && (
+                          <Lottie
+                            animationData={noData}
+                            loop={true}
+                            autoplay={true}
+                          />
+                        )}
+                      </div>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          mt: 2,
+                          fontWeight: 500 
+                        }}
+                      >
+                        No mentees found
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          mt: 1 
+                        }}
+                      >
+                        Try different search criteria or add a new mentee
                       </Typography>
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
-          </div> 
+
+          </div>
         </div>
 
-        <AddMenteeDialog 
+        <AddMenteeDialog
           open={openDialog}
           onClose={handleDialogClose}
           menteeDetails={menteeDetails}
@@ -1082,7 +1213,7 @@ const handleUpdate = (updatedMentee) => {
           onClose={handleEditClose}
           mentee={selectedMentee}
           onUpdate={handleUpdate}
-          loading={editLoading}
+          loading={loadingState.isLoading && loadingState.type === 'update'}
         />
 
         <AssignMentorDialog
@@ -1101,22 +1232,12 @@ const handleUpdate = (updatedMentee) => {
           uploadProgress={uploadProgress}
         />
 
-        <Dialog 
-          open={confirmDialog.open}           
-          onClose={handleConfirmClose}          
-          PaperProps={{           
-             style: {              
-              background: 'rgba(0, 0, 0, 0.8)',              
-              backdropFilter: 'blur(10px)',              
-              border: '1px solid rgba(255, 255, 255, 0.1)',              
-              borderRadius: '1rem',            
-            },          
-          }}>          
-          <DialogTitle>Confirm Update</DialogTitle>          
-          <DialogContent>            
-            Are you sure you want to update this mentee&apos;s data? This action is non-reversible.          
-          </DialogContent>          
-          <DialogActions>            
+        <Dialog open={confirmDialog.open} onClose={handleConfirmClose}>
+          <DialogTitle>Confirm Update</DialogTitle>
+          <DialogContent>
+            Are you sure you want to update this mentee&apos;s data? This action is non-reversible.
+          </DialogContent>
+          <DialogActions>
             <Button 
               onClick={handleConfirmClose} 
               variant="outlined"
@@ -1128,34 +1249,35 @@ const handleUpdate = (updatedMentee) => {
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 }
               }}
-            >              
-              Cancel            
-            </Button>            
+            >
+              Cancel
+            </Button>
             <Button 
               onClick={handleConfirmUpdate}
               variant="contained"
-              disabled={loadingStates.updating}
+              disabled={loadingState.isLoading && loadingState.type === 'update'}
               sx={{
                 bgcolor: '#f97316',
                 '&:hover': { bgcolor: '#ea580c' },
                 '&:disabled': { bgcolor: 'rgba(249, 115, 22, 0.5)' }
               }}
-            >              
-              {loadingStates.updating ? 'Updating...' : 'Confirm'}
-            </Button>          
-          </DialogActions>        
-        </Dialog>        
+            >
+              {loadingState.isLoading && loadingState.type === 'update' ? 'Updating...' : 'Confirm'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <BulkUploadPreview
           open={showPreview}
-          onClose={() => setShowPreview(false)}
+          onClose={() => setShowPreview(false)} 
           data={previewData.data}
           errors={previewData.errors}
-          onConfirm={handleConfirmUpload}
+          onConfirm={handleConfirmUpload} 
           isUploading={uploading}
           type="mentee" // Specify the type as mentee
         />
         {/* Toast notifications */}        
-        {editLoading && (
+        {loadingState.isLoading && loadingState.type === 'update' && (
           <Box
             sx={{
               position: 'fixed',
@@ -1174,9 +1296,12 @@ const handleUpdate = (updatedMentee) => {
             <CircularProgress sx={{ color: '#f97316' }} />
           </Box>
         )}
-
-      </div>    
-    </ThemeProvider>  
+        <LoadingDialog 
+          open={loadingDialog.open}
+          message={loadingDialog.message}
+        />
+      </div>
+    </ThemeProvider>
   );
 };
 export default MenteeManagement;

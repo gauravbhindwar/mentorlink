@@ -8,6 +8,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useDropzone } from "react-dropzone";
 import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
+import InputAdornment from '@mui/material/InputAdornment';
 
 const filterSectionStyles = {
   wrapper: {
@@ -492,34 +493,40 @@ const MentorFilterSection = ({
               sx={{...textFieldStyles, pointerEvents: 'none', opacity: 0.7, select: 'none'}}
             />
           </Box>
-          <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, mb: 0.5 }}>
-            Filter results by Email (optional)
+          <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, mb: 1 }}>
+            Search mentors
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <TextField
-              label="Email"
+              fullWidth
+              placeholder="Search by name, email, phone..."
               value={emailSearch}
               onChange={(e) => handleEmailSearch(e.target.value)}
-              placeholder="Type to filter by email"
-              type="email"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'rgba(249, 115, 22, 0.7)' }} />
+                  </InputAdornment>
+                ),
+              }}
               sx={{
                 ...textFieldStyles,
-                flex: 1,
-                mr: 1,
                 '& .MuiOutlinedInput-root': {
                   ...textFieldStyles['& .MuiOutlinedInput-root'],
-                  background: 'rgba(255, 255, 255, 0.05)',
                   height: '50px',
                   borderRadius: '12px',
+                  backgroundColor: 'rgba(17, 24, 39, 0.8)',
+                  backdropFilter: 'blur(12px)',
                   '&:hover .MuiOutlinedInput-notchedOutline': {
                     borderColor: '#f97316',
                   },
                 },
               }}
             />
-           
           </Box>
-              </Box>
+        </Box>
+        </Box>
 
               <Box sx={filterSectionStyles.buttonGroup}>
           <Button
