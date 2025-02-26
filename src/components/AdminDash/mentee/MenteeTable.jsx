@@ -426,11 +426,14 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
 
   return (
     <Box sx={{ 
-      height: 'calc(100vh - 145px)', // Adjust this value to control overall container height
-      width: '100%', 
+      height: '100%',
+      width: '100%',
+      position: 'relative',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
       bgcolor: 'rgba(0, 0, 0, 0.2)',
       borderRadius: 2,
-      overflow: 'hidden',
       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
       border: '1px solid rgba(249, 115, 22, 0.2)',
     }}>

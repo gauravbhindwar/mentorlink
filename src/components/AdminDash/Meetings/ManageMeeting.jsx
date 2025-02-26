@@ -25,6 +25,7 @@ import SendIcon from "@mui/icons-material/Send";
 import Backdrop from '@mui/material/Backdrop';
 import dynamic from 'next/dynamic';
 import searchAnimation from '@/assets/animations/searchData.json';
+import Pagination from '@mui/material/Pagination';
 
 const darkTheme = createTheme({
   palette: {
@@ -59,6 +60,10 @@ const ManageMeeting = () => {
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [globalLoading, setGlobalLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [cardsPerPage] = useState(5);
+  const [currentPage, setCurrentPage] = useState(1); // Add this state for card pagination
 
   useEffect(() => {
     const init = async () => {
@@ -97,6 +102,20 @@ const ManageMeeting = () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [academicYear, academicSession, semester, pageSize]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024); // Set breakpoint at lg
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleExpandCard = (mujId) => {
+    setExpandedCard(expandedCard === mujId ? null : mujId);
+  };
 
   const fetchMentorMeetings = async (
     year = academicYear,
@@ -365,6 +384,97 @@ Admin Team`;
     ...mentor,
   }));
 
+  const MentorCard = ({ mentor }) => {
+    const isExpanded = expandedCard === mentor.MUJid;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full bg-white/5 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden mb-4"
+      >
+        <div className="p-4">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-lg font-semibold text-orange-500">
+              {mentor.mentorName}
+            </h3>
+            <div className="text-sm text-gray-300">
+              <p>Email: {mentor.mentorEmail}</p>
+              <p>Phone: {mentor.mentorPhone}</p>
+              <p>Meetings Conducted: {mentor.meetingCount}/3</p>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-white/10 p-3 flex gap-2 flex-wrap">
+          <button
+            onClick={() => handleSendEmailToMentor(mentor)}
+            className="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-all duration-200
+              bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700
+              focus:ring-2 focus:ring-blue-500/50 active:scale-95 flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Send Email
+          </button>
+          <button
+            onClick={() => generateReport(mentor.MUJid)}
+            className="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-all duration-200
+              bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700
+              focus:ring-2 focus:ring-emerald-500/50 active:scale-95 flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Get Report
+          </button>
+          <button
+            onClick={() => handleExpandCard(mentor.MUJid)}
+            className={`px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-all duration-200
+              bg-white/10 hover:bg-white/20 focus:ring-2 focus:ring-white/20 active:scale-95 flex items-center gap-1.5 ml-auto`}
+          >
+            {isExpanded ? 'Show Less' : 'Show More'}
+            <svg
+              className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        {isExpanded && (
+          <div className="px-4 pb-4 border-t border-white/10 pt-3">
+            <div className="space-y-2 text-sm text-gray-300">
+              <h4 className="text-orange-500 font-medium">Additional Details</h4>
+              <p>Academic Year: {academicYear}</p>
+              <p>Academic Session: {academicSession}</p>
+              <p>Semester: {semester}</p>
+              {mentor.meetingCount < 3 && (
+                <p className="text-yellow-500">
+                  Pending Meetings: {3 - mentor.meetingCount}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
+  // Add this function to get current cards for pagination
+  const getCurrentCards = () => {
+    const startIndex = (currentPage - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    return mentorMeetings.slice(startIndex, endIndex);
+  };
+
+  // Add this function to handle card pagination
+  const handleCardPageChange = (event, value) => {
+    setCurrentPage(value);
+  };
+
   return (
     <>
       <div className="min-h-screen bg-[#0a0a0a] max-h-screen overflow-y-auto lg:overflow-auto custom-scrollbar">
@@ -492,58 +602,126 @@ Admin Team`;
                 )}
 
                 {!loading && showTable && mentorMeetings.length > 0 && (
-                  <div className="h-full w-full rounded-lg overflow-hidden border border-white/10">
-                    <ThemeProvider theme={darkTheme}>
-                      <DataGrid
-                        rows={rows}
-                        columns={columns.map(col => ({
-                          ...col,
-                          width: undefined, // Remove fixed widths
-                          flex: 1, // Make all columns flexible
-                          minWidth: col.field === 'actions' ? 200 : 130, // Set minimum widths
-                        }))}
-                        rowCount={totalRows}
-                        page={page}
-                        pageSize={pageSize}
-                        paginationMode='server'
-                        onPageChange={handlePageChange}
-                        onPageSizeChange={handlePageSizeChange}
-                        pageSizeOptions={[5, 10, 20]}
-                        loading={loading}
-                        disableRowSelectionOnClick
-                        disableColumnMenu={true}
-                        disableColumnFilter={false}
-                        autoHeight={false}
-                        sx={{
-                          height: '100%',
-                          width: '100%',
-                          border: 'none',
-                          '& .MuiDataGrid-cell': {
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                            padding: '8px',
+                  <div className="h-full w-full">
+                    {isMobile ? (
+                      <Box sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2
+                      }}>
+                        {/* Cards container with scrolling */}
+                        <Box sx={{
+                          flex: 1,
+                          overflowY: 'auto',
+                          px: 0.5, // Add padding for scrollbar
+                          '&::-webkit-scrollbar': {
+                            width: '8px',
                           },
-                          '& .MuiDataGrid-columnHeaders': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                          '&::-webkit-scrollbar-track': {
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '4px',
                           },
-                          '& .MuiDataGrid-row:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          '&::-webkit-scrollbar-thumb': {
+                            background: 'rgba(249, 115, 22, 0.5)',
+                            borderRadius: '4px',
                           },
-                          '& .MuiDataGrid-footerContainer': {
-                            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                          '&::-webkit-scrollbar-thumb:hover': {
+                            background: '#f97316',
                           },
-                          "& .MuiDataGrid-virtualScroller": {
-                            overflow: "auto",
-                            '&::-webkit-scrollbar': {
-                              display: 'none' // Hide default scrollbar
-                            },
-                            msOverflowStyle: 'none',
-                            scrollbarWidth: 'none'
-                          },
-                        }}
-                        className="custom-scrollbar"
-                      />
-                    </ThemeProvider>
+                        }}>
+                          {getCurrentCards().map((mentor) => (
+                            <MentorCard key={mentor.MUJid} mentor={mentor} />
+                          ))}
+                        </Box>
+                        
+                        {/* Pagination at bottom */}
+                        <Box sx={{
+                          mt: 'auto',
+                          pt: 2,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                        }}>
+                          <Pagination
+                            count={Math.ceil(mentorMeetings.length / cardsPerPage)}
+                            page={currentPage}
+                            onChange={handleCardPageChange}
+                            sx={{
+                              '& .MuiPaginationItem-root': {
+                                color: 'white',
+                                '&.Mui-selected': {
+                                  backgroundColor: '#f97316',
+                                },
+                                '&:hover': {
+                                  backgroundColor: 'rgba(249, 115, 22, 0.15)',
+                                },
+                                '&.MuiPaginationItem-previousNext': {
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                },
+                              },
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    ) : (
+                      // Table view for desktop
+                      <div className="h-full w-full rounded-lg overflow-hidden border border-white/10">
+                        <ThemeProvider theme={darkTheme}>
+                          <DataGrid
+                            rows={rows}
+                            columns={columns.map(col => ({
+                              ...col,
+                              width: undefined, // Remove fixed widths
+                              flex: 1, // Make all columns flexible
+                              minWidth: col.field === 'actions' ? 200 : 130, // Set minimum widths
+                            }))}
+                            rowCount={totalRows}
+                            page={page}
+                            pageSize={pageSize}
+                            paginationMode='server'
+                            onPageChange={handlePageChange}
+                            onPageSizeChange={handlePageSizeChange}
+                            pageSizeOptions={[5, 10, 20]}
+                            loading={loading}
+                            disableRowSelectionOnClick
+                            disableColumnMenu={true}
+                            disableColumnFilter={false}
+                            autoHeight={false}
+                            sx={{
+                              height: '100%',
+                              width: '100%',
+                              border: 'none',
+                              '& .MuiDataGrid-cell': {
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                padding: '8px',
+                              },
+                              '& .MuiDataGrid-columnHeaders': {
+                                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                              },
+                              '& .MuiDataGrid-row:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                              },
+                              '& .MuiDataGrid-footerContainer': {
+                                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                              },
+                              "& .MuiDataGrid-virtualScroller": {
+                                overflow: "auto",
+                                '&::-webkit-scrollbar': {
+                                  display: 'none' // Hide default scrollbar
+                                },
+                                msOverflowStyle: 'none',
+                                scrollbarWidth: 'none'
+                              },
+                            }}
+                            className="custom-scrollbar"
+                          />
+                        </ThemeProvider>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>
