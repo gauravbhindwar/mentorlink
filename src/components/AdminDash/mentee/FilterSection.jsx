@@ -14,7 +14,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Typography,
+  useMediaQuery, // Add this import
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles'; // Add this import
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -88,6 +91,9 @@ const FilterSection = ({
   isLoading,
   filterData
 }) => {
+  const theme = useTheme(); // Add this line
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Add this line
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg')); // Add this line
   const sessionRef = useRef(null);
   const yearRef = useRef(null);
   const [yearSuggestions, setYearSuggestions] = useState([]);
@@ -704,25 +710,24 @@ const FilterSection = ({
             sx={{
               width: '100%',
               '& .MuiOutlinedInput-root': {
-                backgroundColor: 'rgba(17, 24, 39, 0.6)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: '16px',
+                backgroundColor: '#1a1a1a', // Updated to match other fields
+                borderRadius: '12px',
                 transition: 'all 0.3s ease',
                 border: '2px solid rgba(249, 115, 22, 0.1)',
                 '&:hover': {
-                  backgroundColor: 'rgba(17, 24, 39, 0.8)',
+                  backgroundColor: '#1a1a1a', // Keep consistent on hover
                   border: '2px solid rgba(249, 115, 22, 0.2)',
                 },
                 '&.Mui-focused': {
-                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                  backgroundColor: '#1a1a1a', // Keep consistent when focused
                   border: '2px solid rgba(249, 115, 22, 0.5)',
                   boxShadow: '0 0 0 4px rgba(249, 115, 22, 0.1)',
                 }
               },
               '& .MuiInputLabel-root': {
-                color: 'rgba(249, 115, 22, 0.7)',
+                color: 'rgba(255, 255, 255, 0.7)',
                 '&.Mui-focused': {
-                  color: 'rgba(249, 115, 22, 1)',
+                  color: '#f97316',
                 }
               },
               '& .MuiInputBase-input': {
@@ -830,148 +835,162 @@ const FilterSection = ({
   }
 
   return (
-    <Box sx={{ 
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3,
-      p: { xs: 2, sm: 3 },
-      height: '100%',
-      maxHeight: { xs: '70vh', sm: 'calc(100vh - 180px)' },
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      // Use custom scrollbar class from globals.css
-      className: 'custom-scrollbar'
-    }}>
-      {/* Filter Controls - Improved mobile layout */}
+    <div>
+      {/* Show header only on mobile and tablet */}
+      {(isSmallScreen || isTablet) && (
+        <div className="flex items-center justify-between px-4">
+          <Typography 
+            className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4"
+            variant="h5"
+            component="h5"
+          >
+            Mentee Management
+          </Typography>
+        </div>
+      )}
+      
       <Box sx={{ 
-        display: 'grid',
-        gridTemplateColumns: { 
-          xs: '1fr',
-          sm: 'repeat(auto-fill, minmax(200px, 1fr))'
-        },
-        gap: 2,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+        p: { xs: 2, sm: 3 },
+        height: '100%',
+        maxHeight: { xs: '70vh', sm: 'calc(100vh - 180px)' },
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        className: 'custom-scrollbar'
       }}>
-        {filterControls.map((control) => (
-          <Box key={control.name} sx={{ width: '100%' }}>
-            {control.customRender || (
-              <FormControl 
-                size="small" 
-                sx={{ 
-                  '& .MuiOutlinedInput-root': {
-                    color: 'white',
-                    backgroundColor: '#1a1a1a', // Solid dark background
-                    // Remove backdropFilter
-                    borderRadius: '12px',
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#f97316',
+        {/* Filter Controls - Improved mobile layout */}
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: { 
+            xs: '1fr',
+            sm: 'repeat(auto-fill, minmax(200px, 1fr))'
+          },
+          gap: 2,
+        }}>
+          {filterControls.map((control) => (
+            <Box key={control.name} sx={{ width: '100%' }}>
+              {control.customRender || (
+                <FormControl 
+                  size="small" 
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      backgroundColor: '#1a1a1a', // Solid dark background
+                      // Remove backdropFilter
+                      borderRadius: '12px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#f97316',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#f97316',
+                      },
                     },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#f97316',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
                     },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    '&.Mui-focused': {
+                    '& .MuiInputLabel-root': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      '&.Mui-focused': {
+                        color: '#f97316',
+                      },
+                    },
+                    '& .MuiSelect-icon': {
                       color: '#f97316',
                     },
-                  },
-                  '& .MuiSelect-icon': {
-                    color: '#f97316',
-                  },
-                  '& .MuiMenuItem-root': {
-                    color: 'white',
-                  }
-                }}
-              >
-                <InputLabel>{control.label}</InputLabel>
-                <Select
-                  value={filters[control.name] || ''}
-                  label={control.label}
-                  onChange={(e) => handleFilterChange(control.name, e.target.value)}
-                  disabled={control.disabled}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
+                    '& .MuiMenuItem-root': {
+                      color: 'white',
+                    }
+                  }}
+                >
+                  <InputLabel>{control.label}</InputLabel>
+                  <Select
+                    value={filters[control.name] || ''}
+                    label={control.label}
+                    onChange={(e) => handleFilterChange(control.name, e.target.value)}
+                    disabled={control.disabled}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          bgcolor: '#1a1a1a', // Solid dark background
+                          // Remove backdropFilter
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          '& .MuiMenuItem-root': {
+                            color: 'white',
                             '&:hover': {
-                              bgcolor: '#404040',
+                              bgcolor: '#2a2a2a', // Darker solid color for hover
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: '#333333', // Even darker for selected
+                              '&:hover': {
+                                bgcolor: '#404040',
+                              }
                             }
                           }
                         }
                       }
-                    }
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {(control.getDynamicOptions 
-                    ? control.getDynamicOptions(filters.academicSession)
-                    : control.options
-                  ).map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {typeof option === 'string' 
-                        ? option.charAt(0).toUpperCase() + option.slice(1) 
-                        : `${control.label} ${option}`
-                      }
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
                     </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          </Box>
-        ))}
-      </Box>
+                    {(control.getDynamicOptions 
+                      ? control.getDynamicOptions(filters.academicSession)
+                      : control.options
+                    ).map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {typeof option === 'string' 
+                          ? option.charAt(0).toUpperCase() + option.slice(1) 
+                          : `${control.label} ${option}`
+                        }
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            </Box>
+          ))}
+        </Box>
 
-      {/* Action Buttons - Improved mobile layout */}
-      <Box sx={{ 
-        display: 'grid',
-        gridTemplateColumns: { 
-          xs: 'repeat(2, 1fr)',
-          sm: 'repeat(auto-fit, minmax(120px, 1fr))'
-        },
-        gap: 1,
-        mt: 'auto',
-        pt: 2,
-      }}>
-        {buttons.map(button => (
-          <Button 
-            key={button.label}
-            variant={button.color === 'secondary' ? 'outlined' : 'contained'}
-            onClick={button.onClick}
-            disabled={button.disabled}
-            startIcon={
-              isLoading && button.label === 'Search' ? (
-                <CircularProgress size={20} sx={{ color: 'white' }} />
-              ) : button.icon
-            }
-            sx={{ 
-              ...buttonStyles.actionButton,
-              ...(button.color === 'primary' ? buttonStyles.primary : 
-                  button.color === 'secondary' ? buttonStyles.secondary : 
-                  buttonStyles.danger),
-              gridColumn: button.fullWidth ? { sm: 'span 2', md: 'auto' } : 'auto',
-            }}
-          >
-            <span className={button.fullWidth ? 'block' : 'hidden sm:block'}>
-              {isLoading && button.label === 'Search' ? 'Searching...' : button.label}
-            </span>
-          </Button>
-        ))}
+        {/* Action Buttons - Improved mobile layout */}
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: { 
+            xs: 'repeat(2, 1fr)',
+            sm: 'repeat(auto-fit, minmax(120px, 1fr))'
+          },
+          gap: 1,
+          mt: 'auto',
+          pt: 2,
+        }}>
+          {buttons.map(button => (
+            <Button 
+              key={button.label}
+              variant={button.color === 'secondary' ? 'outlined' : 'contained'}
+              onClick={button.onClick}
+              disabled={button.disabled}
+              startIcon={
+                isLoading && button.label === 'Search' ? (
+                  <CircularProgress size={20} sx={{ color: 'white' }} />
+                ) : button.icon
+              }
+              sx={{ 
+                ...buttonStyles.actionButton,
+                ...(button.color === 'primary' ? buttonStyles.primary : 
+                    button.color === 'secondary' ? buttonStyles.secondary : 
+                    buttonStyles.danger),
+                gridColumn: button.fullWidth ? { sm: 'span 2', md: 'auto' } : 'auto',
+              }}
+            >
+              <span className={button.fullWidth ? 'block' : 'hidden sm:block'}>
+                {isLoading && button.label === 'Search' ? 'Searching...' : button.label}
+              </span>
+            </Button>
+          ))}
+        </Box>
       </Box>
-    </Box>
+    </div>
   );
 
   <Dialog 
@@ -1110,7 +1129,7 @@ const dialogStyles = {
   paper: {
     backgroundColor: '#1a1a1a',
     color: 'white',
-    borderRadius: '12px',    border: '1px solid rgba(255,2nd Chhattisgarh.  255, 255, 0.1)',
+    borderRadius: '12px',    border: '1px solid rgba(255,2nd Chhattisgarh.  255, 255, 255, 0.1)',
   },
   title: {
     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',

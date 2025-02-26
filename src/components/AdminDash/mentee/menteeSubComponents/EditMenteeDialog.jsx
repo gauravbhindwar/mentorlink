@@ -1,10 +1,12 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button, useMediaQuery, useTheme, SwipeableDrawer } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { dialogStyles } from '../menteeStyle';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [editedMentee, setEditedMentee] = useState(mentee);
   const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState({});
@@ -161,208 +163,255 @@ const EditMenteeDialog = ({ open, onClose, mentee, onUpdate }) => {
     }
   };
 
-  // Rest of the component remains the same, just update the DialogActions
-  return (
+  const dialogContent = (
     <>
-      <Dialog 
-        open={open} 
-        onClose={() => {
-          if (hasChanges) {
-            toast('You have unsaved changes', {
-              icon: '⚠️',
-              duration: 3000,
-            });
-          } else {
-            onClose();
-          }
-        }}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{ sx: dialogStyles.paper }}
-      >
-        <DialogTitle sx={dialogStyles.title}>
-          <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-            Edit Mentee Details
-          </Typography>
-          <IconButton
-            onClick={onClose}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&:hover': { color: '#f97316' }
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={dialogStyles.content}>
-          {mentee && (
+      <DialogContent sx={dialogStyles.content}>
+        {mentee && (
+          <Box sx={{ 
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+            gap: 3,
+            py: 2
+          }}>
+            {/* Student Information */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                Student Information
+              </Typography>
+              <TextField
+                label="MUJid"
+                name="MUJid"
+                value={editedMentee?.MUJid || ''} 
+                // disabled
+                sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+              />
+              <TextField
+                label="Name"
+                name="name"
+                value={editedMentee?.name || ''} 
+                onChange={handleEditInputChange}
+                required
+                error={!!errors.name}
+                helperText={errors.name}
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Email"
+                name="email"
+                type="email"
+                value={editedMentee?.email || ''}
+                onChange={handleEditInputChange}
+                required
+                error={!!errors.email}
+                helperText={errors.email || ' '}
+                sx={{
+                  ...dialogStyles.textField,
+                  '& .MuiFormHelperText-root': {
+                    color: errors.email ? '#ef4444' : 'inherit',
+                    margin: '4px 0 0 0',
+                    lineHeight: '1.2',
+                    fontSize: '0.75rem'
+                  }
+                }}
+              />
+              <TextField
+                label="Phone"
+                name="phone"
+                value={editedMentee?.phone || ''}
+                onChange={handleEditInputChange}
+                error={!!errors.phone}
+                helperText={errors.phone}
+                sx={dialogStyles.textField}
+              />
+            </Box>
+
+            {/* Academic Information */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                Academic Information
+              </Typography>
+              <TextField
+                label="Year of Registration"
+                name="yearOfRegistration"
+                type="number"
+                value={editedMentee?.yearOfRegistration || ''} // Changed from mentee to editedMentee
+                onChange={handleEditInputChange}
+                required
+                error={!!errors.yearOfRegistration}
+                helperText={errors.yearOfRegistration}
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Semester"
+                name="semester"
+                type="number"
+                value={editedMentee?.semester || ''} // Changed from mentee to editedMentee
+                onChange={handleEditInputChange}
+                required
+                error={!!errors.semester}
+                helperText={errors.semester}
+                sx={dialogStyles.textField}
+              />
+              <TextField
+                label="Academic Year"
+                name="academicYear"
+                value={editedMentee?.academicYear || ''} // Changed from mentee to editedMentee
+                sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+              />
+              <TextField
+                label="Academic Session"
+                name="academicSession"
+                value={editedMentee?.academicSession || ''} // Changed from mentee to editedMentee
+                sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+              />
+            </Box>
+
+            {/* Mentor Information - Updated Layout */}
             <Box sx={{ 
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-              gap: 3,
-              py: 2
+              gridColumn: '1 / -1', // Span full width
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2
             }}>
-              {/* Student Information */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                  Student Information
-                </Typography>
-                <TextField
-                  label="MUJid"
-                  name="MUJid"
-                  value={editedMentee?.MUJid || ''} 
-                  // disabled
-                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
-                />
-                <TextField
-                  label="Name"
-                  name="name"
-                  value={editedMentee?.name || ''} 
-                  onChange={handleEditInputChange}
-                  required
-                  error={!!errors.name}
-                  helperText={errors.name}
-                  sx={dialogStyles.textField}
-                />
-                <TextField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={editedMentee?.email || ''}
-                  onChange={handleEditInputChange}
-                  required
-                  error={!!errors.email}
-                  helperText={errors.email || ' '}
-                  sx={{
-                    ...dialogStyles.textField,
-                    '& .MuiFormHelperText-root': {
-                      color: errors.email ? '#ef4444' : 'inherit',
-                      margin: '4px 0 0 0',
-                      lineHeight: '1.2',
-                      fontSize: '0.75rem'
-                    }
-                  }}
-                />
-                <TextField
-                  label="Phone"
-                  name="phone"
-                  value={editedMentee?.phone || ''}
-                  onChange={handleEditInputChange}
-                  error={!!errors.phone}
-                  helperText={errors.phone}
-                  sx={dialogStyles.textField}
-                />
-              </Box>
-
-              {/* Academic Information */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                  Academic Information
-                </Typography>
-                <TextField
-                  label="Year of Registration"
-                  name="yearOfRegistration"
-                  type="number"
-                  value={editedMentee?.yearOfRegistration || ''} // Changed from mentee to editedMentee
-                  onChange={handleEditInputChange}
-                  required
-                  error={!!errors.yearOfRegistration}
-                  helperText={errors.yearOfRegistration}
-                  sx={dialogStyles.textField}
-                />
-                <TextField
-                  label="Semester"
-                  name="semester"
-                  type="number"
-                  value={editedMentee?.semester || ''} // Changed from mentee to editedMentee
-                  onChange={handleEditInputChange}
-                  required
-                  error={!!errors.semester}
-                  helperText={errors.semester}
-                  sx={dialogStyles.textField}
-                />
-                <TextField
-                  label="Academic Year"
-                  name="academicYear"
-                  value={editedMentee?.academicYear || ''} // Changed from mentee to editedMentee
-                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
-                />
-                <TextField
-                  label="Academic Session"
-                  name="academicSession"
-                  value={editedMentee?.academicSession || ''} // Changed from mentee to editedMentee
-                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
-                />
-              </Box>
-
-              {/* Mentor Information - Updated Layout */}
+              <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
+                Mentor Information
+              </Typography>
               <Box sx={{ 
-                gridColumn: '1 / -1', // Span full width
-                display: 'flex',
-                flexDirection: 'column',
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
                 gap: 2
               }}>
-                <Typography variant="subtitle1" sx={{ color: '#f97316', fontWeight: 600 }}>
-                  Mentor Information
-                </Typography>
-                <Box sx={{ 
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                  gap: 2
-                }}>
-                  <TextField
-                    label="Mentor MUJid"
-                    name="mentorMujid"
-                    value={editedMentee?.mentorMujid || ''}
-                    sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
-                  />
-                  <TextField
-                    label="Mentor Email"
-                    name="mentorEmailid"
-                    value={editedMentee?.mentorEmailid || ''}
-                    sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
-                  />
-                </Box>
+                <TextField
+                  label="Mentor MUJid"
+                  name="mentorMujid"
+                  value={editedMentee?.mentorMujid || ''}
+                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+                />
+                <TextField
+                  label="Mentor Email"
+                  name="mentorEmailid"
+                  value={editedMentee?.mentorEmailid || ''}
+                  sx={{ ...dialogStyles.textField, pointerEvents: 'none', cursor: 'default', opacity: 0.5}}
+                />
               </Box>
             </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={dialogStyles.actions}>
-          <Button 
-            onClick={onClose}
-            variant="outlined"
-            sx={{
-              borderColor: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              '&:hover': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleUpdate}
-            variant="contained"
-            disabled={!areRequiredFieldsFilled()}
-            sx={{
-              bgcolor: '#f97316',
-              '&:hover': {
-                bgcolor: '#ea580c',
-              },
-              '&:disabled': {
-                bgcolor: 'rgba(249, 115, 22, 0.5)',
-              }
-            }}
-          >
-            Update
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions sx={dialogStyles.actions}>
+        <Button 
+          onClick={onClose}
+          variant="outlined"
+          sx={{
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            '&:hover': {
+              borderColor: 'rgba(255, 255, 255, 0.5)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            },
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleUpdate}
+          variant="contained"
+          disabled={!areRequiredFieldsFilled() || !hasChanges}
+          sx={{
+            bgcolor: '#f97316',
+            '&:hover': {
+              bgcolor: '#ea580c',
+            },
+            '&:disabled': {
+              bgcolor: 'rgba(249, 115, 22, 0.5)',
+            }
+          }}
+        >
+          {hasChanges ? 'Update' : 'No Changes Made'}
+        </Button>
+      </DialogActions>
+    </>
+  );
+
+  // Mobile drawer component
+  const mobileDrawer = (
+    <SwipeableDrawer
+      anchor="bottom"
+      open={open}
+      onClose={onClose}
+      onOpen={() => {}}
+      disableSwipeToOpen
+      PaperProps={{
+        sx: {
+          height: '100%',
+          maxHeight: '95vh',
+          borderTopLeftRadius: '16px',
+          borderTopRightRadius: '16px',
+          background: '#1a1a1a',
+          backgroundImage: 'linear-gradient(rgba(249, 115, 22, 0.05), transparent)',
+        }
+      }}
+    >
+      <Box sx={{ 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 1,
+        background: '#1a1a1a',
+        borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
+        px: 2,
+        py: 1.5
+      }}>
+        <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+          Edit Mentee Details
+        </Typography>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: 'rgba(255, 255, 255, 0.7)',
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      {dialogContent}
+    </SwipeableDrawer>
+  );
+
+  // Desktop dialog component
+  const desktopDialog = (
+    <Dialog 
+      open={open} 
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: dialogStyles.paper }}
+    >
+      <DialogTitle sx={dialogStyles.title}>
+        <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
+          Edit Mentee Details
+        </Typography>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: 'rgba(255, 255, 255, 0.7)',
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      {dialogContent}
+    </Dialog>
+  );
+
+  return (
+    <>
+      {isMobile ? mobileDrawer : desktopDialog}
 
       {/* Confirmation Dialog */}
       <Dialog

@@ -34,6 +34,8 @@ import dynamic from 'next/dynamic';
 import noData from '@/assets/animations/noData.json';
 import LoadingDialog from '@/components/common/LoadingDialog';
 import PageSkeleton from './PageSkeleton';
+import SwipeableDrawer from '@mui/material/SwipeableDrawer';
+import DeleteIcon from '@mui/icons-material/Delete';
 // import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 // Add dynamic import for Lottie
@@ -98,7 +100,6 @@ const determineCurrentSession = () => {
 
 // Update the filters state to remove menteeMujid
 const MenteeManagement = () => {
-  const [emailSearch, setEmailSearch] = useState('');
   const [mentees, setMentees] = useState([]);
   const [filters, setFilters] = useState({
     academicYear: '',
@@ -156,7 +157,6 @@ const MenteeManagement = () => {
 
   // Move debouncedSearch declaration before it's used in handleFilterChange
   const handleEmailSearch = useCallback((value) => {
-    setEmailSearch(value);
     
     const storageKey = `${filters.academicYear}-${filters.academicSession}`;
     const localData = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -301,9 +301,7 @@ const MenteeManagement = () => {
     }
     return true;
   });
-  const [showTable] = useState(true); // Add new state for table visibility
   const [tableVisible, setTableVisible] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
 
@@ -613,37 +611,57 @@ const handleUpdate = (updatedMentee) => {
     }
   };
 
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    open: false,
+    mujids: [],
+    isMobile: false
+  });
+
+  // Update the handleDelete function
   const handleDelete = async (mujids) => {
+    setDeleteConfirm({
+      open: true,
+      mujids: Array.isArray(mujids) ? mujids : [mujids],
+      isMobile: isSmallScreen || isTablet
+    });
+  };
+
+  // Add new function to handle delete confirmation
+  const handleDeleteConfirm = async () => {
     try {
       const response = await axios.delete('/api/admin/manageUsers/manageMentee', {
-        data: { MUJids: mujids }
+        data: { MUJids: deleteConfirm.mujids }
       });
       
       showAlert(`Successfully deleted ${response.data.deletedCount} mentee(s)`, 'success');
       
-      // Update local state immediately
       setMentees(prevMentees => 
-        prevMentees.filter(m => !mujids.includes(m.MUJid))
+        prevMentees.filter(m => !deleteConfirm.mujids.includes(m.MUJid))
       );
 
-      // Update cache
       const cacheKey = `${filters.academicYear}-${filters.academicSession}`;
       const cachedData = dataCache.current.get(cacheKey);
       if (cachedData) {
         dataCache.current.set(
           cacheKey,
-          cachedData.filter(m => !mujids.includes(m.MUJid))
+          cachedData.filter(m => !deleteConfirm.mujids.includes(m.MUJid))
         );
       }
 
     } catch (error) {
       showAlert(error.response?.data?.error || 'Error deleting mentees', 'error');
-      // Optionally refresh data from server if delete failed
       await fetchMenteeData({
         academicYear: filters.academicYear,
         academicSession: filters.academicSession
       });
+    } finally {
+      setDeleteConfirm({ open: false, mujids: [], isMobile: false });
     }
+  };
+
+  // Add new function to handle delete cancel
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ open: false, mujids: [], isMobile: false });
   };
 
   // Modify useEffect for mounting
@@ -1010,7 +1028,9 @@ const handleUpdate = (updatedMentee) => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className="fixed inset-0 bg-gray-900 text-white overflow-auto pt-16"> {/* Added pt-16 for navbar */}
+      <div className={`fixed inset-0 ${
+        isSmallScreen || isTablet ? 'overflow-auto' : 'overflow-hidden'
+      } bg-gray-900 text-white pt-16`}>
         {/* Single Toaster instance with updated configuration */}
         <Toaster 
           position="bottom-right"
@@ -1045,30 +1065,50 @@ const handleUpdate = (updatedMentee) => {
           <PageSkeleton />
         ) : (
           // Existing main content
-          <div className="relative z-10 min-h-screen flex flex-col">
-            {/* Header Section - Updated with center alignment */}
-            <div className="flex items-center justify-center px-4 lg:px-6 pt-4 pb-2">
+          <div className={`relative z-10 ${
+            isSmallScreen || isTablet 
+              ? 'min-h-screen'
+              : 'h-[calc(100vh-64px)]' // 64px accounts for the pt-16 (4rem) from parent
+          }`}>
+            {/* Add header for desktop view */}
+            <div className="flex items-center justify-between px-4 lg:justify-center">
               <motion.h1 
-                className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 text-center"
+                className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
                 Mentee Management
               </motion.h1>
+
+              {isSmallScreen && (
+                <IconButton
+                  onClick={() => setShowFilters(!showFilters)}
+                  sx={{
+                    color: '#f97316',
+                    bgcolor: 'rgba(249, 115, 22, 0.1)',
+                    '&:hover': {
+                      bgcolor: 'rgba(249, 115, 22, 0.2)',
+                    },
+                  }}
+                >
+                  <FilterListIcon />
+                </IconButton>
+              )}
             </div>
 
-            {/* Main Grid Layout - Updated with better mobile/tablet handling */}
-            <div className={`flex-1 grid gap-2 p-2 ${
-              isSmallScreen || isTablet ? 'grid-cols-1' : 'grid-cols-[350px,1fr]'
+            <div className={`grid gap-2 p-2 ${
+              isSmallScreen || isTablet 
+                ? 'grid-cols-1' 
+                : 'grid-cols-[350px,1fr] h-full'
             }`}>
-              {/* Filter Panel - Updated positioning for mobile/tablet */}
+              {/* Filter Panel */}
               <div className={`${
                 isSmallScreen || isTablet 
-                  ? 'h-auto max-h-[40vh]' 
-                  : 'h-[calc(100vh-100px)]'
-              } overflow-auto`}>
-                <div className="bg-black/80 backdrop-blur-xl rounded-3xl border border-white/10 p-4">
+                  ? 'h-auto max-h-[40vh] overflow-auto'
+                  : 'h-full overflow-auto'
+              }`}>
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4">
                   <FilterSection 
                     filters={filterConfig}
                     onFilterChange={handleFilterChange}
@@ -1085,12 +1125,12 @@ const handleUpdate = (updatedMentee) => {
                 </div>
               </div>
 
-              {/* Table/Cards Section - Updated to handle filter overlay */}
+              {/* Table/Cards Section */}
               <div className={`${
                 isSmallScreen || isTablet 
-                  ? 'h-[calc(60vh-1rem)]' 
-                  : 'h-[calc(100vh-100px)]'
-              } overflow-auto relative`}> {/* Added relative positioning */}
+                  ? 'h-[calc(60vh-1rem)] overflow-auto'
+                  : 'h-full overflow-auto'
+              } relative`}>
                 <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                   <div className="h-full p-4">
                     {(loadingState.isLoading && (loadingState.type === 'initial' || loadingState.type === 'search')) ? (
@@ -1298,6 +1338,113 @@ const handleUpdate = (updatedMentee) => {
           open={loadingDialog.open}
           message={loadingDialog.message}
         />
+        {/* Add Delete Confirmation Dialog/Drawer */}
+        {deleteConfirm.isMobile ? (
+          <SwipeableDrawer
+            anchor="bottom"
+            open={deleteConfirm.open}
+            onClose={handleDeleteCancel}
+            onOpen={() => {}}
+            sx={{
+              '& .MuiDrawer-paper': {
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '16px',
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }
+            }}
+          >
+            <Box sx={{ p: 3, color: 'white' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <DeleteIcon sx={{ color: '#ef4444', mr: 1 }} />
+                <Typography variant="h6">Confirm Delete</Typography>
+              </Box>
+              <Typography sx={{ mb: 3 }}>
+                Are you sure you want to delete {deleteConfirm.mujids.length} mentee{deleteConfirm.mujids.length > 1 ? 's' : ''}?
+                This action cannot be undone.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleDeleteCancel}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    '&:hover': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleDeleteConfirm}
+                  sx={{
+                    bgcolor: '#ef4444',
+                    '&:hover': { bgcolor: '#dc2626' }
+                  }}
+                >
+                  Delete
+                </Button>
+              </Box>
+            </Box>
+          </SwipeableDrawer>
+        ) : (
+          <Dialog
+            open={deleteConfirm.open}
+            onClose={handleDeleteCancel}
+            PaperProps={{
+              sx: {
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                minWidth: '400px'
+              }
+            }}
+          >
+            <DialogTitle sx={{ color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DeleteIcon sx={{ color: '#ef4444' }} />
+              Confirm Delete
+            </DialogTitle>
+            <DialogContent>
+              <Typography sx={{ color: 'white' }}>
+                Are you sure you want to delete {deleteConfirm.mujids.length} mentee{deleteConfirm.mujids.length > 1 ? 's' : ''}?
+                This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 2 }}>
+              <Button
+                onClick={handleDeleteCancel}
+                variant="outlined"
+                sx={{
+                  color: 'white',
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
+                variant="contained"
+                sx={{
+                  bgcolor: '#ef4444',
+                  '&:hover': { bgcolor: '#dc2626' }
+                }}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
       </div>
     </ThemeProvider>
   );

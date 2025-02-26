@@ -1,5 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, IconButton, TextField, Button, Alert, Stack } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, TextField, Button, Alert, Stack, Slide } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import { dialogStyles } from '../menteeStyle';
@@ -420,25 +419,49 @@ const AddMenteeDialog = ({ open, onClose, onMenteeAdded }) => { // Add onMenteeA
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: dialogStyles.paper }}>
-        <DialogTitle sx={dialogStyles.title}>
-          <Typography variant="h6" component="div" sx={{ color: '#f97316', fontWeight: 600 }}>
-            Add New Mentee
-          </Typography>
-          <IconButton
-            onClick={onClose}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&:hover': { color: '#f97316' },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+      <Dialog 
+        open={open}
+        fullScreen
+        TransitionComponent={Slide}
+        TransitionProps={{ direction: "up" }}
+        PaperProps={{
+          sx: {
+            margin: 0,
+            maxHeight: '100%',
+            background: '#1a1a1a',
+            backgroundImage: 'linear-gradient(rgba(249, 115, 22, 0.05), transparent)',
+            '@media (min-width: 600px)': {
+              maxHeight: '90vh',
+              maxWidth: '600px',
+              margin: '24px auto',
+              borderRadius: '16px',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+          fontSize: { xs: '1.125rem', sm: '1.25rem' },
+          fontWeight: 600,
+          color: '#f97316',
+          borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
+        }}>
+          Add New Mentee
         </DialogTitle>
-        <DialogContent sx={dialogStyles.content}>
+        <DialogContent sx={{
+          p: { xs: 2, sm: 3 },
+          '& .MuiTextField-root': {
+            mb: { xs: 1.5, sm: 2 },
+            '& .MuiInputLabel-root': {
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            },
+            '& .MuiInputBase-input': {
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              p: { xs: 1.5, sm: 2 }
+            }
+          }
+        }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Student Information */}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3 }}>
@@ -572,7 +595,15 @@ const AddMenteeDialog = ({ open, onClose, onMenteeAdded }) => { // Add onMenteeA
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={dialogStyles.actions}>
+        <DialogActions sx={{
+          position: { xs: 'sticky', sm: 'static' },
+          bottom: 0,
+          bgcolor: '#1a1a1a',
+          borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+          gap: 1
+        }}>
           <Button onClick={onClose} variant="outlined" sx={{ color: 'white' }}>
             Cancel
           </Button>

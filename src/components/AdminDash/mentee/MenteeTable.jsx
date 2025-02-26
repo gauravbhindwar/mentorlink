@@ -145,7 +145,14 @@ const CustomFooterComponent = ({ total }) => (
 );
 
 const ActionButtons = ({ row, onEditClick, setDetailsDialog, setDeleteDialog }) => (
-  <Box sx={{ display: 'flex', gap: 1 }}>
+  <Box sx={{ 
+    display: 'flex', 
+    gap: 1,
+    justifyContent: 'center', // Center horizontally
+    alignItems: 'center',     // Center vertically
+    width: '100%',           // Take full width of cell
+    height: '100%'          // Take full height of cell
+  }}>
     <IconButton
       size="small"
       onClick={() => setDetailsDialog({ open: true, mentee: row })}
@@ -413,13 +420,17 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
       headerName: 'Actions',
       width: 150,
       sortable: false,
+      align: 'center',        // Center header text
+      headerAlign: 'center',  // Center header
       renderCell: (params) => (
-        <ActionButtons
-          row={params.row}
-          onEditClick={onEditClick}
-          setDetailsDialog={setDetailsDialog}
-          setDeleteDialog={setDeleteDialog}
-        />
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ActionButtons
+            row={params.row}
+            onEditClick={onEditClick}
+            setDetailsDialog={setDetailsDialog}
+            setDeleteDialog={setDeleteDialog}
+          />
+        </div>
       ),
     },
   ];

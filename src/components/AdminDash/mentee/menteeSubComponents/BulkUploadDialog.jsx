@@ -1,5 +1,8 @@
 import { 
-  Dialog, 
+  Dialog,
+  SwipeableDrawer,
+  useMediaQuery,
+  useTheme,
   DialogContent, 
   Box, 
   Typography, 
@@ -18,6 +21,8 @@ import { toast } from 'react-toastify';
 import { getTemplateWorkbook } from '../utils/ExcelUploadTemplate';
 
 const BulkUploadDialog = ({ open, onClose, onUpload, uploading, uploadProgress, isProcessing }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { getRootProps, getInputProps, isDragActive, acceptedFiles } = useDropzone({
     onDrop: onUpload,
     accept: {
@@ -39,6 +44,191 @@ const BulkUploadDialog = ({ open, onClose, onUpload, uploading, uploadProgress, 
     }
   };
 
+  const contentComponent = (
+    <Box sx={{ 
+      p: isMobile ? 2 : 3,
+      height: isMobile ? 'calc(100% - 32px)' : 'auto'
+    }}>
+      <IconButton
+        onClick={onClose}
+        disabled={isProcessing || uploading}
+        sx={{
+          position: 'absolute',
+          right: 8,
+          top: 8,
+          color: 'rgba(255, 255, 255, 0.7)',
+          '&:hover': { color: '#f97316' }
+        }}
+      >
+        <CloseIcon />
+      </IconButton>
+
+      <DialogContent sx={{ p: 0, mb: 2 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Typography variant="h5" sx={{ 
+            color: '#f97316', 
+            mb: 3, 
+            fontWeight: 600,
+            textAlign: 'center',
+            fontSize: isMobile ? '1.25rem' : '1.5rem'
+          }}>
+            Bulk Upload Mentees
+          </Typography>
+
+          <Box sx={{ 
+            mb: 4,
+            '& .MuiButton-root': {
+              fontSize: isMobile ? '0.875rem' : '1rem'
+            }
+          }}>
+            <Button
+              startIcon={<FileDownloadIcon />}
+              onClick={handleTemplateDownload}
+              variant="outlined"
+              fullWidth
+              sx={{
+                borderColor: 'rgba(249, 115, 22, 0.5)',
+                color: '#f97316',
+                '&:hover': {
+                  borderColor: '#f97316',
+                  backgroundColor: 'rgba(249, 115, 22, 0.1)'
+                }
+              }}
+            >
+              Download Template
+            </Button>
+          </Box>
+
+          <Box
+            {...getRootProps()}
+            sx={{
+              p: isMobile ? 3 : 4,
+              border: '2px dashed',
+              borderColor: isDragActive ? '#f97316' : 'rgba(249, 115, 22, 0.3)',
+              borderRadius: '12px',
+              bgcolor: isDragActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+              transition: 'all 0.2s ease',
+              cursor: isProcessing || uploading ? 'not-allowed' : 'pointer',
+              opacity: isProcessing || uploading ? 0.7 : 1,
+              textAlign: 'center',
+              '& .MuiTypography-root': {
+                fontSize: isMobile ? '0.875rem' : '1rem'
+              }
+            }}
+          >
+            <input {...getInputProps()} />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isDragActive ? 'drag-active' : 'drag-inactive'}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+              >
+                {acceptedFiles.length > 0 ? (
+                  <Box sx={{ color: '#f97316' }}>
+                    <DescriptionIcon sx={{ fontSize: 48, mb: 2 }} />
+                    <Typography>{acceptedFiles[0].name}</Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <CloudUploadIcon sx={{ 
+                      fontSize: 48, 
+                      color: '#f97316', 
+                      mb: 2 
+                    }} />
+                    <Typography sx={{ color: 'white', mb: 1 }}>
+                      {isDragActive
+                        ? 'Drop the Excel file here'
+                        : 'Drag & drop an Excel file here, or click to select'}
+                    </Typography>
+                    <Typography sx={{ 
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      fontSize: '0.875rem'
+                    }}>
+                      Supports .xls and .xlsx files only
+                    </Typography>
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </Box>
+
+          {(uploading || isProcessing) && (
+            <Box sx={{ mt: 3 }}>
+              <Typography sx={{ 
+                color: 'white', 
+                mb: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}>
+                {isProcessing ? 'Processing...' : `Uploading... ${uploadProgress}%`}
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  ⚡
+                </motion.div>
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={uploadProgress}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: 'rgba(249, 115, 22, 0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: '#f97316',
+                    backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
+                    backgroundSize: '1rem 1rem',
+                    animation: 'uploadProgress 1s linear infinite'
+                  }
+                }}
+              />
+            </Box>
+          )}
+        </motion.div>
+      </DialogContent>
+    </Box>
+  );
+
+  if (isMobile) {
+    return (
+      <SwipeableDrawer
+        anchor="bottom"
+        open={open}
+        onClose={onClose}
+        onOpen={() => {}}
+        disableSwipeToOpen
+        PaperProps={{
+          sx: {
+            height: '80vh',
+            bgcolor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            borderTopLeftRadius: '16px',
+            borderTopRightRadius: '16px'
+          }
+        }}
+      >
+        <Box sx={{ 
+          width: '40px',
+          height: '4px',
+          bgcolor: '#f97316',
+          borderRadius: '2px',
+          mx: 'auto',
+          mt: 2
+        }} />
+        {contentComponent}
+      </SwipeableDrawer>
+    );
+  }
+
   return (
     <Dialog
       open={open}
@@ -56,152 +246,7 @@ const BulkUploadDialog = ({ open, onClose, onUpload, uploading, uploadProgress, 
         }
       }}
     >
-      <Box sx={{ position: 'relative', p: 3 }}>
-        <IconButton
-          onClick={onClose}
-          disabled={isProcessing || uploading}
-          sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: 'rgba(255, 255, 255, 0.7)',
-            '&:hover': { color: '#f97316' }
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-
-        <DialogContent sx={{ p: 0, mb: 2 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Typography variant="h5" sx={{ 
-              color: '#f97316', 
-              mb: 3, 
-              fontWeight: 600,
-              textAlign: 'center' 
-            }}>
-              Bulk Upload Mentees
-            </Typography>
-
-            <Box sx={{ mb: 4 }}>
-              <Button
-                startIcon={<FileDownloadIcon />}
-                onClick={handleTemplateDownload}
-                variant="outlined"
-                fullWidth
-                sx={{
-                  borderColor: 'rgba(249, 115, 22, 0.5)',
-                  color: '#f97316',
-                  '&:hover': {
-                    borderColor: '#f97316',
-                    backgroundColor: 'rgba(249, 115, 22, 0.1)'
-                  }
-                }}
-              >
-                Download Template
-              </Button>
-            </Box>
-
-            <Box
-              {...getRootProps()}
-              sx={{
-                p: 4,
-                border: '2px dashed',
-                borderColor: isDragActive ? '#f97316' : 'rgba(249, 115, 22, 0.3)',
-                borderRadius: '12px',
-                bgcolor: isDragActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
-                transition: 'all 0.2s ease',
-                cursor: isProcessing || uploading ? 'not-allowed' : 'pointer',
-                opacity: isProcessing || uploading ? 0.7 : 1,
-                textAlign: 'center'
-              }}
-            >
-              <input {...getInputProps()} />
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={isDragActive ? 'drag-active' : 'drag-inactive'}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {acceptedFiles.length > 0 ? (
-                    <Box sx={{ color: '#f97316' }}>
-                      <DescriptionIcon sx={{ fontSize: 48, mb: 2 }} />
-                      <Typography>{acceptedFiles[0].name}</Typography>
-                    </Box>
-                  ) : (
-                    <>
-                      <CloudUploadIcon sx={{ 
-                        fontSize: 48, 
-                        color: '#f97316', 
-                        mb: 2 
-                      }} />
-                      <Typography sx={{ color: 'white', mb: 1 }}>
-                        {isDragActive
-                          ? 'Drop the Excel file here'
-                          : 'Drag & drop an Excel file here, or click to select'}
-                      </Typography>
-                      <Typography sx={{ 
-                        color: 'rgba(255, 255, 255, 0.5)',
-                        fontSize: '0.875rem'
-                      }}>
-                        Supports .xls and .xlsx files only
-                      </Typography>
-                    </>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </Box>
-
-            {(uploading || isProcessing) && (
-              <Box sx={{ mt: 3 }}>
-                <Typography sx={{ 
-                  color: 'white', 
-                  mb: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1
-                }}>
-                  {isProcessing ? 'Processing...' : `Uploading... ${uploadProgress}%`}
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                  >
-                    ⚡
-                  </motion.div>
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={uploadProgress}
-                  sx={{
-                    height: 6,
-                    borderRadius: 3,
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: '#f97316',
-                      backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
-                      backgroundSize: '1rem 1rem',
-                      animation: 'uploadProgress 1s linear infinite'
-                    }
-                  }}
-                />
-              </Box>
-            )}
-          </motion.div>
-        </DialogContent>
-      </Box>
-
-      <style jsx global>{`
-        @keyframes uploadProgress {
-          0% { background-position: 1rem 0; }
-          100% { background-position: 0 0; }
-        }
-      `}</style>
+      {contentComponent}
     </Dialog>
   );
 };

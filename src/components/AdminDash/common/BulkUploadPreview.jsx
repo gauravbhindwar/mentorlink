@@ -10,7 +10,10 @@ import {
   Typography,
   Alert,
   IconButton,
-  LinearProgress
+  LinearProgress,
+  SwipeableDrawer,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid } from '@mui/x-data-grid';
@@ -20,6 +23,8 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [pageSize, setPageSize] = useState(5); // Default page size
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     setMounted(true);
@@ -408,378 +413,479 @@ const BulkUploadPreview = ({ open, onClose, data, errors, mentorActions, onConfi
     return null; // or a loading spinner
   }
 
-  return (
+  const dialogContent = (
     <>
-      <Dialog 
-        open={open}
-        onClose={onClose}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: '#1a1a1a',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
-            color: '#ffffff',
-            overflow: 'hidden',
-            border: '1px solid rgba(249, 115, 22, 0.1)',
-            maxHeight: '90vh',
-            transition: 'all 0.3s ease-in-out',
-            position: 'relative', // Add this
-          }
-        }}
-      >
-        {isUploading && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              bgcolor: 'rgba(0, 0, 0, 0.7)',
-              zIndex: 9999,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
-            }}
-          >
-            <Box
-              sx={{
-                width: '80%',
-                maxWidth: 400,
-                bgcolor: '#1a1a1a',
-                borderRadius: 2,
-                p: 3,
-                border: '1px solid rgba(249, 115, 22, 0.2)',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-              }}
-            >
-              <Typography
-                component="div" // Add this line
-                sx={{
-                  color: '#ffffff',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  mb: 2,
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                }}
-              >
-                {uploadProgress < 100 ? 'Uploading Data' : 'Processing...'}
-                <Box component="span" sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      style={{
-                        width: '4px',
-                        height: '4px',
-                        borderRadius: '50%',
-                        backgroundColor: '#f97316',
-                        animation: `bounce 0.8s ${i * 0.2}s infinite`,
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Typography>
-
-              <Box sx={{ position: 'relative', mb: 1 }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={uploadProgress}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: '#f97316',
-                      backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
-                      backgroundSize: '1rem 1rem',
-                      animation: 'uploadProgress 1s linear infinite, stripe 1s linear infinite',
-                    },
-                  }}
-                />
-              </Box>
-
-              <Typography
-                component="div" // Add this line
-                sx={{
-                  color: '#94a3b8',
-                  fontSize: '0.875rem',
-                  textAlign: 'center',
-                }}
-              >
-                {Math.round(uploadProgress)}% Complete
-              </Typography>
-            </Box>
-          </Box>
-        )}
-
-        <DialogTitle 
+      {isUploading && (
+        <Box
           sx={{
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            p: 2, // Reduced padding
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 9999,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#1a1a1a',
+            justifyContent: 'center',
+            backdropFilter: 'blur(4px)',
           }}
         >
-          <Typography
-            component="div" // Change from h2 to div
+          <Box
             sx={{
-              fontSize: '1.25rem',
-              fontWeight: 600,
-              color: '#ffffff',
-              letterSpacing: '-0.025em'
-            }}
-          >
-            {`Preview Upload Data ${academicPeriod ? `(${academicPeriod.year}, ${academicPeriod.session})` : ''}`}
-          </Typography>
-          <IconButton
-            onClick={onClose}
-            sx={{
-              color: '#94a3b8',
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'scale(1.1)',
-                color: '#f97316',
-                bgcolor: 'rgba(249, 115, 22, 0.1)'
-              }
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 2, bgcolor: '#1a1a1a' }}> {/* Reduced padding */}
-          {renderMentorSummary()}
-          {errors.length > 0 && renderErrorSummary(groupErrors(errors))}
-
-          <Box sx={{ 
-            height: 'calc(100vh - 300px)', // Dynamic height based on viewport
-            width: '100%',
-            '& .MuiDataGrid-root': {
+              width: '80%',
+              maxWidth: 400,
+              bgcolor: '#1a1a1a',
+              borderRadius: 2,
+              p: 3,
               border: '1px solid rgba(249, 115, 22, 0.2)',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              color: '#ffffff',
-              // Add auto-sizing
-              '& .MuiDataGrid-main': {
-                overflow: 'hidden'
-              },
-              // Improve cell alignment
-              '& .MuiDataGrid-cell': {
-                borderColor: 'rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            <Typography
+              component="div" // Add this line
+              sx={{
                 color: '#ffffff',
+                fontSize: '1rem',
+                fontWeight: 600,
+                mb: 2,
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+              }}
+            >
+              {uploadProgress < 100 ? 'Uploading Data' : 'Processing...'}
+              <Box component="span" sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      backgroundColor: '#f97316',
+                      animation: `bounce 0.8s ${i * 0.2}s infinite`,
+                    }}
+                  />
+                ))}
+              </Box>
+            </Typography>
+
+            <Box sx={{ position: 'relative', mb: 1 }}>
+              <LinearProgress
+                variant="determinate"
+                value={uploadProgress}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: 'rgba(249, 115, 22, 0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: '#f97316',
+                    backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
+                    backgroundSize: '1rem 1rem',
+                    animation: 'uploadProgress 1s linear infinite, stripe 1s linear infinite',
+                  },
+                }}
+              />
+            </Box>
+
+            <Typography
+              component="div" // Add this line
+              sx={{
+                color: '#94a3b8',
+                fontSize: '0.875rem',
+                textAlign: 'center',
+              }}
+            >
+              {Math.round(uploadProgress)}% Complete
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
+      <DialogTitle 
+        sx={{
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          p: 2, // Reduced padding
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#1a1a1a',
+        }}
+      >
+        <Typography
+          component="div" // Change from h2 to div
+          sx={{
+            fontSize: '1.25rem',
+            fontWeight: 600,
+            color: '#ffffff',
+            letterSpacing: '-0.025em'
+          }}
+        >
+          {`Preview Upload Data ${academicPeriod ? `(${academicPeriod.year}, ${academicPeriod.session})` : ''}`}
+        </Typography>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            color: '#94a3b8',
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'scale(1.1)',
+              color: '#f97316',
+              bgcolor: 'rgba(249, 115, 22, 0.1)'
+            }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      
+      <DialogContent sx={{ p: 2, bgcolor: '#1a1a1a' }}> {/* Reduced padding */}
+        {renderMentorSummary()}
+        {errors.length > 0 && renderErrorSummary(groupErrors(errors))}
+
+        <Box sx={{ 
+          height: 'calc(100vh - 300px)', // Dynamic height based on viewport
+          width: '100%',
+          '& .MuiDataGrid-root': {
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            color: '#ffffff',
+            // Add auto-sizing
+            '& .MuiDataGrid-main': {
+              overflow: 'hidden'
+            },
+            // Improve cell alignment
+            '& .MuiDataGrid-cell': {
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              color: '#ffffff',
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              '&:focus': {
+                outline: 'none'
+              }
+            },
+            // Improve header styling
+            '& .MuiDataGrid-columnHeaders': {
+              background: 'rgba(249, 115, 22, 0.1)',
+              borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
+              '& .MuiDataGrid-columnHeader': {
                 padding: '8px 16px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
                 '&:focus': {
                   outline: 'none'
                 }
-              },
-              // Improve header styling
-              '& .MuiDataGrid-columnHeaders': {
-                background: 'rgba(249, 115, 22, 0.1)',
-                borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
-                '& .MuiDataGrid-columnHeader': {
-                  padding: '8px 16px',
-                  '&:focus': {
-                    outline: 'none'
-                  }
-                }
-              },
-              // Remove cell selection highlight
-              '& .MuiDataGrid-cell:focus-within': {
-                outline: 'none !important'
-              },
-              // Improve row styling
-              '& .MuiDataGrid-row': {
-                minHeight: '48px !important',
-                maxHeight: '48px !important',
-                '&:hover': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.05)',
-                  transform: 'none'
-                }
-              },
-              // Fix footer alignment
-              '& .MuiDataGrid-footerContainer': {
-                borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-                minHeight: '48px',
-                bgcolor: '#1a1a1a', // Solid background color
+              }
+            },
+            // Remove cell selection highlight
+            '& .MuiDataGrid-cell:focus-within': {
+              outline: 'none !important'
+            },
+            // Improve row styling
+            '& .MuiDataGrid-row': {
+              minHeight: '48px !important',
+              maxHeight: '48px !important',
+              '&:hover': {
+                backgroundColor: 'rgba(249, 115, 22, 0.05)',
+                transform: 'none'
+              }
+            },
+            // Fix footer alignment
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+              minHeight: '48px',
+              bgcolor: '#1a1a1a', // Solid background color
+              color: '#ffffff',
+              '& .MuiTablePagination-root': {
                 color: '#ffffff',
-                '& .MuiTablePagination-root': {
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                  color: '#94a3b8'
+                },
+                '& .MuiTablePagination-select': {
                   color: '#ffffff',
-                  '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                    color: '#94a3b8'
+                  bgcolor: '#1a1a1a' // Solid background for select
+                },
+                '& .MuiTablePagination-selectIcon': {
+                  color: '#94a3b8'
+                },
+                '& .MuiIconButton-root': {
+                  color: '#94a3b8',
+                  '&.Mui-disabled': {
+                    color: 'rgba(255, 255, 255, 0.3)'
                   },
-                  '& .MuiTablePagination-select': {
-                    color: '#ffffff',
-                    bgcolor: '#1a1a1a' // Solid background for select
-                  },
-                  '& .MuiTablePagination-selectIcon': {
-                    color: '#94a3b8'
-                  },
-                  '& .MuiIconButton-root': {
-                    color: '#94a3b8',
-                    '&.Mui-disabled': {
-                      color: 'rgba(255, 255, 255, 0.3)'
-                    },
-                    '&:hover': {
-                      color: '#f97316',
-                      bgcolor: 'rgba(249, 115, 22, 0.1)'
-                    }
-                  }
-                }
-              },
-              // Add styles for the select dropdown
-              '& .MuiSelect-select': {
-                color: '#ffffff',
-                '&:focus': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.1)'
-                }
-              },
-              // Update select dropdown menu styles
-              '& .MuiMenu-paper': {
-                bgcolor: '#1a1a1a',
-                color: '#ffffff',
-                border: '1px solid rgba(249, 115, 22, 0.2)',
-                '& .MuiMenuItem-root': {
                   '&:hover': {
+                    color: '#f97316',
                     bgcolor: 'rgba(249, 115, 22, 0.1)'
-                  },
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(249, 115, 22, 0.2)'
                   }
                 }
               }
+            },
+            // Add styles for the select dropdown
+            '& .MuiSelect-select': {
+              color: '#ffffff',
+              '&:focus': {
+                backgroundColor: 'rgba(249, 115, 22, 0.1)'
+              }
+            },
+            // Update select dropdown menu styles
+            '& .MuiMenu-paper': {
+              bgcolor: '#1a1a1a',
+              color: '#ffffff',
+              border: '1px solid rgba(249, 115, 22, 0.2)',
+              '& .MuiMenuItem-root': {
+                '&:hover': {
+                  bgcolor: 'rgba(249, 115, 22, 0.1)'
+                },
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(249, 115, 22, 0.2)'
+                }
+              }
             }
-          }}>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              pageSize={pageSize}
-              rowsPerPageOptions={[5, 10, 25]}
-              disableSelectionOnClick
-              disableColumnMenu
-              autoHeight
-              hideFooterSelectedRowCount
-              components={{
-                NoRowsOverlay: () => (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    height: '100%'
-                  }}>
-                    <Typography sx={{ color: '#94a3b8' }}>
-                      No valid data to preview
-                    </Typography>
-                  </Box>
-                ),
-                Footer: (props) => (
-                  <Box sx={{ 
-                    bgcolor: '#1a1a1a', // Solid background color
-                    borderTop: '1px solid rgba(249, 115, 22, 0.2)'
-                  }}>
-                    {props.children}
-                  </Box>
-                )
-              }}
-            />
-          </Box>
-        </DialogContent>
+          }
+        }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={pageSize}
+            rowsPerPageOptions={[5, 10, 25]}
+            disableSelectionOnClick
+            disableColumnMenu
+            autoHeight
+            hideFooterSelectedRowCount
+            components={{
+              NoRowsOverlay: () => (
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  height: '100%'
+                }}>
+                  <Typography sx={{ color: '#94a3b8' }}>
+                    No valid data to preview
+                  </Typography>
+                </Box>
+              ),
+              Footer: (props) => (
+                <Box sx={{ 
+                  bgcolor: '#1a1a1a', // Solid background color
+                  borderTop: '1px solid rgba(249, 115, 22, 0.2)'
+                }}>
+                  {props.children}
+                </Box>
+              )
+            }}
+          />
+        </Box>
+      </DialogContent>
 
-        <DialogActions sx={{ 
-          p: 2, // Reduced padding
+      <DialogActions sx={{ 
+        p: 2, // Reduced padding
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        background: '#1a1a1a',
+        gap: 1 // Reduced gap
+      }}>
+        <Button 
+          onClick={onClose}
+          variant="outlined"
+          disabled={isUploading} // Add this line
+          sx={{
+            color: '#94a3b8',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '8px',
+            textTransform: 'none',
+            fontWeight: 600,
+            '&:hover': {
+              borderColor: '#f97316',
+              bgcolor: 'rgba(249, 115, 22, 0.1)'
+            },
+            '&.Mui-disabled': { // Add disabled styles
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              color: 'rgba(255, 255, 255, 0.3)'
+            }
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleConfirm} 
+          disabled={isUploading || errors.length > 0}
+          variant="contained"
+          sx={{
+            bgcolor: '#f97316',
+            borderRadius: '8px',
+            textTransform: 'none',
+            fontWeight: 600,
+            boxShadow: 'none',
+            '&:hover': {
+              bgcolor: '#ea580c',
+              boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)'
+            },
+            '&.Mui-disabled': {
+              bgcolor: 'rgba(249, 115, 22, 0.3)',
+              color: 'rgba(255, 255, 255, 0.5)'
+            }
+          }}
+        >
+          {isUploading ? 'Uploading...' : 'Confirm Upload'}
+        </Button>
+      </DialogActions>
+
+      <style jsx global>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.4; }
+          100% { opacity: 1; }
+        }
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+        
+        @keyframes uploadProgress {
+          0% { background-position: 1rem 0; }
+          100% { background-position: 0 0; }
+        }
+        
+        @keyframes stripe {
+          0% { background-position: 0 0; }
+          100% { background-position: 1rem 0; }
+        }
+        
+        .MuiDataGrid-row {
+          cursor: pointer;
+        }
+        
+        .MuiDataGrid-cell:hover {
+          color: #f97316 !important;
+        }
+      `}</style>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <SwipeableDrawer
+        anchor="bottom"
+        open={open}
+        onClose={onClose}
+        onOpen={() => {}}
+        disableSwipeToOpen
+        PaperProps={{
+          sx: {
+            height: '90vh',
+            bgcolor: '#1a1a1a',
+            borderTopLeftRadius: '16px',
+            borderTopRightRadius: '16px',
+            overflow: 'hidden',
+            '& .MuiDataGrid-root': {
+              fontSize: '0.875rem', // Smaller font for mobile
+            },
+            '& .MuiDataGrid-cell': {
+              padding: '8px', // Reduced padding for mobile
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              fontSize: '0.875rem',
+            }
+          }
+        }}
+      >
+        <Box sx={{ 
+          position: 'sticky', 
+          top: 0, 
+          bgcolor: '#1a1a1a',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          zIndex: 1,
+          p: 2
+        }}>
+          <Typography sx={{ 
+            fontSize: '1.125rem',
+            fontWeight: 600,
+            color: '#ffffff',
+            mb: 1
+          }}>
+            Preview Upload Data
+          </Typography>
+          <Box sx={{ 
+            width: '40px',
+            height: '4px',
+            bgcolor: '#f97316',
+            borderRadius: '2px',
+            mx: 'auto',
+            mb: 1
+          }} />
+        </Box>
+        
+        <Box sx={{ p: 2, height: 'calc(100% - 120px)', overflow: 'auto' }}>
+          {dialogContent}
+        </Box>
+
+        <Box sx={{ 
+          position: 'sticky', 
+          bottom: 0,
+          bgcolor: '#1a1a1a',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          background: '#1a1a1a',
-          gap: 1 // Reduced gap
+          p: 2,
+          display: 'flex',
+          gap: 1
         }}>
           <Button 
             onClick={onClose}
+            fullWidth
             variant="outlined"
-            disabled={isUploading} // Add this line
+            disabled={isUploading}
             sx={{
               color: '#94a3b8',
               borderColor: 'rgba(255, 255, 255, 0.2)',
               borderRadius: '8px',
-              textTransform: 'none',
-              fontWeight: 600,
-              '&:hover': {
-                borderColor: '#f97316',
-                bgcolor: 'rgba(249, 115, 22, 0.1)'
-              },
-              '&.Mui-disabled': { // Add disabled styles
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                color: 'rgba(255, 255, 255, 0.3)'
-              }
             }}
           >
             Cancel
           </Button>
           <Button 
-            onClick={handleConfirm} 
+            onClick={handleConfirm}
+            fullWidth
             disabled={isUploading || errors.length > 0}
             variant="contained"
             sx={{
               bgcolor: '#f97316',
               borderRadius: '8px',
-              textTransform: 'none',
-              fontWeight: 600,
-              boxShadow: 'none',
-              '&:hover': {
-                bgcolor: '#ea580c',
-                boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)'
-              },
-              '&.Mui-disabled': {
-                bgcolor: 'rgba(249, 115, 22, 0.3)',
-                color: 'rgba(255, 255, 255, 0.5)'
-              }
             }}
           >
-            {isUploading ? 'Uploading...' : 'Confirm Upload'}
+            {isUploading ? 'Uploading...' : 'Confirm'}
           </Button>
-        </DialogActions>
+        </Box>
+      </SwipeableDrawer>
+    );
+  }
 
-        <style jsx global>{`
-          @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
-          }
-          @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-          }
-          
-          @keyframes uploadProgress {
-            0% { background-position: 1rem 0; }
-            100% { background-position: 0 0; }
-          }
-          
-          @keyframes stripe {
-            0% { background-position: 0 0; }
-            100% { background-position: 1rem 0; }
-          }
-          
-          .MuiDataGrid-row {
-            cursor: pointer;
-          }
-          
-          .MuiDataGrid-cell:hover {
-            color: #f97316 !important;
-          }
-        `}</style>
-      </Dialog>
-    </>
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: '#1a1a1a',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(249, 115, 22, 0.15)',
+          color: '#ffffff',
+          overflow: 'hidden',
+          border: '1px solid rgba(249, 115, 22, 0.1)',
+          maxHeight: '90vh',
+          transition: 'all 0.3s ease-in-out',
+          position: 'relative', // Add this
+        }
+      }}
+    >
+      {dialogContent}
+    </Dialog>
   );
 };
+
 export default BulkUploadPreview;
