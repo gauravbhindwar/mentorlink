@@ -1,15 +1,20 @@
 "use client";
 import { useState, useEffect} from "react";
 import {
-  // Box,
   Typography,
-  // Button,
   useMediaQuery,
-  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
 } from "@mui/material";
+import TextField from '@mui/material/TextField';
+import Stack from '@mui/material/Stack';
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-// import CloseIcon from "@mui/icons-material/Close";
-import FilterListIcon from '@mui/icons-material/FilterList';
+import DeleteIcon from '@mui/icons-material/Delete'; // Add this import
+import SwipeableDrawer from '@mui/material/SwipeableDrawer';
 import { Toaster, toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -27,11 +32,13 @@ import {
 } from './utils/academicUtils';
 import MentorSkeleton from "./MentorSkeleton";
 
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from "@mui/material";
-
 // Add these imports at the top
 import dynamic from 'next/dynamic';
 import noData from '@/assets/animations/noData.json';
+import MentorCard from '@/components/mentor/MentorCard';
+import MentorCardSkeleton from './MentorCardSkeleton';
+import Pagination from '@mui/material/Pagination';
+import MentorDetailsDialog from './MentorDetailsDialog';
 
 // Add this after the imports
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
@@ -100,7 +107,6 @@ const MentorManagement = () => {
   const [duplicateMentorDialog, setDuplicateMentorDialog] = useState(false);
   const [existingMentorData, setExistingMentorData] = useState({});
   const [duplicateEditMode, setDuplicateEditMode] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
   const [deleteRoleDialog, setDeleteRoleDialog] = useState({ open: false, mentor: null });
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [currentFilters, setCurrentFilters] = useState({
@@ -110,7 +116,28 @@ const MentorManagement = () => {
   });
   // Add new state for email conflict dialog
   const [emailConflict, setEmailConflict] = useState({ open: false, mentor: null });
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [page, setPage] = useState(1);
+  const cardsPerPage = 5;
 
+  // Add this new state inside MentorManagement component, near other state declarations
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    open: false,
+    mentor: null,
+    isMobile: false
+  });
+
+  // Add these new states near other state declarations
+  const [detailsDialog, setDetailsDialog] = useState({ open: false, mentor: null });
+  const [transferDialog, setTransferDialog] = useState({ open: false, fromMentor: null });
+  const [transferEmail, setTransferEmail] = useState('');
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  const [targetMentor, setTargetMentor] = useState(null);
+  const [menteeStats, setMenteeStats] = useState(null);
+  // const [selectedSemester, setSelectedSemester] = useState(null);
+  // const [semesterMentees, setSemesterMentees] = useState([]);
+  // const [loadingMentees, setLoadingMentees] = useState(false);
 
   const theme = createTheme({
     palette: {
@@ -238,24 +265,19 @@ const handleEditMentor = async (updatedMentor) => {
 
 
   const handleDeleteMentor = async (MUJid) => {
-    try {
-      // First fetch the mentor's details to check roles
-      const mentor = mentors.find(m => m.MUJid === MUJid);
-      
-      if (mentor && (mentor.role.includes('admin') || mentor.role.includes('superadmin'))) {
-        // Show role selection dialog if mentor has admin roles
-        setSelectedRoles(mentor.role);
-        setDeleteRoleDialog({ open: true, mentor });
-      } else {
-        // Regular delete for non-admin mentors
-        await axios.delete("/api/admin/manageUsers/manageMentor", {
-          data: { MUJid, roles: ['mentor'] }
-        });
-        // showAlert("Mentor deleted successfully", "success");
-        fetchMentors(currentFilters);
-      }
-    } catch (error) {
-      showAlert(error.response?.data?.error || "Error deleting mentor", "error");
+    const mentor = mentors.find(m => m.MUJid === MUJid);
+    
+    // On desktop, show role selection dialog for admin/superadmin
+    if (!isSmallScreen && mentor && (mentor.role.includes('admin') || mentor.role.includes('superadmin'))) {
+      setSelectedRoles(mentor.role);
+      setDeleteRoleDialog({ open: true, mentor });
+    } else {
+      // For mobile or non-admin mentors, show delete confirmation
+      setDeleteConfirm({
+        open: true,
+        mentor,
+        isMobile: isSmallScreen
+      });
     }
   };
 
@@ -620,50 +642,46 @@ const handleEditMentor = async (updatedMentor) => {
 
   // Update handleFilterChange to trigger fetch
   const handleFilterChange = async (filters) => {
-    // Don't search if required filters are missing
-    if (!filters.academicYear || !filters.academicSession) {
-      return;
-    }
-  
+    // Set loading immediately when filters change
     setLoading(true);
-    try {
-      const response = await axios.get('/api/admin/manageUsers/manageMentor', {
-        params: filters
-      });
-      
-      if (response.data) {
-        setMentors(response.data);
-        setTableVisible(true);
+    setTableVisible(true);
+    
+    // If there's no search term, show initial data
+    if (!filters.mentorEmailid) {
+      try {
+        const response = await axios.get('/api/admin/manageUsers/manageMentor', {
+          params: {
+            academicYear: filters.academicYear,
+            academicSession: filters.academicSession
+          }
+        });
+        
+        if (response.data) {
+          setMentors(response.data.mentors || []);
+        }
+      } catch (error) {
+        toast.error(error.response?.data?.error || 'Error fetching mentors');
+        setMentors([]);
       }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Error fetching mentors');
-      setMentors([]);
-      setTableVisible(false);
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
+    setCurrentFilters(filters);
   };
-  
+
   // Update email search handling to not trigger API calls
   // const handleEmailFilter = (value) => {
   //   setEmailFilter(value); // This will be used by MentorTable to filter existing data
   // };
   
 
-  // Add effect to handle screen size changes
-  useEffect(() => {
-    if (!isSmallScreen && !showFilters) {
-      setShowFilters(true);
-    }
-  }, [isSmallScreen]);
-
   // Add this animation configuration
   const filterAnimation = {
     initial: false,
     animate: {
-      width: showFilters ? '100%' : '0%',
-      opacity: showFilters ? 1 : 0,
-      marginLeft: showFilters ? '0px' : '-300px',
+      width: '100%',
+      opacity: 1,
+      marginLeft: '0px',
     },
     transition: {
       type: "spring",
@@ -683,6 +701,163 @@ const handleEditMentor = async (updatedMentor) => {
       damping: 25,
       mass: 0.5,
       duration: 0.3
+    }
+  };
+
+  const handleExpandCard = (mujId) => {
+    setExpandedCard(expandedCard === mujId ? null : mujId);
+  };
+
+  const getCurrentCards = () => {
+    const startIndex = (page - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    return mentors.slice(startIndex, endIndex);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    window.scrollTo(0, 0);
+  };
+
+  // Add these new functions before the return statement
+  const handleDeleteConfirm = async () => {
+    try {
+      if (!deleteConfirm.mentor) return;
+
+      // For mobile admin/superadmin users, delete all roles
+      const rolesToDelete = isSmallScreen && 
+        (deleteConfirm.mentor.role.includes('admin') || deleteConfirm.mentor.role.includes('superadmin')) 
+        ? deleteConfirm.mentor.role 
+        : ['mentor'];
+
+      await axios.delete("/api/admin/manageUsers/manageMentor", {
+        data: { 
+          MUJid: deleteConfirm.mentor.MUJid,
+          roles: rolesToDelete
+        }
+      });
+      
+      showAlert("Mentor deleted successfully", "success");
+      fetchMentors(currentFilters);
+    } catch (error) {
+      showAlert(error.response?.data?.error || "Error deleting mentor", "error");
+    } finally {
+      setDeleteConfirm({ open: false, mentor: null, isMobile: false });
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ open: false, mentor: null, isMobile: false });
+  };
+
+  // Add these new functions near other handler functions
+  const handleTransferMentees = async () => {
+    setSearchingMentor(true);
+    setTransferError('');
+    
+    try {
+      const findMentorResponse = await axios.get(`/api/admin/manageUsers/manageMentor`, {
+        params: {
+          email: transferEmail,
+          academicYear: transferDialog.fromMentor.academicYear,
+          academicSession: transferDialog.fromMentor.academicSession
+        }
+      });
+
+      const foundMentor = findMentorResponse.data?.mentors?.[0];
+      
+      if (!foundMentor) {
+        setTransferError('No mentor found with this email in the same academic year and session');
+        setSearchingMentor(false);
+        return;
+      }
+
+      if (foundMentor.MUJid === transferDialog.fromMentor.MUJid) {
+        setTransferError('Cannot transfer mentees to the same mentor');
+        setSearchingMentor(false);
+        return;
+      }
+
+      setTargetMentor(foundMentor);
+      setSearchingMentor(false);
+
+    } catch (error) {
+      setTransferError(error.response?.data?.message || 'Error finding mentor');
+      setSearchingMentor(false);
+    }
+  };
+
+  const handleConfirmTransfer = async () => {
+    setTransferLoading(true);
+    try {
+      const response = await axios.post('/api/admin/manageUsers/transferMentees', {
+        fromMentorId: transferDialog.fromMentor.MUJid,
+        toMentorEmail: transferEmail,
+        academicYear: transferDialog.fromMentor.academicYear,
+        academicSession: transferDialog.fromMentor.academicSession
+      });
+
+      if (response.data.success) {
+        toast.success(
+          `Successfully transferred ${response.data.updatedCount} mentees`,
+          { style: toastStyles.success.style }
+        );
+        setTransferDialog({ open: false, fromMentor: null });
+        setTransferEmail('');
+        setTargetMentor(null);
+        fetchMentors(currentFilters);
+      }
+    } catch (error) {
+      setTransferError(error.response?.data?.message || 'Error transferring mentees');
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
+  // Add this effect to fetch mentee stats when transfer dialog opens
+  useEffect(() => {
+    if (transferDialog.open && transferDialog.fromMentor) {
+      const fetchMenteeStats = async () => {
+        try {
+          const response = await axios.get(`/api/admin/getMenteesCount?mentorMujid=${transferDialog.fromMentor.MUJid}`);
+          setMenteeStats(response.data.counts);
+        } catch (error) {
+          console.error('Error fetching mentee stats:', error);
+          toast.error('Error loading mentee statistics');
+        }
+      };
+      fetchMenteeStats();
+    } else {
+      setMenteeStats(null);
+      // setSelectedSemester(null);
+      // setSemesterMentees([]);
+    }
+  }, [transferDialog.open, transferDialog.fromMentor]);
+
+  const handleReset = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/admin/manageUsers/manageMentor', {
+        params: {
+          academicYear: currentFilters.academicYear,
+          academicSession: currentFilters.academicSession,
+          mentorEmailid: '', // Empty email filter
+          batchSize: 50,
+          offset: 0
+        }
+      });
+      
+      if (response.data) {
+        setMentors(response.data.mentors || []);
+        setCurrentFilters(prev => ({
+          ...prev,
+          mentorEmailid: ''
+        }));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error resetting filters');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -721,28 +896,13 @@ const handleEditMentor = async (updatedMentor) => {
             >
               Mentor Management
             </motion.h1>
-
-            {isSmallScreen && (
-              <IconButton
-                onClick={() => setShowFilters(!showFilters)}
-                sx={{
-                  color: '#f97316',
-                  bgcolor: 'rgba(249, 115, 22, 0.1)',
-                  '&:hover': {
-                    bgcolor: 'rgba(249, 115, 22, 0.2)',
-                  },
-                }}
-              >
-                <FilterListIcon />
-              </IconButton>
-            )}
           </div>
 
           {/* Main Grid Layout - Update the grid template columns here */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-4 p-4 h-[calc(100vh-100px)] lg:overflow-hidden overflow-auto">
             {/* Filter Panel - Update max-width */}
             <motion.div 
-              className={`${!isSmallScreen ? 'lg:block' : showFilters ? 'block' : 'hidden'}`}
+              className="block" // Updated to always show
               {...filterAnimation}
             >
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-4 h-full">
@@ -754,6 +914,7 @@ const handleEditMentor = async (updatedMentor) => {
                   onFilterChange={handleFilterChange}
                   onSearch={fetchMentors}
                   onAddNew={() => setOpenDialog(true)}
+                  onReset={handleReset} // Add this prop
                   onDelete={handleDeleteMentor}
                   mentors={mentors}
                   // onBulkUpload={handleBulkUpload}
@@ -769,19 +930,90 @@ const handleEditMentor = async (updatedMentor) => {
               <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
                 <div className="h-full flex flex-col p-4 pb-2"> {/* Added pb-2 for pagination */}
                   {mentors.length > 0 ? (
-                    <div className="h-full"> {/* Removed overflow-hidden */}
-                      <MentorTable 
-                        mentors={mentors}
-                        onEditClick={handleEditClick}
-                        onDeleteClick={handleDeleteMentor}
-                        isSmallScreen={isSmallScreen}
-                        emailFilter={currentFilters.email} // Pass email filter to table
-                        onDataUpdate={(updatedMentors) => setMentors(updatedMentors)}
-                      />
+                    <div className="h-full">
+                      {isSmallScreen ? (
+                        // Card view for mobile and tablet
+                        <div className="h-full overflow-auto pb-16">
+                          {getCurrentCards().map((mentor) => (
+                            <MentorCard
+                              key={mentor.MUJid}
+                              mentor={mentor}
+                              onEditClick={handleEditClick}
+                              onDeleteClick={handleDeleteMentor}
+                              expanded={expandedCard === mentor.MUJid}
+                              onExpandClick={handleExpandCard}
+                              onInfoClick={(mentor) => setDetailsDialog({ open: true, mentor })}
+                              onTransferClick={(mentor) => setTransferDialog({
+                                open: true,
+                                fromMentor: mentor
+                              })}
+                            />
+                          ))}
+                          {mentors.length > cardsPerPage && (
+                            <Box sx={{ 
+                              position: 'fixed',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              display: 'flex', 
+                              justifyContent: 'center',
+                              backgroundColor: 'rgba(0,0,0,0.8)',
+                              backdropFilter: 'blur(10px)',
+                              py: 2,
+                              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                              zIndex: 10,
+                            }}>
+                              <Pagination
+                                count={Math.ceil(mentors.length / cardsPerPage)}
+                                page={page}
+                                onChange={handlePageChange}
+                                size={isSmallScreen ? "small" : "medium"}
+                                siblingCount={isSmallScreen ? 0 : 1}
+                                sx={{
+                                  '& .MuiPaginationItem-root': {
+                                    color: 'white',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    minWidth: isSmallScreen ? '30px' : '40px',
+                                    height: isSmallScreen ? '30px' : '40px',
+                                    fontSize: isSmallScreen ? '0.875rem' : '1rem',
+                                    '&.Mui-selected': {
+                                      backgroundColor: '#f97316',
+                                      fontWeight: 'bold',
+                                      boxShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
+                                      '&:hover': {
+                                        backgroundColor: '#ea580c',
+                                      },
+                                    },
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                                    },
+                                  },
+                                }}
+                              />
+                            </Box>
+                          )}
+                        </div>
+                      ) : (
+                        // Table view for desktop
+                        <div className="h-full overflow-auto">
+                          <MentorTable 
+                            mentors={mentors}
+                            onEditClick={handleEditClick}
+                            onDeleteClick={handleDeleteMentor}
+                            isSmallScreen={isSmallScreen}
+                            emailFilter={currentFilters.email}
+                            onDataUpdate={(updatedMentors) => setMentors(updatedMentors)}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : loading ? (
                     <div className="h-full bg-black/20 rounded-xl backdrop-blur-sm">
-                      <MentorSkeleton />
+                      {isSmallScreen ? (
+                        <MentorCardSkeleton count={5} />
+                      ) : (
+                        <MentorSkeleton />
+                      )}
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center">
@@ -855,20 +1087,383 @@ const handleEditMentor = async (updatedMentor) => {
           handlePatchUpdate={handlePatchUpdate}
         />
 
-        <RoleDeletionDialog
-          open={deleteRoleDialog.open}
-          onClose={() => setDeleteRoleDialog({ open: false, mentor: null })}
-          deleteRoleDialog={deleteRoleDialog}
-          selectedRoles={selectedRoles}
-          setSelectedRoles={setSelectedRoles}
-          handleRoleBasedDelete={handleRoleBasedDelete}
-        />
+        {/* Show RoleDeletionDialog only on desktop */}
+        {!isSmallScreen && (
+          <RoleDeletionDialog
+            open={deleteRoleDialog.open}
+            onClose={() => setDeleteRoleDialog({ open: false, mentor: null })}
+            deleteRoleDialog={deleteRoleDialog}
+            selectedRoles={selectedRoles}
+            setSelectedRoles={setSelectedRoles}
+            handleRoleBasedDelete={handleRoleBasedDelete}
+          />
+        )}
 
         <EmailConflictDialog
           open={emailConflict.open}
           onClose={() => setEmailConflict({ open: false, mentor: null })}
           conflictingMentor={emailConflict.mentor}
         />
+
+        {/* Add Delete Confirmation Dialog/Drawer */}
+        {deleteConfirm.isMobile ? (
+          <SwipeableDrawer
+            anchor="bottom"
+            open={deleteConfirm.open}
+            onClose={handleDeleteCancel}
+            onOpen={() => {}}
+            sx={{
+              '& .MuiDrawer-paper': {
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '16px',
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }
+            }}
+          >
+            <Box sx={{ p: 3, color: 'white' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <DeleteIcon sx={{ color: '#ef4444', mr: 1 }} />
+                <Typography variant="h6">Confirm Delete</Typography>
+              </Box>
+              {deleteConfirm.mentor && (
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    Mentor Details:
+                  </Typography>
+                  <Typography>Name: {deleteConfirm.mentor.name}</Typography>
+                  <Typography>Email: {deleteConfirm.mentor.email}</Typography>
+                  <Typography>MUJID: {deleteConfirm.mentor.MUJid}</Typography>
+                  <Typography>Academic Year: {deleteConfirm.mentor.academicYear}</Typography>
+                </Box>
+              )}
+              <Typography sx={{ mb: 3 }}>
+                Are you sure you want to delete this mentor? This action cannot be undone.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleDeleteCancel}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    '&:hover': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleDeleteConfirm}
+                  sx={{
+                    bgcolor: '#ef4444',
+                    '&:hover': { bgcolor: '#dc2626' }
+                  }}
+                >
+                  Delete
+                </Button>
+              </Box>
+            </Box>
+          </SwipeableDrawer>
+        ) : (
+          <Dialog
+            open={deleteConfirm.open}
+            onClose={handleDeleteCancel}
+            PaperProps={{
+              sx: {
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                minWidth: '400px'
+              }
+            }}
+          >
+            <DialogTitle sx={{ color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DeleteIcon sx={{ color: '#ef4444' }} />
+              Confirm Delete
+            </DialogTitle>
+            <DialogContent>
+              {deleteConfirm.mentor && (
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    Mentor Details:
+                  </Typography>
+                  <Typography sx={{ color: 'white' }}>Name: {deleteConfirm.mentor.name}</Typography>
+                  <Typography sx={{ color: 'white' }}>Email: {deleteConfirm.mentor.email}</Typography>
+                  <Typography sx={{ color: 'white' }}>MUJID: {deleteConfirm.mentor.MUJid}</Typography>
+                  <Typography sx={{ color: 'white' }}>Academic Year: {deleteConfirm.mentor.academicYear}</Typography>
+                </Box>
+              )}
+              <Typography sx={{ color: 'white' }}>
+                Are you sure you want to delete this mentor? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 2 }}>
+              <Button
+                onClick={handleDeleteCancel}
+                variant="outlined"
+                sx={{
+                  color: 'white',
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
+                variant="contained"
+                sx={{
+                  bgcolor: '#ef4444',
+                  '&:hover': { bgcolor: '#dc2626' }
+                }}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
+
+        <MentorDetailsDialog
+          open={detailsDialog.open}
+          onClose={() => setDetailsDialog({ open: false, mentor: null })}
+          mentor={detailsDialog.mentor}
+        />
+
+        {isSmallScreen ? (
+          <SwipeableDrawer
+            anchor="bottom"
+            open={transferDialog.open}
+            onClose={() => {
+              setTransferDialog({ open: false, fromMentor: null });
+              setTransferEmail('');
+              setTargetMentor(null);
+              setTransferError('');
+            }}
+            onOpen={() => {}}
+            sx={{
+              '& .MuiDrawer-paper': {
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '16px',
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                maxHeight: '90vh'
+              }
+            }}
+          >
+            <Box sx={{ p: 3, color: 'white' }}>
+              <Typography variant="h6" sx={{ 
+                color: '#10B981', 
+                mb: 3,
+                fontSize: { xs: '1.25rem', sm: '1.5rem' }
+              }}>
+                Transfer Mentees
+              </Typography>
+
+              {transferDialog.fromMentor && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}>
+                    From Mentor:
+                  </Typography>
+                  <Box sx={{ 
+                    p: 2, 
+                    bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                    borderRadius: 1,
+                    mt: 1
+                  }}>
+                    <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      {transferDialog.fromMentor.name}
+                    </Typography>
+                    <Typography sx={{ 
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
+                      {transferDialog.fromMentor.email}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
+              {menteeStats && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: '#10B981',
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}>
+                    Current Mentees:
+                  </Typography>
+                  <Stack spacing={1} sx={{ mt: 1 }}>
+                    {Object.entries(menteeStats).map(([semester, count]) => (
+                      <Box key={semester} sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        p: 1.5,
+                        bgcolor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: 1
+                      }}>
+                        <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                          {semester}
+                        </Typography>
+                        <Typography sx={{ 
+                          color: '#10B981',
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                        }}>
+                          {count} mentees
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+
+              <Box sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Target Mentor Email"
+                  value={transferEmail}
+                  onChange={(e) => setTransferEmail(e.target.value)}
+                  error={!!transferError}
+                  helperText={transferError}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      '& fieldset': {
+                        borderColor: 'rgba(255, 255, 255, 0.23)',
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    },
+                    '& .MuiFormHelperText-root': {
+                      color: '#ef4444',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    }
+                  }}
+                />
+              </Box>
+
+              {targetMentor && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}>
+                    Target Mentor:
+                  </Typography>
+                  <Box sx={{ 
+                    p: 2, 
+                    bgcolor: 'rgba(16, 185, 129, 0.1)', 
+                    borderRadius: 1,
+                    mt: 1,
+                    border: '1px solid rgba(16, 185, 129, 0.2)'
+                  }}>
+                    <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      {targetMentor.name}
+                    </Typography>
+                    <Typography sx={{ 
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
+                      {targetMentor.email}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => {
+                    setTransferDialog({ open: false, fromMentor: null });
+                    setTransferEmail('');
+                    setTargetMentor(null);
+                    setTransferError('');
+                  }}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    '&:hover': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                {targetMentor ? (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={handleConfirmTransfer}
+                    disabled={transferLoading}
+                    sx={{
+                      bgcolor: '#10B981',
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      '&:hover': { bgcolor: '#059669' }
+                    }}
+                  >
+                    {transferLoading ? 'Transferring...' : 'Confirm Transfer'}
+                  </Button>
+                ) : (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={handleTransferMentees}
+                    disabled={!transferEmail || searchingMentor}
+                    sx={{
+                      bgcolor: '#10B981',
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      '&:hover': { bgcolor: '#059669' }
+                    }}
+                  >
+                    {searchingMentor ? 'Searching...' : 'Search Mentor'}
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </SwipeableDrawer>
+        ) : (
+          <Dialog
+            open={transferDialog.open}
+            onClose={() => {
+              setTransferDialog({ open: false, fromMentor: null });
+              setTransferEmail('');
+              setTargetMentor(null);
+              setTransferError('');
+            }}
+            PaperProps={{
+              sx: {
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                minWidth: '400px'
+              }
+            }}
+          >
+            <DialogTitle sx={{ color: '#10B981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              Transfer Mentees
+            </DialogTitle>
+            {/* Rest of your transfer dialog content */}
+            {/* ...existing transfer dialog content... */}
+          </Dialog>
+        )}
       </div>
     </ThemeProvider>
   );

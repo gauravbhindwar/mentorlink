@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from "react-hot-toast";
 import { IoMdClose, IoMdArrowDropdown, IoMdArrowDropup } from 'react-icons/io';
+import { useMediaQuery } from '@mui/material';
+import SwipeableDrawer from '@mui/material/SwipeableDrawer';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const toastStyles = {
   success: {
@@ -35,6 +38,7 @@ const EditMentorDialog = ({
   setSelectedMentor,
   handleEditMentor,
 }) => {
+  const isSmallScreen = useMediaQuery('(max-width: 1024px)'); // Matches lg breakpoint
   const [errors, setErrors] = useState({
     name: '',
     email: '',
@@ -214,162 +218,230 @@ const EditMentorDialog = ({
     };
   }, []);
 
-  if (!open) return null;
+  // Add these animation variants
+  const drawerVariants = {
+    initial: { y: '100%' },
+    animate: { 
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }
+    },
+    exit: { 
+      y: '100%',
+      transition: {
+        type: "spring",
+        damping: 30,
+        stiffness: 300
+      }
+    }
+  };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-gray-900 rounded-xl w-full max-w-3xl mx-4 shadow-2xl border border-gray-800 max-h-[90vh] flex flex-col">
-        <div className="flex-shrink-0 flex justify-between items-center p-6 border-b border-gray-800">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-            Edit Mentor Profile
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-orange-500 transition-colors p-2 hover:bg-gray-800 rounded-full"
-          >
-            <IoMdClose size={24} />
-          </button>
-        </div>
-        
-        <div className="p-8 overflow-y-auto flex-grow">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div className="space-y-1">
-              <label className="text-gray-400 text-sm font-medium">Full Name</label>
-              <input
-                type="text"
-                name="name"
-                value={selectedMentor?.name || ""}
-                onChange={handleInputChange}
-                className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
-                  errors.name ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
+  // Create the dialog content component to avoid repetition
+  const DialogContent = () => (
+    <>
+      <div className="flex-shrink-0 flex justify-between items-center p-6 border-b border-gray-800">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+          Edit Mentor Profile
+        </h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-orange-500 transition-colors p-2 hover:bg-gray-800 rounded-full"
+        >
+          <IoMdClose size={24} />
+        </button>
+      </div>
+      
+      <div className="p-8 overflow-y-auto flex-grow">
+        {/* Existing form content */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1">
+            <label className="text-gray-400 text-sm font-medium">Full Name</label>
+            <input
+              type="text"
+              name="name"
+              value={selectedMentor?.name || ""}
+              onChange={handleInputChange}
+              className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
+                errors.name ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
+              } transition-colors`}
+              placeholder="Enter full name"
+            />
+            {errors.name && (
+              <p className="text-red-500 text-xs mt-0.5">{errors.name}</p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-gray-400 text-sm font-medium">Email Address</label>
+            <input
+              type="email"
+              name="email"
+              value={selectedMentor?.email || ""}
+              onChange={handleInputChange}
+              className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
+                errors.email ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
+              } transition-colors`}
+              placeholder="Enter email address"
+            />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-0.5">{errors.email}</p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-gray-400 text-sm font-medium">Phone Number</label>
+            <input
+              type="text"
+              name="phone_number"
+              value={selectedMentor?.phone_number || ""}
+              onChange={handleInputChange}
+              className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
+                errors.phone_number ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
+              } transition-colors`}
+              placeholder="Enter phone number"
+            />
+            {errors.phone_number && (
+              <p className="text-red-500 text-xs mt-0.5">{errors.phone_number}</p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-gray-400 text-sm font-medium">Assigned Roles</label>
+            <div className="relative" ref={dropdownRef}>
+              <div 
+                className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 flex justify-between items-center cursor-pointer border ${
+                  errors.role ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
                 } transition-colors`}
-                placeholder="Enter full name"
-              />
-              {errors.name && (
-                <p className="text-red-500 text-xs mt-0.5">{errors.name}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-gray-400 text-sm font-medium">Email Address</label>
-              <input
-                type="email"
-                name="email"
-                value={selectedMentor?.email || ""}
-                onChange={handleInputChange}
-                className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
-                  errors.email ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
-                } transition-colors`}
-                placeholder="Enter email address"
-              />
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-0.5">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-gray-400 text-sm font-medium">Phone Number</label>
-              <input
-                type="text"
-                name="phone_number"
-                value={selectedMentor?.phone_number || ""}
-                onChange={handleInputChange}
-                className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
-                  errors.phone_number ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
-                } transition-colors`}
-                placeholder="Enter phone number"
-              />
-              {errors.phone_number && (
-                <p className="text-red-500 text-xs mt-0.5">{errors.phone_number}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-gray-400 text-sm font-medium">Assigned Roles</label>
-              <div className="relative" ref={dropdownRef}>
-                <div 
-                  className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 flex justify-between items-center cursor-pointer border ${
-                    errors.role ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
-                  } transition-colors`}
-                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                >
-                  <div className="flex flex-wrap gap-2">
-                    {selectedMentor?.role?.length > 0 ? (
-                      selectedMentor.role.map(role => (
-                        <span key={role} className="bg-orange-500/20 border border-orange-500/50 text-orange-500 px-3 py-1 rounded-full text-sm font-medium">
-                          {role}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-400">Select roles</span>
-                    )}
-                  </div>
-                  {isRoleDropdownOpen ? <IoMdArrowDropup className="text-orange-500" /> : <IoMdArrowDropdown className="text-orange-500" />}
+                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+              >
+                <div className="flex flex-wrap gap-2">
+                  {selectedMentor?.role?.length > 0 ? (
+                    selectedMentor.role.map(role => (
+                      <span key={role} className="bg-orange-500/20 border border-orange-500/50 text-orange-500 px-3 py-1 rounded-full text-sm font-medium">
+                        {role}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">Select roles</span>
+                  )}
                 </div>
-                {errors.role && (
-                  <p className="text-red-500 text-xs mt-0.5">{errors.role}</p>
-                )}
-                {isRoleDropdownOpen && (
-                  <div className="absolute z-50 mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
-                    {/* Only show mentor and admin roles */}
-                    {['mentor', 'admin'].map((role) => (
-                      <div
-                        key={role}
-                        className={`px-4 py-3 cursor-pointer hover:bg-gray-700 flex items-center justify-between first:rounded-t-lg last:rounded-b-lg ${
-                          selectedMentor?.role?.includes(role) ? 'text-orange-500 bg-orange-500/10' : 'text-white'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent dropdown from closing
-                          handleRoleToggle(role);
-                        }}
-                      >
-                        <span className="capitalize font-medium">{role}</span>
-                        {selectedMentor?.role?.includes(role) && (
-                          <span className="text-orange-500">✓</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {isRoleDropdownOpen ? <IoMdArrowDropup className="text-orange-500" /> : <IoMdArrowDropdown className="text-orange-500" />}
               </div>
-            </div>
-
-            <div className="flex items-center space-x-3 bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={Boolean(selectedMentor?.isActive)}
-                  onChange={(e) => handleInputChange({
-                    target: { 
-                      name: 'isActive', 
-                      value: e.target.checked 
-                    }
-                  })}
-                />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                <span className="ml-3 text-gray-300 font-medium">Active Status</span>
-              </label>
+              {errors.role && (
+                <p className="text-red-500 text-xs mt-0.5">{errors.role}</p>
+              )}
+              {isRoleDropdownOpen && (
+                <div className="absolute z-50 mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
+                  {/* Only show mentor and admin roles */}
+                  {['mentor', 'admin'].map((role) => (
+                    <div
+                      key={role}
+                      className={`px-4 py-3 cursor-pointer hover:bg-gray-700 flex items-center justify-between first:rounded-t-lg last:rounded-b-lg ${
+                        selectedMentor?.role?.includes(role) ? 'text-orange-500 bg-orange-500/10' : 'text-white'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent dropdown from closing
+                        handleRoleToggle(role);
+                      }}
+                    >
+                      <span className="capitalize font-medium">{role}</span>
+                      {selectedMentor?.role?.includes(role) && (
+                        <span className="text-orange-500">✓</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        <div className="flex-shrink-0 flex justify-end gap-4 p-6 border-t border-gray-800 bg-gray-900/50">
-          <button
-            onClick={onClose}
-            className="px-6 py-2.5 text-white border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!isFormValid()}
-            className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-500 font-medium"
-          >
-            Save Changes
-          </button>
+          <div className="flex items-center space-x-3 bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={Boolean(selectedMentor?.isActive)}
+                onChange={(e) => handleInputChange({
+                  target: { 
+                    name: 'isActive', 
+                    value: e.target.checked 
+                  }
+                })}
+              />
+              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              <span className="ml-3 text-gray-300 font-medium">Active Status</span>
+            </label>
+          </div>
         </div>
+      </div>
+
+      <div className="flex-shrink-0 flex justify-end gap-4 p-6 border-t border-gray-800 bg-gray-900/50">
+        <button
+          onClick={onClose}
+          className="px-6 py-2.5 text-white border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={!isFormValid()}
+          className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-500 font-medium"
+        >
+          Save Changes
+        </button>
+      </div>
+    </>
+  );
+
+  if (!open) return null;
+
+  // Return different containers based on screen size
+  return isSmallScreen ? (
+    <AnimatePresence>
+      {open && (
+        <SwipeableDrawer
+          anchor="bottom"
+          open={open}
+          onClose={onClose}
+          onOpen={() => {}}
+          disableSwipeToOpen
+          PaperProps={{
+            sx: {
+              height: '100%',
+              maxHeight: '100%',
+              backgroundColor: 'transparent', // Make background transparent for animation
+              backgroundImage: 'none',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+            }
+          }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              backgroundImage: 'none',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }
+          }}
+        >
+          <motion.div
+            className="flex flex-col h-full bg-gray-900 bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent"
+            variants={drawerVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <DialogContent />
+          </motion.div>
+        </SwipeableDrawer>
+      )}
+    </AnimatePresence>
+  ) : (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="bg-gray-900 rounded-xl w-full max-w-3xl mx-4 shadow-2xl border border-gray-800 max-h-[90vh] flex flex-col">
+        <DialogContent />
       </div>
     </div>
   );

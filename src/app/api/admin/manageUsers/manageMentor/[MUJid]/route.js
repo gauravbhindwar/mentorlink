@@ -33,9 +33,11 @@ export async function PATCH(request) {
       }
     }
 
-    // Clean the update data
+    // Clean the update data and remove immutable fields
     const cleanedData = Object.fromEntries(
-      Object.entries(updateData).filter(([v]) => v != null && v !== '')
+      Object.entries(updateData)
+        .filter(([value]) => value != null && value !== '')
+        .filter(([key]) => !['_id', 'MUJid'].includes(key)) // Exclude immutable fields
     );
 
     // Get current mentor data to check role changes
@@ -58,11 +60,14 @@ export async function PATCH(request) {
       const adminRoles = updateData.role.filter(r => ['admin', 'superadmin'].includes(r));
 
       if (isNowAdmin) {
-        // Update or create admin record
+        // Update or create admin record, excluding immutable fields
+        const adminData = { ...cleanedData };
+        delete adminData._id; // Ensure _id is removed
+        
         await Admin.findOneAndUpdate(
           { MUJid },
           { 
-            ...cleanedData,
+            ...adminData,
             role: adminRoles 
           },
           { upsert: true, new: true }
