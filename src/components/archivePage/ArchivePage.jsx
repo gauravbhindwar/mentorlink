@@ -83,14 +83,19 @@ const ArchivePage = () => {
 
   return (
     <ArchiveDataProvider>
-      <div className='fixed inset-0 bg-[#0a0a0a] text-white overflow-hidden'>
+      <div className='fixed inset-0 bg-[#0a0a0a] text-white md:overflow-hidden overflow-auto'>
         <div className='absolute inset-0 z-0'>
           <div className='absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient' />
           <div className='absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl' />
           <div className='absolute inset-0 backdrop-blur-3xl' />
         </div>
 
-        <div className='relative z-10 h-screen flex pt-[60px]'>
+        <div className='relative z-10 min-h-screen md:h-screen flex flex-col md:flex-row pt-[60px]'>
+          {/* Mobile Session Selector - Always visible */}
+          <div className='block md:hidden px-4 py-2'>
+            <YearSessionSelector onSearch={handleSearch} isMobile={true} />
+          </div>
+
           <AnimatePresence initial={false}>
             {isSidebarOpen && (
               <motion.div
@@ -98,7 +103,7 @@ const ArchivePage = () => {
                 animate={{ width: sidebarWidth, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className='relative h-[calc(100vh-60px)]'
+                className='relative h-[calc(100vh-60px)] hidden md:block'
                 style={{ width: sidebarWidth }}
               >
                 <div className="h-full p-4 opacity-100">
@@ -152,7 +157,7 @@ const ArchivePage = () => {
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className='absolute -left-3 top-3 z-50 bg-orange-500 hover:bg-orange-600 
                         text-white p-1.5 rounded-md shadow-lg transition-all duration-200 
-                        hover:scale-105 active:scale-95 cursor-pointer'
+                        hover:scale-105 active:scale-95 cursor-pointer hidden md:block'
             >
               {isSidebarOpen ? <IoChevronBack size={16} /> : <IoChevronForward size={16} />}
             </button>

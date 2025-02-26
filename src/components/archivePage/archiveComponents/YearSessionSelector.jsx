@@ -13,7 +13,7 @@ const SearchIcon = () => (
   </svg>
 );
 
-const YearSessionSelector = ({ onSearch }) => {
+const YearSessionSelector = ({ onSearch, isMobile }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
   const [sessions, setSessions] = useState([]);
@@ -60,60 +60,68 @@ const YearSessionSelector = ({ onSearch }) => {
   return (
     <div 
       ref={containerRef}
-      className="year-selector-container"
+      className={`year-selector-container ${isMobile ? 'mobile' : ''}`}
       style={{ 
         opacity: opacity,
         transition: 'opacity 0.3s ease-in-out'
       }}
     >
-      <div className="header">
-        <SearchIcon />
-        <h2>Archive Filters</h2>
-      </div>
+      {!isMobile && ( // Only show header in desktop view
+        <div className="header">
+          <SearchIcon />
+          <h2>Archive Filters</h2>
+        </div>
+      )}
       
-      <label className="input-label">Academic Year</label>
-      <input
-        type="text"
-        value={academicYear}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (value.length === 4 && /^\d{4}$/.test(value)) {
-            setAcademicYear(`${value}-${parseInt(value) + 1}`);
-          } else if (e.nativeEvent.inputType === 'deleteContentBackward') {
-            setAcademicYear('');
-          } else if (value.length < 4 && !isNaN(parseInt(value))) {
-            setAcademicYear(value);
-          }
-        }}
-        placeholder="Enter academic year"
-        className={`custom-input ${yearError ? 'error' : ''}`}
-      />
-      {yearError && <span className="error-text">{yearError}</span>}
-      
-      <label className="input-label">Academic Session</label>
-      <select
-        value={academicSession}
-        onChange={(e) => setAcademicSession(e.target.value)}
-        className={`custom-select ${sessionError ? 'error' : ''}`}
-        disabled={!academicYear}
-      >
-        <option value="">Select a session</option>
-        {sessions.map((session) => (
-          <option key={session} value={session}>
-            {session}
-          </option>
-        ))}
-      </select>
-      {sessionError && <span className="error-text">{sessionError}</span>}
+      <div className={`inputs-container ${isMobile ? 'mobile' : ''}`}>
+        <div className="input-group">
+          <label className="input-label">Year</label>
+          <input
+            type="text"
+            value={academicYear}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value.length === 4 && /^\d{4}$/.test(value)) {
+                setAcademicYear(`${value}-${parseInt(value) + 1}`);
+              } else if (e.nativeEvent.inputType === 'deleteContentBackward') {
+                setAcademicYear('');
+              } else if (value.length < 4 && !isNaN(parseInt(value))) {
+                setAcademicYear(value);
+              }
+            }}
+            placeholder="Enter academic year"
+            className={`custom-input ${yearError ? 'error' : ''}`}
+          />
+          {yearError && <span className="error-text">{yearError}</span>}
+        </div>
+        
+        <div className="input-group">
+          <label className="input-label">Session</label>
+          <select
+            value={academicSession}
+            onChange={(e) => setAcademicSession(e.target.value)}
+            className={`custom-select ${sessionError ? 'error' : ''}`}
+            disabled={!academicYear}
+          >
+            <option value="">Select</option>
+            {sessions.map((session) => (
+              <option key={session} value={session}>
+                {session}
+              </option>
+            ))}
+          </select>
+          {sessionError && <span className="error-text">{sessionError}</span>}
+        </div>
 
-      <button
-        className={`search-button ${(!academicYear || !academicSession) ? 'disabled' : ''}`}
-        onClick={handleSearch}
-        disabled={!academicYear || !academicSession}
-      >
-        <SearchIcon />
-        <span>Search Archives</span>
-      </button>
+        <button
+          className={`search-button ${(!academicYear || !academicSession) ? 'disabled' : ''}`}
+          onClick={handleSearch}
+          disabled={!academicYear || !academicSession}
+        >
+          <SearchIcon />
+          <span className="button-text">Search</span>
+        </button>
+      </div>
 
       <style jsx>{`
         .year-selector-container {
@@ -244,6 +252,108 @@ const YearSessionSelector = ({ onSearch }) => {
           background-color: #262626;
           color: rgba(255, 255, 255, 0.3);
           cursor: not-allowed;
+        }
+
+        .year-selector-container.mobile {
+          height: auto;
+          border-radius: 12px;
+          padding: 12px 16px;
+          gap: 8px;
+          background: rgba(26, 26, 26, 0.95);
+          margin-bottom: 8px;
+          border-width: 2px;
+        }
+
+        .inputs-container {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .inputs-container.mobile {
+          flex-direction: row;
+          gap: 12px;
+          align-items: center;
+        }
+
+        .input-group {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .mobile .input-group {
+          flex: 1;
+          min-width: 0;
+          position: relative;
+        }
+
+        .mobile .input-label {
+          font-size: 0.7rem;
+          margin-bottom: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #f97316;
+          font-weight: 600;
+        }
+
+        .mobile .custom-input,
+        .mobile .custom-select {
+          padding: 8px 12px;
+          font-size: 0.85rem;
+          border-radius: 8px;
+          height: 36px;
+          background: #f8f8f8;
+          border: 1px solid rgba(249, 115, 22, 0.4);
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile .search-button {
+          padding: 0;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          margin: 0;
+          margin-top: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f97316;
+          transition: all 0.2s ease;
+        }
+
+        .mobile .search-button:active:not(.disabled) {
+          transform: scale(0.95);
+        }
+
+        .mobile .search-button svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .mobile .button-text {
+          display: none;
+        }
+
+        .mobile .error-text {
+          position: absolute;
+          bottom: -18px;
+          left: 0;
+          font-size: 0.65rem;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 380px) {
+          .inputs-container.mobile {
+            gap: 8px;
+          }
+
+          .mobile .custom-input,
+          .mobile .custom-select {
+            padding: 8px;
+            font-size: 0.8rem;
+          }
         }
       `}</style>
     </div>

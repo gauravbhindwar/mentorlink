@@ -81,27 +81,30 @@ const EditMentorDialog = ({
     }));
 
     if (name === 'isActive') {
-      // Ensure boolean value for isActive
       setSelectedMentor(prev => ({
         ...prev,
         isActive: Boolean(value)
       }));
-      console.log('Setting active status:', Boolean(value)); // Debug log
     } else if (name === 'role') {
-      const currentRoles = selectedMentor?.role || [];
-      const newRoles = currentRoles.includes(value)
-        ? currentRoles.filter(role => role !== value)
-        : [...currentRoles, value];
-      
       setSelectedMentor((prev) => ({
         ...prev,
-        role: newRoles,
+        role: prev.role.includes(value)
+          ? prev.role.filter(role => role !== value)
+          : [...prev.role, value]
       }));
     } else {
       setSelectedMentor((prev) => ({
         ...prev,
         [name]: value,
       }));
+    }
+  };
+
+  // Add form submit handler
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (isFormValid()) {
+      handleSubmit();
     }
   };
 
@@ -241,7 +244,7 @@ const EditMentorDialog = ({
 
   // Create the dialog content component to avoid repetition
   const DialogContent = () => (
-    <>
+    <form onSubmit={handleFormSubmit} className="flex flex-col h-full">
       <div className="flex-shrink-0 flex justify-between items-center p-6 border-b border-gray-800">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
           Edit Mentor Profile
@@ -258,8 +261,9 @@ const EditMentorDialog = ({
         {/* Existing form content */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1">
-            <label className="text-gray-400 text-sm font-medium">Full Name</label>
+            <label htmlFor="name" className="text-gray-400 text-sm font-medium">Full Name</label>
             <input
+              id="name"
               type="text"
               name="name"
               value={selectedMentor?.name || ""}
@@ -275,8 +279,9 @@ const EditMentorDialog = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-gray-400 text-sm font-medium">Email Address</label>
+            <label htmlFor="email" className="text-gray-400 text-sm font-medium">Email Address</label>
             <input
+              id="email"
               type="email"
               name="email"
               value={selectedMentor?.email || ""}
@@ -292,8 +297,9 @@ const EditMentorDialog = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-gray-400 text-sm font-medium">Phone Number</label>
+            <label htmlFor="phone_number" className="text-gray-400 text-sm font-medium">Phone Number</label>
             <input
+              id="phone_number"
               type="text"
               name="phone_number"
               value={selectedMentor?.phone_number || ""}
@@ -380,20 +386,21 @@ const EditMentorDialog = ({
 
       <div className="flex-shrink-0 flex justify-end gap-4 p-6 border-t border-gray-800 bg-gray-900/50">
         <button
+          type="button"
           onClick={onClose}
           className="px-6 py-2.5 text-white border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors font-medium"
         >
           Cancel
         </button>
         <button
-          onClick={handleSubmit}
+          type="submit"
           disabled={!isFormValid()}
           className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-500 font-medium"
         >
           Save Changes
         </button>
       </div>
-    </>
+    </form>
   );
 
   if (!open) return null;
