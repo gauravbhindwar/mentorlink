@@ -139,16 +139,35 @@ const ViewMentee = () => {
   const dialogStyles = {
     dialog: {
       '& .MuiDialog-paper': {
-        maxHeight: '85vh',
+        maxHeight: '90vh',
         minHeight: '70vh',
         display: 'flex',
         flexDirection: 'column',
+        // Mobile specific styles
+        [theme.breakpoints.down('sm')]: {
+          margin: 0,
+          maxHeight: '100%',
+          minHeight: '100%',
+          width: '100%',
+          borderRadius: '1rem 1rem 0 0',
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+        },
+      },
+      // Mobile specific styles for container
+      [theme.breakpoints.down('sm')]: {
+        '& .MuiDialog-container': {
+          alignItems: 'flex-end',
+          height: '100%',
+        },
       }
     },
     dialogContent: {
       flex: 1,
       overflowY: 'auto',
-      p: 0, // Remove default padding
+      p: 0,
       '&::-webkit-scrollbar': {
         width: '8px',
       },
@@ -162,10 +181,18 @@ const ViewMentee = () => {
       '&::-webkit-scrollbar-thumb:hover': {
         background: '#f97316',
       },
+      // Mobile specific padding
+      [theme.breakpoints.down('sm')]: {
+        pb: 4,
+      }
     },
     contentWrapper: {
-      p: 3, // Add padding to wrapper instead
+      p: 3,
       height: '100%',
+      // Mobile specific padding
+      [theme.breakpoints.down('sm')]: {
+        p: 2,
+      }
     },
     tabPanel: {
       height: '100%',
@@ -181,7 +208,10 @@ const ViewMentee = () => {
       justifyContent: 'center',
       alignItems: 'flex-start',
       minHeight: '400px',
-      p: 2
+      p: 2,
+      [theme.breakpoints.down('sm')]: {
+        p: 1,
+      }
     },
     contentCard: {
       width: '100%',
@@ -189,6 +219,9 @@ const ViewMentee = () => {
       p: 2.5,
       bgcolor: 'rgba(255, 255, 255, 0.03)',
       borderRadius: '1rem',
+      [theme.breakpoints.down('sm')]: {
+        p: 1.5,
+      }
     },
     academicCard: {
       p: 2,
@@ -1026,15 +1059,34 @@ const ViewMentee = () => {
           onClose={handleEditClose}
           maxWidth='md'
           fullWidth
-          sx={dialogStyles.dialog}
+          keepMounted
+          TransitionProps={{
+            timeout: 300,
+          }}
+          sx={{
+            ...dialogStyles.dialog,
+            '& .MuiBackdrop-root': {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            },
+            [theme.breakpoints.down('sm')]: {
+              '& .MuiDialog-paper': {
+                transform: 'none !important',
+                transition: 'opacity 0.3s ease-out !important',
+                opacity: editDialog ? 1 : 0,
+              },
+            },
+          }}
           PaperProps={{
             sx: {
-              background:
-                "linear-gradient(135deg, rgba(17, 17, 17, 0.95), rgba(31, 41, 55, 0.95))",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: "1rem",
-              color: "white",
+              background: 'linear-gradient(135deg, rgba(17, 17, 17, 0.95), rgba(31, 41, 55, 0.95))',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: theme.breakpoints.down('sm') ? '1rem 1rem 0 0' : '1rem',
+              color: 'white',
+              [theme.breakpoints.down('sm')]: {
+                margin: 0,
+                width: '100%',
+              },
             },
           }}>
           <DialogTitle
@@ -1043,7 +1095,10 @@ const ViewMentee = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              p: 2,
+              p: theme.breakpoints.down('sm') ? 1.5 : 2,
+              '& .MuiTypography-root': {
+                fontSize: theme.breakpoints.down('sm') ? '1.25rem' : '1.5rem',
+              },
             }}>
             {/* Fixed: Remove nested Typography components */}
             <Box component='div' sx={{ typography: "h6", color: "white" }}>
@@ -1130,20 +1185,21 @@ const ViewMentee = () => {
                     onChange={handleTabChange}
                     variant="fullWidth"
                     sx={{
-                      minHeight: '64px',
+                      minHeight: theme.breakpoints.down('sm') ? '56px' : '64px',
                       borderBottom: '1px solid rgba(255,255,255,0.1)',
-                      mb: 3,
+                      mb: theme.breakpoints.down('sm') ? 2 : 3,
                       '& .MuiTab-root': {
-                        minHeight: '64px',
+                        minHeight: theme.breakpoints.down('sm') ? '56px' : '64px',
                         color: 'rgba(255,255,255,0.7)',
-                        fontSize: '1rem',
+                        fontSize: theme.breakpoints.down('sm') ? '0.875rem' : '1rem',
                         transition: 'all 0.3s',
+                        padding: theme.breakpoints.down('sm') ? '6px 12px' : '12px 16px',
                         '&.Mui-selected': {
                           color: '#f97316',
                         },
                         '& .MuiSvgIcon-root': {
                           mb: 0.5,
-                          fontSize: '1.5rem',
+                          fontSize: theme.breakpoints.down('sm') ? '1.25rem' : '1.5rem',
                         },
                         '&:hover': {
                           backgroundColor: 'rgba(249, 115, 22, 0.08)',
@@ -1398,9 +1454,15 @@ const ViewMentee = () => {
           </DialogContent>
           <DialogActions
             sx={{
-              borderTop: "1px solid rgba(100, 100, 100, 0.1)",
-              p: 2,
+              borderTop: '1px solid rgba(100, 100, 100, 0.1)',
+              p: theme.breakpoints.down('sm') ? 1.5 : 2,
               gap: 1,
+              [theme.breakpoints.down('sm')]: {
+                position: 'sticky',
+                bottom: 0,
+                bgcolor: 'rgba(17, 17, 17, 0.95)',
+                backdropFilter: 'blur(10px)',
+              },
             }}>
             <Button
               onClick={handleEditClose}
@@ -1457,13 +1519,34 @@ const ViewMentee = () => {
           onClose={() => setEmailPreview(false)}
           maxWidth="md"
           fullWidth
+          keepMounted
+          TransitionProps={{
+            timeout: 300,
+          }}
+          sx={{
+            ...dialogStyles.dialog,
+            '& .MuiBackdrop-root': {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            },
+            [theme.breakpoints.down('sm')]: {
+              '& .MuiDialog-paper': {
+                transform: 'none !important',
+                transition: 'opacity 0.3s ease-out !important',
+                opacity: emailPreview ? 1 : 0,
+              },
+            },
+          }}
           PaperProps={{
             sx: {
               background: 'linear-gradient(135deg, rgba(17, 17, 17, 0.95), rgba(31, 41, 55, 0.95))',
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '1rem',
+              borderRadius: theme.breakpoints.down('sm') ? '1rem 1rem 0 0' : '1rem',
               color: 'white',
+              [theme.breakpoints.down('sm')]: {
+                margin: 0,
+                width: '100%',
+              },
             },
           }}>
           <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
