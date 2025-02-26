@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import CardSkeleton from './CardSkeleton';
 // import CloseIcon from '@mui/icons-material/Close';
 import MenteeTable from './MenteeTable';
 import FilterSection from './FilterSection';
@@ -32,6 +33,7 @@ import TableSkeleton from './TableSkeleton';  // Add this import at the top
 import dynamic from 'next/dynamic';
 import noData from '@/assets/animations/noData.json';
 import LoadingDialog from '@/components/common/LoadingDialog';
+import PageSkeleton from './PageSkeleton';
 // import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 // Add dynamic import for Lottie
@@ -108,8 +110,8 @@ const MenteeManagement = () => {
 
   // Simplify loading state
   const [loadingState, setLoadingState] = useState({
-    isLoading: false,
-    type: null
+    isLoading: true, // Start with loading true
+    type: 'initial'  // Add 'initial' type for first load
   });
 
   // Add currentFilters state
@@ -664,6 +666,7 @@ const handleUpdate = (updatedMentee) => {
     if (!filters.academicYear?.trim() || !filters.academicSession?.trim()) return;
 
     setLoadingState({ isLoading: true, type: 'search' });
+    setTableVisible(true); // Show table while loading
 
     const baseParams = {
       academicYear: filters.academicYear.trim(),
@@ -731,7 +734,10 @@ const handleUpdate = (updatedMentee) => {
       setMentees([]);
       // setTableVisible(false);
     } finally {
-      setLoadingState({ isLoading: false, type: 'search' });
+      // Delay loading state change slightly to prevent flashing
+      setTimeout(() => {
+        setLoadingState({ isLoading: false, type: null });
+      }, 300);
     }
   };
 
@@ -904,8 +910,7 @@ const handleUpdate = (updatedMentee) => {
       if (!mounted) return;
 
       try {
-        // Set loading state immediately
-        setLoadingState({ isLoading: true, type: 'fetch' });
+        setLoadingState({ isLoading: true, type: 'initial' });
 
         const currentAcadYear = getCurrentAcademicYear();
         const currentSession = determineCurrentSession();
@@ -926,6 +931,11 @@ const handleUpdate = (updatedMentee) => {
       } catch (error) {
         console.error('Initialization error:', error);
         showAlert('Error initializing data', 'error');
+      } finally {
+        // Delay loading state change slightly
+        setTimeout(() => {
+          setLoadingState({ isLoading: false, type: null });
+        }, 300);
       }
     };
 
@@ -1030,143 +1040,161 @@ const handleUpdate = (updatedMentee) => {
           <div className="absolute inset-0 backdrop-blur-3xl" />
         </div>
 
-        {/* Main Content Container */}
-        <div className="relative z-10 min-h-screen flex flex-col">
-          {/* Header Section - Updated with center alignment */}
-          <div className="flex items-center justify-center px-4 lg:px-6 pt-4 pb-2">
-            <motion.h1 
-              className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 text-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              Mentee Management
-            </motion.h1>
-          </div>
-
-          {/* Main Grid Layout - Updated with better mobile/tablet handling */}
-          <div className={`flex-1 grid gap-2 p-2 ${
-            isSmallScreen || isTablet ? 'grid-cols-1' : 'grid-cols-[350px,1fr]'
-          }`}>
-            {/* Filter Panel - Updated positioning for mobile/tablet */}
-            <div className={`${
-              isSmallScreen || isTablet 
-                ? 'h-auto max-h-[40vh]' 
-                : 'h-[calc(100vh-100px)]'
-            } overflow-auto`}>
-              <div className="bg-black/80 backdrop-blur-xl rounded-3xl border border-white/10 p-4">
-                <FilterSection 
-                  filters={filterConfig}
-                  onFilterChange={handleFilterChange}
-                  onSearch={handleSearch}
-                  // onSearchAll={handleSearchAll}
-                  onAddNew={handleDialogOpen}
-                  onReset={handleReset}
-                  onBulkUpload={handleBulkUploadOpen}
-                  onDelete={handleDelete}
-                  mentees={mentees}
-                  filterData={filterData} // Pass filterData as prop
-                  isLoading={loadingState.isLoading && loadingState.type === 'fetching'}
-                />
-              </div>
+        {/* Show PageSkeleton during initial loading */}
+        {(loadingState.isLoading && loadingState.type === 'initial') ? (
+          <PageSkeleton />
+        ) : (
+          // Existing main content
+          <div className="relative z-10 min-h-screen flex flex-col">
+            {/* Header Section - Updated with center alignment */}
+            <div className="flex items-center justify-center px-4 lg:px-6 pt-4 pb-2">
+              <motion.h1 
+                className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                Mentee Management
+              </motion.h1>
             </div>
 
-            {/* Table/Cards Section - Updated to handle filter overlay */}
-            <div className={`${
-              isSmallScreen || isTablet 
-                ? 'h-[calc(60vh-1rem)]' 
-                : 'h-[calc(100vh-100px)]'
-            } overflow-auto relative`}> {/* Added relative positioning */}
-              <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
-                <div className="h-full p-4">
-                  {loadingState.initial ? (
-                    <TableSkeleton rowsNum={8} />
-                  ) : mentees.length > 0 ? (
-                    <div className="h-full">
-                      {isTablet || isSmallScreen ? (
-                        // Card view for mobile and tablet
-                        <div className="h-full overflow-auto pb-16"> {/* Added pb-16 to prevent content hiding behind pagination */}
-                          {getCurrentCards().map((mentee) => (
-                            <MenteeCard
-                              key={mentee.MUJid}
-                              mentee={mentee}
-                              onEditClick={handleEditClick}
-                              onDeleteClick={handleDelete}
-                              expanded={expandedCard === mentee.MUJid}
-                              onExpandClick={handleExpandCard}
-                            />
-                          ))}
-                          {mentees.length > cardsPerPage && (
-                            <Box sx={{ 
-                              position: 'fixed',
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              display: 'flex', 
-                              justifyContent: 'center',
-                              backgroundColor: 'rgba(0,0,0,0.8)',
-                              backdropFilter: 'blur(10px)',
-                              py: 2,
-                              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                              zIndex: 10,
-                            }}>
-                              <Pagination
-                                count={Math.ceil(mentees.length / cardsPerPage)}
-                                page={page}
-                                onChange={handlePageChange}
-                                size={isSmallScreen ? "small" : "medium"} // Adjust size based on screen
-                                siblingCount={isSmallScreen ? 0 : 1} // Show fewer page numbers on mobile
-                                sx={{
-                                  '& .MuiPaginationItem-root': {
-                                    color: 'white',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    minWidth: isSmallScreen ? '30px' : '40px', // Smaller touch targets on mobile
-                                    height: isSmallScreen ? '30px' : '40px',
-                                    fontSize: isSmallScreen ? '0.875rem' : '1rem',
-                                    '&.Mui-selected': {
-                                      backgroundColor: '#f97316',
-                                      fontWeight: 'bold',
-                                      boxShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
-                                      '&:hover': {
-                                        backgroundColor: '#ea580c',
-                                      },
-                                    },
-                                    '&:hover': {
-                                      backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                                    },
-                                  },
-                                }}
-                              />
-                            </Box>
-                          )}
-                        </div>
-                      ) : (
-                        // Table view for desktop
-                        <div className="h-full overflow-auto">
-                          <MenteeTable 
-                            mentees={mentees}
-                            onEditClick={handleEditClick}
-                            onDeleteClick={handleDelete}
-                            isSmallScreen={isSmallScreen}
-                            onDataUpdate={handleDataUpdate}
-                            isLoading={loadingState.fetching}
-                            currentFilters={currentFilters}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center h-full">
-                      <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        {tableVisible ? 'No mentees found' : 'Select filters to load data'}
-                      </Typography>
-                    </div>
-                  )}
+            {/* Main Grid Layout - Updated with better mobile/tablet handling */}
+            <div className={`flex-1 grid gap-2 p-2 ${
+              isSmallScreen || isTablet ? 'grid-cols-1' : 'grid-cols-[350px,1fr]'
+            }`}>
+              {/* Filter Panel - Updated positioning for mobile/tablet */}
+              <div className={`${
+                isSmallScreen || isTablet 
+                  ? 'h-auto max-h-[40vh]' 
+                  : 'h-[calc(100vh-100px)]'
+              } overflow-auto`}>
+                <div className="bg-black/80 backdrop-blur-xl rounded-3xl border border-white/10 p-4">
+                  <FilterSection 
+                    filters={filterConfig}
+                    onFilterChange={handleFilterChange}
+                    onSearch={handleSearch}
+                    // onSearchAll={handleSearchAll}
+                    onAddNew={handleDialogOpen}
+                    onReset={handleReset}
+                    onBulkUpload={handleBulkUploadOpen}
+                    onDelete={handleDelete}
+                    mentees={mentees}
+                    filterData={filterData} // Pass filterData as prop
+                    isLoading={loadingState.isLoading && loadingState.type === 'fetching'}
+                  />
                 </div>
               </div>
-            </div>
-          </div> 
-        </div>
+
+              {/* Table/Cards Section - Updated to handle filter overlay */}
+              <div className={`${
+                isSmallScreen || isTablet 
+                  ? 'h-[calc(60vh-1rem)]' 
+                  : 'h-[calc(100vh-100px)]'
+              } overflow-auto relative`}> {/* Added relative positioning */}
+                <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
+                  <div className="h-full p-4">
+                    {(loadingState.isLoading && (loadingState.type === 'initial' || loadingState.type === 'search')) ? (
+                      isTablet || isSmallScreen ? (
+                        // Card skeleton for mobile and tablet
+                        <CardSkeleton count={5} />
+                      ) : (
+                        // Table skeleton for desktop
+                        <TableSkeleton rowsNum={8} />
+                      )
+                    ) : mentees.length > 0 ? (
+                      <div className="h-full">
+                        {isTablet || isSmallScreen ? (
+                          // Card view for mobile and tablet
+                          <div className="h-full overflow-auto pb-16"> {/* Added pb-16 to prevent content hiding behind pagination */}
+                            {getCurrentCards().map((mentee) => (
+                              <MenteeCard
+                                key={mentee.MUJid}
+                                mentee={mentee}
+                                onEditClick={handleEditClick}
+                                onDeleteClick={handleDelete}
+                                expanded={expandedCard === mentee.MUJid}
+                                onExpandClick={handleExpandCard}
+                              />
+                            ))}
+                            {mentees.length > cardsPerPage && (
+                              <Box sx={{ 
+                                position: 'fixed',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                display: 'flex', 
+                                justifyContent: 'center',
+                                backgroundColor: 'rgba(0,0,0,0.8)',
+                                backdropFilter: 'blur(10px)',
+                                py: 2,
+                                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                                zIndex: 10,
+                              }}>
+                                <Pagination
+                                  count={Math.ceil(mentees.length / cardsPerPage)}
+                                  page={page}
+                                  onChange={handlePageChange}
+                                  size={isSmallScreen ? "small" : "medium"} // Adjust size based on screen
+                                  siblingCount={isSmallScreen ? 0 : 1} // Show fewer page numbers on mobile
+                                  sx={{
+                                    '& .MuiPaginationItem-root': {
+                                      color: 'white',
+                                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                      minWidth: isSmallScreen ? '30px' : '40px', // Smaller touch targets on mobile
+                                      height: isSmallScreen ? '30px' : '40px',
+                                      fontSize: isSmallScreen ? '0.875rem' : '1rem',
+                                      '&.Mui-selected': {
+                                        backgroundColor: '#f97316',
+                                        fontWeight: 'bold',
+                                        boxShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
+                                        '&:hover': {
+                                          backgroundColor: '#ea580c',
+                                        },
+                                      },
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                                      },
+                                    },
+                                  }}
+                                />
+                              </Box>
+                            )}
+                          </div>
+                        ) : (
+                          // Table view for desktop
+                          <div className="h-full overflow-auto">
+                            <MenteeTable 
+                              mentees={mentees}
+                              onEditClick={handleEditClick}
+                              onDeleteClick={handleDelete}
+                              isSmallScreen={isSmallScreen}
+                              onDataUpdate={handleDataUpdate}
+                              isLoading={loadingState.isLoading && loadingState.type === 'fetch'}
+                              currentFilters={currentFilters}
+                              emailFilter={filters.email} // Add email filter prop
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <Lottie 
+                            animationData={noData} 
+                            style={{ height: 200, marginBottom: 16 }}
+                          />
+                          <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                            {tableVisible ? 'No mentees found' : 'Select filters to load data'}
+                          </Typography>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div> 
+          </div>
+        )}
 
         <AddMenteeDialog
           open={openDialog}
@@ -1275,3 +1303,4 @@ const handleUpdate = (updatedMentee) => {
   );
 };
 export default MenteeManagement;
+
