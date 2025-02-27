@@ -45,6 +45,40 @@ const EditMentorDialog = ({
     phone_number: '',
     role: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Create ref for the form
+  const formRef = useRef(null);
+
+  const isFormValid = () => {
+    return (
+      selectedMentor?.name?.trim() &&
+      selectedMentor?.email?.trim() &&
+      selectedMentor?.phone_number?.trim() &&
+      selectedMentor?.role?.length > 0
+    );
+  };
+
+  // Add keydown handler for the entire form
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && isFormValid() && !isSubmitting) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+
+    const form = formRef.current;
+    if (form) {
+      form.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      if (form) {
+        form.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+  }, [isSubmitting]);
 
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -97,15 +131,6 @@ const EditMentorDialog = ({
     }
   };
 
-  const isFormValid = () => {
-    return (
-      selectedMentor?.name?.trim() &&
-      selectedMentor?.email?.trim() &&
-      selectedMentor?.phone_number?.trim() &&
-      selectedMentor?.role?.length > 0
-    );
-  };
-
   const handleSubmit = async () => {
     const validationErrors = {
       name: validateName(selectedMentor?.name),
@@ -125,6 +150,7 @@ const EditMentorDialog = ({
       return;
     }
 
+    setIsSubmitting(true);
     try {
       console.log('Submitting mentor update:', {
         ...selectedMentor,
@@ -165,6 +191,8 @@ const EditMentorDialog = ({
         },
         duration: 3000,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -244,7 +272,7 @@ const EditMentorDialog = ({
 
   // Create the dialog content component to avoid repetition
   const DialogContent = () => (
-    <form onSubmit={handleFormSubmit} className="flex flex-col h-full">
+    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex flex-col h-full">
       <div className="flex-shrink-0 flex justify-between items-center p-6 border-b border-gray-800">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
           Edit Mentor Profile
@@ -268,6 +296,12 @@ const EditMentorDialog = ({
               name="name"
               value={selectedMentor?.name || ""}
               onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  emailInputRef.current?.focus();
+                }
+              }}
               className={`w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 border ${
                 errors.name ? 'border-red-500' : 'border-gray-700 hover:border-orange-500'
               } transition-colors`}
@@ -388,16 +422,26 @@ const EditMentorDialog = ({
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-2.5 text-white border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+          disabled={isSubmitting}
+          className="px-6 py-2.5 text-white border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="submit"
-          disabled={!isFormValid()}
-          className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-500 font-medium"
+          disabled={!isFormValid() || isSubmitting}
+          className="relative px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-500 font-medium"
         >
-          Save Changes
+          {isSubmitting ? (
+            <>
+              <span className="opacity-0">Save Changes</span>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            </>
+          ) : (
+            "Save Changes"
+          )}
         </button>
       </div>
     </form>
