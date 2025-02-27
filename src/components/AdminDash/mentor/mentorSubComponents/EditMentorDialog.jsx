@@ -72,39 +72,6 @@ const EditMentorDialog = ({
     return "";
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    setErrors(prev => ({
-      ...prev,
-      [name]: ''
-    }));
-
-    if (name === 'isActive') {
-      // Ensure boolean value for isActive
-      setSelectedMentor(prev => ({
-        ...prev,
-        isActive: Boolean(value)
-      }));
-      console.log('Setting active status:', Boolean(value)); // Debug log
-    } else if (name === 'role') {
-      const currentRoles = selectedMentor?.role || [];
-      const newRoles = currentRoles.includes(value)
-        ? currentRoles.filter(role => role !== value)
-        : [...currentRoles, value];
-      
-      setSelectedMentor((prev) => ({
-        ...prev,
-        role: newRoles,
-      }));
-    } else {
-      setSelectedMentor((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
-  };
-
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
   const handleRoleToggle = (role) => {
@@ -204,6 +171,21 @@ const EditMentorDialog = ({
   // Add ref for dropdown
   const dropdownRef = useRef(null);
 
+  // Add ref for the "Full Name" input field
+  const nameInputRef = useRef(null);
+  // Add refs for the "Email" and "Phone Number" input fields
+  const emailInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+
+  // Add handleInputChange function
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setSelectedMentor(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   // Add click outside handler
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -217,6 +199,27 @@ const EditMentorDialog = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Add useEffect to reapply focus on the "Full Name" input on every keystroke
+  useEffect(() => {
+    if (nameInputRef.current && document.activeElement !== nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [selectedMentor?.name]);
+
+  // Focus the email input on every keystroke
+  useEffect(() => {
+    if (emailInputRef.current && document.activeElement !== emailInputRef.current) {
+      emailInputRef.current.focus();
+    }
+  }, [selectedMentor?.email]);
+
+  // Focus the phone number input on every keystroke
+  useEffect(() => {
+    if (phoneInputRef.current && document.activeElement !== phoneInputRef.current) {
+      phoneInputRef.current.focus();
+    }
+  }, [selectedMentor?.phone_number]);
 
   // Add these animation variants
   const drawerVariants = {
@@ -260,6 +263,7 @@ const EditMentorDialog = ({
           <div className="space-y-1">
             <label className="text-gray-400 text-sm font-medium">Full Name</label>
             <input
+              ref={nameInputRef} // attach the ref here
               type="text"
               name="name"
               value={selectedMentor?.name || ""}
@@ -277,6 +281,7 @@ const EditMentorDialog = ({
           <div className="space-y-1">
             <label className="text-gray-400 text-sm font-medium">Email Address</label>
             <input
+              ref={emailInputRef} // attach the email ref here
               type="email"
               name="email"
               value={selectedMentor?.email || ""}
@@ -294,6 +299,7 @@ const EditMentorDialog = ({
           <div className="space-y-1">
             <label className="text-gray-400 text-sm font-medium">Phone Number</label>
             <input
+              ref={phoneInputRef} // attach the phone ref here
               type="text"
               name="phone_number"
               value={selectedMentor?.phone_number || ""}

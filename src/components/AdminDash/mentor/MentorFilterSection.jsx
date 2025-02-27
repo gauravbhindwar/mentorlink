@@ -111,10 +111,11 @@ const buttonStyles = {
 };
 
 const MentorFilterSection = ({ 
-  onSearch = () => {}, 
+  // onSearch = () => {}, 
   onAddNew = () => {}, 
   onFilterChange = () => {},
-  onReset = () => {} // Add this prop
+  onReset = () => {},
+  // mentors = [] // Add mentors prop
 }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
@@ -405,27 +406,52 @@ const MentorFilterSection = ({
     maxSize: 5242880, // 5MB
   });
 
-  const handleEmailSearch = (value) => {
+  // const handleEmailSearch = (value) => {
+  //   setEmailSearch(value);
+    
+  //   const currentFilters = {
+  //     academicYear,
+  //     academicSession,
+  //     mentorEmailid: value,
+  //     batchSize: 50,
+  //     offset: 0
+  //   };
+    
+  //   // Only update filters without triggering API call
+  //   onFilterChange?.(currentFilters);
+  // };
+
+  // Add debounce to search input
+  const debouncedSearch = useRef(null);
+  
+  const handleSearchInput = (e) => {
+    const value = e.target.value;
     setEmailSearch(value);
     
-    const currentFilters = {
-      academicYear,
-      academicSession,
-      mentorEmailid: value,
-      batchSize: 50,
-      offset: 0
-    };
+    // Clear previous timeout
+    if (debouncedSearch.current) {
+      clearTimeout(debouncedSearch.current);
+    }
     
-    // Trigger loading state before search
-    onFilterChange?.(currentFilters);
-    
-    // Debounce API call
-    const timeoutId = setTimeout(() => {
-      onSearch(currentFilters);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
+    // Set new timeout
+    debouncedSearch.current = setTimeout(() => {
+      const currentFilters = {
+        academicYear,
+        academicSession,
+        mentorEmailid: value
+      };
+      onFilterChange?.(currentFilters);
+    }, 300); // 300ms delay
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedSearch.current) {
+        clearTimeout(debouncedSearch.current);
+      }
+    };
+  }, []);
 
   return (
     <Box sx={filterSectionStyles.wrapper}>
@@ -498,7 +524,7 @@ const MentorFilterSection = ({
               fullWidth
               placeholder="Search by name, email, phone..."
               value={emailSearch}
-              onChange={(e) => handleEmailSearch(e.target.value)}
+              onChange={handleSearchInput} // Updated to use debounced handler
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -716,7 +742,8 @@ MentorFilterSection.propTypes = {
   onSearch: PropTypes.func.isRequired,
   onAddNew: PropTypes.func,
   onFilterChange: PropTypes.func,
-  onReset: PropTypes.func // Add this prop type
+  onReset: PropTypes.func, // Add this prop type
+  mentors: PropTypes.array // Add this prop type
 };
 
 export default MentorFilterSection;

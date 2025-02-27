@@ -5,7 +5,6 @@ import {
   Box, 
   Typography, 
   useMediaQuery, 
-  IconButton, 
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -14,7 +13,7 @@ import {
   Button,
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
-import FilterListIcon from '@mui/icons-material/FilterList';
+// import FilterListIcon from '@mui/icons-material/FilterList';
 import CardSkeleton from './CardSkeleton';
 // import CloseIcon from '@mui/icons-material/Close';
 import MenteeTable from './MenteeTable';
@@ -293,14 +292,14 @@ const MenteeManagement = () => {
   });
 
   // const [tableVisible, setTableVisible] = useState(false);
-  const [showFilters, setShowFilters] = useState(() => {
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('showFilters');
-      return saved !== null ? JSON.parse(saved) : true;
-    }
-    return true;
-  });
+  // const [showFilters, setShowFilters] = useState(() => {
+  //   // Only run on client side
+  //   if (typeof window !== 'undefined') {
+  //     const saved = localStorage.getItem('showFilters');
+  //     return saved !== null ? JSON.parse(saved) : true;
+  //   }
+  //   return true;
+  // });
   const [tableVisible, setTableVisible] = useState(false);
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
@@ -1028,7 +1027,7 @@ const handleUpdate = (updatedMentee) => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className={`fixed inset-0 ${
+      <div className={`min-h-screen relative z-0 inset-0 ${
         isSmallScreen || isTablet ? 'overflow-auto' : 'overflow-hidden'
       } bg-gray-900 text-white pt-16`}>
         {/* Single Toaster instance with updated configuration */}
@@ -1073,7 +1072,7 @@ const handleUpdate = (updatedMentee) => {
             {/* Add header for desktop view */}
             <div className="flex items-center justify-between px-4 lg:justify-center">
               <motion.h1 
-                className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2"
+                className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mt-5 mb-2 hidden lg:block" // Add hidden lg:block
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
@@ -1081,20 +1080,7 @@ const handleUpdate = (updatedMentee) => {
                 Mentee Management
               </motion.h1>
 
-              {isSmallScreen && (
-                <IconButton
-                  onClick={() => setShowFilters(!showFilters)}
-                  sx={{
-                    color: '#f97316',
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    '&:hover': {
-                      bgcolor: 'rgba(249, 115, 22, 0.2)',
-                    },
-                  }}
-                >
-                  <FilterListIcon />
-                </IconButton>
-              )}
+              {/* Remove the filter toggle button */}
             </div>
 
             <div className={`grid gap-2 p-2 ${
@@ -1131,8 +1117,8 @@ const handleUpdate = (updatedMentee) => {
                   ? 'h-[calc(60vh-1rem)] overflow-auto'
                   : 'h-full overflow-auto'
               } relative`}>
-                <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-full">
-                  <div className="h-full p-4">
+                <div className="bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent backdrop-blur-xl rounded-3xl border border-orange-500/20 h-[calc(100vh-145px)]">
+                  <div className=' p-2'>
                     {(loadingState.isLoading && (loadingState.type === 'initial' || loadingState.type === 'search')) ? (
                       isTablet || isSmallScreen ? (
                         // Card skeleton for mobile and tablet
@@ -1142,10 +1128,10 @@ const handleUpdate = (updatedMentee) => {
                         <TableSkeleton rowsNum={8} />
                       )
                     ) : mentees.length > 0 ? (
-                      <div className="h-full">
+                      <div className="h-[calc(100vh-135px)]"> {/* Updated height */}
                         {isTablet || isSmallScreen ? (
                           // Card view for mobile and tablet
-                          <div className="h-full overflow-auto pb-16"> {/* Added pb-16 to prevent content hiding behind pagination */}
+                          <div className="h-full overflow-auto"> {/* Added pb-16 to prevent content hiding behind pagination */}
                             {getCurrentCards().map((mentee) => (
                               <MenteeCard
                                 key={mentee.MUJid}
@@ -1202,7 +1188,7 @@ const handleUpdate = (updatedMentee) => {
                           </div>
                         ) : (
                           // Table view for desktop
-                          <div className="h-full overflow-auto">
+                          <div style={{ height: `calc(100vh - ${isSmallScreen ? 240 : 160}px)` }}> {/* Changed from overflow-auto to overflow-hidden */}
                             <MenteeTable 
                               mentees={mentees}
                               onEditClick={handleEditClick}
@@ -1338,6 +1324,7 @@ const handleUpdate = (updatedMentee) => {
           open={loadingDialog.open}
           message={loadingDialog.message}
         />
+        
         {/* Add Delete Confirmation Dialog/Drawer */}
         {deleteConfirm.isMobile ? (
           <SwipeableDrawer

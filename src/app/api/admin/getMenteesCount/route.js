@@ -1,49 +1,46 @@
-import { connect } from "../../../../lib/dbConfig";
-import { Mentee } from "../../../../lib/db/menteeSchema";
+import { connect } from "@/lib/dbConfig";
+import { Mentee } from "@/lib/dbModels";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
   try {
     await connect();
-
     const { searchParams } = new URL(req.url);
     const mentorMujid = searchParams.get('mentorMujid');
 
     if (!mentorMujid) {
-      return NextResponse.json(
-        { error: "Mentor MUJID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ 
+        error: "Mentor MUJid is required" 
+      }, { status: 400 });
     }
 
-    // Aggregate mentees by semester
-    const menteeCounts = await Mentee.aggregate([
-      { 
-        $match: { 
-          mentorMujid: mentorMujid 
-        } 
-      },
-      {
-        $group: {
-          _id: "$semester",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    // Get all mentees for this mentor
+    const mentees = await Mentee.find({ mentorMujid });
 
-    // Convert array to object with semester as key
-    const counts = menteeCounts.reduce((acc, curr) => {
-      acc[curr._id] = curr.count;
+    // Group mentees by semester
+    const semesterCounts = mentees.reduce((acc, mentee) => {
+      const semester = mentee.semester || 'Unknown';
+      acc[semester] = (acc[semester] || 0) + 1;
       return acc;
     }, {});
 
-    return NextResponse.json({ counts }, { status: 200 });
+    // Sort by semester number
+    const sortedCounts = Object.entries(semesterCounts)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .reduce((obj, [key, value]) => {
+        obj[key] = value;
+        return obj;
+      }, {});
+
+    return NextResponse.json({
+      counts: sortedCounts,
+      total: mentees.length
+    });
 
   } catch (error) {
-    console.error("Error fetching mentee counts:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch mentee counts" },
-      { status: 500 }
-    );
+    console.error("Error getting mentee counts:", error);
+    return NextResponse.json({ 
+      error: "Failed to get mentee counts" 
+    }, { status: 500 });
   }
 }
