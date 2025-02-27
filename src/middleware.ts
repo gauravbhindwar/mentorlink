@@ -15,7 +15,6 @@ const protectedRoutes = {
   '/pages/mentordashboard/consolidatedReport': ['mentor']
 }
 
-//test
 
 export default function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
