@@ -619,7 +619,11 @@ const FilterSection = ({
       name: 'semester',
       label: 'Semester',
       customRender: (
-        <FormControl size="small" sx={textFieldStyles}>
+        <FormControl size="small" sx={{ 
+          ...textFieldStyles,
+          width: '100%', // Make it take full width of its container
+          minWidth: '200px', // Match the minWidth of comboBoxStyles
+        }}>
           <InputLabel>Semester</InputLabel>
           <Select
             value={filters.semester || ''}
@@ -629,7 +633,6 @@ const FilterSection = ({
               handleFilterChange('semester', value);
             }}
             disabled={!filters.academicSession}
-        
             MenuProps={{
               PaperProps: {
                 sx: {
@@ -692,9 +695,9 @@ const FilterSection = ({
             InputProps={{
               startAdornment: (
                 <SearchIcon sx={{ 
-                  color: 'rgba(249, 115, 22, 0.5)',
-                  marginRight: '8px',
-                  fontSize: '1.5rem'
+                  color: '#f97316',
+                  marginRight: '12px',
+                  fontSize: '1.25rem'
                 }} />
               ),
               sx: {
@@ -710,18 +713,18 @@ const FilterSection = ({
             sx={{
               width: '100%',
               '& .MuiOutlinedInput-root': {
-                backgroundColor: '#1a1a1a', // Updated to match other fields
+                backgroundColor: 'rgba(17, 24, 39, 0.95)', // Updated to match other fields
                 borderRadius: '12px',
                 transition: 'all 0.3s ease',
-                border: '2px solid rgba(249, 115, 22, 0.1)',
+                border: '2px solid rgba(249, 115, 22, 0.2)',
                 '&:hover': {
-                  backgroundColor: '#1a1a1a', // Keep consistent on hover
-                  border: '2px solid rgba(249, 115, 22, 0.2)',
+                  backgroundColor: 'rgba(249, 115, 22, 0.1)', // Revamped hover color
+                  border: '2px solid rgba(249, 115, 22, 0.3)',
                 },
                 '&.Mui-focused': {
-                  backgroundColor: '#1a1a1a', // Keep consistent when focused
+                  backgroundColor: 'rgba(249, 115, 22, 0.05)', // Revamped focus color
                   border: '2px solid rgba(249, 115, 22, 0.5)',
-                  boxShadow: '0 0 0 4px rgba(249, 115, 22, 0.1)',
+                  boxShadow: '0 0 0 4px rgba(249, 115, 22, 0.2)',
                 }
               },
               '& .MuiInputLabel-root': {
@@ -838,13 +841,13 @@ const FilterSection = ({
     <div>
       {/* Show header only on mobile and tablet */}
       {(isSmallScreen || isTablet) && (
-        <div className="flex items-center justify-between px-4">
+        <div className="flex items-center justify-center px-4">
           <Typography 
-            className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4"
+            className="text-lg font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4"
             variant="h5"
             component="h5"
           >
-            Mentee Management
+            <b>Mentee Management</b>
           </Typography>
         </div>
       )}
@@ -854,7 +857,7 @@ const FilterSection = ({
         flexDirection: 'column',
         gap: 3,
         p: { xs: 2, sm: 3 },
-        height: '100%',
+        height: '100vh',
         maxHeight: { xs: '70vh', sm: 'calc(100vh - 180px)' },
         overflowY: 'auto',
         overflowX: 'hidden',
@@ -867,7 +870,7 @@ const FilterSection = ({
             xs: '1fr',
             sm: 'repeat(auto-fill, minmax(200px, 1fr))'
           },
-          gap: 2,
+          gap: 3,
         }}>
           {filterControls.map((control) => (
             <Box key={control.name} sx={{ width: '100%' }}>
@@ -877,8 +880,7 @@ const FilterSection = ({
                   sx={{ 
                     '& .MuiOutlinedInput-root': {
                       color: 'white',
-                      backgroundColor: '#1a1a1a', // Solid dark background
-                      // Remove backdropFilter
+                      backgroundColor: '#1a1a1a', 
                       borderRadius: '12px',
                       '&:hover .MuiOutlinedInput-notchedOutline': {
                         borderColor: '#f97316',
@@ -913,8 +915,7 @@ const FilterSection = ({
                     MenuProps={{
                       PaperProps: {
                         sx: {
-                          bgcolor: '#1a1a1a', // Solid dark background
-                          // Remove backdropFilter
+                          bgcolor: '#1a1a1a', 
                           border: '1px solid rgba(255, 255, 255, 0.1)',
                           '& .MuiMenuItem-root': {
                             color: 'white',
@@ -1086,6 +1087,7 @@ const textFieldStyles = {
   '& .MuiInputBase-input': {
     color: 'white',
   }
+  
 };
 
 const comboBoxStyles = {

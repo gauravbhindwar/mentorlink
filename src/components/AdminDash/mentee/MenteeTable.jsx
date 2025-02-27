@@ -282,11 +282,6 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
     minWidth: 200,
     renderCell: (params) => {
       const value = params.value?.toString() || '';
-      if (!emailFilter) return value;
-      
-      const index = value.toLowerCase().indexOf(emailFilter.toLowerCase());
-      if (index === -1) return value;
-      
       return (
         <Box sx={{
           width: '100%',
@@ -294,17 +289,7 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
         }}>
-          {value.substring(0, index)}
-          <span style={{ 
-            backgroundColor: 'rgba(249, 115, 22, 0.2)',
-            color: '#f97316',
-            padding: '2px 4px',
-            borderRadius: '4px',
-            fontWeight: 600
-          }}>
-            {value.substring(index, index + emailFilter.length)}
-          </span>
-          {value.substring(index + emailFilter.length)}
+          {value}
         </Box>
       );
     },
@@ -317,11 +302,6 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
     minWidth: 200,
     renderCell: (params) => {
       const value = params.value?.toString() || '';
-      if (!emailFilter) return value;
-      
-      const index = value.toLowerCase().indexOf(emailFilter.toLowerCase());
-      if (index === -1) return value;
-      
       return (
         <Box sx={{
           width: '100%',
@@ -329,54 +309,10 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
         }}>
-          {value.substring(0, index)}
-          <span style={{ 
-            backgroundColor: 'rgba(249, 115, 22, 0.2)',
-            color: '#f97316',
-            padding: '2px 4px',
-            borderRadius: '4px',
-            fontWeight: 600
-          }}>
-            {value.substring(index, index + emailFilter.length)}
-          </span>
-          {value.substring(index + emailFilter.length)}
+          {value}
         </Box>
       );
     },
-  };
-
-  const highlightSearchMatch = (text, searchValue) => {
-    if (!text || !searchValue) return text;
-    
-    const parts = text.toString().split(new RegExp(`(${searchValue})`, 'gi'));
-    
-    return (
-      <Box sx={{
-        width: '100%',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap'
-      }}>
-        {parts.map((part, i) => 
-          part.toLowerCase() === searchValue.toLowerCase() ? (
-            <span
-              key={i}
-              style={{ 
-                backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                color: '#f97316',
-                padding: '2px 4px',
-                borderRadius: '4px',
-                fontWeight: 600
-              }}
-            >
-              {part}
-            </span>
-          ) : (
-            part
-          )
-        )}
-      </Box>
-    );
   };
 
   // Update columns definition to use ActionButtons component
@@ -397,8 +333,6 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
       headerName: 'Mentee MUJ ID',
       flex: 1,
       minWidth: 130,
-      renderCell: (params) => highlightSearchMatch(params.value, emailFilter),
-      hideSortIcons: true,
     },
     
     {
@@ -406,7 +340,6 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
       headerName: 'Mentee Name',
       flex: 1.2,
       minWidth: 180,
-      renderCell: (params) => highlightSearchMatch(params.value, emailFilter)
     },
     emailSearchColumn,
     mentorEmailColumn,

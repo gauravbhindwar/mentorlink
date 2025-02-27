@@ -70,7 +70,8 @@ const EmailConflictDialog = ({ open, onClose, conflictingMentor }) => {
 };
 
 const MentorManagement = () => {
-  // Add mounted state near the top with other state declarations
+  // Add original mentors state
+  const [originalMentors, setOriginalMentors] = useState([]);
   const [mounted, setMounted] = useState(false);
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -267,17 +268,33 @@ const handleEditMentor = async (updatedMentor) => {
   const handleDeleteMentor = async (MUJid) => {
     const mentor = mentors.find(m => m.MUJid === MUJid);
     
-    // On desktop, show role selection dialog for admin/superadmin
-    if (!isSmallScreen && mentor && (mentor.role.includes('admin') || mentor.role.includes('superadmin'))) {
-      setSelectedRoles(mentor.role);
-      setDeleteRoleDialog({ open: true, mentor });
-    } else {
-      // For mobile or non-admin mentors, show delete confirmation
-      setDeleteConfirm({
-        open: true,
-        mentor,
-        isMobile: isSmallScreen
-      });
+    try {
+      // Check for mentees first
+      const response = await axios.get(`/api/admin/manageUsers/checkMentorMentees?mentorMujid=${MUJid}`);
+      
+      if (response.data.hasMentees) {
+        toast.warn(
+          `Cannot delete mentor - ${response.data.menteeCount} mentees need to be transferred first`,
+          toastConfig
+        );
+        return;
+      }
+
+      // On desktop, show role selection dialog for admin/superadmin
+      if (!isSmallScreen && mentor && (mentor.role.includes('admin') || mentor.role.includes('superadmin'))) {
+        setSelectedRoles(mentor.role);
+        setDeleteRoleDialog({ open: true, mentor });
+      } else {
+        // For mobile or non-admin mentors, show delete confirmation
+        setDeleteConfirm({
+          open: true,
+          mentor,
+          isMobile: isSmallScreen
+        });
+      }
+    } catch (error) {
+      toast.error('Error checking mentor status');
+      console.error('Error:', error);
     }
   };
 
@@ -405,31 +422,108 @@ const handleEditMentor = async (updatedMentor) => {
     try {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value && key !== 'mentorEmailid') params.append(key, value);
       });
   
       const response = await axios.get(`/api/admin/manageUsers/manageMentor?${params}`);
       
       if (response.data) {
         const updatedMentors = response.data.mentors || [];
+        setOriginalMentors(updatedMentors); // Store original data
         
-        // If there's an email filter, apply it locally first
+        // Apply any existing search filter
         const filteredMentors = filters.mentorEmailid 
-          ? updatedMentors.filter(mentor => 
-              mentor.email.toLowerCase().includes(filters.mentorEmailid.toLowerCase()))
+          ? filterMentors(updatedMentors, filters.mentorEmailid)
           : updatedMentors;
 
         setMentors(filteredMentors);
         setTableVisible(true);
-        setCurrentFilters(filters); // Update current filters after successful fetch
+        setCurrentFilters(filters);
       }
     } catch (error) {
       toast.error(error.response?.data?.error || "Error fetching mentors");
       setMentors([]);
+      setOriginalMentors([]);
       setTableVisible(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add helper function for filtering
+  const filterMentors = (data, searchTerm) => {
+    if (!searchTerm) return data;
+    
+    const term = searchTerm.toLowerCase();
+    return data.filter(mentor => {
+      const searchFields = [
+        mentor.name,
+        mentor.email,
+        mentor.MUJid,
+        mentor.phone_number
+      ];
+      return searchFields.some(field => 
+        field?.toString().toLowerCase().includes(term)
+      );
+    });
+  };
+
+  // Update handleFilterChange to handle filtering locally
+  const handleFilterChange = async (filters) => {
+    setLoading(true);
+    setTableVisible(true);
+    
+    // If only search term changed, filter locally
+    if (filters.academicYear === currentFilters.academicYear && 
+        filters.academicSession === currentFilters.academicSession) {
+      
+      const searchTerm = filters.mentorEmailid?.toLowerCase() || '';
+      
+      // Use originalMentors for local filtering
+      const filteredMentors = originalMentors.filter(mentor => {
+        const searchFields = ['name', 'email', 'MUJid', 'phone_number'];
+        return searchFields.some(field => 
+          mentor[field]?.toString().toLowerCase().includes(searchTerm)
+        );
+      });
+
+      setMentors(filteredMentors);
+      setCurrentFilters(filters);
+      setLoading(false);
+      return;
+    }
+    
+    // If academic year or session changed, make API call
+    try {
+      const response = await axios.get('/api/admin/manageUsers/manageMentor', {
+        params: {
+          academicYear: filters.academicYear,
+          academicSession: filters.academicSession
+        }
+      });
+      
+      if (response.data) {
+        const mentorsData = response.data.mentors || [];
+        setOriginalMentors(mentorsData); // Store original data
+        setMentors(mentorsData);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error fetching mentors');
+      setMentors([]);
+      setOriginalMentors([]);
+    }
+    
+    setLoading(false);
+    setCurrentFilters(filters);
+  };
+
+  // Update handleReset to restore original data for current academic period
+  const handleReset = () => {
+    setMentors(originalMentors);
+    setCurrentFilters(prev => ({
+      ...prev,
+      mentorEmailid: ''
+    }));
   };
 
   // Add this new function to handle patch update
@@ -479,7 +573,7 @@ const handleEditMentor = async (updatedMentor) => {
   //         },
   //         onUploadProgress: (progressEvent) => {
   //           const percentCompleted = Math.round(
-  //             (progressEvent.loaded * 100) / progressEvent.total
+  //             (progressEvent.loaded * 100) / (progressEvent.total || 1)
   //           );
   //           if (onProgress) onProgress(percentCompleted);
   //         },
@@ -640,41 +734,6 @@ const handleEditMentor = async (updatedMentor) => {
   //   setOpenDialog(true);
   // };
 
-  // Update handleFilterChange to trigger fetch
-  const handleFilterChange = async (filters) => {
-    // Set loading immediately when filters change
-    setLoading(true);
-    setTableVisible(true);
-    
-    // If there's no search term, show initial data
-    if (!filters.mentorEmailid) {
-      try {
-        const response = await axios.get('/api/admin/manageUsers/manageMentor', {
-          params: {
-            academicYear: filters.academicYear,
-            academicSession: filters.academicSession
-          }
-        });
-        
-        if (response.data) {
-          setMentors(response.data.mentors || []);
-        }
-      } catch (error) {
-        toast.error(error.response?.data?.error || 'Error fetching mentors');
-        setMentors([]);
-      }
-    }
-    
-    setLoading(false);
-    setCurrentFilters(filters);
-  };
-
-  // Update email search handling to not trigger API calls
-  // const handleEmailFilter = (value) => {
-  //   setEmailFilter(value); // This will be used by MentorTable to filter existing data
-  // };
-  
-
   // Add this animation configuration
   const filterAnimation = {
     initial: false,
@@ -737,10 +796,13 @@ const handleEditMentor = async (updatedMentor) => {
         }
       });
       
-      showAlert("Mentor deleted successfully", "success");
-      fetchMentors(currentFilters);
+      // Update local state immediately
+      setMentors(prev => prev.filter(mentor => mentor.MUJid !== deleteConfirm.mentor.MUJid));
+      setOriginalMentors(prev => prev.filter(mentor => mentor.MUJid !== deleteConfirm.mentor.MUJid));
+      
+      toast.success("Mentor deleted successfully");
     } catch (error) {
-      showAlert(error.response?.data?.error || "Error deleting mentor", "error");
+      toast.error(error.response?.data?.error || "Error deleting mentor");
     } finally {
       setDeleteConfirm({ open: false, mentor: null, isMobile: false });
     }
@@ -834,31 +896,10 @@ const handleEditMentor = async (updatedMentor) => {
     }
   }, [transferDialog.open, transferDialog.fromMentor]);
 
-  const handleReset = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/admin/manageUsers/manageMentor', {
-        params: {
-          academicYear: currentFilters.academicYear,
-          academicSession: currentFilters.academicSession,
-          mentorEmailid: '', // Empty email filter
-          batchSize: 50,
-          offset: 0
-        }
-      });
-      
-      if (response.data) {
-        setMentors(response.data.mentors || []);
-        setCurrentFilters(prev => ({
-          ...prev,
-          mentorEmailid: ''
-        }));
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Error resetting filters');
-    } finally {
-      setLoading(false);
-    }
+  // Add function to handle table data updates
+  const handleTableDataUpdate = (updatedMentors) => {
+    setMentors(updatedMentors);
+    setOriginalMentors(updatedMentors);
   };
 
   return (
@@ -1001,8 +1042,8 @@ const handleEditMentor = async (updatedMentor) => {
                             onEditClick={handleEditClick}
                             onDeleteClick={handleDeleteMentor}
                             isSmallScreen={isSmallScreen}
-                            emailFilter={currentFilters.email}
-                            onDataUpdate={(updatedMentors) => setMentors(updatedMentors)}
+                            emailFilter={currentFilters.mentorEmailid}
+                            onDataUpdate={handleTableDataUpdate}  // Add this prop
                           />
                         </div>
                       )}
