@@ -518,7 +518,7 @@ Contact: ${mentorData?.email || ""}`;
           <div className='absolute inset-0 backdrop-blur-3xl' />
         </div>
 
-        <div className='relative z-10 container mx-auto px-4 py-6 md:pt-24'>
+        <div className='relative z-10 container mx-auto px-4 py-16 pt-20 md:pt-24'>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

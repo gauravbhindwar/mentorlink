@@ -10,6 +10,8 @@ import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
 import AttendanceDialog from "@/components/Meetings/AttendanceDialog";
 import { Button } from "@mui/material";
+import Lottie from "lottie-react";
+import noDataAnimation from "@/assets/animations/noMeetings.json";
 
 const MentorDashBoard = () => {
   const router = useRouter();
@@ -694,7 +696,7 @@ Contact: ${mentorData?.email || ""}`;
               animate={{ opacity: 1, x: 0 }}
               style={{
                 backgroundImage:
-                  !meetingsLoading && meetings.length === 0
+                  !meetingsLoading && meetings.length === 0 && window.innerWidth >= 1024
                     ? 'url("/MUJ-homeCover.jpg")'
                     : "none",
                 backgroundSize: "cover",
@@ -865,7 +867,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
+                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2-2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
                                               />
                                             </svg> */}
                                             <FaExternalLinkAlt />
@@ -1037,7 +1039,20 @@ Contact: ${mentorData?.email || ""}`;
                     </div>
                   </>
                 ) : (
-                  <div className='flex flex-col items-center justify-center space-y-4'></div>
+                  <div className='flex flex-col items-center justify-center space-y-4'>
+                    {window.innerWidth < 1024 ? (
+                      <>
+                        <Lottie
+                          animationData={noDataAnimation}
+                          loop={true}
+                          style={{ width: 300, height: 200 }}
+                        />
+                        <p className="text-gray-400 text-center">
+                          No meetings scheduled yet
+                        </p>
+                      </>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </motion.div>
