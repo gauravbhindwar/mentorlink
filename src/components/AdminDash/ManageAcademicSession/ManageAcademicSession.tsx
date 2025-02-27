@@ -448,7 +448,7 @@ const ManageAcademicSession = () => {
   }, []);
 
   return (
-    <div className="min-h-screen pt-16 bg-[#0a0a0a] bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#2a2a2a]">
+    <div className="min-h-screen pt-8 sm:pt-16 bg-[#0a0a0a] bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#2a2a2a]">
       <ToastAlert
         isVisible={toastInfo.visible}
         message={toastInfo.message}
@@ -475,30 +475,30 @@ const ManageAcademicSession = () => {
         />
       )}
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-4 sm:mb-8"
         >
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 bg-clip-text text-transparent">
             Academic Session Management
           </h1>
-          <div className="h-0.5 w-24 mx-auto bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 rounded-full mt-2" />
+          <div className="h-0.5 w-20 sm:w-24 mx-auto bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 rounded-full mt-2" />
         </motion.div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
           {/* Left Column - Create Session */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="lg:col-span-5 space-y-3 sm:space-y-4">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/5 shadow-xl h-[calc(100vh-340px)]" // Match height with sessions container
+              className="bg-black/40 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/5 shadow-xl h-auto sm:h-[calc(100vh-340px)]"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center gap-1.5 sm:gap-2">
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
@@ -518,12 +518,12 @@ const ManageAcademicSession = () => {
 
               {/* Session Cards - Show only if not up to date */}
               {!isSessionExists ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {currentSession && (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="relative bg-gradient-to-br from-gray-900/50 to-black/50 rounded-lg p-4 border border-white/5 hover:border-white/10 transition-all duration-300"
+                      className="relative bg-gradient-to-br from-gray-900/50 to-black/50 rounded-lg p-3 sm:p-4 border border-white/5 hover:border-white/10 transition-all duration-300"
                     >
                       {/* Current Session Content */}
                       <div className="relative z-10">
@@ -543,7 +543,7 @@ const ManageAcademicSession = () => {
                         <button
                           onClick={() => handleCreateAcademicSession()}
                           disabled={loadingState.isLoading}
-                          className="mt-4 w-full py-2 px-3 rounded-md font-medium bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-sm transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                          className="mt-3 sm:mt-4 w-full py-1.5 sm:py-2 px-3 rounded-md text-sm font-medium bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                           {loadingState.isLoading ? (
                             <>
@@ -563,7 +563,7 @@ const ManageAcademicSession = () => {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-gradient-to-br from-gray-900/50 to-black/50 rounded-lg p-4 border border-white/5 hover:border-white/10 transition-all duration-300"
+                      className="bg-gradient-to-br from-gray-900/50 to-black/50 rounded-lg p-3 sm:p-4 border border-white/5 hover:border-white/10 transition-all duration-300"
                     >
                       {/* Similar compact styling for upcoming session content */}
                       <div className="flex items-start justify-between">
@@ -593,8 +593,8 @@ const ManageAcademicSession = () => {
                   )}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center px-4 py-12">
-                  <div className="w-56 h-56 mb-8"> {/* Increased size from w-48 h-48 */}
+                <div className="h-full flex flex-col items-center justify-center px-3 sm:px-4 py-8 sm:py-12">
+                  <div className="w-40 h-40 sm:w-56 sm:h-56 mb-6 sm:mb-8"> {/* Increased size from w-48 h-48 */}
                     {typeof window !== 'undefined' && (
                       <Lottie
                         animationData={animation}
@@ -644,12 +644,12 @@ const ManageAcademicSession = () => {
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/5 shadow-xl"
+              className="bg-black/40 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/5 shadow-xl"
             >
               {/* Session History Header */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                  <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center gap-2">
                     <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
@@ -658,7 +658,7 @@ const ManageAcademicSession = () => {
                   <button
                     onClick={handleChangeCurrentSession}
                     disabled={changingCurrent}
-                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 transition-all duration-200 flex items-center gap-1.5"
+                    className="w-full sm:w-auto px-3 py-1.5 rounded-md text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-1.5"
                   >
                     {changingCurrent ? (
                       <>
@@ -672,7 +672,7 @@ const ManageAcademicSession = () => {
                 </div>
 
                 {/* Search and Filter Bar */}
-                <div className="flex gap-3 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center">
                   <div className="flex-1 relative">
                     <input
                       type="text"
@@ -710,7 +710,7 @@ const ManageAcademicSession = () => {
               </div>
 
               {/* Session List */}
-              <div className="mt-4 space-y-3 max-h-[calc(100vh-340px)] overflow-y-auto custom-scrollbar pr-2">
+              <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3 max-h-[60vh] sm:max-h-[calc(100vh-340px)] overflow-y-auto custom-scrollbar pr-2">
                 {getFilteredAndSortedSessions().length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 bg-gray-900/30 rounded-lg border border-white/5">
                     <svg className="w-12 h-12 text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

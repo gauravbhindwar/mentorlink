@@ -8,8 +8,9 @@ import { Search as SearchIcon } from '@mui/icons-material';
 import ArchiveReportGenerator from './ArchiveReportGenerator';
 import useArchiveStore from '@/store/archiveStore';
 import { IoDocumentText } from 'react-icons/io5'; // Add this import
-import { IoCopy } from "react-icons/io5"; // Add this import
-
+import { IoCopy, IoCheckmark } from "react-icons/io5"; // Add this import
+import { useMediaQuery } from '@mui/material';
+import { motion } from 'framer-motion';
 
 const columns = [
     { 
@@ -170,34 +171,7 @@ const meetingColumns = [
           }}>
             {value}
           </Typography>
-          {isLink && (
-            <Box
-              component="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(value);
-                // Optional: Add toast notification here
-                alert('Link copied to clipboard!');
-              }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 0.5,
-                borderRadius: 1,
-                border: 'none',
-                cursor: 'pointer',
-                bgcolor: 'rgba(249, 115, 22, 0.1)',
-                color: '#f97316',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  bgcolor: 'rgba(249, 115, 22, 0.2)',
-                }
-              }}
-            >
-              <IoCopy size={16} />
-            </Box>
-          )}
+          {isLink && <CopyButton text={value} size={16} />}
         </Box>
       );
     }
@@ -300,14 +274,178 @@ const ActionCard = ({ title, icon, count, onClick, isActive }) => (
   </Card>
 );
 
+const CopyButton = ({ text, size = 14 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="shrink-0 p-1 rounded hover:bg-orange-500/20 text-orange-500 relative"
+    >
+      <motion.div
+        animate={{
+          scale: copied ? 0 : 1,
+          opacity: copied ? 0 : 1
+        }}
+        transition={{ duration: 0.2 }}
+      >
+        <IoCopy size={size} />
+      </motion.div>
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{
+          scale: copied ? 1 : 0,
+          opacity: copied ? 1 : 0
+        }}
+        transition={{ 
+          duration: 0.2,
+          scale: {
+            type: "spring",
+            stiffness: 200
+          }
+        }}
+        className="absolute inset-0 flex items-center justify-center text-green-500"
+      >
+        <IoCheckmark size={size} />
+      </motion.div>
+    </button>
+  );
+};
+
+const MobileMentorCard = ({ mentor }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    className="bg-[#1a1a1a] rounded-xl border border-orange-500/20 p-4 mb-3"
+  >
+    <div className="flex justify-between items-start mb-3">
+      <div className="flex-1 min-w-0 mr-3"> {/* Added min-w-0 and margin */}
+        <h3 className="text-white font-semibold truncate">{mentor.name}</h3>
+        <p className="text-orange-500 text-sm truncate">{mentor.MUJid}</p>
+      </div>
+      <div className="bg-orange-500/10 px-3 py-1 rounded-full shrink-0"> {/* Added shrink-0 */}
+        <p className="text-orange-500 text-sm">{mentor.mentees?.length || 0} mentees</p>
+      </div>
+    </div>
+    <div className="space-y-2">
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Email:</span>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <p className="text-gray-400 truncate">{mentor.email}</p>
+          <CopyButton text={mentor.email} />
+        </div>
+      </div>
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Phone:</span>
+        <p className="text-gray-400 truncate">{mentor.phone_number || 'N/A'}</p>
+      </div>
+    </div>
+  </motion.div>
+);
+
+const MobileMenteeCard = ({ mentee }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    className="bg-[#1a1a1a] rounded-xl border border-orange-500/20 p-4 mb-3"
+  >
+    <div className="flex justify-between items-start mb-3">
+      <div className="flex-1 min-w-0 mr-3">
+        <h3 className="text-white font-semibold truncate">{mentee.name}</h3>
+        <p className="text-orange-500 text-sm truncate">{mentee.MUJid}</p>
+      </div>
+      <div className="bg-orange-500/10 px-3 py-1 rounded-full shrink-0">
+        <p className="text-orange-500 text-sm">Semester {mentee.semester}</p>
+      </div>
+    </div>
+    <div className="space-y-2">
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Email:</span>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <p className="text-gray-400 truncate">{mentee.email}</p>
+          <CopyButton text={mentee.email} />
+        </div>
+      </div>
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Mentor:</span>
+        <p className="text-gray-400 truncate">{mentee.mentorName}</p>
+      </div>
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Mentor ID:</span>
+        <p className="text-gray-400 truncate">{mentee.mentorMUJid}</p>
+      </div>
+    </div>
+  </motion.div>
+);
+
+const MobileMeetingCard = ({ meeting }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    className="bg-[#1a1a1a] rounded-xl border border-orange-500/20 p-4 mb-3"
+  >
+    <div className="flex justify-between items-start mb-3">
+      <div className="flex-1 min-w-0 mr-3">
+        <h3 className="text-white font-semibold truncate">Meeting {meeting.meeting_id}</h3>
+        <p className="text-orange-500 text-sm truncate">{meeting.mentorName}</p>
+      </div>
+      <div className={`px-3 py-1 rounded-full shrink-0 ${
+        meeting.isReportFilled 
+          ? 'bg-green-500/10 text-green-500' 
+          : 'bg-red-500/10 text-red-500'
+      }`}>
+        <p className="text-sm">{meeting.isReportFilled ? 'Filled' : 'Pending'}</p>
+      </div>
+    </div>
+    <div className="space-y-2">
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Date & Time:</span>
+        <p className="text-gray-400 truncate">
+          {formatDateTime(meeting.meeting_date || meeting.date, meeting.meeting_time || meeting.time)}
+        </p>
+      </div>
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Venue:</span>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <p className="text-gray-400 truncate">{meeting.venue || 'N/A'}</p>
+          {meeting.venue?.toLowerCase().includes('http') && (
+            <CopyButton text={meeting.venue} />
+          )}
+        </div>
+      </div>
+      <div className="flex items-start gap-2 text-sm">
+        <span className="text-gray-500 shrink-0">Attendance:</span>
+        <span className={`shrink-0 ${
+          (meeting.present / meeting.attendees) > 0.75 
+            ? 'text-green-500' 
+            : (meeting.present / meeting.attendees) > 0.5 
+              ? 'text-yellow-500' 
+              : 'text-red-500'
+        }`}>
+          {meeting.present}/{meeting.attendees} ({Math.round((meeting.present / meeting.attendees) * 100)}%)
+        </span>
+      </div>
+    </div>
+  </motion.div>
+);
+
 const ArchiveResults = ({ searchParams }) => {
   const store = useArchiveStore();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25); // Changed default to 25
   const [searchTerm, setSearchTerm] = useState('');
   const [activeView, setActiveView] = useState('mentors');
-  // const [isLoading, setIsLoading] = useState(false); // Add this line
-  // const [allData, setAllData] = useState([]);
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const isTablet = useMediaQuery('(max-width:960px)');
 
   // Initial data fetch
   useEffect(() => {
@@ -376,32 +514,6 @@ const ArchiveResults = ({ searchParams }) => {
     });
   }, [currentData, searchTerm]);
 
-  // Paginate data client-side
-  // const paginatedData = useMemo(() => {
-  //   const start = page * pageSize;
-  //   const end = start + pageSize;
-  //   return filteredData.slice(start, end);
-  // }, [filteredData, page, pageSize]);
-
-  // const handleDownload = async () => {
-  //   try {
-  //     const response = await axios.get('/api/archive/downloadReport', {
-  //       params: searchParams,
-  //       responseType: 'blob'
-  //     });
-      
-  //     const url = window.URL.createObjectURL(new Blob([response.data]));
-  //     const link = document.createElement('a');
-  //     link.href = url;
-  //     link.setAttribute('download', `archive-report-${searchParams.academicYear}-${searchParams.academicSession}.xlsx`);
-  //     document.body.appendChild(link);
-  //     link.click();
-  //     link.remove();
-  //   } catch (err) {
-  //     setError(`Error downloading report: ${err.message}`);
-  //   }
-  // };
-
   // Update renderSearchAndDownload to conditionally render
   const renderSearchAndDownload = () => {
     // Don't show search box on reports tab
@@ -446,65 +558,89 @@ const ArchiveResults = ({ searchParams }) => {
     );
   };
 
-  // const handlePageChange = (params) => {
-  //   store.fetchPageData(activeView, params.page, params.pageSize);
-  // };
+  const renderMobileView = () => {
+    if (!filteredData.length) return null;
+
+    const startIndex = page * pageSize;
+    const endIndex = startIndex + pageSize;
+    const currentPageData = filteredData.slice(startIndex, endIndex);
+
+    return (
+      <div className="space-y-3">
+        {currentPageData.map((item) => {
+          switch (activeView) {
+            case 'mentors':
+              return <MobileMentorCard key={item.id} mentor={item} />;
+            case 'mentees':
+              return <MobileMenteeCard key={item.id} mentee={item} />;
+            case 'meetings':
+              return <MobileMeetingCard key={item.id} meeting={item} />;
+            default:
+              return null;
+          }
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="archive-results-container">
-      <div className="flex flex-col gap-2"> {/* Reduced gap from 4 to 2 */}
-        <div className="flex items-center">
-          <Grid container spacing={1}> {/* Reduced spacing from 2 to 1 */}
-            <Grid item xs={12}>
-              <Grid container spacing={1}> {/* Reduced spacing */}
-                {/* Action Cards - Add Reports card */}
-                <Grid item xs={12} md={3}>
-                  <ActionCard
-                    title="View Mentors"
-                    icon={<BsPersonVcard size={24} />}
-                    count={store.stats.mentors}
-                    onClick={() => handleViewChange('mentors')}
-                    isActive={activeView === 'mentors'}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <ActionCard
-                    title="View Mentees"
-                    icon={<BsPeopleFill size={24} />}
-                    count={store.stats.mentees}
-                    onClick={() => handleViewChange('mentees')}
-                    isActive={activeView === 'mentees'}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <ActionCard
-                    title="View Meetings"
-                    icon={<BsCalendarWeek size={24} />}
-                    count={store.stats.meetings}
-                    onClick={() => handleViewChange('meetings')}
-                    isActive={activeView === 'meetings'}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <ActionCard
-                    title="Reports"
-                    icon={<IoDocumentText size={24} />}
-                    count={store.stats.meetings} // Using meetings count as reports count
-                    onClick={() => handleViewChange('reports')}
-                    isActive={activeView === 'reports'}
-                  />
-                </Grid>
+      <div className="flex flex-col gap-2">
+        <Grid container spacing={isMobile ? 1 : 2}>
+          {/* Action Cards with responsive spacing */}
+          <Grid item xs={12}>
+            <Grid container spacing={isMobile ? 1 : 2}>
+              {/* Update ActionCard sizes for mobile */}
+              <Grid item xs={6} sm={6} md={3}>
+                <ActionCard
+                  title="View Mentors"
+                  icon={<BsPersonVcard size={isMobile ? 20 : 24} />}
+                  count={store.stats.mentors}
+                  onClick={() => handleViewChange('mentors')}
+                  isActive={activeView === 'mentors'}
+                />
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <ActionCard
+                  title="View Mentees"
+                  icon={<BsPeopleFill size={isMobile ? 20 : 24} />}
+                  count={store.stats.mentees}
+                  onClick={() => handleViewChange('mentees')}
+                  isActive={activeView === 'mentees'}
+                />
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <ActionCard
+                  title="View Meetings"
+                  icon={<BsCalendarWeek size={isMobile ? 20 : 24} />}
+                  count={store.stats.meetings}
+                  onClick={() => handleViewChange('meetings')}
+                  isActive={activeView === 'meetings'}
+                />
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <ActionCard
+                  title="Reports"
+                  icon={<IoDocumentText size={isMobile ? 20 : 24} />}
+                  count={store.stats.meetings} // Using meetings count as reports count
+                  onClick={() => handleViewChange('reports')}
+                  isActive={activeView === 'reports'}
+                />
               </Grid>
             </Grid>
-            <Grid item xs={12}>
-              {renderSearchAndDownload()}
-            </Grid>
           </Grid>
-        </div>
 
+          {/* Search bar with responsive padding */}
+          <Grid item xs={12}>
+            {renderSearchAndDownload()}
+          </Grid>
+        </Grid>
+
+        {/* Content area with responsive height */}
         <Box sx={{ 
-          height: 'calc(100vh - 220px)', // Adjusted height for better table visibility
-          overflow: 'auto'
+          height: isMobile ? 'calc(100vh - 280px)' : 'calc(100vh - 220px)',
+          overflow: 'auto',
+          px: isMobile ? 1 : 2
         }}>
           {store.loading ? (
             <Box sx={{ 
@@ -562,178 +698,183 @@ const ArchiveResults = ({ searchParams }) => {
               )}
             </Box>
           ) : (
-            <DataGrid
-              rows={filteredData} // Changed from paginatedData to filteredData
-              columns={activeView === 'mentees' ? menteeColumns : 
-                      activeView === 'meetings' ? meetingColumns : 
-                      columns}
-              paginationMode="client"
-              pageSizeOptions={[25, 50, 100]}
-              density="compact"
-              getRowHeight={() => 45}
-              disableRowSelectionOnClick
-              getRowId={(row) => row.id || `fallback-${row.serialNumber}`}
-              paginationModel={{
-                page,
-                pageSize
-              }}
-              onPaginationModelChange={(model) => {
-                setPage(model.page);
-                setPageSize(model.pageSize);
-              }}
-              loading={store.loading}
-              initialState={{
-                sorting: {
-                  sortModel: [{ field: 'name', sort: 'asc' }],
-                },
-                pagination: {
-                  paginationModel: { 
-                    pageSize: 25,
-                    page: 0
+            isMobile || isTablet ? (
+              renderMobileView()
+            ) : (
+              <DataGrid
+                rows={filteredData} // Changed from paginatedData to filteredData
+                columns={activeView === 'mentees' ? menteeColumns : 
+                        activeView === 'meetings' ? meetingColumns : 
+                        columns}
+                paginationMode="client"
+                pageSizeOptions={[25, 50, 100]}
+                density="compact"
+                getRowHeight={() => 45}
+                disableRowSelectionOnClick
+                getRowId={(row) => row.id || `fallback-${row.serialNumber}`}
+                paginationModel={{
+                  page,
+                  pageSize
+                }}
+                onPaginationModelChange={(model) => {
+                  setPage(model.page);
+                  setPageSize(model.pageSize);
+                }}
+                loading={store.loading}
+                initialState={{
+                  sorting: {
+                    sortModel: [{ field: 'name', sort: 'asc' }],
                   },
-                },
-              }}
-              componentsProps={{
-                pagination: {
-                  labelRowsPerPage: "Rows:",
-                  showFirstButton: true,
-                  showLastButton: true,
-                }
-              }}
-              sx={{
-                height: '100%',
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: 'white',
-                // Add custom scrollbar styles
-                '& ::-webkit-scrollbar': {
-                  width: '8px',
-                  height: '8px',
-                  backgroundColor: 'transparent',
-                },
-                '& ::-webkit-scrollbar-track': {
-                  background: 'rgba(249, 115, 22, 0.05)',
-                  borderRadius: '8px',
-                },
-                '& ::-webkit-scrollbar-thumb': {
-                  backgroundColor: 'rgba(249, 115, 22, 0.3)',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    backgroundColor: 'rgba(249, 115, 22, 0.5)',
+                  pagination: {
+                    paginationModel: { 
+                      pageSize: 25,
+                      page: 0
+                    },
                   },
-                },
-                '& ::-webkit-scrollbar-corner': {
+                }}
+                componentsProps={{
+                  pagination: {
+                    labelRowsPerPage: "Rows:",
+                    showFirstButton: true,
+                    showLastButton: true,
+                  }
+                }}
+                sx={{
+                  height: '100%',
                   backgroundColor: 'transparent',
-                },
-                '& .MuiDataGrid-cell': {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                },
-                '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#1a1a1a',
-                    borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
-                },
-                '& .MuiDataGrid-columnHeader': {
-                    color: '#f97316',
-                    fontWeight: 600,
-                    fontSize: '0.95rem',
-                    backgroundColor: '#1a1a1a',
-                    '&:focus': {
-                        outline: 'none',
+                  border: 'none',
+                  color: 'white',
+                  // Add custom scrollbar styles
+                  '& ::-webkit-scrollbar': {
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: 'transparent',
+                  },
+                  '& ::-webkit-scrollbar-track': {
+                    background: 'rgba(249, 115, 22, 0.05)',
+                    borderRadius: '8px',
+                  },
+                  '& ::-webkit-scrollbar-thumb': {
+                    backgroundColor: 'rgba(249, 115, 22, 0.3)',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      backgroundColor: 'rgba(249, 115, 22, 0.5)',
                     },
-                    '&:focus-within': {
-                        outline: 'none',
+                  },
+                  '& ::-webkit-scrollbar-corner': {
+                    backgroundColor: 'transparent',
+                  },
+                  '& .MuiDataGrid-cell': {
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                      backgroundColor: '#1a1a1a',
+                      borderBottom: '2px solid rgba(249, 115, 22, 0.2)',
+                  },
+                  '& .MuiDataGrid-columnHeader': {
+                      color: '#f97316',
+                      fontWeight: 600,
+                      fontSize: '0.95rem',
+                      backgroundColor: '#1a1a1a',
+                      '&:focus': {
+                          outline: 'none',
+                      },
+                      '&:focus-within': {
+                          outline: 'none',
+                      },
+                  },
+                  '& .MuiDataGrid-iconButtonContainer': {
+                      visibility: 'visible',
+                      width: 'auto',
+                      padding: '4px',
+                  },
+                  '& .MuiDataGrid-sortIcon': {
+                      color: '#f97316',
+                      opacity: 1,
+                  },
+                  '& .MuiDataGrid-columnHeaderDraggableContainer': {
+                      width: '100%',
+                  },
+                  '& .MuiDataGrid-columnHeaderTitleContainer': {
+                      padding: '0 8px',
+                  },
+                  '& .MuiDataGrid-columnSeparator': {
+                      color: 'rgba(249, 115, 22, 0.2)',
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    position: 'sticky',
+                    bottom: 0,
+                    backgroundColor: '#1a1a1a',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    zIndex: 2,
+                    padding: '0.5rem',
+                    '& .MuiTablePagination-root': {
+                      color: 'white',
+                      overflow: 'hidden',
                     },
-                },
-                '& .MuiDataGrid-iconButtonContainer': {
-                    visibility: 'visible',
-                    width: 'auto',
-                    padding: '4px',
-                },
-                '& .MuiDataGrid-sortIcon': {
-                    color: '#f97316',
-                    opacity: 1,
-                },
-                '& .MuiDataGrid-columnHeaderDraggableContainer': {
-                    width: '100%',
-                },
-                '& .MuiDataGrid-columnHeaderTitleContainer': {
-                    padding: '0 8px',
-                },
-                '& .MuiDataGrid-columnSeparator': {
-                    color: 'rgba(249, 115, 22, 0.2)',
-                },
-                '& .MuiDataGrid-footerContainer': {
-                  position: 'sticky',
-                  bottom: 0,
-                  backgroundColor: '#1a1a1a',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                  zIndex: 2,
-                  padding: '0.5rem',
+                    '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                      color: 'white',
+                    },
+                    '& .MuiTablePagination-select': {
+                      color: 'white',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: '4px',
+                    },
+                    '& .MuiIconButton-root': {
+                      color: 'white',
+                      '&.Mui-disabled': {
+                        color: 'rgba(255, 255, 255, 0.3)',
+                      },
+                    },
+                  },
+                  '& .MuiDataGrid-row': {
+                      minHeight: '40px !important', // Reduced row height
+                      maxHeight: '40px !important',
+                      backgroundColor: 'inherit',
+                  },
+                  '& .MuiDataGrid-menuIcon': {
+                      color: 'white',
+                  },
+                  '& .MuiDataGrid-pagination': {
+                      color: 'white',
+                  },
                   '& .MuiTablePagination-root': {
-                    color: 'white',
-                    overflow: 'hidden',
-                  },
-                  '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                    color: 'white',
+                      color: 'white',
                   },
                   '& .MuiTablePagination-select': {
-                    color: 'white',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '4px',
+                      color: 'white',
+                  },
+                  '& .MuiTablePagination-selectIcon': {
+                      color: 'white',
                   },
                   '& .MuiIconButton-root': {
-                    color: 'white',
-                    '&.Mui-disabled': {
-                      color: 'rgba(255, 255, 255, 0.3)',
-                    },
+                      color: 'white',
                   },
-                },
-                '& .MuiDataGrid-row': {
-                    minHeight: '40px !important', // Reduced row height
-                    maxHeight: '40px !important',
-                    backgroundColor: 'inherit',
-                },
-                '& .MuiDataGrid-menuIcon': {
-                    color: 'white',
-                },
-                '& .MuiDataGrid-pagination': {
-                    color: 'white',
-                },
-                '& .MuiTablePagination-root': {
-                    color: 'white',
-                },
-                '& .MuiTablePagination-select': {
-                    color: 'white',
-                },
-                '& .MuiTablePagination-selectIcon': {
-                    color: 'white',
-                },
-                '& .MuiIconButton-root': {
-                    color: 'white',
-                },
-                '& .MuiDataGrid-overlay': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                },
-              }}
-            />
+                  '& .MuiDataGrid-overlay': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  },
+                }}
+              />
+            )
           )}
         </Box>
       </div>
 
       <style jsx>{`
         .archive-results-container {
-            height: calc(100vh - 80px); // Reduced from 96px
-            border-radius: 16px; // Reduced from 24px
-            border: 1px solid rgba(249, 115, 22, 0.2);
-            padding: 12px; // Reduced from 16px
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            background: rgba(26, 26, 26, 0.6);
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
-            gap: 12px; // Reduced from 16px
-            overflow: hidden;
+          height: ${isMobile ? 'auto' : 'calc(100vh - 80px)'}; // Modified this line
+          min-height: ${isMobile ? 'calc(100vh - 80px)' : 'auto'}; // Added this line
+          border-radius: 16px;
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          padding: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          background: rgba(26, 26, 26, 0.6);
+          backdrop-filter: blur(10px);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          overflow: ${isMobile ? 'visible' : 'hidden'}; // Added this line
         }
       `}</style>
     </div>
