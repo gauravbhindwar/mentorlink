@@ -4,6 +4,56 @@ import RemarksDialog from "./RemarksDialog";
 // import ConfirmDialog from "./ConfirmDialog";
 import { PDFDownloadComponent, ConsolidatedDocument } from "./PDFGenerator";
 
+// Add new MenteeCard component
+const MenteeCard = ({ mentee, index, onRemarksClick }) => {
+  return (
+    <div className="bg-gray-800/50 p-5 rounded-xl mb-4 md:hidden border border-gray-700/50 hover:border-orange-500/20 transition-colors shadow-lg">
+      <div className="flex flex-col gap-4">
+        {/* Header Section */}
+        <div className="flex justify-between items-start">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-gray-700/50 rounded-md text-xs font-medium text-gray-400">#{index + 1}</span>
+              <span className="text-xs text-gray-500">{mentee.MUJid}</span>
+            </div>
+            <h3 className="text-lg font-semibold text-white">{mentee.name}</h3>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+              {mentee.meetingsCount} / {mentee.meetingsTotal}
+            </div>
+            <span className="text-[11px] text-gray-500">
+              {Math.round((mentee.meetingsCount / (mentee.meetingsTotal || 1)) * 100)}% attendance
+            </span>
+          </div>
+        </div>
+
+        {/* Remarks Section */}
+        <div 
+          onClick={() => onRemarksClick(mentee.MUJid, mentee.mentorRemarks)}
+          className="relative w-full rounded-lg p-4 text-sm cursor-pointer transition-all
+            bg-gray-900/50 hover:bg-gray-700/50 active:bg-gray-600/50 group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-gray-400">Remarks</span>
+            <svg 
+              className="w-4 h-4 text-gray-500 group-hover:text-orange-500 transition-colors" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
+          <div className="line-clamp-3 text-gray-300">
+            {mentee.mentorRemarks || (
+              <span className="text-gray-500 italic">Tap to add remarks...</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ConsolidatedReport = () => {
   // const [mentorId, setMentorId] = useState("");
   const [mentees, setMentees] = useState([]);
@@ -191,8 +241,12 @@ const ConsolidatedReport = () => {
           [dialogState.currentMUJid]: remarks
         }));
 
-        // Close dialog
-        setDialogState({ isOpen: false, currentMUJid: null, currentValue: "" });
+        // Reset dialog state completely
+        setDialogState({
+          isOpen: false,
+          currentMUJid: null,
+          currentValue: ""
+        });
 
       } catch (error) {
         console.error("Error saving remarks:", error);
@@ -341,35 +395,36 @@ const ConsolidatedReport = () => {
   const filteredMentees = mentees.filter((mentee) => mentee.semester === selectedSemester);
   const hasNoData = filteredMentees.length === 0;
 
+  // Add cleanup function for dialog close
+  const handleDialogClose = () => {
+    setDialogState({
+      isOpen: false,
+      currentMUJid: null,
+      currentValue: ""
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 pt-16">
-      <div className="h-[calc(100vh-4rem)] max-w-[85rem] mx-auto p-8 flex flex-col overflow-hidden"> {/* Added overflow-hidden */}
-        <div className="flex gap-6 flex-1 min-h-0"> {/* Added min-h-0 to allow flex child to shrink */}
-          {/* Left side container for header and table */}
-          <div className="flex-1 max-w-[calc(100%-16rem)] flex flex-col min-h-0"> {/* Added min-h-0 */}
-            {/* Static Header - now matches table width */}
-            <div className="bg-gray-800/50 p-6 rounded-xl shadow-lg backdrop-blur-sm mb-8">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="space-y-1">
-                  <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
-                    Consolidated Report
-                  </h2>
-                  <p className="text-gray-400">View and manage all mentee reports</p>
-                </div>
-                {/* <div className="flex items-center gap-2 bg-gray-700/50 px-4 py-2 rounded-lg">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-gray-300">{mentorName}</span>
-                </div> */}
+      <div className="h-[calc(100vh-4rem)] mx-auto p-3 md:p-8 flex flex-col overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 flex-1 min-h-0">
+          {/* Left side container */}
+          <div className="flex-1 max-w-full lg:max-w-[calc(100%-16rem)] flex flex-col min-h-0">
+            {/* Header - Hidden on mobile */}
+            <div className="hidden md:block bg-gray-800/50 p-4 md:p-6 rounded-xl shadow-lg backdrop-blur-sm mb-3 md:mb-8">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
+                  Consolidated Report
+                </h2>
+                <p className="text-sm md:text-base text-gray-400">View and manage all mentee reports</p>
               </div>
             </div>
 
-            {/* Table Container with Fixed Header and Scrollable Body */}
-            <div className="flex-1 bg-gray-800 rounded-xl shadow-xl overflow-hidden flex flex-col min-h-0"> {/* Added min-h-0 */}
-              {/* Fixed Header */}
+            {/* Table/Cards Container - Update mobile styles */}
+            <div className="flex-1 bg-transparent md:bg-gray-800 rounded-xl shadow-xl overflow-hidden flex flex-col min-h-0">
+              {/* Desktop Table Header - Hidden on Mobile */}
               {!hasNoData && (
-                <div className='bg-gray-900/95 backdrop-blur-sm z-10'>
+                <div className='hidden md:block bg-gray-900/95 backdrop-blur-sm z-10'>
                   <table className='w-full'>
                     <colgroup>
                       <col className='w-24' />
@@ -401,9 +456,8 @@ const ConsolidatedReport = () => {
                 </div>
               )}
 
-              {/* Scrollable Body or No Data Message */}
               {hasNoData ? (
-                <div className='flex-1 flex items-center justify-center'>
+                <div className='flex-1 flex items-center justify-center p-4'>
                   <div className='text-center space-y-4'>
                     <svg
                       className='w-16 h-16 mx-auto text-gray-600'
@@ -426,8 +480,23 @@ const ConsolidatedReport = () => {
                   </div>
                 </div>
               ) : (
-                <div className='flex-1 overflow-y-auto custom-scrollbar min-h-0'>
-                  <table className='w-full'>
+                <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                  {/* Mobile Cards View - Update container padding */}
+                  <div className="md:hidden px-0 py-2">
+                    {mentees
+                      .filter((mentee) => mentee.semester === selectedSemester)
+                      .map((mentee, index) => (
+                        <MenteeCard
+                          key={mentee.MUJid}
+                          mentee={mentee}
+                          index={index}
+                          onRemarksClick={handleRemarksClick}
+                        />
+                      ))}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <table className='hidden md:table w-full'>
                     <colgroup>
                       <col className='w-24' />
                       <col className='w-44' />
@@ -452,12 +521,12 @@ const ConsolidatedReport = () => {
             </div>
           </div>
 
-          {/* Right Side Actions - Updated Logic */}
-          <div className="w-60 space-y-4 flex-shrink-0 overflow-y-auto">
-            {/* Semester Selection Chips */}
+          {/* Right Side Actions - Update mobile styles */}
+          <div className="w-full lg:w-60 space-y-3 md:space-y-4 flex-shrink-0 order-first lg:order-last">
+            {/* Semester Selection */}
             <div className="bg-gray-800/50 p-4 rounded-xl shadow-lg">
               <h3 className="text-sm font-medium text-gray-400 mb-3">Select Semester</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
                 {new Date().getMonth() >= 0 && new Date().getMonth() <= 5 ? (
                   <>
                     {[2, 4, 6, 8].map((sem) => (
@@ -495,61 +564,63 @@ const ConsolidatedReport = () => {
             </div>
 
             {/* PDF Download Section */}
-            {(() => {
-              const semesterMeetings = meetings.filter(
-                (meeting) => meeting && 
-                meeting.semester === selectedSemester && 
-                meeting.isReportFilled === true
-              );
+            <div className="sticky top-4">
+              {(() => {
+                const semesterMeetings = meetings.filter(
+                  (meeting) => meeting && 
+                  meeting.semester === selectedSemester && 
+                  meeting.isReportFilled === true
+                );
 
-              return semesterMeetings.length < 3 ? (
-                <div className='w-full p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl'>
-                  <div className='flex items-center gap-2 text-yellow-500 mb-2'>
-                    <svg
-                      className='w-5 h-5'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth='2'
-                        d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
-                      />
-                    </svg>
-                    <span className='font-medium'>Not Enough Meetings</span>
+                return semesterMeetings.length < 3 ? (
+                  <div className='w-full p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl'>
+                    <div className='flex items-center gap-2 text-yellow-500 mb-2'>
+                      <svg
+                        className='w-5 h-5'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth='2'
+                          d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+                        />
+                      </svg>
+                      <span className='font-medium'>Not Enough Meetings</span>
+                    </div>
+                    <p className='text-sm text-red-400'>
+                      Please conduct at least three meetings with filled reports in this semester
+                      before generating the report.
+                    </p>
                   </div>
-                  <p className='text-sm text-red-400'>
-                    Please conduct at least three meetings with filled reports in this semester
-                    before generating the report.
-                  </p>
-                </div>
-              ) : (
-                <PDFDownloadComponent
-                  document={generatePDFDocument()}
-                  page={`consolidatedReport`}
-                  fileName={`consolidated_report_${mentorName.replace(
-                    /\s+/g,
-                    "_"
-                  )}_sem${selectedSemester}.pdf`}>
-                  <div className='w-full flex items-center justify-center px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl text-white font-medium shadow-lg transition-all duration-300'>
-                    <svg
-                      className='w-5 h-5 mr-2'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth='2'
-                        d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
-                      />
-                    </svg>
-                    Download PDF Report
-                  </div>
-                </PDFDownloadComponent>
-              );
-            })()}
+                ) : (
+                  <PDFDownloadComponent
+                    document={generatePDFDocument()}
+                    page={`consolidatedReport`}
+                    fileName={`consolidated_report_${mentorName.replace(
+                      /\s+/g,
+                      "_"
+                    )}_sem${selectedSemester}.pdf`}>
+                    <div className='w-full flex items-center justify-center px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl text-white font-medium shadow-lg transition-all duration-300'>
+                      <svg
+                        className='w-5 h-5 mr-2'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth='2'
+                          d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'
+                        />
+                      </svg>
+                      Download PDF Report
+                    </div>
+                  </PDFDownloadComponent>
+                );
+              })()}
+            </div>
 
             {/* Unfilled Meetings Section */}
             {unfilledMeetings.filter(meeting => meeting.semester === selectedSemester).length > 0 && (
@@ -581,7 +652,7 @@ const ConsolidatedReport = () => {
         {/* Dialog Component */}
         <RemarksDialog
           isOpen={dialogState.isOpen}
-          onClose={() => setDialogState(prev => ({ ...prev, isOpen: false }))}
+          onClose={handleDialogClose}  // Use the new cleanup function
           initialValue={dialogState.currentValue}
           originalValue={dialogState.currentMUJid ? originalRemarks[dialogState.currentMUJid] : ""}
           onSave={handleDialogSave}

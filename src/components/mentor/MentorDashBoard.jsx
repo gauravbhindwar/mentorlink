@@ -649,7 +649,7 @@ Contact: ${mentorData?.email || ""}`;
           </motion.div>
 
           <div className='flex flex-col lg:flex-row gap-4'>
-            {/* Cards Grid */}
+            {/* Cards Grid - Modified for better mobile layout */}
             <motion.div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-[50%] w-full'>
               {cards.map((card, index) => (
                 <motion.div
@@ -665,23 +665,24 @@ Contact: ${mentorData?.email || ""}`;
                     boxShadow: `0 0 30px ${card.shadowColor}`,
                   }}
                   className={`
-                                relative overflow-hidden
-                                bg-gradient-to-br ${card.gradient}
-                                rounded-lg p-4
-                                cursor-pointer
-                                transition-all duration-500
-                                border border-white/10
-                                backdrop-blur-sm
-                                hover:border-white/20
-                            `}
+                  relative overflow-hidden
+                  bg-gradient-to-br ${card.gradient}
+                  rounded-lg p-4
+                  cursor-pointer
+                  transition-all duration-500
+                  border border-white/10
+                  backdrop-blur-sm
+                  hover:border-white/20
+                  min-h-[130px] sm:min-h-[160px]
+                  flex flex-col justify-between
+                `}
                   onClick={card.onClick}>
-                  <div className='absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity' />
-                  <span className='text-3xl mb-3 block'>{card.icon}</span>
-                  <h3 className='text-lg font-bold text-white mb-2'>
-                    {card.title}
-                  </h3>
-                  <p className='text-white/80 text-sm'>{card.description}</p>
-                  <div className='absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:w-24 group-hover:h-24 transition-all' />
+                  <div>
+                    <span className='text-2xl sm:text-3xl mb-2 sm:mb-3 block'>{card.icon}</span>
+                    <h3 className='text-base sm:text-lg font-bold text-white mb-1 sm:mb-2'>{card.title}</h3>
+                    <p className='text-xs sm:text-sm text-white/80'>{card.description}</p>
+                  </div>
+                  <div className='absolute -bottom-4 -right-4 w-16 sm:w-20 h-16 sm:h-20 bg-white/10 rounded-full blur-2xl group-hover:w-20 group-hover:h-20 transition-all' />
                 </motion.div>
               ))}
             </motion.div>
@@ -783,7 +784,7 @@ Contact: ${mentorData?.email || ""}`;
                                 <div className='text-white flex justify-between'>
                                   <div>
                                     <div className='space-y-2'>
-                                      <p>
+                                      <p className="max-md:text-sm">
                                         Meeting Topic:{" "}
                                         {
                                           meeting.meeting.meeting_notes
@@ -792,8 +793,8 @@ Contact: ${mentorData?.email || ""}`;
                                       </p>
                                     </div>
 
-                                    <p>Semester: {meeting.semester}</p>
-                                    <p>
+                                    <p className="max-md:text-sm">Semester: {meeting.semester}</p>
+                                    <p className="max-md:text-sm"> 
                                       Date:{" "}
                                       {new Date(
                                         meeting.meeting.meeting_date
@@ -804,10 +805,10 @@ Contact: ${mentorData?.email || ""}`;
                                         ordinal: true,
                                       })}
                                     </p>
-                                    <p>Time: {meeting.meeting.meeting_time}</p>
+                                    <p className="max-md:text-sm">Time: {meeting.meeting.meeting_time}</p>
                                     {meeting.meeting.meeting_notes
                                       .isMeetingOnline ? (
-                                      <p className='flex items-center space-x-2'>
+                                      <p className='flex items-center space-x-2 max-md:text-sm'>
                                         <span className='text-gray-300'>
                                           Link:{" "}
                                         </span>
@@ -821,7 +822,7 @@ Contact: ${mentorData?.email || ""}`;
                                             target='_blank'
                                             rel='noopener noreferrer'
                                             className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group max-md:text-sm'>
                                             <span className='truncate max-w-[200px]'>
                                               {
                                                 meeting.meeting.meeting_notes
@@ -848,7 +849,7 @@ Contact: ${mentorData?.email || ""}`;
                                             target='_blank'
                                             rel='noopener noreferrer'
                                             className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group max-md:text-sm'>
                                             <span className='truncate max-w-[200px]'>
                                               {
                                                 meeting.meeting.meeting_notes
@@ -872,7 +873,7 @@ Contact: ${mentorData?.email || ""}`;
                                         )}
                                       </p>
                                     ) : (
-                                      <p>
+                                      <p className="max-md:text-sm">
                                         Venue:{" "}
                                         {meeting.meeting.meeting_notes.venue}
                                       </p>
@@ -911,7 +912,7 @@ Contact: ${mentorData?.email || ""}`;
                                                       ?.meeting_notes?.venue,
                                                 });
                                               }}
-                                              className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+                                              className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors max-md:text-sm'>
                                               Submit Report
                                             </button>
                                           )}
@@ -963,7 +964,7 @@ Contact: ${mentorData?.email || ""}`;
                                                       ?.meeting_notes?.venue,
                                                 });
                                               }}
-                                              className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
+                                              className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%] max-md:text-sm'>
                                               Edit Report
                                             </button>
 
@@ -985,7 +986,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 )}
                                                 fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
                                                 <div
-                                                  className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center'
+                                                  className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center max-md:text-xs'
                                                   role='button'>
                                                   Download MOM Report
                                                 </div>
@@ -996,14 +997,14 @@ Contact: ${mentorData?.email || ""}`;
                                       </>
                                     ) : (
                                       <div className='flex flex-col gap-2'>
-                                        <div className='text-red-500 text-center'>
+                                        <div className='text-red-500 text-center max-md:text-sm'>
                                           Meeting not held yet
                                         </div>
                                         <button
                                           onClick={() =>
                                             sendEmailToMentees(meeting)
                                           }
-                                          className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
+                                          className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors max-md:text-xs'
                                           disabled={
                                             emailInProgress[
                                               meeting.meeting.meeting_id
@@ -1044,26 +1045,33 @@ Contact: ${mentorData?.email || ""}`;
         </div>
       )}
       {selectedMeeting && (
-        <div
-          className='fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4'
+        <motion.div
+          className='fixed inset-0 z-[10000] flex items-end md:items-center justify-center bg-black/70 p-0 md:p-4'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           onClick={() => setSelectedMeeting(null)}>
-          <div
-            className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
+          <motion.div
+            className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-t-xl md:rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 500 }}
             onClick={(e) => e.stopPropagation()}>
-            <div className='sticky top-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-t-xl border-b border-gray-700 flex justify-between items-center'>
-              <h2 className='text-2xl font-bold text-white'>Meeting Notes</h2>
+            <div className='sticky top-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-3 md:p-4 rounded-t-xl border-b border-gray-700 flex justify-between items-center'>
+              <h2 className='text-lg md:text-2xl font-bold text-white'>Meeting Notes</h2>
               <button
                 className='text-gray-400 hover:text-white transition-colors'
                 onClick={() => setSelectedMeeting(null)}>
-                <FiX size={24} />
+                <FiX size={20} className="md:w-6 md:h-6" />
               </button>
             </div>
-            <div className='p-6 max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar'>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div className='p-4 md:p-6 max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6'>
                 {/* Left Column */}
-                <div className='space-y-4'>
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                <div className='space-y-3 md:space-y-4'>
+                  <div className='space-y-1 md:space-y-2'>
+                    <label className='block text-xs md:text-sm font-medium text-gray-300'>
                       Topic of Discussion
                     </label>
                     <input
@@ -1071,12 +1079,12 @@ Contact: ${mentorData?.email || ""}`;
                       name='TopicOfDiscussion'
                       value={meetingNotes.TopicOfDiscussion}
                       disabled={true}
-                      className='w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-white/70'
+                      className='w-full bg-gray-800/50 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white/70'
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className='space-y-1 md:space-y-2'>
+                    <label className='block text-xs md:text-sm font-medium text-gray-300'>
                       Type of Information
                     </label>
                     <textarea
@@ -1084,12 +1092,12 @@ Contact: ${mentorData?.email || ""}`;
                       name='TypeOfInformation'
                       value={meetingNotes.TypeOfInformation}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white'
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className='space-y-1 md:space-y-2'>
+                    <label className='block text-xs md:text-sm font-medium text-gray-300'>
                       Notes to Student
                     </label>
                     <textarea
@@ -1097,7 +1105,7 @@ Contact: ${mentorData?.email || ""}`;
                       name='NotesToStudent'
                       value={meetingNotes.NotesToStudent}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white'
                     />
                   </div>
 
@@ -1109,15 +1117,17 @@ Contact: ${mentorData?.email || ""}`;
                       mt: 2,
                       bgcolor: "#f97316",
                       "&:hover": { bgcolor: "#ea580c" },
+                      fontSize: { xs: '0.875rem', md: '1rem' },
+                      py: { xs: 1, md: 1.5 }
                     }}>
                     Mark Attendance
                   </Button>
                 </div>
 
                 {/* Right Column */}
-                <div className='space-y-4'>
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                <div className='space-y-3 md:space-y-4'>
+                  <div className='space-y-1 md:space-y-2'>
+                    <label className='block text-xs md:text-sm font-medium text-gray-300'>
                       Issues Raised/Resolved
                     </label>
                     <textarea
@@ -1125,13 +1135,13 @@ Contact: ${mentorData?.email || ""}`;
                       name='issuesRaisedByMentee'
                       value={meetingNotes.issuesRaisedByMentee}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                       placeholder='Enter issues...'
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className='space-y-1 md:space-y-2'>
+                    <label className='block text-xs md:text-sm font-medium text-gray-300'>
                       Outcome
                     </label>
                     <textarea
@@ -1139,13 +1149,13 @@ Contact: ${mentorData?.email || ""}`;
                       name='outcome'
                       value={meetingNotes.outcome}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                       placeholder='Enter outcome...'
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className='space-y-1 md:space-y-2'>
+                    <label className='block text-xs md:text-sm font-medium text-gray-300'>
                       Closure Remarks
                     </label>
                     <input
@@ -1153,7 +1163,7 @@ Contact: ${mentorData?.email || ""}`;
                       name='closureRemarks'
                       value={meetingNotes.closureRemarks}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
+                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                       placeholder='Enter remarks...'
                     />
                   </div>
@@ -1177,10 +1187,11 @@ Contact: ${mentorData?.email || ""}`;
                   }}
                   onSelectAll={handleSelectAllPresent}
                   onSubmit={handleAttendanceSubmit}
+                  isMobile={typeof window !== 'undefined' && window.innerWidth < 768}
                 />
               </div>
-              <div className='space-y-2 mt-6'>
-                <label className='block text-sm font-medium text-gray-300'>
+              <div className='space-y-1 md:space-y-2 mt-4 md:mt-6'>
+                <label className='block text-xs md:text-sm font-medium text-gray-300'>
                   Feedback from Mentee (Optional)
                 </label>
                 <textarea
@@ -1188,17 +1199,17 @@ Contact: ${mentorData?.email || ""}`;
                   name='feedbackFromMentee'
                   value={meetingNotes.feedbackFromMentee}
                   onChange={handleMeetingNotesChange}
-                  className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
+                  className='w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
                   placeholder='Enter mentee feedback (optional)...'
                 />
               </div>{" "}
             </div>{" "}
-            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
+            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-3 md:p-4 rounded-b-xl border-t border-gray-700'>
               <button
                 onClick={handleMeetingSubmit}
                 disabled={isSubmitDisabled || isSubmitting}
                 className={`
-                  w-full py-3 px-4 rounded-lg text-white font-medium
+                  w-full py-2 md:py-3 px-4 rounded-lg text-white font-medium text-sm md:text-base
                   transition-all duration-200 flex items-center justify-center
                   ${
                     isSubmitDisabled
@@ -1207,7 +1218,7 @@ Contact: ${mentorData?.email || ""}`;
                   }
                 `}>
                 {isSubmitting ? (
-                  <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
+                  <div className='animate-spin rounded-full h-4 w-4 md:h-5 md:w-5 border-2 border-white border-t-transparent'></div>
                 ) : isSubmitDisabled ? (
                   "Please fill all required fields"
                 ) : (
@@ -1215,8 +1226,8 @@ Contact: ${mentorData?.email || ""}`;
                 )}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
       <AnimatePresence>
         {" "}

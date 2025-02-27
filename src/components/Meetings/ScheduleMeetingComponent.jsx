@@ -503,7 +503,7 @@ Contact: ${mentorData?.email || ""}`;
 
   return (
     <AnimatePresence>
-      <motion.div className='min-h-screen h-screen bg-[#0a0a0a] overflow-hidden relative'>
+      <motion.div className='min-h-screen bg-[#0a0a0a] overflow-x-hidden relative'>
         {/* Add loading overlay */}
         {isLoading && (
           <div className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center'>
@@ -518,12 +518,12 @@ Contact: ${mentorData?.email || ""}`;
           <div className='absolute inset-0 backdrop-blur-3xl' />
         </div>
 
-        <div className='relative z-10 container mx-auto px-4 pt-24'>
+        <div className='relative z-10 container mx-auto px-4 py-6 md:pt-24'>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className='text-center mb-8'>
-            <h1 className='text-4xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-6'>
+            className='text-center mb-4 md:mb-8'>
+            <h1 className='text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 md:mb-6'>
               Schedule Meetings
             </h1>
           </motion.div>
@@ -531,14 +531,13 @@ Contact: ${mentorData?.email || ""}`;
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className='max-w-6xl mx-auto' // Changed from max-w-4xl to max-w-6xl
-          >
-            <div className='bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10'>
+            className='w-full mx-auto'>
+            <div className='bg-white/5 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/10'>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                 }}
-                className='grid grid-cols-3 gap-4'>
+                className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6'>
                 {" "}
                 {/* Changed from grid-cols-2 to grid-cols-3 */}
                 {/* Left Column */}
@@ -566,7 +565,7 @@ Contact: ${mentorData?.email || ""}`;
                       type='text'
                       value={fixedBranch}
                       disabled
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm opacity-60'
+                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white opacity-60'
                     />
                   </div>
 
@@ -582,16 +581,16 @@ Contact: ${mentorData?.email || ""}`;
                       onChange={handleAcademicYearInput}
                       disabled={mentorData.academicYear ? true : false}
                       onClick={() => setShowYearOptions(true)}
-                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm ${
+                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white ${
                         mentorData.academicYear ? "opacity-60" : ""
                       }`}
                     />
                     {showYearOptions && (
-                      <div className='absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg'>
+                      <div className='absolute z-50 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto'>
                         {yearSuggestions.map((year) => (
                           <div
                             key={year}
-                            className='px-4 py-2 hover:bg-white/10 cursor-pointer text-white'
+                            className='px-4 py-3 hover:bg-white/10 cursor-pointer text-white text-sm md:text-base'
                             onClick={() => {
                               setAcademicYear(year);
                               setShowYearOptions(false);
@@ -626,7 +625,7 @@ Contact: ${mentorData?.email || ""}`;
                         (mentorData.academicSession ? true : false) ||
                         !academicYear
                       }
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50'
+                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white disabled:opacity-50'
                     />
                     {showSessionOptions && (
                       <div className='absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg'>
@@ -676,7 +675,7 @@ Contact: ${mentorData?.email || ""}`;
                         }
                       }}
                       disabled={!academicYear}
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50'
+                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white disabled:opacity-50'
                     />
                     {showSemesterOptions && (
                       <div className='absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg'>
@@ -706,7 +705,7 @@ Contact: ${mentorData?.email || ""}`;
                       placeholder='Meeting ID'
                       disabled={true}
                       value={meetingId}
-                      className='w-full bg-black/20 border border-white/10 rounded-lg pointer-events-none p-2 text-white text-sm disabled:opacity-50'
+                      className='w-full bg-black/20 border border-white/10 rounded-lg pointer-events-none p-2.5 text-sm md:text-base text-white disabled:opacity-50'
                     />
                   </div>
 
@@ -720,7 +719,7 @@ Contact: ${mentorData?.email || ""}`;
                       onChange={handleMeetingTopicChange}
                       placeholder='Enter meeting topic'
                       rows='3'
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
+                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white'
                     />
                   </div>
 
@@ -750,7 +749,7 @@ Contact: ${mentorData?.email || ""}`;
                           setCustomAlert("");
                           e.target.blur(); // Autoclose after selecting time
                         }}
-                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm 
+                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white 
                                   [&::-webkit-calendar-picker-indicator]:invert hover:border-orange-500 
                                   focus:border-orange-500 transition-colors'
                       />
@@ -762,20 +761,20 @@ Contact: ${mentorData?.email || ""}`;
                     <label className='block text-sm font-medium text-gray-300 mb-2'>
                       Meeting Type
                     </label>
-                    <div className='grid grid-cols-2 gap-3'>
+                    <div className='grid grid-cols-2 gap-2 md:gap-3'>
                       <button
                         type='button'
                         onClick={() => {
                           setIsMeetingOnline(false);
                           setVenue("");
                         }}
-                        className={`flex items-center justify-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
+                        className={`flex items-center justify-center space-x-2 p-2.5 md:p-3 rounded-lg transition-all duration-200 text-sm md:text-base ${
                           !isMeetingOnline
                             ? "bg-orange-500 text-white"
                             : "bg-black/20 text-gray-400 hover:bg-black/30"
                         }`}>
-                        <FaBuilding className='text-lg' />
-                        <span>Offline</span>
+                        <FaBuilding className='text-base md:text-lg' />
+                        <span className='hidden sm:inline'>Offline</span>
                       </button>
 
                       <button
@@ -784,28 +783,28 @@ Contact: ${mentorData?.email || ""}`;
                           setIsMeetingOnline(true);
                           setVenue("");
                         }}
-                        className={`flex items-center justify-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
+                        className={`flex items-center justify-center space-x-2 p-2.5 md:p-3 rounded-lg transition-all duration-200 text-sm md:text-base ${
                           isMeetingOnline
                             ? "bg-orange-500 text-white"
                             : "bg-black/20 text-gray-400 hover:bg-black/30"
                         }`}>
-                        <FaVideo className='text-lg' />
-                        <span>Online</span>
+                        <FaVideo className='text-base md:text-lg' />
+                        <span className='hidden sm:inline'>Online</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Update the Venue/Link Field with icons */}
-                  <div>
+                  <div className='mt-4'>
                     <label className='block text-sm font-medium text-gray-300 mb-2'>
                       {isMeetingOnline ? "Meeting Link" : "Venue"}
                     </label>
                     <div className='relative'>
                       <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
                         {isMeetingOnline ? (
-                          <FaVideo className='text-gray-400' />
+                          <FaVideo className='text-gray-400 text-base md:text-lg' />
                         ) : (
-                          <FaBuilding className='text-gray-400' />
+                          <FaBuilding className='text-gray-400 text-base md:text-lg' />
                         )}
                       </div>
                       <input
@@ -817,42 +816,42 @@ Contact: ${mentorData?.email || ""}`;
                             ? "Enter meeting link (e.g., Zoom, Teams)"
                             : "Enter venue location"
                         }
-                        className='w-full bg-black/20 border border-white/10 rounded-lg pl-10 p-2 text-white text-sm focus:border-orange-500 transition-colors'
+                        className='w-full bg-black/20 border border-white/10 rounded-lg pl-10 p-2.5 text-sm md:text-base text-white focus:border-orange-500 transition-colors'
                       />
                     </div>
                   </div>
 
                   <button
                     type='submit'
-                    className='w-full btn-orange disabled:opacity-50 relative'
+                    className='w-full btn-orange disabled:opacity-50 relative mt-4 p-2.5 md:p-3'
                     disabled={loading || isDisabled || submitting}
                     onClick={handleMeetingScheduled}>
                     <div className='flex items-center justify-center space-x-2'>
                       {submitting ? (
                         <>
                           <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
-                          <span>Scheduling Meeting...</span>
+                          <span className='text-sm md:text-base'>Scheduling...</span>
                         </>
                       ) : (
-                        <span>Schedule Meeting</span>
+                        <span className='text-sm md:text-base'>Schedule Meeting</span>
                       )}
                     </div>
                   </button>
                   {customAlert && (
-                    <p className='text-md text-red-600 font-semibold w-[100%] flex justify-center'>
-                      <span>{customAlert}</span>
+                    <p className='text-sm md:text-base text-red-600 font-semibold w-full text-center mt-2'>
+                      {customAlert}
                     </p>
                   )}
                 </div>
                 {/* Right Column - Mentees List */}
-                <div className='space-y-3'>
+                <div className='space-y-3 mt-4 md:mt-0'>
                   {mentees.length > 0 ? (
                     <div>
-                      <h3 className='text-lg font-semibold text-white mb-2'>
+                      <h3 className='text-base md:text-lg font-semibold text-white mb-2'>
                         Mentees:
                       </h3>
-                      <div className='max-h-[400px] overflow-y-auto custom-scrollbar'>
-                        <ul className='list-disc list-inside text-white space-y-2'>
+                      <div className='max-h-[300px] md:max-h-[400px] overflow-y-auto custom-scrollbar'>
+                        <ul className='list-none space-y-2'>
                           {mentees.map((mentee, index) => (
                             <li
                               key={
@@ -860,13 +859,13 @@ Contact: ${mentorData?.email || ""}`;
                                 mentee.email ||
                                 `mentee-${index}`
                               }
-                              className='bg-black/20 flex border border-white/10 rounded-lg p-2'>
-                              <div className='flex items-center space-x-2'>
-                                <div>
-                                  <p className='text-sm font-medium'>
+                              className='bg-black/20 flex border border-white/10 rounded-lg p-2.5'>
+                              <div className='flex items-center space-x-2 w-full'>
+                                <div className='w-full'>
+                                  <p className='text-sm md:text-base font-medium text-white'>
                                     {mentee.name}
                                   </p>
-                                  <p className='text-xs text-gray-400'>
+                                  <p className='text-xs md:text-sm text-gray-400'>
                                     {mentee.email}
                                   </p>
                                 </div>
@@ -877,8 +876,8 @@ Contact: ${mentorData?.email || ""}`;
                       </div>
                     </div>
                   ) : (
-                    <div>
-                      <h3 className='text-md font-semibold text-rose-800 mb-2 text-center'>
+                    <div className='flex items-center justify-center h-full'>
+                      <h3 className='text-sm md:text-base font-semibold text-rose-800 text-center'>
                         No mentees found
                       </h3>
                     </div>
@@ -889,10 +888,12 @@ Contact: ${mentorData?.email || ""}`;
           </motion.div>
         </div>
         {emailProgress.show && (
-          <EmailProgress
-            current={emailProgress.current}
-            total={emailProgress.total}
-          />
+          <div className='fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50'>
+            <EmailProgress
+              current={emailProgress.current}
+              total={emailProgress.total}
+            />
+          </div>
         )}
       </motion.div>
     </AnimatePresence>
