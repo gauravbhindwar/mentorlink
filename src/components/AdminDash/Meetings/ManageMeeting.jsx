@@ -39,6 +39,66 @@ const darkTheme = createTheme({
   },
 });
 
+// Add this after existing theme definitions
+const dialogStyles = {
+  dialog: {
+    '& .MuiDialog-paper': {
+      maxHeight: '90vh',
+      minHeight: '70vh',
+      display: 'flex',
+      flexDirection: 'column',
+      // Mobile specific styles
+      [darkTheme.breakpoints.down('sm')]: {
+        margin: 0,
+        maxHeight: '100%',
+        minHeight: '100%',
+        width: '100%',
+        borderRadius: '1rem 1rem 0 0',
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+      },
+    },
+    // Mobile specific styles for container
+    [darkTheme.breakpoints.down('sm')]: {
+      '& .MuiDialog-container': {
+        alignItems: 'flex-end',
+      },
+    }
+  },
+  dialogContent: {
+    flex: 1,
+    overflowY: 'auto',
+    p: 0,
+    '&::-webkit-scrollbar': {
+      width: '8px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'rgba(255, 255, 255, 0.05)',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: 'rgba(249, 115, 22, 0.5)',
+      borderRadius: '4px',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+      background: '#f97316',
+    },
+    // Mobile specific padding
+    [darkTheme.breakpoints.down('sm')]: {
+      pb: 4,
+    }
+  },
+  contentWrapper: {
+    p: 3,
+    height: '100%',
+    // Mobile specific padding
+    [darkTheme.breakpoints.down('sm')]: {
+      p: 2,
+    }
+  }
+};
+
 // Dynamically import Lottie with SSR disabled
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
@@ -735,87 +795,128 @@ Admin Team`;
           onClose={() => setEmailPreview(false)}
           maxWidth="md"
           fullWidth
+          keepMounted
+          TransitionProps={{
+            timeout: 300,
+          }}
+          sx={{
+            ...dialogStyles.dialog,
+            '& .MuiBackdrop-root': {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            },
+            [darkTheme.breakpoints.down('sm')]: {
+              '& .MuiDialog-paper': {
+                transform: 'none !important',
+                transition: 'opacity 0.3s ease-out !important',
+                opacity: emailPreview ? 1 : 0,
+              },
+            },
+          }}
           PaperProps={{
             sx: {
               background: 'linear-gradient(135deg, rgba(17, 17, 17, 0.95), rgba(31, 41, 55, 0.95))',
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '1rem',
+              borderRadius: darkTheme.breakpoints.down('sm') ? '1rem 1rem 0 0' : '1rem',
               color: 'white',
+              [darkTheme.breakpoints.down('sm')]: {
+                margin: 0,
+                width: '100%',
+              },
             },
           }}>
-          <DialogTitle sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <DialogTitle
+            sx={{
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              p: darkTheme.breakpoints.down('sm') ? 1.5 : 2,
+              '& .MuiTypography-root': {
+                fontSize: darkTheme.breakpoints.down('sm') ? '1.25rem' : '1.5rem',
+              },
+            }}>
             Email Preview
           </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <DialogContentText sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-              Please review and edit the email content before sending:
-            </DialogContentText>
-            
-            {/* Recipient Section */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Recipient:
-              </Typography>
-              <Box sx={{ 
-                color: 'white', 
-                bgcolor: 'rgba(255, 255, 255, 0.05)', 
-                p: 2, 
-                borderRadius: '8px',
-              }}>
-                <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <PersonIcon sx={{ fontSize: '0.9rem', color: '#f97316' }} />
-                  {selectedMentor?.mentorEmail}
+          <DialogContent sx={dialogStyles.dialogContent}>
+            <Box sx={dialogStyles.contentWrapper}>
+              <DialogContentText sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
+                Please review and edit the email content before sending:
+              </DialogContentText>
+              
+              {/* Recipient Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                  Recipient:
                 </Typography>
+                <Box sx={{ 
+                  color: 'white', 
+                  bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                  p: 2, 
+                  borderRadius: '8px',
+                }}>
+                  <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ fontSize: '0.9rem', color: '#f97316' }} />
+                    {selectedMentor?.mentorEmail}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Subject Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                  Subject:
+                </Typography>
+                <TextField
+                  fullWidth
+                  value={emailContent.subject}
+                  onChange={(e) => setEmailContent(prev => ({ ...prev, subject: e.target.value }))}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      bgcolor: 'rgba(255, 255, 255, 0.05)',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.08)',
+                      },
+                    }
+                  }}
+                />
+              </Box>
+
+              {/* Body Section */}
+              <Box>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                  Body:
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={12}
+                  value={emailContent.body}
+                  onChange={(e) => setEmailContent(prev => ({ ...prev, body: e.target.value }))}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      bgcolor: 'rgba(255, 255, 255, 0.05)',
+                      fontFamily: 'monospace',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.08)',
+                      },
+                    }
+                  }}
+                />
               </Box>
             </Box>
-
-            {/* Subject Section */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Subject:
-              </Typography>
-              <TextField
-                fullWidth
-                value={emailContent.subject}
-                onChange={(e) => setEmailContent(prev => ({ ...prev, subject: e.target.value }))}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: 'white',
-                    bgcolor: 'rgba(255, 255, 255, 0.05)',
-                    '&:hover': {
-                      bgcolor: 'rgba(255, 255, 255, 0.08)',
-                    },
-                  }
-                }}
-              />
-            </Box>
-
-            {/* Body Section */}
-            <Box>
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Body:
-              </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={12}
-                value={emailContent.body}
-                onChange={(e) => setEmailContent(prev => ({ ...prev, body: e.target.value }))}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: 'white',
-                    bgcolor: 'rgba(255, 255, 255, 0.05)',
-                    fontFamily: 'monospace',
-                    '&:hover': {
-                      bgcolor: 'rgba(255, 255, 255, 0.08)',
-                    },
-                  }
-                }}
-              />
-            </Box>
           </DialogContent>
-          <DialogActions sx={{ p: 2.5, gap: 1 }}>
+          <DialogActions
+            sx={{
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              p: darkTheme.breakpoints.down('sm') ? 1.5 : 2,
+              gap: 1,
+              [darkTheme.breakpoints.down('sm')]: {
+                position: 'sticky',
+                bottom: 0,
+                bgcolor: 'rgba(17, 17, 17, 0.95)',
+                backdropFilter: 'blur(10px)',
+              },
+            }}>
             <Button
               onClick={() => setEmailPreview(false)}
               variant="outlined"
