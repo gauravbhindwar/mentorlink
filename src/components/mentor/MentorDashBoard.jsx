@@ -10,8 +10,13 @@ import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
 import AttendanceDialog from "@/components/Meetings/AttendanceDialog";
 import { Button } from "@mui/material";
-import Lottie from "lottie-react";
+// Remove the direct Lottie import
+// import Lottie from "lottie-react";
+import dynamic from 'next/dynamic';
 import noDataAnimation from "@/assets/animations/noMeetings.json";
+
+// Dynamically import Lottie with SSR disabled
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 const MentorDashBoard = () => {
   const router = useRouter();
@@ -38,6 +43,16 @@ const MentorDashBoard = () => {
   const [showAttendance, setShowAttendance] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
   const [emailInProgress, setEmailInProgress] = useState({});
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+      const handleResize = () => setWindowWidth(window.innerWidth);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // const extractSessionData = (data) => ({
   //   name: data.name,
@@ -696,7 +711,7 @@ Contact: ${mentorData?.email || ""}`;
               animate={{ opacity: 1, x: 0 }}
               style={{
                 backgroundImage:
-                  !meetingsLoading && meetings.length === 0 && window.innerWidth >= 1024
+                  !meetingsLoading && meetings.length === 0 && windowWidth >= 1024
                     ? 'url("/MUJ-homeCover.jpg")'
                     : "none",
                 backgroundSize: "cover",
@@ -867,7 +882,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2-2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
+                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
                                               />
                                             </svg> */}
                                             <FaExternalLinkAlt />
@@ -1040,7 +1055,7 @@ Contact: ${mentorData?.email || ""}`;
                   </>
                 ) : (
                   <div className='flex flex-col items-center justify-center space-y-4'>
-                    {window.innerWidth < 1024 ? (
+                    {windowWidth < 1024 && typeof window !== 'undefined' && (
                       <>
                         <Lottie
                           animationData={noDataAnimation}
@@ -1051,7 +1066,7 @@ Contact: ${mentorData?.email || ""}`;
                           No meetings scheduled yet
                         </p>
                       </>
-                    ) : null}
+                    )}
                   </div>
                 )}
               </div>
