@@ -1,31 +1,61 @@
-
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  pool: true,
-  maxConnections: 5,
-  maxMessages: Infinity,
-  rateDelta: 1000,
-  rateLimit: 50
-});
+// // Log email configuration (without showing the full password)
+// console.log('Email config:', {
+//   user: process.env.EMAIL_USER,
+//   pass: process.env.EMAIL_PASS ? '******' : 'not set'
+// });
+
+let transporter;
+
+try {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    pool: true,
+    maxConnections: 5,
+    maxMessages: Infinity,
+    rateDelta: 1000,
+    rateLimit: 50
+  });
+  
+  // Verify transporter
+  transporter.verify(function(error, success) {
+    if (error) {
+      console.error('Error initializing email transport:', error);
+    } else {
+      console.log('Email transport ready to send messages');
+    }
+  });
+} catch (error) {
+  console.error('Error initializing email transport:', error);
+}
 
 // Helper function to delay execution
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Function to process a batch of emails
 const processBatch = async (recipients, subject, html, attachments) => {
+  if (!transporter) {
+    console.error('Email transport not initialized, cannot send emails');
+    return recipients.map(recipient => ({
+      email: recipient,
+      status: 'rejected',
+      messageId: null,
+      error: 'Email transport not initialized'
+    }));
+  }
+
   const results = await Promise.allSettled(
     recipients.map(recipient => 
       transporter.sendMail({
-        from: `"MentorLink" <${process.env.GMAIL_USER}>`,
+        from: `"MentorLink" <${process.env.EMAIL_USER}>`,
         to: recipient,
         subject,
         html,
