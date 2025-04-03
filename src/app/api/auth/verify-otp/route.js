@@ -82,7 +82,7 @@ export async function POST(req) {
     const result = await verifyOtpForUser(email, otp);
     
     // Get cookies instance first
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     
     // Create response object with necessary headers
     const response = NextResponse.json(
@@ -98,7 +98,7 @@ export async function POST(req) {
 
     // Set cookie if verification was successful
     if (result.success && result.role) {
-      await cookieStore.set('UserRole', result.role.join(','), {
+      cookieStore.set('UserRole', result.role.join(','), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',

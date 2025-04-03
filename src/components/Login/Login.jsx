@@ -1,8 +1,10 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-// Remove ReCAPTCHA import as v3 doesn't need a component
+import { MdAdminPanelSettings, MdGroups } from "react-icons/md";
+import { IoMail } from "react-icons/io5";
+import { RiLockPasswordLine } from "react-icons/ri";
 
 // Move loadReCaptchaScript outside component and modify it to return a promise
 const loadReCaptchaScript = () => {
@@ -28,7 +30,7 @@ const loadReCaptchaScript = () => {
 const Login = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [otp, setOTP] = useState(""); // Initialize with empty string instead of undefined
+  const [otp, setOTP] = useState("");
   const [emailError, setEmailError] = useState("");
   const [sendOTPSuccess, setSendOTPSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +43,7 @@ const Login = () => {
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
   const [isRecaptchaLoaded, setIsRecaptchaLoaded] = useState(false);
+  const otpInputRef = useRef(null);
 
   useEffect(() => {
     const initRecaptcha = async () => {
@@ -56,7 +59,6 @@ const Login = () => {
 
     // Cleanup
     return () => {
-      // Remove the script when component unmounts
       const scripts = document.querySelectorAll(`script[src*="recaptcha"]`);
       scripts.forEach((script) => script.remove());
     };
@@ -74,6 +76,12 @@ const Login = () => {
     return () => clearInterval(timer);
   }, [countdown, sendOTPSuccess]);
 
+  useEffect(() => {
+    if (sendOTPSuccess && otpInputRef.current) {
+      otpInputRef.current.focus();
+    }
+  }, [sendOTPSuccess]);
+
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
@@ -88,22 +96,20 @@ const Login = () => {
   const handleEmailChange = (e) => {
     const newEmail = e.target.value;
     setEmail(newEmail);
-    // Only show validation error if user has started typing
     if (newEmail) {
       setEmailError(validateEmail(newEmail));
     } else {
       setEmailError("");
     }
   };
+
   const handleOTPChange = (e) => {
-    const value = e.target.value.replace(/\D/g, ""); // Remove any non-digits
+    const value = e.target.value.replace(/\D/g, "");
     if (value.length <= 6) {
-      // Only allow up to 6 digits
       setOTP(value);
     }
   };
 
-  // Update executeCaptcha function
   const executeCaptcha = async () => {
     if (!isRecaptchaLoaded || !window.grecaptcha) {
       throw new Error("reCAPTCHA not loaded");
@@ -158,9 +164,8 @@ const Login = () => {
       if (data.success) {
         setEmailError("");
         setSendOTPSuccess(true);
-        setCountdown(50); // Start timer when OTP is first sent
+        setCountdown(50);
         setCanResend(false);
-        // console.log("OTP sent successfully");
       }
     } catch (error) {
       setEmailError(
@@ -172,11 +177,10 @@ const Login = () => {
     }
   };
 
-  // Update handleResendOTP to include captcha
   const handleResendOTP = async () => {
     setIsLoading(true);
     setCanResend(false);
-    setCountdown(50); // Reset timer to 50 seconds
+    setCountdown(50);
 
     try {
       const captchaToken = await executeCaptcha();
@@ -238,7 +242,6 @@ const Login = () => {
       if (data.success) {
         setOtpError("");
         setVerifySuccess(true);
-        // Store role and email in session storage
         if (data.role && data.role.length > 1) {
           sessionStorage.setItem("UserRole", data.role);
         }
@@ -253,19 +256,29 @@ const Login = () => {
         if (mentorInfo) {
           sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
         }
-        // Fetch and store meeting data
-        if (mentorInfo && mentorInfo.MUJid && mentorInfo.academicYear && mentorInfo.academicSession) {
-          const primarySemester = mentorInfo.academicSession.includes("JANUARY-JUNE") ? 4 : 3;
+        if (
+          mentorInfo &&
+          mentorInfo.MUJid &&
+          mentorInfo.academicYear &&
+          mentorInfo.academicSession
+        ) {
+          const primarySemester = mentorInfo.academicSession.includes(
+            "JANUARY-JUNE"
+          )
+            ? 4
+            : 3;
           const response = await fetch(
             `/api/mentor/manageMeeting?mentorId=${mentorInfo.MUJid}&academicYear=${mentorInfo.academicYear}&session=${mentorInfo.academicSession}&semester=${primarySemester}`
           );
           const meetingData = await response.json();
-          sessionStorage.setItem("meetingData", JSON.stringify(meetingData.meetings || []));
+          sessionStorage.setItem(
+            "meetingData",
+            JSON.stringify(meetingData.meetings || [])
+          );
         }
         if (data && data.role && data.role.length > 1) {
           setRoles(data.role);
         } else {
-          // Single role - direct redirect using router
           switch (data.role[0]) {
             case "admin":
               router.push("/pages/admin/admindashboard");
@@ -277,8 +290,6 @@ const Login = () => {
               setOtpError("Invalid role assigned");
           }
         }
-
-        
       } else {
         setOtpError(data.message || "Invalid OTP");
       }
@@ -296,21 +307,16 @@ const Login = () => {
         <>
           <form onSubmit={handleSubmit} className='w-full max-w-2xl px-4'>
             <div className='flex flex-col gap-6'>
-              {" "}
-              {/* Added flex-col and gap */}
               <div className='flex gap-4 items-center'>
-                <div className='flex-1 max-w-[400px] relative'>
+                <div className='flex-1 max-w-[400px] relative group'>
+                  <IoMail className='absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
                   <label
                     htmlFor='email'
-                    className={`absolute left-4 transition-all duration-300 pointer-events-none
-                  ${
-                    isFocused || email
-                      ? "-translate-y-7 text-sm text-orange-500"
+                    className={`absolute left-12 transition-all duration-300 pointer-events-none
+                    ${isFocused || email
+                      ? "-translate-y-7 text-sm text-orange-500 left-4"
                       : "translate-y-3 text-gray-400"
-                  }`}
-                    style={{
-                      transformOrigin: "0 0",
-                    }}>
+                    }`}>
                     Enter your email
                   </label>
                   <input
@@ -321,16 +327,13 @@ const Login = () => {
                     onChange={handleEmailChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
-                    className={`w-full px-4 py-3 rounded-lg bg-transparent border 
-                  ${emailError ? "border-red-500" : "border-gray-300"}
-                  ${
-                    sendOTPSuccess
-                      ? "border-green-500 bg-slate-800 opacity-60"
-                      : ""
-                  }
-                  text-white focus:outline-none focus:ring-2 
-                  ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
-                  transition-all duration-300`}
+                    className={`w-full pl-12 pr-4 py-3 rounded-lg 
+                    bg-white/5 hover:bg-white/10 focus:bg-white/10
+                    border ${emailError ? "border-red-500" : "border-gray-300"}
+                    ${sendOTPSuccess ? "border-green-500 opacity-60" : ""}
+                    text-white focus:outline-none focus:ring-2 
+                    ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
+                    transition-all duration-300`}
                     required
                   />
                   {emailError && (
@@ -412,32 +415,31 @@ const Login = () => {
               className='w-full max-w-2xl px-4'>
               <div className='flex flex-col gap-4'>
                 <div className='flex gap-4 items-center'>
-                  <div className='flex-1 max-w-[400px] relative'>
+                  <div className='flex-1 max-w-[400px] relative group'>
+                    <RiLockPasswordLine className='absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
                     <label
                       htmlFor='otp'
-                      className={`absolute left-4 transition-all duration-300 pointer-events-none
-                ${
-                  isFocused || otp
-                    ? "-translate-y-7 text-sm text-orange-500"
-                    : "translate-y-3 text-gray-400"
-                }`}
-                      style={{
-                        transformOrigin: "0 0",
-                      }}>
+                      className={`absolute left-12 transition-all duration-300 pointer-events-none
+                      ${isFocused || otp
+                        ? "-translate-y-7 text-sm text-orange-500 left-4"
+                        : "translate-y-3 text-gray-400"
+                      }`}>
                       Enter OTP
                     </label>
                     <input
                       id='otp'
-                      type='text' // Changed from 'otp' to 'text'
+                      type='text'
                       value={otp}
+                      ref={otpInputRef}
                       onChange={handleOTPChange}
                       onFocus={() => setIsFocused(true)}
                       onBlur={() => setIsFocused(false)}
-                      className={`w-full px-4 py-3 rounded-lg bg-transparent border 
-                ${emailError ? "border-red-500" : "border-gray-300"}
-                text-white focus:outline-none focus:ring-2 
-                ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
-                transition-all duration-300`}
+                      className={`w-full pl-12 pr-4 py-3 rounded-lg 
+                      bg-white/5 hover:bg-white/10 focus:bg-white/10
+                      border ${otpError ? "border-red-500" : "border-gray-300"}
+                      text-white focus:outline-none focus:ring-2 
+                      ${otpError ? "focus:ring-red-500" : "focus:ring-orange-500"}
+                      transition-all duration-300`}
                       required
                     />
                     {otpError && (
@@ -548,7 +550,7 @@ const Login = () => {
                           strokeLinecap='round'
                           strokeLinejoin='round'
                           strokeWidth={2}
-                          d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+                          d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 8.003 0 01-15.357-2m15.357 2H15'
                         />
                       </svg>
                       <span>Resend OTP</span>
@@ -568,7 +570,21 @@ const Login = () => {
                 sessionStorage.setItem("role", "admin");
                 router.push("/pages/admin/admindashboard");
               }}
-              className='cursor-pointer p-6 rounded-lg border border-gray-300 hover:border-orange-500 active:border-blue-600 active:bg-blue-500 transition-all relative '>
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  sessionStorage.setItem("role", "admin");
+                  router.push("/pages/admin/admindashboard");
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label="Admin Dashboard"
+              className='cursor-pointer p-6 rounded-lg 
+              bg-white/5 hover:bg-white/10 active:bg-orange-500/20
+              border border-gray-300 hover:border-orange-500 
+              active:scale-95 transition-all relative group
+              focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500'>
+              <MdAdminPanelSettings className='text-4xl text-orange-500 mb-4 transition-transform group-hover:scale-110' />
               <h3 className='text-white text-xl mb-2'>Admin Dashboard</h3>
               <p className='text-gray-400'>Manage mentors/mentees</p>
             </div>
@@ -578,7 +594,21 @@ const Login = () => {
                 sessionStorage.setItem("role", "mentor");
                 router.push("/pages/mentordashboard");
               }}
-              className='cursor-pointer p-6 rounded-lg border border-gray-300 hover:border-orange-500 active:border-blue-600 active:scale-90 active:bg-blue-500 transition-all relative'>
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  sessionStorage.setItem("role", "mentor");
+                  router.push("/pages/mentordashboard");
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label="Mentor Dashboard"
+              className='cursor-pointer p-6 rounded-lg 
+              bg-white/5 hover:bg-white/10 active:bg-orange-500/20
+              border border-gray-300 hover:border-orange-500 
+              active:scale-95 transition-all relative group
+              focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500'>
+              <MdGroups className='text-4xl text-orange-500 mb-4 transition-transform group-hover:scale-110' />
               <h3 className='text-white text-xl mb-2'>Mentor Dashboard</h3>
               <p className='text-gray-400'>Manage meetings</p>
             </div>
