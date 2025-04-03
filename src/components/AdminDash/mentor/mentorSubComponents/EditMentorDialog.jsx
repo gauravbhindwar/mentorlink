@@ -119,15 +119,11 @@ const EditMentorDialog = ({
     
     // Ensure at least one role remains selected
     if (newRoles.length > 0) {
+      // Create a new object to trigger state update
       setSelectedMentor(prev => ({
         ...prev,
-        role: newRoles
+        role: [...newRoles] // Create a new array to ensure state update
       }));
-
-      // Auto close if both mentor and admin roles are selected
-      if (newRoles.includes('mentor') && newRoles.includes('admin')) {
-        setIsRoleDropdownOpen(false);
-      }
     }
   };
 
@@ -152,17 +148,17 @@ const EditMentorDialog = ({
 
     setIsSubmitting(true);
     try {
-      console.log('Submitting mentor update:', {
+      // Make a deep copy of the selectedMentor object to avoid reference issues
+      const mentorData = JSON.parse(JSON.stringify({
         ...selectedMentor,
         isActive: Boolean(selectedMentor.isActive)
-      }); // Debug log
+      }));
+      
+      console.log('Submitting mentor update:', mentorData); // Debug log
 
       const response = await axios.patch(
         `/api/admin/manageUsers/manageMentor/${selectedMentor.MUJid}`,
-        {
-          ...selectedMentor,
-          isActive: Boolean(selectedMentor.isActive) // Ensure boolean
-        }
+        mentorData
       );
 
       if (response.data.success) {
