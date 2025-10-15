@@ -707,7 +707,7 @@ const ArchiveResults = ({ searchParams }) => {
                         activeView === 'meetings' ? meetingColumns : 
                         columns}
                 paginationMode="client"
-                pageSizeOptions={[25, 50, 100]}
+                pageSizeOptions={[25, 50, 100,{ value: -1, label: 'All' }]}
                 density="compact"
                 getRowHeight={() => 45}
                 disableRowSelectionOnClick
@@ -740,7 +740,7 @@ const ArchiveResults = ({ searchParams }) => {
                   }
                 }}
                 sx={{
-                  height: '100%',
+                  height: '96%',
                   backgroundColor: 'transparent',
                   border: 'none',
                   color: 'white',

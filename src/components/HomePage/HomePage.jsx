@@ -1,131 +1,189 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import Login from "../Login/Login";
-import AboutUs from "../AboutUs/AboutUs";
-import Image from "next/image";
-import { motion } from "framer-motion";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import axios from "axios";
+import Image from 'next/image';
+import Login from '@/components/Login/Login';
 
-const HomePage = () => {
-  const [showAboutUs, setShowAboutUs] = useState(false);
+// Create a separate component to use useSearchParams
+const TokenVerifier = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
 
-  // Add ESC key handler
   useEffect(() => {
-    const handleEscKey = (e) => {
-      if (e.key === "Escape") {
-        setShowAboutUs(false);
+    let token;
+    try {
+      token = searchParams.get("token") || sessionStorage.getItem("accessToken");
+    } catch (e) {
+      console.error("Error retrieving token:", e);
+      // Check environment to decide whether to redirect or show login
+      const env = process.env.NEXT_PUBLIC_ENV || process.env.ENV || 'production';
+      if (env === 'local') {
+        setShowLogin(true);
+        setIsLoading(false);
+        return;
+      } else {
+        window.location.href = "https://sdcmuj.com";
+        return;
+      }
+    }
+    
+    if (!token) {
+      console.warn("No token found in URL");
+      // Check environment to decide whether to redirect or show login
+      const env = process.env.NEXT_PUBLIC_ENV || process.env.ENV || 'production';
+      if (env === 'local') {
+        setShowLogin(true);
+        setIsLoading(false);
+        return;
+      } else {
+        window.location.href = "https://sdcmuj.com";
+        return;
+      }
+    }
+
+    const verifyToken = async (router) => {
+      setIsLoading(true);
+
+      let token;
+
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        token = urlParams.get("token") || sessionStorage.getItem("accessToken");
+      }
+
+      if (!token) {
+        console.error(" No token found in URL or session. Redirecting to login...");
+        window.location.href = "https://sdcmuj.com";
+        // window.location.href = process.env.ADMINPANEL_URL || "http://localhost:3001/"
+        return;
+      }
+
+      console.log(" Token Found:", token);
+
+      try {
+        console.log(" Verifying token with backend...");
+
+        const response = await axios.post("/api/auth/verify-otp", {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.data.success) {
+          console.error(" Role verification failed:", response.data.message);
+          // Check environment to decide whether to redirect or show login
+          const env = process.env.NEXT_PUBLIC_ENV || process.env.ENV || 'production';
+          if (env === 'local') {
+            setShowLogin(true);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        let role;
+        if (response.data.role.includes("admin")) {
+          role = "admin";
+        } else if (response.data.role.includes("mentor")) {
+          role = "mentor";
+        }
+
+        console.log(" Role Verified:", role);
+
+        sessionStorage.setItem("accessToken", token);
+        sessionStorage.setItem("role", role);
+        sessionStorage.setItem("email", response.data.email);
+
+        const mentorResponse = await axios.get("/api/mentor", {
+          params: { MUJId: response.data.MUJid, email: response.data.email },
+        });
+
+        const mentorInfo = mentorResponse.data;
+        if (mentorInfo) {
+          sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
+        }
+
+        if (response.data.role.includes("admin")) {
+          router.push("/pages/admin/admindashboard");
+        } else if (response.data.role.includes("mentor")) {
+          router.push("/pages/mentordashboard");
+        } else {
+          console.error(" Unknown Role:", role);
+        }
+      } catch (error) {
+        console.error(" Error verifying token:", error);
+
+        if (error.response?.status === 401) {
+          console.warn("⚠️ Invalid token detected. Clearing session and redirecting to login...");
+          sessionStorage.clear();
+          // Check environment to decide whether to redirect or show login
+          const env = process.env.NEXT_PUBLIC_ENV || process.env.ENV || 'production';
+          if (env === 'local') {
+            setShowLogin(true);
+            setIsLoading(false);
+            return;
+          } else {
+            window.close();
+          }
+        }
+        console.error("Redirecting to SDCMUJ website...");
+        // Check environment to decide whether to redirect or show login
+        const env = process.env.NEXT_PUBLIC_ENV || process.env.ENV || 'production';
+        if (env === 'local') {
+          setShowLogin(true);
+          setIsLoading(false);
+        } else {
+          window.location.href = "https://sdcmuj.com";
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (showAboutUs) {
-      window.addEventListener("keydown", handleEscKey);
-    }
-
-    return () => {
-      window.removeEventListener("keydown", handleEscKey);
-    };
-  }, [showAboutUs]);
+    verifyToken(router);
+  }, [router, searchParams]);
 
   return (
-    <div className='min-h-screen bg-[#0a0a0a] overflow-hidden relative'>
-      {/* Enhanced Background Effects */}
-      <div className='absolute inset-0 z-0'>
-        <div className='absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient' />
-        <div className='absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl' />
-        <div className='absolute inset-0 backdrop-blur-3xl' />
+    <div className="relative z-10 flex justify-center items-center min-h-screen">
+      {isLoading ? (
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-white"></div>
+      ) : showLogin ? (
+        <Login />
+      ) : (
+        <h1 className="text-white text-xl">Redirecting...</h1>
+      )}
+    </div>
+  );
+};
+
+// Main component with Suspense boundary
+const HomePage = () => {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
+      {/* Background Image */}
+      <div className="absolute inset-0 z-0">
         <Image
           src='/MUJ-homeCover.jpg'
           alt='MUJ Campus'
           fill
           className='object-cover opacity-20 mix-blend-overlay'
         />
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
+        <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl" />
+        <div className="absolute inset-0 backdrop-blur-3xl" />
       </div>
 
-      <motion.button
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        onClick={() => setShowAboutUs(true)}
-        className='fixed top-4 right-4 z-50 px-6 py-2.5 bg-white/10 backdrop-blur-md text-white rounded-lg font-semibold hover:bg-white/20 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm tracking-wide border border-white/10'>
-        About Us
-      </motion.button>
-
-      {/* About Us Sliding Panel */}
-      {showAboutUs && (
-        <>
-          <div
-            onClick={() => setShowAboutUs(false)}
-            className='fixed inset-0 bg-black/50 z-40 transition-opacity duration-300'
-          />
-          <div
-            className={`fixed top-0 h-full bg-transparent z-50 overflow-y-auto custom-scrollbar w-[70%] transition-all duration-500 ease-in-out ${
-              showAboutUs ? "right-0" : "-right-[70%]"
-            }`}>
-            <button
-              onClick={() => setShowAboutUs(false)}
-              className='absolute top-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white hover:text-gray-300 transition-all text-3xl font-light border border-gray-600/50'>
-              ×
-            </button>
-            <AboutUs />
-          </div>
-        </>
-      )}
-
-      <div className='relative z-10 min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8'>
-        <motion.div 
-          className='text-center mb-12'
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}>
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}>
-            <Image
-              src='/muj-logo.svg'
-              alt='MUJ Logo'
-              className='mx-auto w-48 sm:w-64 md:w-80 mb-8'
-              width={200}
-              height={200}
-            />
-          </motion.div>
-          <motion.h1 
-            className='text-4xl sm:text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500 mb-4'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}>
-            Mentorlink
-          </motion.h1>
-          <motion.p 
-            className='text-gray-300 text-sm md:text-base tracking-wider uppercase mb-8'
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.6 }}>
-            By Software Development Center
-          </motion.p>
-        </motion.div>
-
-        <motion.div 
-          className='w-full sm:w-[450px] md:w-[550px] lg:w-[650px] p-6 sm:p-8 rounded-lg '
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.8 }}>
-          <Login />
-        </motion.div>
-      </div>
-
-      <style jsx>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 15s ease infinite;
-        }
-      `}</style>
+      {/* Content with Suspense */}
+      <Suspense fallback={
+        <div className="relative z-10 flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-white"></div>
+        </div>
+      }>
+        <TokenVerifier />
+      </Suspense>
     </div>
   );
 };
 
 export default HomePage;
+

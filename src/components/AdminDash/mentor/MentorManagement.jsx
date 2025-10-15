@@ -1501,8 +1501,6 @@ const handleEditMentor = async (updatedMentor) => {
             <DialogTitle sx={{ color: '#10B981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
               Transfer Mentees
             </DialogTitle>
-            {/* Rest of your transfer dialog content */}
-            {/* ...existing transfer dialog content... */}
           </Dialog>
         )}
       </div>

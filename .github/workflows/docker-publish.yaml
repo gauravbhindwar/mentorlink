@@ -1,0 +1,38 @@
+name: Build and Push Docker Image to SDC Docker Registry
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+        with:
+          ref: "main"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to SDC Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: docker.sdcmuj.com
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./infra/Dockerfile
+          push: true
+          tags: |
+            docker.sdcmuj.com/mentor-mentee:latest
+            docker.sdcmuj.com/mentor-mentee:${{ github.sha }}
+          cache-from: type=registry,ref=docker.sdcmuj.com/mentor-mentee:buildcache
+          cache-to: type=registry,ref=docker.sdcmuj.com/mentor-mentee:buildcache,mode=max

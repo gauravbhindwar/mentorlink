@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Next.js application
+  app:
+    build:
+      context: ..
+      dockerfile: infra/dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # Additional environment variables can be overridden here
+    restart: unless-stopped
+    # If using MongoDB in Docker, uncomment:
+    # depends_on:
+    #   - mongo
+  
+  # MongoDB (optional - uncomment to use)
+  # mongo:
+  #   image: mongo:latest
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   environment:
+  #     - MONGO_INITDB_DATABASE=mentorlink
+  #     # For security in production, use secrets instead of environment variables
+  #     # - MONGO_INITDB_ROOT_USERNAME=admin
+  #     # - MONGO_INITDB_ROOT_PASSWORD=password
+  #   restart: unless-stopped
+
+# Uncomment if using MongoDB in Docker
+# volumes:
+#   mongodb_data:

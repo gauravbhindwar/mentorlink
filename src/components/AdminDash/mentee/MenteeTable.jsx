@@ -465,27 +465,18 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
             sortModel: [{ field: 'serialNumber', sort: 'asc' }],
           },
         }}
-        pageSizeOptions={[10, 25, 50]}
-        paginationMode="client"
-        disableColumnFilter
-        disableColumnMenu
-        columnBuffer={5}
-        rowBuffer={10}
-        rowHeight={60}
-        headerHeight={56}
-        pagination
-        disableSelectionOnClick={true}
         sx={{
-          height: '100%',
+          height: { xs: '500px', lg: '100%' }, // Responsive height
+          width: '100%',
           '& .MuiDataGrid-main': {
             overflow: 'auto',
-            height: 'calc(100% - 108px)', // Adjust this to leave space for header and footer
-            minHeight: 'auto',
-            maxHeight: 'none',
+            minHeight: { xs: '300px', lg: '100vh-250px' }, // Responsive minHeight
+            maxHeight: { xs: '500px', lg: 'calc(100vh - 250px)' }, // Responsive maxHeight
+            height: '100%', // Ensure full height
+            flex: 1,
           },
           '& .MuiDataGrid-virtualScroller': {
             overflow: 'auto !important',
-            className: 'custom-scrollbar', // Add custom scrollbar class
             '&::-webkit-scrollbar': {
               width: '8px',
               height: '8px',
@@ -501,43 +492,12 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
                 background: 'rgba(249, 115, 22, 0.7)',
               },
             },
-            height: '100% !important',
-            minHeight: { xs: '300px', lg: '200px' },
-            maxHeight: { xs: '500px', lg: 'unset !important' },
-            scrollBehavior: 'smooth',
-            '@media (prefers-reduced-motion: no-preference)': {
-              scrollBehavior: 'smooth',
-            },
-            animation: 'fadeIn 0.2s ease-out',
-            minHeight: 'auto',
-            maxHeight: 'none',
-            '&::-webkit-scrollbar': {
-              width: '8px',
-              height: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'rgba(249, 115, 22, 0.05)',
-              borderRadius: '10px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'rgba(249, 115, 22, 0.3)',
-              borderRadius: '10px',
-              border: '2px solid transparent',
-              backgroundClip: 'content-box',
-              '&:hover': {
-                background: 'rgba(249, 115, 22, 0.5)',
-                backgroundClip: 'content-box',
-              },
-            },
-            '&::-webkit-scrollbar-corner': {
-              background: 'transparent',
-            },
+            height: '100% !important', // Force full height
+            minHeight: { xs: '300px', lg: '200px' }, // Responsive minHeight
+            maxHeight: { xs: '500px', lg: 'unset !important' }, // Responsive maxHeight
           },
-          // Add custom scrollbar for Firefox
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(249, 115, 22, 0.3) rgba(249, 115, 22, 0.05)',
           '& .MuiDataGrid-virtualScrollerContent': {
-            minWidth: 'fit-content',
+            minWidth: 'fit-content', // Ensure horizontal scroll works
             height: '100%',
           },
           '& .MuiDataGrid-virtualScrollerRenderZone': {
@@ -546,9 +506,9 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
           },
           width: '100%',
           height: '100%',
-          minHeight: '400px',
+          minHeight: '400px', // Reduced from 500px
           border: 'none',
-          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+          // backgroundColor: 'transparent',
           backdropFilter: 'blur(10px)',
           borderRadius: 2,
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
@@ -561,44 +521,35 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '60px !important',
+            minHeight: '50px !important',
             maxHeight: 'unset !important',
             whiteSpace: 'normal',
             lineHeight: '1.5',
             transition: 'all 0.2s ease',
-          },
-          '& .MuiDataGrid-row': {
-            transition: 'background-color 0.2s ease',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.08)',
-              transform: 'translateY(-1px)',
-              transition: 'transform 0.2s ease, background-color 0.2s ease',
-            },
-          },
-          transition: 'all 0.3s ease',
-          '& .MuiDataGrid-columnHeader': {
-            transition: 'background-color 0.2s ease',
-            '& .MuiDataGrid-columnSeparator': {
-              transition: 'opacity 0.3s ease',
-            },
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.15)',
-              transition: 'background-color 0.3s ease',
-            },
-          },
-          '& .MuiDataGrid-columnSeparator': {
-            transition: 'none !important',
+            // backgroundColor: 'transparent',
           },
           '& .MuiDataGrid-columnHeaders': {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            backgroundColor: 'rgba(249, 115, 22, 0.15)',
+            backgroundColor: 'rgba(249, 115, 22, 0.15)', // Changed to match MenteeTable
+            borderBottom: '2px solid rgba(249, 115, 22, 0.3)',
             transition: 'none !important',
+            minHeight: '56px !important', // Ensure minimum height
+            '& .MuiDataGrid-columnHeader': {
+              outline: 'none !important', // Remove focus outline
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              
+            }
+          },
+          '& .MuiDataGrid-columnHeader': {
+            transition: 'background-color 0.2s ease',
+            '& .MuiDataGrid-columnSeparator': {
+              transition: 'opacity 0.3s ease',
+            },
           },
           '& .MuiDataGrid-sortIcon': {
-            color: '#f97316',
+            color: '#ea580c',
             opacity: 0.5,
           },
           '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
@@ -607,60 +558,265 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
           '& .MuiDataGrid-columnHeaderTitle': {
             fontWeight: 600,
           },
-          '@keyframes fadeIn': {
-            from: { opacity: 0.8 },
-            to: { opacity: 1 }
-          },
-          '& .MuiIconButton-root': {
-            transition: 'background-color 0.2s ease',
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.08)',
-            }
-          },
-          '& .MuiDataGrid-columnHeader': {
-            transition: 'background-color 0.2s ease',
-          },
-          '& .MuiDataGrid-cell': {
-            transition: 'background-color 0.2s ease',
-          },
           '& .MuiDataGrid-footerContainer': {
-            transition: 'opacity 0.2s ease',
+            minHeight: '56px !important',
+            maxHeight: '56px !important',
+            // backgroundColor: 'rgba(249, 115, 22, 0.15)', // Changed to match MenteeTable
+            borderTop: '2px solid rgba(249, 115, 22, 0.3)',
+            zIndex: 2,
+            borderRadius: '0 0 12px 12px',
+            backdropFilter: 'blur(10px)',
+            marginTop: 'auto',
+            display: 'flex',
             position: 'sticky',
             bottom: 0,
-            padding: '8px 16px', // Reduced padding
-            borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            minHeight: '52px', // Reduced height
-            height: 'auto',
-          },
-          animation: 'none',
-          '& *': {
-            animation: 'none !important',
+            // bgcolor: 'rgba(0, 0, 0, 0.2)',
+            borderTop: '2px solid rgba(249, 115, 22, 0.3)',
+            backdropFilter: 'blur(10px)',
+            
           },
           '& .MuiTablePagination-root': {
-            color: 'rgba(255, 255, 255, 0.7)',
-            marginLeft: 'auto',
-            '& .MuiTablePagination-select': {
-              color: 'white',
+            color: 'rgba(249, 115, 22, 0.9)',
+          },
+          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+            color: 'rgba(249, 115, 22, 0.9)',
+          },
+          '& .MuiTablePagination-select': {
+            color: 'rgba(255, 255, 255, 0.9)',
+          },
+          '& .MuiTablePagination-selectIcon': {
+            color: '#ea580c',
+          },
+          '& .MuiMenu-paper': {
+            bgcolor: 'rgba(0, 0, 0, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+          },
+          '& .MuiMenuItem-root': {
+            color: 'rgba(255, 255, 255, 0.9)',
+            '&.Mui-selected': {
+              backgroundColor: 'rgba(249, 115, 22, 0.3)',
+              color: '#ea580c',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: 'rgba(249, 115, 22, 0.4)',
+              },
             },
-            '& .MuiTablePagination-selectIcon': {
-              color: '#f97316',
-            },
-            '& .MuiTablePagination-displayedRows': {
-              color: 'rgba(255, 255, 255, 0.7)',
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.1)',
             },
           },
-          '& .MuiDataGrid-footerContainer': {
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '0.25rem 1rem',
-            borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            minheight: '20px',
+          flex: 2,
+          height: '100%',
+          maxHeight: '100%',
+          '& .MuiDataGrid-row': {
+            transition: 'all 0.2s ease',
+            cursor: 'pointer',
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.08)',
+              transform: 'translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            },
           },
+          transition: 'all 0.3s ease',
         }}
+        pageSizeOptions={[10, 25, 50, 75,{ label: 'All', value: -1 }]}
+        // rowsPerPageOptions={[10, 25, 50, 75, { label: 'All', value: -1 }]}
+        paginationMode="client"
+        disableColumnFilter
+        disableColumnMenu
+        columnBuffer={5}
+        rowBuffer={10}
+        rowHeight={60}
+        headerHeight={56}
+        pagination
+        disableSelectionOnClick={true}
+        // sx={{
+        //   height: '100%',
+        //   '& .MuiDataGrid-main': {
+        //     overflow: 'auto',
+        //     height: 'calc(100% - 108px)', // Adjust this to leave space for header and footer
+        //     minHeight: 'auto',
+        //     maxHeight: 'none',
+        //   },
+        //   '& .MuiDataGrid-virtualScroller': {
+        //     overflow: 'auto !important',
+        //     className: 'custom-scrollbar', // Add custom scrollbar class
+        //     '&::-webkit-scrollbar': {
+        //       width: '8px',
+        //       height: '8px',
+        //     },
+        //     '&::-webkit-scrollbar-track': {
+        //       background: 'rgba(255, 255, 255, 0.05)',
+        //       borderRadius: '4px',
+        //     },
+        //     '&::-webkit-scrollbar-thumb': {
+        //       background: 'rgba(249, 115, 22, 0.5)',
+        //       borderRadius: '4px',
+        //       '&:hover': {
+        //         background: 'rgba(249, 115, 22, 0.7)',
+        //       },
+        //     },
+        //     height: '100% !important',
+        //     minHeight: { xs: '300px', lg: '200px' },
+        //     maxHeight: { xs: '500px', lg: 'unset !important' },
+        //     scrollBehavior: 'smooth',
+        //     '@media (prefers-reduced-motion: no-preference)': {
+        //       scrollBehavior: 'smooth',
+        //     },
+        //     animation: 'fadeIn 0.2s ease-out',
+        //     minHeight: 'auto',
+        //     maxHeight: 'none',
+        //     '&::-webkit-scrollbar': {
+        //       width: '8px',
+        //       height: '8px',
+        //     },
+        //     '&::-webkit-scrollbar-track': {
+        //       background: 'rgba(249, 115, 22, 0.05)',
+        //       borderRadius: '10px',
+        //     },
+        //     '&::-webkit-scrollbar-thumb': {
+        //       background: 'rgba(249, 115, 22, 0.3)',
+        //       borderRadius: '10px',
+        //       border: '2px solid transparent',
+        //       backgroundClip: 'content-box',
+        //       '&:hover': {
+        //         background: 'rgba(249, 115, 22, 0.5)',
+        //         backgroundClip: 'content-box',
+        //       },
+        //     },
+        //     '&::-webkit-scrollbar-corner': {
+        //       background: 'transparent',
+        //     },
+        //   },
+        //   // Add custom scrollbar for Firefox
+        //   scrollbarWidth: 'thin',
+        //   scrollbarColor: 'rgba(249, 115, 22, 0.3) rgba(249, 115, 22, 0.05)',
+        //   '& .MuiDataGrid-virtualScrollerContent': {
+        //     minWidth: 'fit-content',
+        //     height: '100%',
+        //   },
+        //   '& .MuiDataGrid-virtualScrollerRenderZone': {
+        //     width: '100%',
+        //     height: '100%',
+        //   },
+        //   width: '100%',
+        //   height: '100%',
+        //   minHeight: '400px',
+        //   border: 'none',
+        //   backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        //   backdropFilter: 'blur(10px)',
+        //   borderRadius: 2,
+        //   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        //   '& .MuiDataGrid-cell': {
+        //     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        //     padding: '16px',
+        //     fontSize: '0.95rem',
+        //     color: 'rgba(255, 255, 255, 0.9)',
+        //     textAlign: 'center',
+        //     display: 'flex',
+        //     alignItems: 'center',
+        //     justifyContent: 'center',
+        //     minHeight: '60px !important',
+        //     maxHeight: 'unset !important',
+        //     whiteSpace: 'normal',
+        //     lineHeight: '1.5',
+        //     transition: 'all 0.2s ease',
+        //   },
+        //   '& .MuiDataGrid-row': {
+        //     transition: 'background-color 0.2s ease',
+        //     cursor: 'pointer',
+        //     '&:hover': {
+        //       backgroundColor: 'rgba(249, 115, 22, 0.08)',
+        //       transform: 'translateY(-1px)',
+        //       transition: 'transform 0.2s ease, background-color 0.2s ease',
+        //     },
+        //   },
+        //   transition: 'all 0.3s ease',
+        //   '& .MuiDataGrid-columnHeader': {
+        //     transition: 'background-color 0.2s ease',
+        //     '& .MuiDataGrid-columnSeparator': {
+        //       transition: 'opacity 0.3s ease',
+        //     },
+        //     '&:hover': {
+        //       backgroundColor: 'rgba(249, 115, 22, 0.15)',
+        //       transition: 'background-color 0.3s ease',
+        //     },
+        //   },
+        //   '& .MuiDataGrid-columnSeparator': {
+        //     transition: 'none !important',
+        //   },
+        //   '& .MuiDataGrid-columnHeaders': {
+        //     position: 'sticky',
+        //     top: 0,
+        //     zIndex: 2,
+        //     backgroundColor: 'rgba(249, 115, 22, 0.15)',
+        //     transition: 'none !important',
+        //   },
+        //   '& .MuiDataGrid-sortIcon': {
+        //     color: '#f97316',
+        //     opacity: 0.5,
+        //   },
+        //   '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
+        //     opacity: 1,
+        //   },
+        //   '& .MuiDataGrid-columnHeaderTitle': {
+        //     fontWeight: 600,
+        //   },
+        //   '@keyframes fadeIn': {
+        //     from: { opacity: 0.8 },
+        //     to: { opacity: 1 }
+        //   },
+        //   '& .MuiIconButton-root': {
+        //     transition: 'background-color 0.2s ease',
+        //     '&:hover': {
+        //       backgroundColor: 'rgba(249, 115, 22, 0.08)',
+        //     }
+        //   },
+        //   '& .MuiDataGrid-columnHeader': {
+        //     transition: 'background-color 0.2s ease',
+        //   },
+        //   '& .MuiDataGrid-cell': {
+        //     transition: 'background-color 0.2s ease',
+        //   },
+        //   '& .MuiDataGrid-footerContainer': {
+        //     transition: 'opacity 0.2s ease',
+        //     position: 'sticky',
+        //     bottom: 0,
+        //     padding: '8px 16px', // Reduced padding
+        //     borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+        //     backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        //     minHeight: '52px', // Reduced height
+        //     height: 'auto',
+        //   },
+        //   animation: 'none',
+        //   '& *': {
+        //     animation: 'none !important',
+        //   },
+        //   '& .MuiTablePagination-root': {
+        //     color: 'rgba(255, 255, 255, 0.7)',
+        //     marginLeft: 'auto',
+        //     '& .MuiTablePagination-select': {
+        //       color: 'white',
+        //     },
+        //     '& .MuiTablePagination-selectIcon': {
+        //       color: '#f97316',
+        //     },
+        //     '& .MuiTablePagination-displayedRows': {
+        //       color: 'rgba(255, 255, 255, 0.7)',
+        //     },
+        //   },
+        //   '& .MuiDataGrid-footerContainer': {
+        //     display: 'flex',
+        //     justifyContent: 'flex-end',
+        //     alignItems: 'center',
+        //     gap: '8px',
+        //     padding: '0.25rem 1rem',
+        //     borderTop: '1px solid rgba(249, 115, 22, 0.2)',
+        //     backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        //     minheight: '20px',
+        //   },
+        // }}
       />
       
       {/* Details Dialog */}

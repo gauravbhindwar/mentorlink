@@ -23,9 +23,9 @@ const AboutUs = () => {
       role: "Developer",
       image: "/Peoples/Developer/gaurav.jpg",
       description: "Full Stack Developer",
-      github: "https://github.com/gauravkumar",
-      linkedin: "https://linkedin.com/in/gauravkumar",
-      email: "bhindwargaurav@gmail.com",
+      github: "https://github.com/gauravbhindwar",
+      linkedin: "www.linkedin.com/in/gauravbhindwar",
+      email: "gaurav.12bhindwar@gmail.com",
       phone: "+91-9006045930",
     },
     {
@@ -33,20 +33,20 @@ const AboutUs = () => {
       role: "Developer",
       image: "/Peoples/Developer/shivank.png",
       description: "Full Stack Developer",
-      github: "https://github.com/shivankgoel",
-      linkedin: "https://linkedin.com/in/shivankgoel",
-      email: "shivank.goel@muj.manipal.edu",
-      phone: "+91-XXXXXXXXXX",
+      github: "https://github.com/ShivankG0EL",
+      linkedin: "https://www.linkedin.com/in/shivank--goel/",
+      email: "shivankgoel600@gmail.com",
+      phone: "+91-9717270092",
     },
     {
       name: "Garv Kundnani",
       role: "Developer",
       image: "/Peoples/Developer/garv.png",
-      description: "Frontend Developer",
-      github: "https://github.com/garvkundnani",
+      description: "Full Stack Developer",
+      github: "https://github.com/IMBoBx",
       linkedin: "https://linkedin.com/in/garvkundnani",
-      email: "garv.kundnani@muj.manipal.edu",
-      phone: "+91-XXXXXXXXXX",
+      email: "kundnanigarv@gmail.com",
+      phone: "+91-8130649495",
     },
   ];
 
@@ -56,26 +56,26 @@ const AboutUs = () => {
       role: "Faculty Guide",
       image: "/Peoples/Faculty/Neha-Chaudhary.webp",
       description: "Computer Science Department",
-      linkedin: "https://linkedin.com/in/nehachaudhary",
-      email: "neha.chaudhary@muj.manipal.edu",
-      phone: "+91-XXXXXXXXXX",
+      linkedin: "https://www.linkedin.com/in/dr-neha-chaudhary-2b02bb31/",
+      email: "chaudhary.neha@jaipur.manipal.edu",
+      phone: "+91-9785500056",
     },
     {
       name: "Dr. Amit Garg",
       role: "Faculty Guide",
       image: "/Peoples/Faculty/Amit-Garg.webp",
       description: "Computer Science Department",
-      linkedin: "https://linkedin.com/in/amitgarg",
-      email: "amit.garg@muj.manipal.edu",
-      phone: "+91-XXXXXXXXXX",
+      linkedin: "https://www.linkedin.com/in/dr-amit-garg-87461637/",
+      email: "amit.garg@jaipur.manipal.edu",
+      phone: "+91-9897260563",
     },
     {
       name: "Dr. Satpal Kushwaha",
       role: "Faculty Guide",
       image: "/Peoples/Faculty/Satpal-Singh.jpeg",
       description: "Computer Science Department",
-      linkedin: "https://linkedin.com/in/satypalkushwaha",
-      email: "satypal.kushwaha@muj.manipal.edu",
+      linkedin: "https://www.linkedin.com/in/dr-satpal-singh-kushwaha-73073929/",
+      email: "satpal.singh@jaipur.manipal.edu",
       phone: "+91-XXXXXXXXXX",
     },
   ];
@@ -100,7 +100,7 @@ const AboutUs = () => {
             About MentorLink
           </h1>
           <p className='text-gray-300 max-w-2xl mx-auto mb-12 text-xl font-light leading-relaxed'>
-            A project developed under the Software Development Club (SDC),
+            A project developed under the Software Development Center (SDC),
             Department of Computer Science Engineering, Manipal University
             Jaipur.
           </p>

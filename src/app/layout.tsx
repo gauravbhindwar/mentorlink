@@ -1,9 +1,11 @@
 'use client';
 import { Inter } from "next/font/google";
 import Navbar from "@/components/subComponents/Navbar";
+// import { PostHogProvider } from "@/components/PostHogProvider";
 import "./globals.css";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 // import { initializeEncryptedStorage } from '../utils/encryption';
+import CloseOnLogout from "@/components/CloseOnLogout";
 import { useEffect } from "react";
 import { useRouter } from 'next/navigation';
 
@@ -11,9 +13,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
 
   useEffect(() => {
@@ -38,15 +38,18 @@ export default function RootLayout({
     };
   }, [router]);
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=0.90" />
       </head>
       <body className={inter.className}>
-        <Navbar />
-        {children}
-        <div id="portal-root" />
-        <SpeedInsights />
+        {/* <PostHogProvider> */}
+          <Navbar />
+          <CloseOnLogout />
+          {children}
+          <div id="portal-root" />
+          <SpeedInsights />
+        {/* </PostHogProvider> */}
       </body>
     </html>
   );

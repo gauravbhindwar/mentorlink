@@ -12,9 +12,9 @@ const protectedRoutes = {
   '/pages/mentordashboard': ['mentor'],
   '/pages/viewmentee': ['mentor'],
   '/pages/meetings/schmeeting': ['mentor'],
-  '/pages/mentordashboard/consolidatedReport': ['mentor']
+  '/pages/mentordashboard/consolidatedReport': ['mentor'],
+  '/pages/mentordasboard/faq': ['mentor'],
 }
-
 
 export default function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname

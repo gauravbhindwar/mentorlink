@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
   Button,
@@ -23,6 +23,7 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
   });
   const [showFullForm, setShowFullForm] = useState(false);
   const isSmallScreen = useMediaQuery('(max-width: 1024px)');
+  const emailInputRef = useRef(null);
 
   const drawerVariants = {
     initial: { y: '100%' },
@@ -202,6 +203,9 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                     error={!!errors.email}
                     helperText={errors.email}
                     required
+                    inputRef={emailInputRef}
+                    autoFocus={open}
+                    key="email-input-field"
                     sx={{
                       ...dialogStyles.textField,
                       '& .MuiOutlinedInput-root': {

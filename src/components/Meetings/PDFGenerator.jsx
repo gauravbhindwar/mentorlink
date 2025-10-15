@@ -12,10 +12,10 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 
-// Add font registration before styles
+// Simplified font registration using only web-safe fonts
 Font.register({
-  family: "Cambria",
-  src: "/fonts/cambria.ttf", // You need to provide the actual path to Cambria font file
+  family: "Helvetica",
+  src: "https://fonts.cdnfonts.com/s/29154/Helvetica.woff",
 });
 
 const styles = StyleSheet.create({
@@ -25,14 +25,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   logo: {
-    width: 150, // Increased from 100
-    height: 37, // Decreased from 50
+    width: 150,
+    height: 37,
     marginBottom: 15,
     alignSelf: "center",
   },
   header: {
     textAlign: "center",
     marginBottom: 20,
+    fontFamily: "Helvetica",
   },
   section: {
     marginBottom: 20,
@@ -60,13 +61,13 @@ const styles = StyleSheet.create({
     borderRight: "1pt solid black",
   },
   tableColSr: {
-    width: "15%", // smaller width for Sr No
+    width: "15%",
   },
   tableColReg: {
-    width: "35%", // more width for Reg No
+    width: "35%",
   },
   tableColName: {
-    width: "50%", // most width for Name
+    width: "50%",
   },
   tableCell: {
     textAlign: "left",
@@ -82,20 +83,20 @@ const styles = StyleSheet.create({
   },
   detailItem: {
     flexDirection: "row",
-    alignItems: "center", // Add this for vertical alignment
+    alignItems: "center",
   },
   detailLabel: {
-    marginRight: 5, // Add spacing between label and value
+    marginRight: 5,
   },
   noteSection: {
     marginBottom: 15,
   },
   noteLabel: {
-    fontSize: 13, // Increased from 12
+    fontSize: 13,
     fontWeight: "bold",
     marginBottom: 5,
     fontFamily: "Helvetica",
-    textTransform: "uppercase", // Make the labels uppercase
+    textTransform: "uppercase",
   },
   noteContent: {
     fontSize: 11,
@@ -108,14 +109,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 20,
-    fontFamily: "Cambria",
+    fontFamily: "Helvetica",
   },
   signatureSection: {
-    marginTop: 30, // Reduced from 50
+    marginTop: 30,
     paddingTop: 20,
     width: "60%",
-    alignSelf: "flex-start", // Align to left
-    marginLeft: 20, // Added for left margin
+    alignSelf: "flex-start",
+    marginLeft: 20,
   },
   signatureText: {
     fontSize: 11,
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
   },
   signatureDate: {
     fontSize: 11,
-    marginTop: 15, // Added space between signature and date
+    marginTop: 15,
   },
   tableBottomBorder: {
     borderBottom: "1pt solid black",
@@ -152,43 +153,39 @@ const styles = StyleSheet.create({
     color: "grey",
   },
   heading: {
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 8,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   consolidatedTable: {
-    width: '100%',
+    width: "100%",
     marginBottom: 20,
-    borderCollapse: 'collapse'
+    borderCollapse: "collapse",
   },
   consolidatedRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    borderBottomStyle: 'solid',
+    borderBottomColor: "#000",
+    borderBottomStyle: "solid",
     minHeight: 25,
   },
   consolidatedCell: {
     padding: 5,
     borderRightWidth: 1,
-    borderRightColor: '#000',
-    borderRightStyle: 'solid'
+    borderRightColor: "#000",
+    borderRightStyle: "solid",
   },
   consolidatedHeader: {
-    backgroundColor: '#f0f0f0',
-    fontWeight: 'bold'
-  }
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+  },
 });
 
 const Header = () => (
   <>
-    <Image
-      style={styles.logo}
-      src='/muj-logo.jpg' // Changed from jpg to svg
-      alt='MUJ Logo'
-    />
+    <Image style={styles.logo} src="/muj-logo.jpg" alt="MUJ Logo" />
     <View style={styles.header}>
-      <Text style={{ fontSize: 16, fontWeight: "bold", fontFamily: "Cambria" }}>
+      <Text style={{ fontSize: 16, fontWeight: "bold", fontFamily: "Helvetica" }}>
         Department of Computer Science and Engineering
       </Text>
       <Text>School of Computer Science and Engineering</Text>
@@ -229,7 +226,7 @@ export const MOMDocument = ({
         srNo: index + 1,
         regNo: mentee?.MUJid,
         name: mentee.name,
-        section: mentee.section, // Ensure section is fetched
+        section: mentee.section,
       })) || [];
   } else {
     students =
@@ -237,7 +234,7 @@ export const MOMDocument = ({
         srNo: index + 1,
         regNo: mentee.mujId,
         name: mentee.name,
-        section: mentee.section, // Ensure section is fetched
+        section: mentee.section,
       })) || [];
   }
 
@@ -246,7 +243,7 @@ export const MOMDocument = ({
 
   return (
     <Document>
-      <Page size='A4' style={styles.page}>
+      <Page size="A4" style={styles.page}>
         <Header />
 
         <View style={styles.section}>
@@ -258,7 +255,8 @@ export const MOMDocument = ({
               style={[
                 styles.detailItem,
                 { justifyContent: "flex-end", marginRight: 0 },
-              ]}>
+              ]}
+            >
               <Text style={styles.detailLabel}>Mentorship Meeting:</Text>
               <Text>{meeting.meeting_id}</Text>
             </View>
@@ -279,11 +277,13 @@ export const MOMDocument = ({
           <View style={styles.tableHalf}>
             <View style={styles.tableRow}>
               <Text
-                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}
+              >
                 Sr No
               </Text>
               <Text
-                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}
+              >
                 Reg. No
               </Text>
               <Text
@@ -291,7 +291,8 @@ export const MOMDocument = ({
                   styles.tableCol,
                   styles.tableColName,
                   styles.tableCell,
-                ]}>
+                ]}
+              >
                 Student Name
               </Text>
             </View>
@@ -306,13 +307,15 @@ export const MOMDocument = ({
                         : "1pt solid black",
                   },
                 ]}
-                key={student.srNo}>
+                key={student.srNo}
+              >
                 <Text
                   style={[
                     styles.tableCol,
                     styles.tableColSr,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.srNo}
                 </Text>
                 <Text
@@ -320,7 +323,8 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColReg,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.regNo}
                 </Text>
                 <Text
@@ -328,7 +332,8 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColName,
                     { ...styles.tableCell, borderRight: "1pt solid black" },
-                  ]}>
+                  ]}
+                >
                   {student.name}
                 </Text>
               </View>
@@ -337,11 +342,13 @@ export const MOMDocument = ({
           <View style={styles.tableHalf}>
             <View style={styles.tableRow}>
               <Text
-                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}
+              >
                 Sr No
               </Text>
               <Text
-                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}
+              >
                 Reg. No
               </Text>
               <Text
@@ -349,7 +356,8 @@ export const MOMDocument = ({
                   styles.tableCol,
                   styles.tableColName,
                   { ...styles.tableCell, borderRight: "none" },
-                ]}>
+                ]}
+              >
                 Student Name
               </Text>
             </View>
@@ -364,13 +372,15 @@ export const MOMDocument = ({
                         : "1pt solid black",
                   },
                 ]}
-                key={student.srNo}>
+                key={student.srNo}
+              >
                 <Text
                   style={[
                     styles.tableCol,
                     styles.tableColSr,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.srNo}
                 </Text>
                 <Text
@@ -378,7 +388,8 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColReg,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.regNo}
                 </Text>
                 <Text
@@ -386,20 +397,19 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColName,
                     { ...styles.tableCell, borderRight: "none" },
-                  ]}>
+                  ]}
+                >
                   {student.name}
                 </Text>
               </View>
             ))}
-            <View style={styles.tableBottomBorder} />{" "}
-            {/* Add bottom border after the last student */}
+            <View style={styles.tableBottomBorder} />
           </View>
         </View>
         <Footer pageNumber={1} totalPages={2} />
       </Page>
 
-      {/* Page 2 - Meeting Notes */}
-      <Page size='A4' style={styles.page}>
+      <Page size="A4" style={styles.page}>
         <Header />
 
         <View style={styles.feedback}>
@@ -464,19 +474,15 @@ export const ConsolidatedDocument = ({
 }) => {
   try {
     const filteredMentees = (mentees || [])
-      .filter(mentee => mentee && mentee.semester === selectedSemester)
+      .filter((mentee) => mentee && mentee.semester === selectedSemester)
       .map((mentee, index) => ({
         srNo: index + 1,
-        regNo: mentee.MUJid || '',
-        name: mentee.name || '',
+        regNo: mentee.MUJid || "",
+        name: mentee.name || "",
         meetingsCount: mentee.meetingsCount || 0,
-        remarks: mentee.mentorRemarks || 'N/A'
+        remarks: mentee.mentorRemarks || "N/A",
       }));
 
-    // const semesterMeetings = (meetings || [])
-    //   .filter(meeting => meeting && meeting.semester === selectedSemester);
-
-    // Create chunks of 12 mentees per page
     const chunkedMentees = [];
     for (let i = 0; i < filteredMentees.length; i += 12) {
       chunkedMentees.push(filteredMentees.slice(i, i + 12));
@@ -497,34 +503,73 @@ export const ConsolidatedDocument = ({
     return (
       <Document>
         {chunkedMentees.map((menteeGroup, pageIndex) => (
-          <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
+          <Page
+            key={pageIndex}
+            size="A4"
+            orientation="landscape"
+            style={styles.page}
+          >
             <Header />
-            
+
             {pageIndex === 0 && (
               <View style={styles.section}>
-                <Text style={styles.detailItem}>Name of Mentor: {mentorName || "N/A"}</Text>
-                <Text style={[styles.detailItem, { marginBottom: 20 }]}>Number of Meetings Taken: {meetings.length}</Text>
+                <Text style={styles.detailItem}>
+                  Name of Mentor: {mentorName || "N/A"}
+                </Text>
+                <Text style={[styles.detailItem, { marginBottom: 20 }]}>
+                  Number of Meetings Taken: {meetings.length}
+                </Text>
               </View>
             )}
 
             <View style={styles.consolidatedTable}>
-              {/* Table Header */}
-              <View style={[styles.consolidatedRow, styles.consolidatedHeader]}>
-                <View style={[styles.consolidatedCell, { width: '8%' }]}><Text>Sr No.</Text></View>
-                <View style={[styles.consolidatedCell, { width: '17%' }]}><Text>Registration No.</Text></View>
-                <View style={[styles.consolidatedCell, { width: '30%' }]}><Text>Student Name</Text></View>
-                <View style={[styles.consolidatedCell, { width: '15%' }]}><Text>Meetings Attended</Text></View>
-                <View style={[styles.consolidatedCell, { width: '30%', borderRightWidth: 0 }]}><Text>Remarks</Text></View>
+              <View
+                style={[styles.consolidatedRow, styles.consolidatedHeader]}
+              >
+                <View style={[styles.consolidatedCell, { width: "8%" }]}>
+                  <Text>Sr No.</Text>
+                </View>
+                <View style={[styles.consolidatedCell, { width: "17%" }]}>
+                  <Text>Registration No.</Text>
+                </View>
+                <View style={[styles.consolidatedCell, { width: "30%" }]}>
+                  <Text>Student Name</Text>
+                </View>
+                <View style={[styles.consolidatedCell, { width: "15%" }]}>
+                  <Text>Meetings Attended</Text>
+                </View>
+                <View
+                  style={[
+                    styles.consolidatedCell,
+                    { width: "30%", borderRightWidth: 0 },
+                  ]}
+                >
+                  <Text>Remarks</Text>
+                </View>
               </View>
 
-              {/* Table Body */}
-              {menteeGroup.map(mentee => (
+              {menteeGroup.map((mentee) => (
                 <View key={mentee.srNo} style={styles.consolidatedRow}>
-                  <View style={[styles.consolidatedCell, { width: '8%' }]}><Text>{mentee.srNo}</Text></View>
-                  <View style={[styles.consolidatedCell, { width: '17%' }]}><Text>{mentee.regNo}</Text></View>
-                  <View style={[styles.consolidatedCell, { width: '30%' }]}><Text>{mentee.name}</Text></View>
-                  <View style={[styles.consolidatedCell, { width: '15%' }]}><Text>{mentee.meetingsCount}</Text></View>
-                  <View style={[styles.consolidatedCell, { width: '30%', borderRightWidth: 0 }]}><Text>{mentee.remarks}</Text></View>
+                  <View style={[styles.consolidatedCell, { width: "8%" }]}>
+                    <Text>{mentee.srNo}</Text>
+                  </View>
+                  <View style={[styles.consolidatedCell, { width: "17%" }]}>
+                    <Text>{mentee.regNo}</Text>
+                  </View>
+                  <View style={[styles.consolidatedCell, { width: "30%" }]}>
+                    <Text>{mentee.name}</Text>
+                  </View>
+                  <View style={[styles.consolidatedCell, { width: "15%" }]}>
+                    <Text>{mentee.meetingsCount}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.consolidatedCell,
+                      { width: "30%", borderRightWidth: 0 },
+                    ]}
+                  >
+                    <Text>{mentee.remarks}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -536,13 +581,16 @@ export const ConsolidatedDocument = ({
               </View>
             )}
 
-            <Footer pageNumber={pageIndex + 1} totalPages={chunkedMentees.length} />
+            <Footer
+              pageNumber={pageIndex + 1}
+              totalPages={chunkedMentees.length}
+            />
           </Page>
         ))}
       </Document>
     );
   } catch (error) {
-    console.error('Error generating consolidated document:', error);
+    console.error("Error generating consolidated document:", error);
     return (
       <Document>
         <Page size="A4">
@@ -561,21 +609,18 @@ export const generateMOMPdf = (meeting, mentorName) => {
     console.error("No meeting data available");
     return null;
   }
-  // console.log("MUJid of mentees Present:", meeting.pre</View>sent_mentees);
 
-  // Filter menteeDetails to only include present mentees
   if (meeting.menteeDetails && meeting?.menteeDetails.length > 0) {
     const presentMenteeDetails = meeting.menteeDetails.filter((mentee) =>
       meeting.present_mentees?.includes(mentee.MUJid)
     );
-    // console.log("mentees Present:", presentMenteeDetails);
 
     return (
       <MOMDocument
         meeting={meeting}
         semester={meeting.semester}
         section={meeting.section}
-        mentorName={mentorName} // Ensure mentorName is passed here
+        mentorName={mentorName}
         presentMenteeDetails={presentMenteeDetails}
       />
     );
@@ -586,7 +631,7 @@ export const generateMOMPdf = (meeting, mentorName) => {
       meeting={meeting}
       semester={meeting.semester}
       section={meeting.section}
-      mentorName={mentorName} // Ensure mentorName is passed here
+      mentorName={mentorName}
     />
   );
 };
@@ -597,7 +642,7 @@ export const generateConsolidatedPdf = (
   semester,
   mentorName,
   mentees,
-  selectedSemester // Add this parameter
+  selectedSemester
 ) => {
   return (
     <ConsolidatedDocument
@@ -605,7 +650,7 @@ export const generateConsolidatedPdf = (
       semester={semester}
       mentorName={mentorName}
       mentees={mentees}
-      selectedSemester={selectedSemester} // Pass it to ConsolidatedDocument
+      selectedSemester={selectedSemester}
     />
   );
 };
@@ -646,8 +691,8 @@ export const PDFDownloadComponent = ({
   };
   if (typeof window === "undefined" || !isClient) {
     return page && page === "MentorDashboard" ? (
-      <div className='flex items-center justify-center'>
-        <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
+      <div className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
       </div>
     ) : (
       <button disabled>Loading...</button>
@@ -662,9 +707,10 @@ export const PDFDownloadComponent = ({
         page && page === "MentorDashboard"
           ? ""
           : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
-      }`}>
+      }`}
+    >
       {isLoading ? (
-        <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
       ) : (
         children || "Download PDF"
       )}

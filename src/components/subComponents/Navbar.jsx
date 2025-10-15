@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { FiChevronDown, FiLogOut, FiGrid, FiInfo, FiUser} from "react-icons/fi";
+import { FiChevronDown, FiLogOut, FiGrid, FiInfo, FiUser } from "react-icons/fi";
 import { FaUserShield } from "react-icons/fa";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -63,11 +63,11 @@ const Navbar = () => {
       await fetch('/api/auth/logout', {
         method: 'POST',
       });
-      
+
       // Clear client-side storage
       sessionStorage.clear();
       localStorage.clear();
-      
+
       // Redirect to home page
       router.push('/');
     } catch (error) {
@@ -83,10 +83,10 @@ const Navbar = () => {
     const currentRole = sessionStorage.getItem("role");
     if (currentRole === "mentor") {
       sessionStorage.setItem("role", "admin");
-      router.push("/pages/admin/admindashboard");
+      router.replace("/pages/admin/admindashboard");
     } else {
       sessionStorage.setItem("role", "mentor");
-      router.push("/pages/mentordashboard");
+      router.replace("/pages/mentordashboard");
     }
   };
 
@@ -112,6 +112,15 @@ const Navbar = () => {
         {
           label: "Consolidated Report",
           path: "/pages/mentordashboard/consolidatedReport",
+        },
+      ];
+    }
+    if (pathname === "/pages/mentordashboard/faq") {
+      return [
+        { label: "Mentor Dashboard", path: "/pages/mentordashboard" },
+        {
+          label: "FAQs",
+          path: "/pages/mentordashboard/faq",
         },
       ];
     }
@@ -173,11 +182,10 @@ const Navbar = () => {
       return [
         {
           label: `${user.roles === "mentor" ? "Mentor" : "Admin"} Dashboard`,
-          path: `${
-            user.roles === "mentor"
-              ? "/pages/mentordashboard"
-              : "/pages/admin/admindashboard"
-          }`,
+          path: `${user.roles === "mentor"
+            ? "/pages/mentordashboard"
+            : "/pages/admin/admindashboard"
+            }`,
         },
         {
           label: "Manage Meetings",
@@ -238,6 +246,8 @@ const Navbar = () => {
             <div className='hidden md:block flex-1 px-8'>
               <div className='flex justify-center'>
                 <nav className='flex' aria-label='Breadcrumb'>
+
+
                   {generateBreadcrumbs().map((item, index) => (
                     <div key={index} className='flex items-center'>
                       {index !== 0 && (
@@ -255,10 +265,27 @@ const Navbar = () => {
                       <a
                         href={item.path}
                         className={`${
-                          index === generateBreadcrumbs().length - 1
-                            ? "text-gray-300 hover:text-gray-100"
-                            : "text-gray-500 hover:text-gray-400"
-                        } ml-2 text-sm font-medium`}>
+                          index !== generateBreadcrumbs().length - 1 || generateBreadcrumbs().length == 1 ?
+                          "text-gray-300 hover:text-gray-100" :
+                          "text-gray-500 hover:text-gray-400"
+                          } ml-2 text-sm font-medium flex gap-1`}>
+
+                        {index !== generateBreadcrumbs().length - 1 && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5"
+                          >
+                            <path d="M9 11L5 7L9 3" />
+                            <path d="M5 7h9a5 5 0 1 1 0 10H7" />
+                          </svg>
+                          )
+                        }
                         {item.label}
                       </a>
                     </div>

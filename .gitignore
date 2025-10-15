@@ -31,8 +31,10 @@ yarn-error.log*
 
 # env files (can opt-in for commiting if needed)
 .env*
+.env
 .env.local
 .env.example
+.env.production
 
 # vercel
 .vercel
@@ -42,6 +44,3 @@ yarn-error.log*
 next-env.d.ts
 
 .history
-
-#docker
-/infra*

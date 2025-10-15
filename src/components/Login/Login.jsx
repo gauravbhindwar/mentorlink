@@ -302,19 +302,19 @@ const Login = () => {
   };
 
   return (
-    <div className='w-full flex flex-col items-center justify-center min-w-screen gap-14'>
+    <div className='w-full flex flex-col items-center justify-center min-w-screen gap-8 sm:gap-14'>
       {!verifySuccess ? (
         <>
-          <form onSubmit={handleSubmit} className='w-full max-w-2xl px-4'>
+          <form onSubmit={handleSubmit} className='w-full max-w-md sm:max-w-2xl px-2 sm:px-4'>
             <div className='flex flex-col gap-6'>
-              <div className='flex gap-4 items-center'>
-                <div className='flex-1 max-w-[400px] relative group'>
-                  <IoMail className='absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
+              <div className='flex flex-col sm:flex-row gap-4 items-start sm:items-center'>
+                <div className='flex-1 w-full max-w-full sm:max-w-[400px] relative group'>
+                  <IoMail className='absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
                   <label
                     htmlFor='email'
-                    className={`absolute left-12 transition-all duration-300 pointer-events-none
+                    className={`absolute left-10 sm:left-12 transition-all duration-300 pointer-events-none
                     ${isFocused || email
-                      ? "-translate-y-7 text-sm text-orange-500 left-4"
+                      ? "-translate-y-7 text-xs sm:text-sm text-orange-500 left-3 sm:left-4"
                       : "translate-y-3 text-gray-400"
                     }`}>
                     Enter your email
@@ -327,22 +327,22 @@ const Login = () => {
                     onChange={handleEmailChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
-                    className={`w-full pl-12 pr-4 py-3 rounded-lg 
+                    className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg 
                     bg-white/5 hover:bg-white/10 focus:bg-white/10
                     border ${emailError ? "border-red-500" : "border-gray-300"}
                     ${sendOTPSuccess ? "border-green-500 opacity-60" : ""}
                     text-white focus:outline-none focus:ring-2 
                     ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
-                    transition-all duration-300`}
+                    transition-all duration-300 text-sm sm:text-base`}
                     required
                   />
                   {emailError && (
-                    <span className='absolute left-0 -bottom-6 text-red-500 text-sm'>
+                    <span className='absolute left-0 -bottom-6 text-red-500 text-xs sm:text-sm'>
                       {emailError}
                     </span>
                   )}
                   {sendOTPSuccess && (
-                    <span className='absolute left-0 -bottom-6 text-green-500 text-sm'>
+                    <span className='absolute left-0 -bottom-6 text-green-500 text-xs sm:text-sm'>
                       OTP sent successfully
                     </span>
                   )}
@@ -353,16 +353,16 @@ const Login = () => {
                     disabled={isLoading}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
-                    className='relative px-6 py-3 !text-white rounded-lg transition-all duration-300 
-              disabled:opacity-50 hover:scale-102 active:scale-90 transform
-              after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
-              after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
-              before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
-              hover:after:opacity-100 after:duration-300'>
+                    className='w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 !text-white rounded-lg transition-all duration-300 
+                    disabled:opacity-50 hover:scale-[1.02] active:scale-95 transform mt-2 sm:mt-0
+                    after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
+                    after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
+                    before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
+                    hover:after:opacity-100 after:duration-300 relative'>
                     {isLoading ? (
                       <span className='flex items-center justify-center relative z-10'>
                         <svg
-                          className='animate-spin h-5 w-5 mr-3'
+                          className='animate-spin h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3'
                           viewBox='0 0 24 24'>
                           <circle
                             className='opacity-25'
@@ -383,12 +383,12 @@ const Login = () => {
                       </span>
                     ) : (
                       <span
-                        className={`relative z-10 flex items-center gap-2 ${
-                          isHovered ? "text-white" : "text-gray-300 mx-3"
+                        className={`relative z-10 flex items-center justify-center gap-2 ${
+                          isHovered ? "text-white" : "text-gray-300"
                         }`}>
                         <span>Continue</span>
                         <svg
-                          className={`w-4 h-4 transition-transform duration-300 ${
+                          className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 ${
                             isHovered ? "translate-x-1 opacity-100" : "hidden"
                           }`}
                           fill='none'
@@ -412,16 +412,16 @@ const Login = () => {
           {sendOTPSuccess && (
             <form
               onSubmit={handleVerifySubmit}
-              className='w-full max-w-2xl px-4'>
+              className='w-full max-w-md sm:max-w-2xl px-2 sm:px-4'>
               <div className='flex flex-col gap-4'>
-                <div className='flex gap-4 items-center'>
-                  <div className='flex-1 max-w-[400px] relative group'>
-                    <RiLockPasswordLine className='absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
+                <div className='flex flex-col sm:flex-row gap-4 items-start sm:items-center'>
+                  <div className='flex-1 w-full max-w-full sm:max-w-[400px] relative group'>
+                    <RiLockPasswordLine className='absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
                     <label
                       htmlFor='otp'
-                      className={`absolute left-12 transition-all duration-300 pointer-events-none
+                      className={`absolute left-10 sm:left-12 transition-all duration-300 pointer-events-none
                       ${isFocused || otp
-                        ? "-translate-y-7 text-sm text-orange-500 left-4"
+                        ? "-translate-y-7 text-xs sm:text-sm text-orange-500 left-3 sm:left-4"
                         : "translate-y-3 text-gray-400"
                       }`}>
                       Enter OTP
@@ -434,16 +434,16 @@ const Login = () => {
                       onChange={handleOTPChange}
                       onFocus={() => setIsFocused(true)}
                       onBlur={() => setIsFocused(false)}
-                      className={`w-full pl-12 pr-4 py-3 rounded-lg 
+                      className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg 
                       bg-white/5 hover:bg-white/10 focus:bg-white/10
                       border ${otpError ? "border-red-500" : "border-gray-300"}
                       text-white focus:outline-none focus:ring-2 
                       ${otpError ? "focus:ring-red-500" : "focus:ring-orange-500"}
-                      transition-all duration-300`}
+                      transition-all duration-300 text-sm sm:text-base`}
                       required
                     />
                     {otpError && (
-                      <span className='absolute left-0 -bottom-6 text-red-500 text-sm'>
+                      <span className='absolute left-0 -bottom-6 text-red-500 text-xs sm:text-sm'>
                         {otpError}
                       </span>
                     )}
@@ -453,16 +453,16 @@ const Login = () => {
                     disabled={isLoading}
                     onMouseEnter={() => setIsVerifyHovered(true)}
                     onMouseLeave={() => setIsVerifyHovered(false)}
-                    className='relative px-6 py-3 !text-white rounded-lg transition-all duration-300 
-                    disabled:opacity-50 hover:scale-102 active:scale-90 transform
+                    className='w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 !text-white rounded-lg transition-all duration-300 
+                    disabled:opacity-50 hover:scale-[1.02] active:scale-95 transform mt-2 sm:mt-0
                     after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
                     after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
                     before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
-                    hover:after:opacity-100 after:duration-300'>
+                    hover:after:opacity-100 after:duration-300 relative'>
                     {isLoading ? (
                       <span className='flex items-center justify-center relative z-10'>
                         <svg
-                          className='animate-spin h-5 w-5 mr-3'
+                          className='animate-spin h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3'
                           viewBox='0 0 24 24'>
                           <circle
                             className='opacity-25'
@@ -483,12 +483,12 @@ const Login = () => {
                       </span>
                     ) : (
                       <span
-                        className={`relative z-10 flex items-center gap-2 ${
-                          isVerifyHovered ? "text-white" : "text-gray-300 mx-3"
+                        className={`relative z-10 flex items-center justify-center gap-2 ${
+                          isVerifyHovered ? "text-white" : "text-gray-300"
                         }`}>
                         <span>Verify</span>
                         <svg
-                          className={`w-4 h-4 transition-transform duration-300 ${
+                          className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 ${
                             isVerifyHovered
                               ? "translate-x-1 opacity-100"
                               : "hidden"
@@ -512,7 +512,7 @@ const Login = () => {
                   type='button'
                   disabled={!canResend || isLoading || countdown > 0}
                   onClick={handleResendOTP}
-                  className={`self-start ml-1 text-sm flex items-center gap-2 transition-all duration-300
+                  className={`self-start ml-1 text-xs sm:text-sm flex items-center gap-2 transition-all duration-300
                     ${
                       countdown > 0
                         ? "text-gray-400 cursor-not-allowed"
@@ -521,7 +521,7 @@ const Login = () => {
                   `}>
                   {countdown > 0 ? (
                     <>
-                      <svg className='animate-spin h-4 w-4' viewBox='0 0 24 24'>
+                      <svg className='animate-spin h-3 w-3 sm:h-4 sm:w-4' viewBox='0 0 24 24'>
                         <circle
                           className='opacity-25'
                           cx='12'
@@ -534,7 +534,7 @@ const Login = () => {
                         <path
                           className='opacity-75'
                           fill='currentColor'
-                          d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                          d='M4 12a8 8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                         />
                       </svg>
                       <span>Resend OTP in {countdown}s</span>
@@ -542,7 +542,7 @@ const Login = () => {
                   ) : (
                     <>
                       <svg
-                        className='w-4 h-4'
+                        className='w-3 h-3 sm:w-4 sm:h-4'
                         fill='none'
                         stroke='currentColor'
                         viewBox='0 0 24 24'>
@@ -562,31 +562,25 @@ const Login = () => {
           )}
         </>
       ) : roles.length > 1 ? (
-        <div className='flex flex-col items-center gap-6 relative'>
-          <h2 className='text-white text-2xl'>Select your dashboard</h2>
-          <div className='flex gap-6'>
+        <div className='flex flex-col items-center gap-6 relative px-4'>
+          <h2 className='text-white text-xl sm:text-2xl text-center'>Select your dashboard</h2>
+          <div className='flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-md'>
             <div
               onClick={() => {
                 sessionStorage.setItem("role", "admin");
                 router.push("/pages/admin/admindashboard");
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  sessionStorage.setItem("role", "admin");
-                  router.push("/pages/admin/admindashboard");
-                }
-              }}
-              tabIndex={0}
-              role="button"
-              aria-label="Admin Dashboard"
-              className='cursor-pointer p-6 rounded-lg 
+              className='cursor-pointer p-4 sm:p-6 rounded-lg 
               bg-white/5 hover:bg-white/10 active:bg-orange-500/20
               border border-gray-300 hover:border-orange-500 
-              active:scale-95 transition-all relative group
-              focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500'>
-              <MdAdminPanelSettings className='text-4xl text-orange-500 mb-4 transition-transform group-hover:scale-110' />
-              <h3 className='text-white text-xl mb-2'>Admin Dashboard</h3>
-              <p className='text-gray-400'>Manage mentors/mentees</p>
+              active:scale-95 transition-all relative group w-full'>
+              <div className='flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0'>
+                <MdAdminPanelSettings className='text-3xl sm:text-4xl text-orange-500 sm:mb-4 transition-transform group-hover:scale-110' />
+                <div>
+                  <h3 className='text-white text-lg sm:text-xl mb-0 sm:mb-2'>Admin Dashboard</h3>
+                  <p className='text-gray-400 text-sm'>Manage mentors/mentees</p>
+                </div>
+              </div>
             </div>
 
             <div
@@ -594,29 +588,23 @@ const Login = () => {
                 sessionStorage.setItem("role", "mentor");
                 router.push("/pages/mentordashboard");
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  sessionStorage.setItem("role", "mentor");
-                  router.push("/pages/mentordashboard");
-                }
-              }}
-              tabIndex={0}
-              role="button"
-              aria-label="Mentor Dashboard"
-              className='cursor-pointer p-6 rounded-lg 
+              className='cursor-pointer p-4 sm:p-6 rounded-lg 
               bg-white/5 hover:bg-white/10 active:bg-orange-500/20
               border border-gray-300 hover:border-orange-500 
-              active:scale-95 transition-all relative group
-              focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500'>
-              <MdGroups className='text-4xl text-orange-500 mb-4 transition-transform group-hover:scale-110' />
-              <h3 className='text-white text-xl mb-2'>Mentor Dashboard</h3>
-              <p className='text-gray-400'>Manage meetings</p>
+              active:scale-95 transition-all relative group w-full'>
+              <div className='flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0'>
+                <MdGroups className='text-3xl sm:text-4xl text-orange-500 sm:mb-4 transition-transform group-hover:scale-110' />
+                <div>
+                  <h3 className='text-white text-lg sm:text-xl mb-0 sm:mb-2'>Mentor Dashboard</h3>
+                  <p className='text-gray-400 text-sm'>Manage meetings</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       ) : (
         <div className='flex justify-center'>
-          <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500'></div>
+          <div className='animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-orange-500'></div>
         </div>
       )}
     </div>

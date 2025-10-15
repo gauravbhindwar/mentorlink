@@ -446,7 +446,7 @@ const AddMeetingInfo = () => {
                         }}
                         onClick={() => setShowSemesterOptions(true)}
                         disabled={!academicYear}
-                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm disabled:opacity-50'
+                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder-white text-sm disabled:opacity-50'
                       />
                       {showSemesterOptions && (
                         <div className='absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg'>

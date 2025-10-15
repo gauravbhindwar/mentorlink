@@ -253,7 +253,7 @@ const ArchiveReportGenerator = ({ searchParams, inlineModeStyles }) => {
                 if (!momDoc?.props) continue;
 
                 const momBlob = await pdf(momDoc).toBlob();
-                const safeFileName = `${formatDate(meeting.meeting_date)}_MOM_${meeting.meeting_id}.pdf`;
+                const safeFileName = `Semester-${meeting.semester}_${formatDate(meeting.meeting_date)}_MOM_${meeting.meeting_id}.pdf`;
                 await momFolder.file(safeFileName, momBlob);
               } catch (err) {
                 console.warn(`Failed to process meeting ${meeting.meeting_id}:`, err);

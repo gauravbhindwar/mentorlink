@@ -16,9 +16,6 @@ const MeetingReportGenerator = () => {
   const [academicSessions, setAcademicSessions] = useState([]);
   const [mentorMUJid, setMentorMUJid] = useState("");
   const [mentorName, setMentorName] = useState("");
-  // const [consolidatedData, setConsolidatedData] = useState({});
-  // const [isGeneratingConsolidated, setIsGeneratingConsolidated] =
-  //   useState(false);
 
   // Utility functions
   const getCurrentAcademicYear = () => {
@@ -101,13 +98,6 @@ const MeetingReportGenerator = () => {
         ? startYear
         : endYear;
 
-      // console.log("Params for meetingReport:", {
-      //   year: queryYear,
-      //   session: data.academicSession.trim(),
-      //   semester: data.semester,
-      //   mentorMUJid: data.mentorMUJid,
-      // });
-
       const response = await axios.get(
         "/api/admin/manageMeeting/meetingReport",
         {
@@ -163,26 +153,24 @@ const MeetingReportGenerator = () => {
   };
 
   const generatePDFDocument = () => {
-    // Filter meetings to only include those with filled reports
     const meetingsWithReports = meetings.filter(meeting => meeting.isReportFilled);
 
-    // Convert mentee_details array into a Map for quick lookups
     const menteeDetailsMap = new Map();
     meetingsWithReports.forEach((meeting) => {
       meeting.menteeDetails?.forEach((mentee) => {
         if (!menteeDetailsMap.has(mentee.MUJid)) {
           menteeDetailsMap.set(mentee.MUJid, {
             MUJid: mentee.MUJid,
-            name: mentee.name,
+            name: mentee.name || 'Unknown',  // Add fallback
             semester: semester,
             meetingsCount: 0,
-            mentorRemarks: mentee.mentorRemarks || "",
+            mentorRemarks: mentee.mentorRemarks || "N/A",
           });
         }
       });
     });
 
-    // Count meeting attendance for each mentee (only for meetings with reports)
+    // Count meeting attendance
     meetingsWithReports.forEach((meeting) => {
       const presentMentees = meeting.present_mentees || [];
       presentMentees.forEach((menteeMUJid) => {
@@ -194,16 +182,28 @@ const MeetingReportGenerator = () => {
       });
     });
 
-    // Convert Map back to array
     const processedMentees = Array.from(menteeDetailsMap.values());
 
     try {
       return (
         <ConsolidatedDocument
           meetings={meetingsWithReports}
-          mentorName={mentorName}
+          mentorName={mentorName || 'Unknown Mentor'}  // Add fallback
           mentees={processedMentees}
           selectedSemester={semester}
+          styles={{
+            font: {
+              regular: 'Helvetica',
+              bold: 'Helvetica-Bold',
+              italic: 'Helvetica-Oblique'
+            },
+            fontSize: {
+              title: 16,
+              heading: 14,
+              normal: 12,
+              small: 10
+            }
+          }}
         />
       );
     } catch (error) {

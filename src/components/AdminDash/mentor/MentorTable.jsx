@@ -5,14 +5,15 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import InfoIcon from '@mui/icons-material/Info';
 import TransferIcon from '@mui/icons-material/SwapHoriz';
+import SelectIcon from '@mui/icons-material/FilterList'; // Add this import
 import MentorDetailsDialog from './MentorDetailsDialog';
+import SelectiveMenteeTransferDialog from './SelectiveMenteeTransferDialog'; // Add this import
 import { useMemo, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Add this import
 import { Stack } from '@mui/material';
 import TransferLoadingDialog from './TransferLoadingDialog';
-// import NoMenteesFound from './NoMenteesFound';
 import NoMenteesDialog from './NoMenteesDialog';
 
 const BATCH_SIZE = 50;
@@ -53,7 +54,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [loading, setLoading] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState({ open: false, mentor: null });
-  // const [filteredMentors, setFilteredMentors] = useState(mentors);
   const [transferDialog, setTransferDialog] = useState({ open: false, fromMentor: null });
   const [transferEmail, setTransferEmail] = useState('');
   const [transferLoading, setTransferLoading] = useState(false);
@@ -68,21 +68,14 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     mentorEmailid: ''
   });
   const [baseData, setBaseData] = useState([]);
-  // const [localData, setLocalData] = useState([]);
-  // const [loadingProgress, setLoadingProgress] = useState(0);
-  // const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
   const cachedData = useRef(new Map());
   const batchKey = useRef('');
-
   const [menteeStats, setMenteeStats] = useState(null);
-  // const [selectedSemester, setSelectedSemester] = useState(null);
-  // const [semesterMentees, setSemesterMentees] = useState([]);
-  // const [loadingMentees, setLoadingMentees] = useState(false);
   const [targetMenteeStats, setTargetMenteeStats] = useState(null);
   const [showTransferLoading, setShowTransferLoading] = useState(false);
   const [showNoMenteesDialog, setShowNoMenteesDialog] = useState(false);
+  const [selectiveMenteeDialog, setSelectiveMenteeDialog] = useState(false); // Add this state
 
-  // Add function to fetch mentee statistics
   const fetchMenteeStats = async (mentorId) => {
     try {
       const response = await axios.get(`/api/admin/getMenteesCount?mentorMujid=${mentorId}`);
@@ -93,21 +86,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   };
 
-  // Add function to fetch mentees for a specific semester
-  // const fetchSemesterMentees = async (mentorId, semester) => {
-  //   setLoadingMentees(true);
-  //   try {
-  //     const response = await axios.get(`/api/admin/getMenteesByMentor?mentorMujid=${mentorId}&semester=${semester}`);
-  //     setSemesterMentees(response.data.mentees);
-  //   } catch (error) {
-  //     console.error('Error fetching semester mentees:', error);
-  //     toast.error('Error loading mentee details', toastConfig);
-  //   } finally {
-  //     setLoadingMentees(false);
-  //   }
-  // };
-
-  // Add this function to get data from cache or fetch
   const getDataFromCacheOrFetch = async (academicYear, academicSession) => {
     const cacheKey = `${academicYear}-${academicSession}`;
 
@@ -131,7 +109,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   };
 
-  // Define toast configuration
   const toastConfig = {
     position: "bottom-right",
     autoClose: 3000,
@@ -152,7 +129,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   };
 
-  // Add this function to handle delete click
   const handleDeleteClick = async (mujid) => {
     try {
       const response = await axios.get(`/api/admin/manageUsers/checkMentorMentees?mentorMujid=${mujid}`);
@@ -171,15 +147,12 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   };
 
-  // Update handleConfirmDelete to properly update the table
   const handleConfirmDelete = async () => {
     if (deleteDialog.mujid) {
       setLoading(true);
       try {
         await onDeleteClick(deleteDialog.mujid);
-        // toast.success('Mentor deleted successfully', toastConfig);
         
-        // Update local data immediately
         const updatedMentors = mentors.filter(mentor => mentor.MUJid !== deleteDialog.mujid);
         if (onDataUpdate) {
           onDataUpdate(updatedMentors);
@@ -195,13 +168,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   };
 
-  // Add transfer handler
   const handleTransferMentees = async () => {
     setSearchingMentor(true);
     setTransferError('');
     
     try {
-      // Update query to be more specific
       const findMentorResponse = await axios.get(`/api/admin/manageUsers/manageMentor`, {
         params: {
           email: transferEmail,
@@ -214,35 +185,28 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
       
       if (!foundMentor) {
         setTransferError('No mentor found with this email in the same academic year and session');
-        // toast.error('No mentor found with this email in the same academic year and session', toastConfig);
         setSearchingMentor(false);
         return;
       }
 
-      // Prevent self-transfer
       if (foundMentor.MUJid === transferDialog.fromMentor.MUJid) {
         setTransferError('Cannot transfer mentees to the same mentor');
-        // toast.error('Cannot transfer mentees to the same mentor', toastConfig);
         setSearchingMentor(false);
         return;
       }
 
       setTargetMentor(foundMentor);
-      // toast.success('Mentor found successfully', toastConfig);
       setSearchingMentor(false);
 
-      // Fetch target mentor's mentee stats
       const menteeStatsResponse = await axios.get(`/api/admin/getMenteesCount?mentorMujid=${foundMentor.MUJid}`);
       setTargetMenteeStats(menteeStatsResponse.data.counts);
 
     } catch (error) {
       setTransferError(error.response?.data?.message || 'Error finding mentor');
-      // toast.error(error.response?.data?.message || 'Error finding mentor', toastConfig);
       setSearchingMentor(false);
     }
   };
 
-  // Add new function to handle the actual transfer
   const handleConfirmTransfer = async () => {
     setTransferLoading(true);
     setShowTransferLoading(true);
@@ -273,14 +237,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   };
 
-  // Update processedMentors function to include comprehensive search
   const processedMentors = useMemo(() => {
-    // Return empty array if mentors is null/undefined
     if (!mentors) return [];
 
     const searchFields = ['name', 'email', 'MUJid', 'phone_number', 'academicYear', 'academicSession'];
     
-    // Only filter if we have data and a filter value
     const menteesToProcess = (emailFilter && mentors.length > 0)
       ? mentors.filter(mentor => {
           const searchValue = emailFilter.toLowerCase();
@@ -305,7 +266,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }));
   }, [mentors, emailFilter]);
 
-  // Add this effect to handle initial data loading
   useEffect(() => {
     const fetchDataInBatches = async () => {
       if (!mentors || mentors.length === 0) {
@@ -324,12 +284,10 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
           });
 
           const initialData = initialResponse.data;
-          // setLoadingProgress(80);
           
           cachedData.current.set(currentKey, initialData);
           batchKey.current = currentKey;
 
-          // setIsBackgroundLoading(true);
           const remainingResponse = await axios.get('/api/admin/manageUsers/manageMentor', {
             params: {
               ...filters,
@@ -340,13 +298,10 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
 
           const allData = [...initialData, ...remainingResponse.data];
           cachedData.current.set(currentKey, allData);
-          // setLoadingProgress(100);
-          // setIsBackgroundLoading(false);
 
           return allData;
         } catch (error) {
           console.error('Error fetching data:', error);
-          // setLoadingProgress(100);
           return [];
         }
       }
@@ -355,7 +310,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     fetchDataInBatches();
   }, [filters.academicYear, filters.academicSession]);
 
-  // Add this effect to handle filtering
   useEffect(() => {
     const fetchAndCacheData = async () => {
       const currentKey = `${filters.academicYear}-${filters.academicSession}`;
@@ -363,7 +317,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
       if (cachedData.current.has(currentKey)) {
         const cachedResult = cachedData.current.get(currentKey);
         setBaseData(Array.isArray(cachedResult) ? cachedResult : cachedResult?.mentors || []);
-        // setLocalData(Array.isArray(cachedResult) ? cachedResult : cachedResult?.mentors || []);
         return;
       }
       
@@ -380,11 +333,9 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
         const mentorsData = initialResponse.data?.mentors || [];
         cachedData.current.set(currentKey, mentorsData);
         setBaseData(mentorsData);
-        // setLocalData(mentorsData);
       } catch (error) {
         console.error('Error fetching data:', error);
         setBaseData([]);
-        // setLocalData([]);
       }
     };
 
@@ -393,7 +344,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   }, [filters.academicYear, filters.academicSession]);
 
-  // Add this effect to handle detailed filtering
   useEffect(() => {
     const applyFilters = async () => {
       let dataToFilter = baseData;
@@ -401,25 +351,11 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
       if (!dataToFilter.length && filters.academicYear && filters.academicSession) {
         dataToFilter = await getDataFromCacheOrFetch(filters.academicYear, filters.academicSession);
       }
-
-      // const filteredResults = dataToFilter.filter(mentor => {
-      //   const matchesDepartment = !filters.department || 
-      //     mentor.department?.toLowerCase().includes(filters.department.toLowerCase());
-      //   const matchesMentorMujid = !filters.mentorMujid || 
-      //     mentor.MUJid?.toLowerCase().includes(filters.mentorMujid.toLowerCase());
-      //   const matchesMentorEmail = !filters.mentorEmailid || 
-      //     mentor.email?.toLowerCase().includes(filters.mentorEmailid.toLowerCase());
-
-      //   return matchesDepartment && matchesMentorMujid && matchesMentorEmail;
-      // });
-
-      // setLocalData(filteredResults);
     };
 
     applyFilters();
   }, [filters, baseData]);
 
-  // Initialize filters with current academic year/session
   useEffect(() => {
     const initializeFilters = () => {
       const currentDate = new Date();
@@ -446,40 +382,16 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     initializeFilters();
   }, [mentors]);
 
-  // Update useEffect to handle mentors prop changes
   useEffect(() => {
     if (Array.isArray(mentors)) {
-      // setLocalData(mentors);
       setBaseData(mentors);
     } else if (mentors?.mentors) {
-      // setLocalData(mentors.mentors);
       setBaseData(mentors.mentors);
     } else {
-      // setLocalData([]);
       setBaseData([]);
     }
-  }, [mentors]); // Add mentors as dependency
+  }, [mentors]);
 
-  // const [displayedMentors, setDisplayedMentors] = useState([]);
-
-  // useEffect(() => {
-  //   if (!mentors?.length) {
-  //     setDisplayedMentors([]);
-  //     return;
-  //   }
-
-    // If there's an email filter, apply it
-  //   if (emailFilter) {
-  //     const filtered = mentors.filter(mentor => 
-  //       mentor.email.toLowerCase().includes(emailFilter.toLowerCase())
-  //     );
-  //     setDisplayedMentors(filtered);
-  //   } else {
-  //     setDisplayedMentors(mentors);
-  //   }
-  // }, [mentors, emailFilter]);
-
-  // Update the column definitions to highlight search matches
   const columns = [
     { 
       field: 'serialNumber',    
@@ -638,16 +550,14 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
         display: 'flex', 
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#f5f5f5', // Changed from rgba(255, 255, 255, 0.9) to be more visible
+        color: '#f5f5f5',
         fontSize: '0.95rem',
         fontWeight: 600,
         width: '100%',
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
         padding: '8px',
-        // Add text shadow for better contrast
         textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
-        // Add hover effect for better interaction feedback
         '&:hover': {
           color: '#ffffff',
           textShadow: '0 1px 4px rgba(249, 115, 22, 0.3)',
@@ -665,7 +575,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
       justifyContent: 'space-between',
       alignItems: 'center',
       borderBottom: '1px solid rgba(249, 115, 22, 0.3)',
-      // background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
       background: 'rgba(0, 0, 0, 0.8)',
     }}>
       <Typography variant="h6" sx={{ 
@@ -702,7 +611,6 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     </Box>
   );
 
-  // Add this effect to sync filters with academic periods
   useEffect(() => {
     if (filters.academicSession) {
       const [sessionType, year] = filters.academicSession.split(' ');
@@ -717,584 +625,564 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     }
   }, [filters.academicSession]);
 
-  // Update useEffect to sync with parent's filters
   useEffect(() => {
     if (mentors?.length > 0 && filters.academicYear && filters.academicSession) {
-      // setLocalData(mentors);
       setBaseData(mentors);
       const cacheKey = `${filters.academicYear}-${filters.academicSession}`;
       cachedData.current.set(cacheKey, mentors);
     }
   }, [mentors, filters.academicYear, filters.academicSession]);
 
-  // Move this function up, before any JSX or component usage
-const handleCloseTransferDialog = () => {
-  setTransferDialog({ open: false, fromMentor: null });
-  setTransferEmail('');
-  setTargetMentor(null);
-  setTransferError('');
-  setTargetMenteeStats(null);
-  setShowTransferLoading(false);
-  setShowNoMenteesDialog(false); // Add this line to close the no mentees dialog
-};
+  const handleCloseTransferDialog = () => {
+    setTransferDialog({ open: false, fromMentor: null });
+    setTransferEmail('');
+    setTargetMentor(null);
+    setTransferError('');
+    setTargetMenteeStats(null);
+    setShowTransferLoading(false);
+    setShowNoMenteesDialog(false);
+  };
 
-  // Add a helper to check if mentor has mentees
   const hasMentees = (stats) => {
     return stats && Object.values(stats).some(count => count > 0);
   };
 
-  // Add new component for email suggestions
-const EmailSuggestionField = ({ value, onChange, mentors, error }) => {
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef = useRef(null);
+  const EmailSuggestionField = ({ value, onChange, mentors, error }) => {
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const inputRef = useRef(null);
 
-  const filterSuggestions = (inputValue) => {
-    if (!inputValue || !Array.isArray(mentors)) return [];
-    
-    const inputLower = inputValue.toLowerCase();
-    return mentors
-      .filter(mentor => {
-        // Add null checks for all fields
-        const emailMatch = mentor?.email?.toLowerCase()?.includes(inputLower);
-        const nameMatch = mentor?.name?.toLowerCase()?.includes(inputLower);
-        const mujidMatch = mentor?.MUJid?.toString()?.toLowerCase()?.includes(inputLower);
-        
-        return emailMatch || nameMatch || mujidMatch;
-      })
-      .slice(0, 5);
-  };
-
-  useEffect(() => {
-    // Only update suggestions if there's a value and mentors exist
-    if (value && Array.isArray(mentors)) {
-      setSuggestions(filterSuggestions(value));
-    } else {
-      setSuggestions([]);
-    }
-  }, [value, mentors]);
-
-  const handleInputChange = (e) => {
-    const inputValue = e.target.value;
-    onChange(inputValue);
-    setShowSuggestions(true);
-  };
-
-  const handleSuggestionClick = (email) => {
-    onChange(email);
-    setShowSuggestions(false);
-  };
-
-  // Add click outside handler
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (inputRef.current && !inputRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
+    const filterSuggestions = (inputValue) => {
+      if (!inputValue || !Array.isArray(mentors)) return [];
+      
+      const inputLower = inputValue.toLowerCase();
+      return mentors
+        .filter(mentor => {
+          const emailMatch = mentor?.email?.toLowerCase()?.includes(inputLower);
+          const nameMatch = mentor?.name?.toLowerCase()?.includes(inputLower);
+          const mujidMatch = mentor?.MUJid?.toString()?.toLowerCase()?.includes(inputLower);
+          
+          return emailMatch || nameMatch || mujidMatch;
+        })
+        .slice(0, 5);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    useEffect(() => {
+      if (value && Array.isArray(mentors)) {
+        setSuggestions(filterSuggestions(value));
+      } else {
+        setSuggestions([]);
+      }
+    }, [value, mentors]);
 
-  return (
-    <Box sx={{ position: 'relative', width: '100%' }} ref={inputRef}>
-      <TextField
-        fullWidth
-        autoFocus  // <-- Added autoFocus so the input remains selected
-        placeholder="Search by email, name, or MUJID..."
-        value={value}
-        onChange={handleInputChange}
-        onFocus={() => setShowSuggestions(true)}
-        error={!!error}
-        helperText={error}
-        sx={{
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '12px',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            color: 'white',
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(16, 185, 129, 0.3)',
-            },
-            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#10B981',
-              borderWidth: '2px',
-            },
-          },
-          '& .MuiFormHelperText-root': {
-            position: 'absolute',
-            bottom: '-24px',
-          }
-        }}
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <Box sx={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          mt: 1,
-          bgcolor: 'rgba(0, 0, 0, 0.95)',
-          borderRadius: '12px',
-          border: '1px solid rgba(16, 185, 129, 0.2)',
-          zIndex: 1000,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-          backdropFilter: 'blur(10px)',
-          maxHeight: '300px',
-          overflowY: 'auto'
-        }}>
-          {suggestions.map((mentor) => (
-            <Box
-              key={mentor?.MUJid || Math.random()} // Add fallback for key
-              sx={{
-                p: 2,
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'rgba(16, 185, 129, 0.1)',
-                },
-                borderBottom: '1px solid rgba(16, 185, 129, 0.1)'
-              }}
-              onClick={() => handleSuggestionClick(mentor?.email || '')}
-            >
-              <Typography sx={{ color: 'white', fontSize: '0.9rem' }}>
-                {mentor?.email || 'No email'}
-              </Typography>
-              <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.8rem' }}>
-                {mentor?.name || 'No name'} • {mentor?.MUJid || 'No ID'}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      )}
-    </Box>
-  );
-};
+    const handleInputChange = (e) => {
+      const inputValue = e.target.value;
+      onChange(inputValue);
+      setShowSuggestions(true);
+    };
 
-  // Update the transfer dialog content
-const renderTransferDialogContent = () => (
-  <DialogContent sx={{ 
-    my: 2, 
-    px: 4, 
-    py: 3,
-    minWidth: '900px',
-    maxHeight: '85vh',
-    overflow: 'auto',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    backdropFilter: 'blur(10px)',
-  }}>
-    {/* <Box sx={{ mb: 4 }}>
-      <Typography variant="h6" sx={{ 
-        color: '#10B981', 
-        mb: 1,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        fontSize: '1.5rem',
-        fontWeight: 600
-      }}>
-        <TransferIcon /> Mentee Transfer
-      </Typography>
-      <Typography variant="body1" sx={{ 
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: '1rem'
-      }}>
-        Transfer mentees between mentors in the same academic period
-      </Typography>
-    </Box> */}
+    const handleSuggestionClick = (email) => {
+      onChange(email);
+      setShowSuggestions(false);
+    };
 
-    {/* Search Section - Always Visible */}
-    <Box sx={{ 
-      mb: 4,
-      p: 3,
-      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-      borderRadius: '12px',
-      border: '1px solid rgba(16, 185, 129, 0.2)',
-    }}>
-      <Typography variant="subtitle1" sx={{ 
-        color: '#10B981',
-        mb: 2,
-        fontWeight: 500
-      }}>
-        Search Target Mentor
-      </Typography>
-      <Box sx={{ 
-        display: 'flex',
-        gap: 2,
-        alignItems: 'flex-start'
-      }}>
-        <EmailSuggestionField
-          value={transferEmail}
-          onChange={setTransferEmail}
-          mentors={mentors}
-          error={transferError}
-        />
-        <Button
-          onClick={handleTransferMentees}
-          disabled={!transferEmail || searchingMentor}
-          variant="contained"
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (inputRef.current && !inputRef.current.contains(event.target)) {
+          setShowSuggestions(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+      <Box sx={{ position: 'relative', width: '100%' }} ref={inputRef}>
+        <TextField
+          fullWidth
+          autoFocus
+          placeholder="Search by email, name, or MUJID..."
+          value={value}
+          onChange={handleInputChange}
+          onFocus={() => setShowSuggestions(true)}
+          error={!!error}
+          helperText={error}
           sx={{
-            bgcolor: '#10B981',
-            height: '56px',
-            px: 4,
-            whiteSpace: 'nowrap',
-            '&:hover': { bgcolor: '#059669' },
-            '&.Mui-disabled': {
-              bgcolor: 'rgba(16, 185, 129, 0.3)',
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              color: 'white',
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(16, 185, 129, 0.3)',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#10B981',
+                borderWidth: '2px',
+              },
+            },
+            '& .MuiFormHelperText-root': {
+              position: 'absolute',
+              bottom: '-24px',
             }
           }}
-        >
-          {searchingMentor ? (
-            <CircularProgress size={24} sx={{ color: 'white' }} />
-          ) : (
-            'Search Mentor'
-          )}
-        </Button>
-      </Box>
-    </Box>
-
-    <Box sx={{ 
-      display: 'grid', 
-      gridTemplateColumns: '1fr 80px 1fr', 
-      gap: 3,
-      alignItems: 'start'
-    }}>
-      {/* Source Mentor Card */}
-      <Box sx={{
-        p: 3,
-        bgcolor: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          bgcolor: 'rgba(255, 255, 255, 0.08)',
-          transform: 'translateY(-2px)',
-          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
-        }
-      }}>
-        <Typography variant="h6" sx={{ 
-          color: '#fff',
-          mb: 3,
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1
-        }}>
-          Source Mentor
-          <Box sx={{ 
-            ml: 'auto',
-            px: 2,
-            py: 0.5,
-            bgcolor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            color: 'rgba(255, 255, 255, 0.7)'
+        />
+        {showSuggestions && suggestions.length > 0 && (
+          <Box sx={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            mt: 1,
+            bgcolor: 'rgba(0, 0, 0, 0.95)',
+            borderRadius: '12px',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            zIndex: 1000,
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            backdropFilter: 'blur(10px)',
+            maxHeight: '300px',
+            overflowY: 'auto'
           }}>
-            {transferDialog.fromMentor?.MUJid}
-          </Box>
-        </Typography>
-        
-        <Box sx={{ mb: 3 }}>
-          <Typography sx={{ 
-            color: '#fff',
-            fontWeight: 500,
-            fontSize: '1.1rem'
-          }}>
-            {transferDialog.fromMentor?.name}
-          </Typography>
-          <Typography sx={{ 
-            color: 'rgba(255, 255, 255, 0.7)',
-            fontSize: '0.9rem'
-          }}>
-            {transferDialog.fromMentor?.email}
-          </Typography>
-        </Box>
-
-        {menteeStats && (
-          <Box>
-            <Typography variant="subtitle2" sx={{ 
-              color: '#10B981', 
-              mb: 2,
-              fontWeight: 500
-            }}>
-              Current Mentees
-            </Typography>
-            {menteeStats ? (
-              hasMentees(menteeStats) ? (
-                <Stack spacing={1.5}>
-                  {Object.entries(menteeStats).map(([semester, count]) => (
-                    <Box key={semester} sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      p: 2,
-                      bgcolor: 'rgba(255, 255, 255, 0.03)',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(255, 255, 255, 0.05)'
-                    }}>
-                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-                        Semester {semester}
-                      </Typography>
-                      <Typography sx={{ 
-                        color: '#10B981',
-                        fontWeight: 600,
-                        bgcolor: 'rgba(16, 185, 129, 0.1)',
-                        px: 2,
-                        py: 0.5,
-                        borderRadius: '6px'
-                      }}>
-                        {count} mentees
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              ) : (
-                // Remove the inline NoMenteesFound component
-                <Box sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  p: 3
-                }}>
-                  <Typography sx={{ 
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    fontStyle: 'italic'
-                  }}>
-                    No mentees assigned
-                  </Typography>
-                </Box>
-              )
-            ) : (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center',
-                py: 2 
-              }}>
-                <CircularProgress size={24} sx={{ color: '#10B981' }} />
+            {suggestions.map((mentor) => (
+              <Box
+                key={mentor?.MUJid || Math.random()}
+                sx={{
+                  p: 2,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  },
+                  borderBottom: '1px solid rgba(16, 185, 129, 0.1)'
+                }}
+                onClick={() => handleSuggestionClick(mentor?.email || '')}
+              >
+                <Typography sx={{ color: 'white', fontSize: '0.9rem' }}>
+                  {mentor?.email || 'No email'}
+                </Typography>
+                <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.8rem' }}>
+                  {mentor?.name || 'No name'} • {mentor?.MUJid || 'No ID'}
+                </Typography>
               </Box>
-            )}
+            ))}
           </Box>
         )}
       </Box>
+    );
+  };
 
-      {/* Center Arrow */}
+  const renderTransferDialogContent = () => (
+    <DialogContent sx={{ 
+      my: 2, 
+      px: 4, 
+      py: 3,
+      minWidth: '900px',
+      maxHeight: '85vh',
+      overflow: 'auto',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      backdropFilter: 'blur(10px)',
+    }}>
       <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        height: '100%',
-        pt: 8
-      }}>
-        <TransferIcon sx={{ 
-          fontSize: '2.5rem', 
-          color: '#10B981',
-          animation: targetMentor ? 'pulse 2s infinite' : 'none',
-          '@keyframes pulse': {
-            '0%': { opacity: 0.6, transform: 'scale(1)' },
-            '50%': { opacity: 1, transform: 'scale(1.1)' },
-            '100%': { opacity: 0.6, transform: 'scale(1)' }
-          }
-        }} />
-      </Box>
-
-      {/* Target Mentor Card */}
-      <Box sx={{
-        p: 3,
-        bgcolor: targetMentor ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.02)',
-        borderRadius: '12px',
-        border: `1px solid ${targetMentor ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
-        transition: 'all 0.3s ease',
-        '&:hover': targetMentor ? {
-          bgcolor: 'rgba(16, 185, 129, 0.15)',
-          transform: 'translateY(-2px)',
-          boxShadow: '0 8px 16px rgba(16, 185, 129, 0.1)'
-        } : {}
+        mb: 4,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
         <Typography variant="h6" sx={{ 
-          color: targetMentor ? '#10B981' : '#fff',
-          mb: 3,
-          fontWeight: 600,
+          color: '#10B981', 
           display: 'flex',
           alignItems: 'center',
-          gap: 1
+          gap: 1,
+          fontSize: '1.5rem',
+          fontWeight: 600
         }}>
-          Target Mentor
-          {targetMentor && (
+          <TransferIcon /> Mentee Transfer
+        </Typography>
+        
+        {/* Only show Select Mentees button when a target mentor is found */}
+        {targetMentor && (
+          <Button
+            variant="outlined"
+            startIcon={<SelectIcon />}
+            onClick={() => setSelectiveMenteeDialog(true)}
+            sx={{
+              color: '#10B981',
+              borderColor: 'rgba(16, 185, 129, 0.3)',
+              '&:hover': {
+                borderColor: '#10B981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)'
+              }
+            }}
+          >
+            Select Mentees
+          </Button>
+        )}
+      </Box>
+
+      <Box sx={{ 
+        mb: 4,
+        p: 3,
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderRadius: '12px',
+        border: '1px solid rgba(16, 185, 129, 0.2)',
+      }}>
+        <Typography variant="subtitle1" sx={{ 
+          color: '#10B981',
+          mb: 2,
+          fontWeight: 500
+        }}>
+          Search Target Mentor
+        </Typography>
+        <Box sx={{ 
+          display: 'flex',
+          gap: 2,
+          alignItems: 'flex-start'
+        }}>
+          <EmailSuggestionField
+            value={transferEmail}
+            onChange={setTransferEmail}
+            mentors={mentors}
+            error={transferError}
+          />
+          <Button
+            onClick={handleTransferMentees}
+            disabled={!transferEmail || searchingMentor}
+            variant="contained"
+            sx={{
+              bgcolor: '#10B981',
+              height: '56px',
+              px: 4,
+              whiteSpace: 'nowrap',
+              '&:hover': { bgcolor: '#059669' },
+              '&.Mui-disabled': {
+                bgcolor: 'rgba(16, 185, 129, 0.3)',
+              }
+            }}
+          >
+            {searchingMentor ? (
+              <CircularProgress size={24} sx={{ color: 'white' }} />
+            ) : (
+              'Search Mentor'
+            )}
+          </Button>
+        </Box>
+      </Box>
+
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 80px 1fr', 
+        gap: 3,
+        alignItems: 'start'
+      }}>
+        <Box sx={{
+          p: 3,
+          bgcolor: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '12px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            bgcolor: 'rgba(255, 255, 255, 0.08)',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
+          }
+        }}>
+          <Typography variant="h6" sx={{ 
+            color: '#fff',
+            mb: 3,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            Source Mentor
             <Box sx={{ 
               ml: 'auto',
               px: 2,
               py: 0.5,
-              bgcolor: 'rgba(16, 185, 129, 0.2)',
+              bgcolor: 'rgba(255, 255, 255, 0.1)',
               borderRadius: '8px',
               fontSize: '0.875rem',
-              color: '#10B981'
+              color: 'rgba(255, 255, 255, 0.7)'
             }}>
-              {targetMentor.MUJid}
+              {transferDialog.fromMentor?.MUJid}
+            </Box>
+          </Typography>
+          
+          <Box sx={{ mb: 3 }}>
+            <Typography sx={{ 
+              color: '#fff',
+              fontWeight: 500,
+              fontSize: '1.1rem'
+            }}>
+              {transferDialog.fromMentor?.name}
+            </Typography>
+            <Typography sx={{ 
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '0.9rem'
+            }}>
+              {transferDialog.fromMentor?.email}
+            </Typography>
+          </Box>
+
+          {menteeStats && (
+            <Box>
+              <Typography variant="subtitle2" sx={{ 
+                color: '#10B981', 
+                mb: 2,
+                fontWeight: 500
+              }}>
+                Current Mentees
+              </Typography>
+              {menteeStats ? (
+                hasMentees(menteeStats) ? (
+                  <Stack spacing={1.5}>
+                    {Object.entries(menteeStats).map(([semester, count]) => (
+                      <Box key={semester} sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        p: 2,
+                        bgcolor: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.05)'
+                      }}>
+                        <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                          Semester {semester}
+                        </Typography>
+                        <Typography sx={{ 
+                          color: '#10B981',
+                          fontWeight: 600,
+                          bgcolor: 'rgba(16, 185, 129, 0.1)',
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '6px'
+                        }}>
+                          {count} mentees
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    p: 3
+                  }}>
+                    <Typography sx={{ 
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      fontStyle: 'italic'
+                    }}>
+                      No mentees assigned
+                    </Typography>
+                  </Box>
+                )
+              ) : (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  py: 2 
+                }}>
+                  <CircularProgress size={24} sx={{ color: '#10B981' }} />
+                </Box>
+              )}
             </Box>
           )}
-        </Typography>
+        </Box>
 
-        {targetMentor && (
-          <>
-            <Box sx={{ mb: 3 }}>
-              <Typography sx={{ 
-                color: '#fff',
-                fontWeight: 500,
-                fontSize: '1.1rem'
-              }}>
-                {targetMentor.name}
-              </Typography>
-              <Typography sx={{ 
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '0.9rem'
-              }}>
-                {targetMentor.email}
-              </Typography>
-            </Box>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          height: '100%',
+          pt: 8
+        }}>
+          <TransferIcon sx={{ 
+            fontSize: '2.5rem', 
+            color: '#10B981',
+            animation: targetMentor ? 'pulse 2s infinite' : 'none',
+            '@keyframes pulse': {
+              '0%': { opacity: 0.6, transform: 'scale(1)' },
+              '50%': { opacity: 1, transform: 'scale(1.1)' },
+              '100%': { opacity: 0.6, transform: 'scale(1)' }
+            }
+          }} />
+        </Box>
 
-            {targetMenteeStats && (
-              <Box>
-                <Typography variant="subtitle2" sx={{ 
-                  color: '#10B981', 
-                  mb: 2,
-                  fontWeight: 500
+        <Box sx={{
+          p: 3,
+          bgcolor: targetMentor ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+          borderRadius: '12px',
+          border: `1px solid ${targetMentor ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+          transition: 'all 0.3s ease',
+          '&:hover': targetMentor ? {
+            bgcolor: 'rgba(16, 185, 129, 0.15)',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 16px rgba(16, 185, 129, 0.1)'
+          } : {}
+        }}>
+          {targetMentor && (
+            <>
+              <Box sx={{ mb: 3 }}>
+                <Typography sx={{ 
+                  color: '#fff',
+                  fontWeight: 500,
+                  fontSize: '1.1rem'
                 }}>
-                  Existing Mentees
+                  {targetMentor.name}
                 </Typography>
-                <Stack spacing={1.5}>
-                  {Object.entries(targetMenteeStats).map(([semester, count]) => (
-                    <Box key={semester} sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      p: 2,
-                      bgcolor: 'rgba(16, 185, 129, 0.1)',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(16, 185, 129, 0.2)'
-                    }}>
-                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-                        Semester {semester}
-                      </Typography>
-                      <Typography sx={{ 
-                        color: '#10B981',
-                        fontWeight: 600,
-                        bgcolor: 'rgba(16, 185, 129, 0.2)',
-                        px: 2,
-                        py: 0.5,
-                        borderRadius: '6px'
-                      }}>
-                        {count} mentees
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
+                <Typography sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '0.9rem'
+                }}>
+                  {targetMentor.email}
+                </Typography>
               </Box>
-            )}
-          </>
-        )}
-      </Box>
-    </Box>
-  </DialogContent>
-);
 
-  // Update useEffect to fetch mentee stats when transfer dialog opens
+              {targetMenteeStats && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ 
+                    color: '#10B981', 
+                    mb: 2,
+                    fontWeight: 500
+                  }}>
+                    Existing Mentees
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    {Object.entries(targetMenteeStats).map(([semester, count]) => (
+                      <Box key={semester} sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        p: 2,
+                        bgcolor: 'rgba(16, 185, 129, 0.1)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(16, 185, 129, 0.2)'
+                      }}>
+                        <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                          Semester {semester}
+                        </Typography>
+                        <Typography sx={{ 
+                          color: '#10B981',
+                          fontWeight: 600,
+                          bgcolor: 'rgba(16, 185, 129, 0.2)',
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '6px'
+                        }}>
+                          {count} mentees
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </>
+          )}
+        </Box>
+      </Box>
+    </DialogContent>
+  );
+
   useEffect(() => {
     if (transferDialog.open && transferDialog.fromMentor) {
       fetchMenteeStats(transferDialog.fromMentor.MUJid);
     } else {
       setMenteeStats(null);
-      // setSelectedSemester(null);
-      // setSemesterMentees([]);
     }
   }, [transferDialog.open, transferDialog.fromMentor]);
 
-  // Add this effect to check mentee stats and show dialog
   useEffect(() => {
     if (menteeStats && !hasMentees(menteeStats)) {
       setShowNoMenteesDialog(true);
     }
   }, [menteeStats]);
 
-  // Update the NoMenteesDialog close handler
   const handleNoMenteesClose = () => {
     setShowNoMenteesDialog(false);
-    handleCloseTransferDialog(); // Close transfer dialog as well
+    handleCloseTransferDialog();
+  };
+
+  const handleSelectiveTransferComplete = () => {
+    setSelectiveMenteeDialog(false);
+    handleCloseTransferDialog();
+    if (onDataUpdate) {
+      onDataUpdate([...mentors]);
+    }
   };
 
   return (
     <Box sx={{ 
-       // Responsive height
-        width: '100%',
-        position: 'relative', 
-        overflow: 'hidden',
-        display: 'flex',
-        height: '100%',
-        // flexDirection: 'column',
-        transition: 'all 0.3s ease',
-          }}>
-        <ToastContainer
-          position="bottom-right" 
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="dark"
-          limit={3}
-          style={{
-            minWidth: '300px',
-            maxWidth: '400px'
-          }}
-          toastStyle={{
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            backdropFilter: 'blur(8px)',
-            borderRadius: '8px',
-            border: '1px solid rgba(249, 115, 22, 0.2)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-            fontSize: '0.875rem',
-            padding: '12px 16px',
-          }}
-        />
-        {loading && (
-          <Box sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            zIndex: 10,
-            borderRadius: 2
-          }}>
-            <CircularProgress sx={{ color: '#ea580c', mb: 2 }} />
-            <Typography sx={{ color: 'white' }}>
-          Loading...
-            </Typography>
-          </Box>
-        )}
-        
-        <DataGrid
-          rows={processedMentors || []} // Add fallback empty array
+      width: '100%',
+      position: 'relative', 
+      overflow: 'hidden',
+      display: 'flex',
+      height: '100%',
+      transition: 'all 0.3s ease',
+    }}>
+      <ToastContainer
+        position="bottom-right" 
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+        limit={3}
+        style={{
+          minWidth: '300px',
+          maxWidth: '400px'
+        }}
+        toastStyle={{
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '8px',
+          border: '1px solid rgba(249, 115, 22, 0.2)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          fontSize: '0.875rem',
+          padding: '12px 16px',
+        }}
+      />
+      {loading && (
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          zIndex: 10,
+          borderRadius: 2
+        }}>
+          <CircularProgress sx={{ color: '#ea580c', mb: 2 }} />
+          <Typography sx={{ color: 'white' }}>
+            Loading...
+          </Typography>
+        </Box>
+      )}
+      
+      <DataGrid
+        rows={processedMentors || []}
         columns={columns}
-        getRowId={(row) => row?._id || row?.id || String(Math.random())} // Add safer row ID getter
+        getRowId={(row) => row?._id || row?.id || String(Math.random())}
         initialState={{
           pagination: {
             paginationModel: { pageSize: 10, page: 0 },
           },
         }}
-        pageSizeOptions={[10, 25, 50]}
+        pageSizeOptions={[10, 25, 50,{ value: processedMentors?.length, label: 'All' }]}
         sx={{
-          height: { xs: '500px', lg: '100%' }, // Responsive height
+          height: { xs: '500px', lg: '100%' },
           width: '100%',
           '& .MuiDataGrid-main': {
             overflow: 'auto',
-            minHeight: { xs: '300px', lg: '100vh-250px' }, // Responsive minHeight
-            maxHeight: { xs: '500px', lg: 'calc(100vh - 250px)' }, // Responsive maxHeight
-            height: '100%', // Ensure full height
+            minHeight: { xs: '300px', lg: '100vh-250px' },
+            maxHeight: { xs: '500px', lg: 'calc(100vh - 250px)' },
+            height: '100%',
             flex: 1,
           },
           '& .MuiDataGrid-virtualScroller': {
@@ -1314,12 +1202,12 @@ const renderTransferDialogContent = () => (
                 background: 'rgba(249, 115, 22, 0.7)',
               },
             },
-            height: '100% !important', // Force full height
-            minHeight: { xs: '300px', lg: '200px' }, // Responsive minHeight
-            maxHeight: { xs: '500px', lg: 'unset !important' }, // Responsive maxHeight
+            height: '100% !important',
+            minHeight: { xs: '300px', lg: '200px' },
+            maxHeight: { xs: '500px', lg: 'unset !important' },
           },
           '& .MuiDataGrid-virtualScrollerContent': {
-            minWidth: 'fit-content', // Ensure horizontal scroll works
+            minWidth: 'fit-content',
             height: '100%',
           },
           '& .MuiDataGrid-virtualScrollerRenderZone': {
@@ -1328,7 +1216,7 @@ const renderTransferDialogContent = () => (
           },
           width: '100%',
           height: '100%',
-          minHeight: '400px', // Reduced from 500px
+          minHeight: '400px',
           border: 'none',
           backgroundColor: 'transparent',
           backdropFilter: 'blur(10px)',
@@ -1354,12 +1242,12 @@ const renderTransferDialogContent = () => (
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            backgroundColor: 'rgba(249, 115, 22, 0.15)', // Changed to match MenteeTable
+            backgroundColor: 'rgba(249, 115, 22, 0.15)',
             borderBottom: '2px solid rgba(249, 115, 22, 0.3)',
             transition: 'none !important',
-            minHeight: '56px !important', // Ensure minimum height
+            minHeight: '56px !important',
             '& .MuiDataGrid-columnHeader': {
-              outline: 'none !important', // Remove focus outline
+              outline: 'none !important',
               backgroundColor: 'rgba(0, 0, 0, 0.7)',
               
             }
@@ -1381,11 +1269,19 @@ const renderTransferDialogContent = () => (
             fontWeight: 600,
           },
           '& .MuiDataGrid-footerContainer': {
+            minHeight: '56px !important',
+            maxHeight: '56px !important',
+            borderTop: '2px solid rgba(249, 115, 22, 0.3)',
+            zIndex: 2,
+            borderRadius: '0 0 12px 12px',
+            backdropFilter: 'blur(10px)',
+            marginTop: 'auto',
+            display: 'flex',
             position: 'sticky',
             bottom: 0,
-            bgcolor: 'rgba(0, 0, 0, 0.2)',
             borderTop: '2px solid rgba(249, 115, 22, 0.3)',
             backdropFilter: 'blur(10px)',
+            
           },
           '& .MuiTablePagination-root': {
             color: 'rgba(249, 115, 22, 0.9)',
@@ -1394,9 +1290,31 @@ const renderTransferDialogContent = () => (
             color: 'rgba(249, 115, 22, 0.9)',
           },
           '& .MuiTablePagination-select': {
-            color: 'rgba(249, 115, 22, 0.9)',
+            color: 'rgba(255, 255, 255, 0.9)',
           },
-          flex: 1,
+          '& .MuiTablePagination-selectIcon': {
+            color: '#ea580c',
+          },
+          '& .MuiMenu-paper': {
+            bgcolor: 'rgba(0, 0, 0, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(249, 115, 22, 0.2)',
+          },
+          '& .MuiMenuItem-root': {
+            color: 'rgba(255, 255, 255, 0.9)',
+            '&.Mui-selected': {
+              backgroundColor: 'rgba(249, 115, 22, 0.3)',
+              color: '#ea580c',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: 'rgba(249, 115, 22, 0.4)',
+              },
+            },
+            '&:hover': {
+              backgroundColor: 'rgba(249, 115, 22, 0.1)',
+            },
+          },
+          flex: 2,
           height: '100%',
           maxHeight: '100%',
           '& .MuiDataGrid-row': {
@@ -1498,7 +1416,6 @@ const renderTransferDialogContent = () => (
         </DialogActions>
       </Dialog>
 
-      {/* Add Transfer Dialog */}
       <Dialog
         open={transferDialog.open}
         onClose={handleCloseTransferDialog}
@@ -1573,8 +1490,19 @@ const renderTransferDialogContent = () => (
 
       <NoMenteesDialog
         open={showNoMenteesDialog}
-        onClose={handleNoMenteesClose} // Use the new handler
+        onClose={handleNoMenteesClose}
         mentorName={transferDialog.fromMentor?.name}
+      />
+
+      <SelectiveMenteeTransferDialog
+        open={selectiveMenteeDialog}
+        onClose={() => setSelectiveMenteeDialog(false)}
+        fromMentor={transferDialog.fromMentor}
+        targetMentor={targetMentor}
+        toastConfig={toastConfig}
+        academicYear={transferDialog.fromMentor?.academicYear}
+        academicSession={transferDialog.fromMentor?.academicSession}
+        onTransferComplete={handleSelectiveTransferComplete}
       />
     </Box>
   );

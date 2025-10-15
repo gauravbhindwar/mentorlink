@@ -4,434 +4,499 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import EmailProgress from "../EmailProgress/EmailProgress";
-import { FaVideo, FaBuilding } from "react-icons/fa"; // Add this import at the top
+import { FaVideo, FaBuilding } from "react-icons/fa";
 
 const ScheduleMeetingComponent = () => {
-  const router = useRouter();
-  const [mentorData, setMentorData] = useState(null);
-  const [isDisabled, setDisabled] = useState(true);
-  const [currentSemester, setCurrentSemester] = useState(1);
-  const [mentorId, setMentorId] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
-  const [academicSession, setAcademicSession] = useState("");
-  const [mentees, setMentees] = useState([]);
-  const [availableSemesters, setAvailableSemesters] = useState([]);
-  const [meetingTopic, setMeetingTopic] = useState("");
-  const [dateTime, setDateTime] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [meetingId, setMeetingId] = useState("");
-  const [yearSuggestions, setYearSuggestions] = useState([]);
-  const [showSemesterOptions, setShowSemesterOptions] = useState(false);
-  const [setSessionSuggestions] = useState([]);
-  const [showYearOptions, setShowYearOptions] = useState(false);
-  const [showSessionOptions, setShowSessionOptions] = useState(false);
-  const [customAlert, setCustomAlert] = useState("");
-  const [formattedDate, setFormattedDate] = useState();
-  const [formattedTime, setFormattedTime] = useState("");
-  const yearRef = useRef(null);
-  const sessionRef = useRef(null);
-
-  // const [semesterSuggestions, setSemesterSuggestions] = useState([]);
-  // console.log(semesterSuggestions);
-  const semesterRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(false); // Add this new state
-  const [submitting, setSubmitting] = useState(false);
-
-  const fixedBranch = "CSE CORE";
-
-  const [preventReload, setPreventReload] = useState(false);
-  const [isMeetingOnline, setIsMeetingOnline] = useState(false);
-  const [venue, setVenue] = useState("");
-  const [emailProgress, setEmailProgress] = useState({
-    current: 0,
-    total: 0,
-    show: false,
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const sessionData = window.sessionStorage.getItem("mentorData");
-        if (sessionData) {
-          const parsedData = JSON.parse(sessionData);
-          setMentorData(parsedData);
-          setMentorId(parsedData?.MUJid || "");
-          setAcademicYear(parsedData?.academicYear || "");
-          setAcademicSession(parsedData?.academicSession || "");
-        }
-      } catch (error) {
-        console.error("Error accessing sessionStorage:", error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (preventReload) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [preventReload]);
-
-  const handleMeetingTopicChange = (e) => {
-    let value = e.target.value;
-    // Only allow uppercase letters and numbers
-    // if (!/^[A-Z0-9]*$/.test(value)) return;
-    setMeetingTopic(value);
-  };
-
-  // const handleMentorIdChange = (e) => {
-  //   let value = e.target.value.toUpperCase();
-  //   // Only allow uppercase letters and numbers
-  //   if (!/^[A-Z0-9]*$/.test(value)) return;
-  //   setMentorId(value);
-  // };
-
-  const formatDateTime = (value) => {
-    if (!value) return "";
-    const date = new Date(value);
-
-    // Format date and time with explicit AM/PM
-    const formattedDate = date.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
+    const router = useRouter();
+    const [mentorData, setMentorData] = useState(null);
+    const [isDisabled, setDisabled] = useState(true);
+    const [currentSemester, setCurrentSemester] = useState(1);
+    const [mentorId, setMentorId] = useState("");
+    const [academicYear, setAcademicYear] = useState("");
+    const [academicSession, setAcademicSession] = useState("");
+    const [mentees, setMentees] = useState([]);
+    const [availableSemesters, setAvailableSemesters] = useState([]);
+    const [meetingTopic, setMeetingTopic] = useState("");
+    const [dateTime, setDateTime] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [meetingId, setMeetingId] = useState("");
+    const [yearSuggestions, setYearSuggestions] = useState([]);
+    const [showSemesterOptions, setShowSemesterOptions] = useState(false);
+    const [setSessionSuggestions] = useState([]);
+    const [showYearOptions, setShowYearOptions] = useState(false);
+    const [showSessionOptions, setShowSessionOptions] = useState(false);
+    const [customAlert, setCustomAlert] = useState("");
+    const [formattedDate, setFormattedDate] = useState();
+    const [formattedTime, setFormattedTime] = useState("");
+    const yearRef = useRef(null);
+    const sessionRef = useRef(null);
+    const semesterRef = useRef(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [allowBackdateMeetings, setAllowBackdateMeetings] = useState(false);
+    const fixedBranch = "CSE CORE";
+    const [preventReload, setPreventReload] = useState(false);
+    const [isMeetingOnline, setIsMeetingOnline] = useState(false);
+    const [venue, setVenue] = useState("");
+    const [emailProgress, setEmailProgress] = useState({
+        current: 0,
+        total: 0,
+        show: false,
     });
 
-    const formattedTime = date
-      .toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .toUpperCase(); // Makes AM/PM uppercase
-    setFormattedDate(formattedDate);
-    setFormattedTime(formattedTime);
-  };
+    const [selectedDate, setSelectedDate] = useState("");
+    const [selectedHour, setSelectedHour] = useState("12");
+    const [selectedMinute, setSelectedMinute] = useState("00");
+    const [selectedAmPm, setSelectedAmPm] = useState("PM");
+    const [showDateTimePicker, setShowDateTimePicker] = useState(false);
 
-  useEffect(() => {
-    const generateMeetingId = async () => {
-      try {
-        const response = await axios.get("/api/meeting/mentors/schmeeting", {
-          params: {
-            mentor_id: mentorId,
-            semester: currentSemester,
-            session: academicSession,
-            year: academicYear,
-          },
-        });
-
-        if (response.data) {
-          const meetingsHeld = response.data?.meetings;
-
-          // console.log("Mentor meetings:", meetingsHeld);
-          // console.log('Meeting count:', meetingCount);
-          //MEETING LIMIT CURRENTLY DISABLED
-          // if(meetingsHeld.length >= 4){
-          //   setMeetingId('You have already scheduled 4 meetings for this section')
-          //   setCustomAlert('You have already scheduled 4 meetings for this section')
-          //   setDisabled(true);
-          // }else{
-          setMeetingId(
-            `${mentorId}${currentSemester}-M${meetingsHeld.length + 1}`
-          );
-          setCustomAlert("");
-          setDisabled(false);
-          // }
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            try {
+                const sessionData = window.sessionStorage.getItem("mentorData");
+                if (sessionData) {
+                    const parsedData = JSON.parse(sessionData);
+                    setMentorData(parsedData);
+                    setMentorId(parsedData?.MUJid || "");
+                    setAcademicYear(parsedData?.academicYear || "");
+                    setAcademicSession(parsedData?.academicSession || "");
+                }
+            } catch (error) {
+                console.error("Error accessing sessionStorage:", error);
+            }
         }
-      } catch (error) {
-        // console.log('Error fetching meetings:', error.response?.data || error.message);
-        setMeetingId(error.response?.data.error);
-        setCustomAlert(error.response?.data.error);
-        setDisabled(true);
-      }
-    };
+    }, []);
 
-    try {
-      if (mentorId && currentSemester && academicSession && academicYear) {
-        generateMeetingId();
-        getMentees(mentorId, currentSemester);
-      }
-    } catch (error) {
-      console.log("Error in useEffect:", error);
-      throw error;
-    }
-  }, [currentSemester]); // Add proper dependencies
-
-  // Calculate current semester based on date
-  useEffect(() => {
-    const calculateSemester = () => {
-      // Set available semesters based on the current term
-      if (!academicYear) return [];
-      const [startYear] = academicYear.split("-");
-
-      const semesters =
-        academicSession === `JULY-DECEMBER ${startYear}`
-          ? [1, 3, 5, 7]
-          : [2, 4, 6, 8];
-      // console.log('Current semesters:', semesters);
-      setAvailableSemesters(semesters);
-      const semester = "";
-      setCurrentSemester(semester);
-    };
-
-    calculateSemester();
-    // console.log('Current semester:', currentSemester);
-  }, [academicSession]);
-
-  const handleMeetingScheduled = async () => {
-    if (!mentorId || !currentSemester || !dateTime || !venue || !meetingTopic) {
-      setCustomAlert("Please fill all required fields");
-      return;
-    }
-
-    setLoading(true);
-    setSubmitting(true);
-    setPreventReload(true);
-
-    try {
-      // First schedule the meeting
-      const response = await axios.post("/api/meeting/mentors/schmeeting", {
-        mentor_id: mentorId,
-        meeting_id: meetingId,
-        TopicOfDiscussion: meetingTopic,
-        meeting_date: formattedDate,
-        meeting_time: formattedTime,
-        semester: currentSemester,
-        session: academicSession,
-        year: academicYear,
-        isMeetingOnline: isMeetingOnline,
-        venue: venue,
-      });
-
-      if (response.status === 200) {
-        // Filter out invalid emails and send
-        const validEmails = mentees
-          .filter((mentee) => mentee.email && mentee.email.includes("@"))
-          .map((mentee) => mentee.email);
-
-        if (validEmails.length === 0) {
-          throw new Error("No valid email addresses found");
-        }
-
-        await sendEmailToMentees(validEmails);
-
-        // Add/edit meetingData in session storage
-        const newMeeting = {
-          mentor_id: mentorId,
-          meeting_id: meetingId,
-          TopicOfDiscussion: meetingTopic,
-          meeting_date: formattedDate,
-          meeting_time: formattedTime,
-          semester: currentSemester,
-          session: academicSession,
-          year: academicYear,
-          isMeetingOnline: isMeetingOnline,
-          venue: venue,
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (preventReload) {
+                e.preventDefault();
+                e.returnValue = "";
+            }
         };
 
-        const meetingData = JSON.parse(sessionStorage.getItem("meetingData")) || [];
-        const updatedMeetingData = [...meetingData, newMeeting];
-        sessionStorage.setItem("meetingData", JSON.stringify(updatedMeetingData));
-      }
-    } catch (error) {
-      console.error("Error scheduling meeting:", error);
-      setCustomAlert(
-        error.message || "Failed to schedule meeting or send emails"
-      );
-    } finally {
-      setLoading(false);
-      setSubmitting(false);
-      setPreventReload(false);
-    }
-  };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () =>
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [preventReload]);
 
-  // Add new function to get mentees
-  const getMentees = async (mentorId, semester) => {
-    setIsLoading(true); // Start loading
-    try {
-      const response = await fetch(
-        `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&year=${academicYear}&session=${academicSession}`
-      );
-      if (!response.ok) {
-        // console.log("Failed to fetch mentees");
-        setDisabled(true);
-      } else {
-        const menteesData = await response.json();
-        setMentees(menteesData);
-        setDisabled(menteesData.length === 0);
-      }
-      // console.log(mentees, "mentees");
-    } catch (error) {
-      // console.log("Error fetching mentees:", error);
-      setDisabled(true);
-      throw error;
-    } finally {
-      setIsLoading(false); // End loading
-    }
-  };
+    useEffect(() => {
+        const fetchBackdateSetting = async () => {
+            try {
+                const response = await axios.get(
+                    "/api/admin/settings/backdate-meeting"
+                );
+                if (
+                    response.data &&
+                    response.data.allowBackdateMeetings !== undefined
+                ) {
+                    setAllowBackdateMeetings(
+                        response.data.allowBackdateMeetings
+                    );
+                }
+            } catch (error) {
+                console.error(
+                    "Failed to fetch backdate meeting setting:",
+                    error
+                );
+                setAllowBackdateMeetings(false);
+            }
+        };
 
-  // Add helper functions
-  const generateAcademicSessions = (year) => {
-    if (!year) return [];
-    const [startYear] = year.split("-");
-    return [
-      `JULY-DECEMBER ${startYear}`,
-      `JANUARY-JUNE ${parseInt(startYear) + 1}`,
-    ];
-  };
+        fetchBackdateSetting();
+    }, []);
 
-  const validateAcademicYear = (value) => {
-    if (!value) return false;
-    const regex = /^(\d{4})-(\d{4})$/;
-    if (!regex.test(value)) return false;
-    const [startYear, endYear] = value.split("-").map(Number);
-    return endYear === startYear + 1;
-  };
-
-  const generateYearSuggestions = (input) => {
-    if (!input) return [];
-    const currentYear = new Date().getFullYear();
-    const suggestions = [];
-
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
-      const academicYear = `${year}-${year + 1}`;
-      if (academicYear.startsWith(input)) {
-        suggestions.push(academicYear);
-      }
-    }
-    return suggestions;
-  };
-
-  const generateSessionSuggestions = (input) => {
-    if (!academicYear || !input) return [];
-    const [startYear, endYear] = academicYear.split("-");
-    const possibleSessions = [
-      `JULY-DECEMBER ${startYear}`,
-      `JANUARY-JUNE ${endYear}`,
-    ];
-
-    return possibleSessions.filter((session) =>
-      session.toLowerCase().includes(input.toLowerCase())
-    );
-  };
-
-  const handleAcademicYearInput = (e) => {
-    let value = e.target.value.toUpperCase();
-
-    if (value.length === 4 && !value.includes("-")) {
-      value = `${value}-${parseInt(value) + 1}`;
-    }
-
-    if (value.length > 0) {
-      setYearSuggestions(generateYearSuggestions(value));
-      setShowYearOptions(true);
-    } else {
-      setYearSuggestions([]);
-      setShowYearOptions(false);
-    }
-
-    setAcademicYear(value);
-    if (validateAcademicYear(value)) {
-      const sessions = generateAcademicSessions(value);
-      if (sessions.length > 0) {
-        setAcademicSession(sessions[0]);
-      }
-    }
-  };
-
-  const handleAcademicSessionInput = (e) => {
-    let value = e.target.value.toUpperCase();
-
-    if (value.startsWith("JUL")) {
-      value = `JULY-DECEMBER ${academicYear?.split("-")[0]}`;
-    } else if (value.startsWith("JAN")) {
-      value = `JANUARY-JUNE ${academicYear?.split("-")[1]}`;
-    }
-
-    if (value.length > 0) {
-      setSessionSuggestions(generateSessionSuggestions(value));
-      setShowSessionOptions(true);
-    } else {
-      setSessionSuggestions([]);
-      setShowSessionOptions(false);
-    }
-
-    setAcademicSession(value);
-  };
-
-  // const generateSemesterSuggestions = (input) => {
-  //   if (!input) return [];
-  //   return availableSemesters.filter((sem) =>
-  //     `${sem}`.toLowerCase().includes(input.toLowerCase())
-  //   );
-  // };
-
-  const handleSemesterInput = (e) => {
-    let value = e.target.value.toUpperCase();
-
-    // Auto-hide dropdown if a valid semester is entered
-    if (availableSemesters.includes(parseInt(value))) {
-      setShowSemesterOptions(false);
-    } else if (value.length > 0) {
-      // setSemesterSuggestions(generateSemesterSuggestions(value));
-      setShowSemesterOptions(true);
-    } else {
-      // setSemesterSuggestions([]);
-      setShowSemesterOptions(false);
-    }
-
-    setCurrentSemester(value);
-  };
-
-  // Add useEffect for click outside handling
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      try {
-        if (yearRef.current && !yearRef.current.contains(event.target)) {
-          setShowYearOptions(false);
-        }
-        if (sessionRef.current && !sessionRef.current.contains(event.target)) {
-          setShowSessionOptions(false);
-        }
-        if (
-          semesterRef.current &&
-          !semesterRef.current.contains(event.target)
-        ) {
-          setShowSemesterOptions(false);
-        }
-      } catch (error) {
-        // console.log("Error in handleClickOutside:", error);
-        throw error;
-      }
+    const handleMeetingTopicChange = (e) => {
+        let value = e.target.value;
+        setMeetingTopic(value);
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    const formatDateTime = (value) => {
+        if (!value) return "";
+        const date = new Date(value);
 
-  const [isMounted, setIsMounted] = useState(false);
+        const formattedDate = date.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
 
-  useEffect(() => {
-    try {
-      setIsMounted(true);
-    } catch (error) {
-      console.log("Error during hydration:", error);
-      throw error;
+        const formattedTime = date
+            .toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+            })
+            .toUpperCase();
+        setFormattedDate(formattedDate);
+        setFormattedTime(formattedTime);
+    };
+
+    const updateCombinedDateTime = () => {
+        if (!selectedDate) return;
+
+        try {
+            const [year, month, day] = selectedDate.split("-").map(Number);
+            let hours = parseInt(selectedHour, 10);
+            let minutes = parseInt(selectedMinute, 10);
+
+            if (selectedAmPm === "PM" && hours < 12) hours += 12;
+            if (selectedAmPm === "AM" && hours === 12) hours = 0;
+
+            const dateObj = new Date(year, month - 1, day, hours, minutes);
+            setDateTime(dateObj.toISOString().slice(0, 16));
+            formatDateTime(dateObj.toISOString());
+            setShowDateTimePicker(false);
+        } catch (error) {
+            console.error("Error updating datetime:", error);
+            setCustomAlert("Invalid date or time format");
+        }
+    };
+
+    const toggleDateTimePicker = () => {
+        setShowDateTimePicker(!showDateTimePicker);
+    };
+
+    useEffect(() => {
+        if (showDateTimePicker && dateTime) {
+            const date = new Date(dateTime);
+            setSelectedDate(date.toISOString().slice(0, 10));
+            let hours = date.getHours();
+            const minutes = date.getMinutes();
+            const isPM = hours >= 12;
+
+            if (hours > 12) hours -= 12;
+            else if (hours === 0) hours = 12;
+
+            setSelectedHour(String(hours).padStart(2, "0"));
+            setSelectedMinute(
+                String(Math.floor(minutes / 5) * 5).padStart(2, "0")
+            );
+            setSelectedAmPm(isPM ? "PM" : "AM");
+        }
+    }, [showDateTimePicker, dateTime]);
+
+    useEffect(() => {
+        const generateMeetingId = async () => {
+            try {
+                const response = await axios.get(
+                    "/api/meeting/mentors/schmeeting",
+                    {
+                        params: {
+                            mentor_id: mentorId,
+                            semester: currentSemester,
+                            session: academicSession,
+                            year: academicYear,
+                        },
+                    }
+                );
+
+                if (response.data) {
+                    const meetingsHeld = response.data?.meetings;
+                    setMeetingId(
+                        `${mentorId}${currentSemester}-M${
+                            meetingsHeld.length + 1
+                        }`
+                    );
+                    setCustomAlert("");
+                    setDisabled(false);
+                }
+            } catch (error) {
+                setMeetingId(error.response?.data.error);
+                setCustomAlert(error.response?.data.error);
+                setDisabled(true);
+            }
+        };
+
+        try {
+            if (
+                mentorId &&
+                currentSemester &&
+                academicSession &&
+                academicYear
+            ) {
+                generateMeetingId();
+                getMentees(mentorId, currentSemester);
+            }
+        } catch (error) {
+            console.log("Error in useEffect:", error);
+            throw error;
+        }
+    }, [currentSemester]);
+
+    useEffect(() => {
+        const calculateSemester = () => {
+            if (!academicYear) return [];
+            const [startYear] = academicYear.split("-");
+
+            const semesters =
+                academicSession === `JULY-DECEMBER ${startYear}`
+                    ? [1, 3, 5, 7]
+                    : [2, 4, 6, 8];
+            setAvailableSemesters(semesters);
+            const semester = "";
+            setCurrentSemester(semester);
+        };
+
+        calculateSemester();
+    }, [academicSession]);
+
+    const handleMeetingScheduled = async () => {
+        if (
+            !mentorId ||
+            !currentSemester ||
+            !dateTime ||
+            !venue ||
+            !meetingTopic
+        ) {
+            setCustomAlert("Please fill all required fields");
+            return;
+        }
+
+        setLoading(true);
+        setSubmitting(true);
+        setPreventReload(true);
+
+        try {
+            const response = await axios.post(
+                "/api/meeting/mentors/schmeeting",
+                {
+                    mentor_id: mentorId,
+                    meeting_id: meetingId,
+                    TopicOfDiscussion: meetingTopic,
+                    meeting_date: formattedDate,
+                    meeting_time: formattedTime,
+                    semester: currentSemester,
+                    session: academicSession,
+                    year: academicYear,
+                    isMeetingOnline: isMeetingOnline,
+                    venue: venue,
+                }
+            );
+            if (response.status === 200) {
+                const validEmails = Array.isArray(mentees)
+                    ? mentees
+                          .filter(
+                              (mentee) =>
+                                  mentee.email && mentee.email.includes("@")
+                          )
+                          .map((mentee) => mentee.email)
+                    : [];
+
+                if (validEmails.length === 0) {
+                  throw new Error("No valid email addresses found");
+                }
+
+                await sendEmailToMentees(validEmails);
+
+                const newMeeting = {
+                    mentor_id: mentorId,
+                    meeting_id: meetingId,
+                    TopicOfDiscussion: meetingTopic,
+                    meeting_date: formattedDate,
+                    meeting_time: formattedTime,
+                    semester: currentSemester,
+                    session: academicSession,
+                    year: academicYear,
+                    isMeetingOnline: isMeetingOnline,
+                    venue: venue,
+                };
+
+                const meetingData =
+                    JSON.parse(sessionStorage.getItem("meetingData")) || [];
+                const updatedMeetingData = [...meetingData, newMeeting];
+                sessionStorage.setItem(
+                    "meetingData",
+                    JSON.stringify(updatedMeetingData)
+                );
+            }
+        } catch (error) {
+            console.error("Error scheduling meeting:", error);
+            setCustomAlert(
+                error.message || "Failed to schedule meeting or send emails"
+            );
+        } finally {
+            setLoading(false);
+            setSubmitting(false);
+            setPreventReload(false);
+        }
+    };
+
+    const getMentees = async (mentorId, semester) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(
+                `/api/meeting/mentees?mentorId=${mentorId}&semester=${semester}&year=${academicYear}&session=${academicSession}`
+            );
+            if (!response.ok) {
+                setMentees([]);
+                setDisabled(true);
+            } else {
+                const menteesData = await response.json();
+                setMentees(Array.isArray(menteesData) ? menteesData : []);
+                setDisabled(
+                    Array.isArray(menteesData) ? menteesData.length === 0 : true
+                );
+            }
+        } catch (error) {
+            setMentees([]);
+            setDisabled(true);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const generateAcademicSessions = (year) => {
+        if (!year) return [];
+        const [startYear] = year.split("-");
+        return [
+            `JULY-DECEMBER ${startYear}`,
+            `JANUARY-JUNE ${parseInt(startYear) + 1}`,
+        ];
+    };
+
+    const validateAcademicYear = (value) => {
+        if (!value) return false;
+        const regex = /^(\d{4})-(\d{4})$/;
+        if (!regex.test(value)) return false;
+        const [startYear, endYear] = value.split("-").map(Number);
+        return endYear === startYear + 1;
+    };
+
+    const generateYearSuggestions = (input) => {
+        if (!input) return [];
+        const currentYear = new Date().getFullYear();
+        const suggestions = [];
+
+        for (let i = 0; i < 5; i++) {
+            const year = currentYear - i;
+            const academicYear = `${year}-${year + 1}`;
+            if (academicYear.startsWith(input)) {
+                suggestions.push(academicYear);
+            }
+        }
+        return suggestions;
+    };
+
+    const generateSessionSuggestions = (input) => {
+        if (!academicYear || !input) return [];
+        const [startYear, endYear] = academicYear.split("-");
+        const possibleSessions = [
+            `JULY-DECEMBER ${startYear}`,
+            `JANUARY-JUNE ${endYear}`,
+        ];
+
+        return possibleSessions.filter((session) =>
+            session.toLowerCase().includes(input.toLowerCase())
+        );
+    };
+
+    const handleAcademicYearInput = (e) => {
+        let value = e.target.value.toUpperCase();
+
+        if (value.length === 4 && !value.includes("-")) {
+            value = `${value}-${parseInt(value) + 1}`;
+        }
+
+        if (value.length > 0) {
+            setYearSuggestions(generateYearSuggestions(value));
+            setShowYearOptions(true);
+        } else {
+            setYearSuggestions([]);
+            setShowYearOptions(false);
+        }
+
+        setAcademicYear(value);
+        if (validateAcademicYear(value)) {
+            const sessions = generateAcademicSessions(value);
+            if (sessions.length > 0) {
+                setAcademicSession(sessions[0]);
+            }
+        }
+    };
+
+    const handleAcademicSessionInput = (e) => {
+        let value = e.target.value.toUpperCase();
+
+        if (value.startsWith("JUL")) {
+            value = `JULY-DECEMBER ${academicYear?.split("-")[0]}`;
+        } else if (value.startsWith("JAN")) {
+            value = `JANUARY-JUNE ${academicYear?.split("-")[1]}`;
+        }
+
+        if (value.length > 0) {
+            setSessionSuggestions(generateSessionSuggestions(value));
+            setShowSessionOptions(true);
+        } else {
+            setSessionSuggestions([]);
+            setShowSessionOptions(false);
+        }
+
+        setAcademicSession(value);
+    };
+
+    const handleSemesterInput = (e) => {
+        let value = e.target.value.toUpperCase();
+
+        if (availableSemesters.includes(parseInt(value))) {
+            setShowSemesterOptions(false);
+        } else if (value.length > 0) {
+            setShowSemesterOptions(true);
+        } else {
+            setShowSemesterOptions(false);
+        }
+
+        setCurrentSemester(value);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            try {
+                if (
+                    yearRef.current &&
+                    !yearRef.current.contains(event.target)
+                ) {
+                    setShowYearOptions(false);
+                }
+                if (
+                    sessionRef.current &&
+                    !sessionRef.current.contains(event.target)
+                ) {
+                    setShowSessionOptions(false);
+                }
+                if (
+                    semesterRef.current &&
+                    !semesterRef.current.contains(event.target)
+                ) {
+                    setShowSemesterOptions(false);
+                }
+            } catch (error) {
+                throw error;
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        try {
+            setIsMounted(true);
+        } catch (error) {
+            console.log("Error during hydration:", error);
+            throw error;
+        }
+    }, []);
+
+    if (!isMounted) {
+        return null;
     }
-  }, []);
 
-  if (!isMounted) {
-    return null;
-  }
-
-  // In ScheduleMeetingComponent.jsx, update the getEmailBody function
-  const getEmailBody = () => `
+    const getEmailBody = () => `
 Dear Mentees,
 
 A mentor meeting has been scheduled with the following details:
@@ -454,248 +519,205 @@ Department of Computer Science and Engineering
 Manipal University Jaipur
 Contact: ${mentorData?.email || ""}`;
 
-  const sendEmailToMentees = async (menteeEmails) => {
-    try {
-      // Validate email array
-      if (!Array.isArray(menteeEmails) || menteeEmails.length === 0) {
-        throw new Error("No valid email recipients found");
-      }
+    const sendEmailToMentees = async (menteeEmails) => {
+        try {
+            if (!Array.isArray(menteeEmails) || menteeEmails.length === 0) {
+                throw new Error("No valid email recipients found");
+            }
 
-      // Start progress
-      setEmailProgress({ current: 0, total: menteeEmails.length, show: true });
+            setEmailProgress({
+                current: 0,
+                total: menteeEmails.length,
+                show: true,
+            });
 
-      // Send emails
-      const response = await axios.post("/api/meeting/send-email", {
-        emails: menteeEmails,
-        subject: `Meeting Scheduled - ${meetingId}`,
-        body: getEmailBody(),
-        meetingId: meetingId, // Ensure meetingId is included
-      });
+            const response = await axios.post("/api/meeting/send-email", {
+                emails: menteeEmails,
+                subject: `Meeting Scheduled - ${meetingId}`,
+                body: getEmailBody(),
+                meetingId: meetingId,
+            });
 
-      if (response.data.success) {
-        setEmailProgress({
-          current: menteeEmails.length,
-          total: menteeEmails.length,
-          show: true,
-        });
+            if (response.data.success) {
+                setEmailProgress({
+                    current: menteeEmails.length,
+                    total: menteeEmails.length,
+                    show: true,
+                });
 
-        setTimeout(() => {
-          setEmailProgress({ current: 0, total: 0, show: false });
-          router.push("/pages/mentordashboard");
-        }, 2000);
-      } else {
-        throw new Error(response.data.message || "Failed to send emails");
-      }
-    } catch (error) {
-      console.error("Error sending emails:", error);
-      setCustomAlert(
-        error.message || "Failed to send meeting notification emails"
-      );
-      setEmailProgress({ current: 0, total: 0, show: false });
-    }
-  };
+                setTimeout(() => {
+                    setEmailProgress({ current: 0, total: 0, show: false });
+                    router.push("/pages/mentordashboard");
+                }, 2000);
+            } else {
+                throw new Error(
+                    response.data.message || "Failed to send emails"
+                );
+            }
+        } catch (error) {
+            console.error("Error sending emails:", error);
+            setCustomAlert(
+                error.message || "Failed to send meeting notification emails"
+            );
+            setEmailProgress({ current: 0, total: 0, show: false });
+        }
+    };
 
-  const getMinDateTime = () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 10); // Add 10 minutes buffer
-    return now.toISOString().slice(0, 16); // Format as YYYY-MM-DDTHH:mm
-  };
-
-  return (
-    <AnimatePresence>
-      <motion.div className='min-h-screen bg-[#0a0a0a] overflow-x-hidden relative'>
-        {/* Add loading overlay */}
-        {isLoading && (
-          <div className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center'>
-            <div className='flex flex-col items-center gap-4'>
-              <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500'></div>
-              <p className='text-white text-lg'>Loading data...</p>
-            </div>
-          </div>
-        )}
-        <div className='absolute inset-0 z-0'>
-          <div className='absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient' />
-          <div className='absolute inset-0 backdrop-blur-3xl' />
-        </div>
-
-        <div className='relative z-10 container mx-auto px-4 py-16 pt-20 md:pt-24'>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className='text-center mb-4 md:mb-8'>
-            <h1 className='text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 md:mb-6'>
-              Schedule Meetings
-            </h1>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className='w-full mx-auto'>
-            <div className='bg-white/5 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/10'>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                }}
-                className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6'>
-                {" "}
-                {/* Changed from grid-cols-2 to grid-cols-3 */}
-                {/* Left Column */}
-                <div className='space-y-3'>
-                  {/* Add Mentor MUJID field */}
-                  {/* Disabled for now */}
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Mentor MUJID</label>
-                    <input
-                      type="text"
-                      placeholder="Enter mentor MUJID"
-                      value={mentorId}
-                      onChange={handleMentorIdChange}
-                      disabled={mentorData.MUJid ? true : false}
-                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm uppercase ${mentorData.MUJid ? 'opacity-60' : ''}`}
-                    />
-                  </div> */}
-
-                  {/* Existing academic fields */}
-                  <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Branch
-                    </label>
-                    <input
-                      type='text'
-                      value={fixedBranch}
-                      disabled
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white opacity-60'
-                    />
-                  </div>
-
-                  {/* Academic Year Field */}
-                  <div ref={yearRef} className='relative'>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Academic Year
-                    </label>
-                    <input
-                      type='text'
-                      placeholder='YYYY-YYYY'
-                      value={academicYear}
-                      onChange={handleAcademicYearInput}
-                      disabled={mentorData.academicYear ? true : false}
-                      onClick={() => setShowYearOptions(true)}
-                      className={`w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white ${
-                        mentorData.academicYear ? "opacity-60" : ""
-                      }`}
-                    />
-                    {showYearOptions && (
-                      <div className='absolute z-50 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto'>
-                        {yearSuggestions.map((year) => (
-                          <div
-                            key={year}
-                            className='px-4 py-3 hover:bg-white/10 cursor-pointer text-white text-sm md:text-base'
-                            onClick={() => {
-                              setAcademicYear(year);
-                              setShowYearOptions(false);
-                              const sessions = generateAcademicSessions(year);
-                              if (sessions.length > 0) {
-                                setAcademicSession(sessions[0]);
-                              }
-                            }}>
-                            {year}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Academic Session Field */}
-                  <div ref={sessionRef} className='relative'>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Academic Session
-                    </label>
-                    <input
-                      type='text'
-                      placeholder={
-                        !academicYear
-                          ? "Add academic year first"
-                          : "MONTH-MONTH YYYY"
-                      }
-                      value={academicSession}
-                      onChange={handleAcademicSessionInput}
-                      onClick={() => setShowSessionOptions(true)}
-                      disabled={
-                        (mentorData.academicSession ? true : false) ||
-                        !academicYear
-                      }
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white disabled:opacity-50'
-                    />
-                    {showSessionOptions && (
-                      <div className='absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg'>
-                        {generateAcademicSessions(academicYear).map(
-                          (session) => (
-                            <div
-                              key={session}
-                              className='px-4 py-2 hover:bg-white/10 cursor-pointer text-white'
-                              onClick={() => {
-                                setAcademicSession(session);
-                                setShowSessionOptions(false);
-                              }}>
-                              {session}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div ref={semesterRef} className='relative'>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Semester (Required)
-                    </label>
-                    <input
-                      type='text'
-                      placeholder={
-                        !academicYear
-                          ? "Add academic year first"
-                          : availableSemesters[0] == 2
-                          ? "Select even semester"
-                          : "Select odd semester"
-                      }
-                      value={academicYear && currentSemester}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          availableSemesters.includes(parseInt(value)) ||
-                          value === ""
-                        ) {
-                          handleSemesterInput(e);
-                        }
-                      }}
-                      onClick={() => {
-                        if (!currentSemester) {
-                          setShowSemesterOptions(true);
-                        }
-                      }}
-                      disabled={!academicYear}
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white disabled:opacity-50'
-                    />
-                    {showSemesterOptions && (
-                      <div className='absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg'>
-                        {availableSemesters.map((sem) => (
-                          <div
-                            key={sem}
-                            className='px-4 py-2 hover:bg-white/10 cursor-pointer text-white'
-                            onClick={() => {
-                              setCurrentSemester(sem);
-                              setShowSemesterOptions(false);
-                            }}>
-                            {sem}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+    return (
+        <AnimatePresence>
+            <motion.div className="min-h-screen bg-[#0a0a0a] overflow-x-hidden relative">
+                {isLoading && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+                        </div>
+                    </div>
+                )}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
+                    <div className="absolute inset-0 backdrop-blur-3xl" />
                 </div>
-                {/* Middle Column */}
-                <div className='space-y-3'>
+
+                <div className="relative z-10 container mx-auto px-4 py-16 pt-20 md:pt-24">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center mb-4 md:mb-8"
+                    >
+                        <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4 md:mb-6">
+                            Schedule Meetings
+                        </h1>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full mx-auto"
+                    >
+                        <div className="bg-white/5 backdrop-blur-lg rounded-xl border p-4 border-white/10">
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                }}
+                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
+                            >
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                            Branch
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={fixedBranch}
+                                            disabled
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white opacity-80"
+                                        />
+                                    </div>
+
+                                    <div ref={yearRef} className="relative">
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                            Academic Year
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="YYYY-YYYY"
+                                            value={academicYear}
+                                            onChange={handleAcademicYearInput}
+                                            disabled={
+                                                mentorData.academicYear
+                                                    ? true
+                                                    : false
+                                            }
+                                            onClick={() =>
+                                                setShowYearOptions(true)
+                                            }
+                                            className={`w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white disabled:opacity-85`}
+                                        />
+                                        {showYearOptions && (
+                                            <div className="absolute z-50 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                {yearSuggestions.map((year) => (
+                                                    <div
+                                                        key={year}
+                                                        className="px-4 py-3 hover:bg-white/10 cursor-pointer text-white text-sm md:text-base"
+                                                        onClick={() => {
+                                                            setAcademicYear(
+                                                                year
+                                                            );
+                                                            setShowYearOptions(
+                                                                false
+                                                            );
+                                                            const sessions =
+                                                                generateAcademicSessions(
+                                                                    year
+                                                                );
+                                                            if (
+                                                                sessions.length >
+                                                                0
+                                                            ) {
+                                                                setAcademicSession(
+                                                                    sessions[0]
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        {year}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div ref={sessionRef} className="relative">
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                            Academic Session
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder={
+                                                !academicYear
+                                                    ? "Add academic year first"
+                                                    : "MONTH-MONTH YYYY"
+                                            }
+                                            value={academicSession}
+                                            onChange={
+                                                handleAcademicSessionInput
+                                            }
+                                            onClick={() =>
+                                                setShowSessionOptions(true)
+                                            }
+                                            disabled={
+                                                (mentorData.academicSession
+                                                    ? true
+                                                    : false) || !academicYear
+                                            }
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white disabled:opacity-80"
+                                        />
+                                        {showSessionOptions && (
+                                            <div className="absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg">
+                                                {generateAcademicSessions(
+                                                    academicYear
+                                                ).map((session) => (
+                                                    <div
+                                                        key={session}
+                                                        className="px-4 py-2 hover:bg-white/10 cursor-pointer text-white"
+                                                        onClick={() => {
+                                                            setAcademicSession(
+                                                                session
+                                                            );
+                                                            setShowSessionOptions(
+                                                                false
+                                                            );
+                                                        }}
+                                                    >
+                                                        {session}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {/*
                   <div>
                     <label className='block text-sm font-medium text-gray-300 mb-1'>
                       Meeting ID
@@ -708,196 +730,628 @@ Contact: ${mentorData?.email || ""}`;
                       className='w-full bg-black/20 border border-white/10 rounded-lg pointer-events-none p-2.5 text-sm md:text-base text-white disabled:opacity-50'
                     />
                   </div>
+                  */}
 
-                  {/* Meeting Title moved to top */}
-                  <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Meeting Topic
-                    </label>
-                    <textarea
-                      value={meetingTopic}
-                      onChange={handleMeetingTopicChange}
-                      placeholder='Enter meeting topic'
-                      rows='3'
-                      className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white'
-                    />
-                  </div>
+                                    <div ref={semesterRef} className="relative">
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                            Semester{" "}
+                                            <sup className="text-red-600/90">
+                                                *
+                                            </sup>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder={
+                                                !academicYear
+                                                    ? "Add academic year first"
+                                                    : availableSemesters[0] == 2
+                                                    ? "Select even semester"
+                                                    : "Select odd semester"
+                                            }
+                                            value={
+                                                academicYear && currentSemester
+                                            }
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (
+                                                    availableSemesters.includes(
+                                                        parseInt(value)
+                                                    ) ||
+                                                    value === ""
+                                                ) {
+                                                    handleSemesterInput(e);
+                                                }
+                                            }}
+                                            onClick={() => {
+                                                if (!currentSemester) {
+                                                    setShowSemesterOptions(
+                                                        true
+                                                    );
+                                                }
+                                            }}
+                                            disabled={!academicYear}
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white placeholder-gray-500 disabled:opacity-50"
+                                        />
+                                        {showSemesterOptions && (
+                                            <div className="absolute z-10 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg">
+                                                {availableSemesters.map(
+                                                    (sem) => (
+                                                        <div
+                                                            key={sem}
+                                                            className="px-4 py-2 hover:bg-white/10 cursor-pointer text-white"
+                                                            onClick={() => {
+                                                                setCurrentSemester(
+                                                                    sem
+                                                                );
+                                                                setShowSemesterOptions(
+                                                                    false
+                                                                );
+                                                            }}
+                                                        >
+                                                            {sem}
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
 
-                  {/* Added Date & Time field */}
-                  <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-1'>
-                      Date & Time
-                    </label>
-                    <div className='relative'>
-                      <input
-                        type='datetime-local'
-                        value={dateTime}
-                        min={getMinDateTime()}
-                        onChange={(e) => {
-                          const selectedDate = new Date(e.target.value);
-                          const now = new Date();
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                            Meeting Topic
+                                        </label>
+                                        <textarea
+                                            value={meetingTopic}
+                                            onChange={handleMeetingTopicChange}
+                                            placeholder="Enter meeting topic"
+                                            rows="3"
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white placeholder-gray-500"
+                                        />
+                                    </div>
 
-                          if (selectedDate < now) {
-                            setCustomAlert(
-                              "Please select a future date and time"
-                            );
-                            return;
-                          }
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                Meeting Date & Time
+                                            </label>
+                                            <div className="relative">
+                                                <div
+                                                    onClick={
+                                                        toggleDateTimePicker
+                                                    }
+                                                    className="w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white cursor-pointer flex justify-between items-center"
+                                                >
+                                                    <span
+                                                        className={
+                                                            !dateTime
+                                                                ? "text-gray-500"
+                                                                : ""
+                                                        }
+                                                    >
+                                                        {dateTime
+                                                            ? `${formattedDate} at ${formattedTime}`
+                                                            : "Select date and time"}
+                                                    </span>
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="h-5 w-5 text-gray-400"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                </div>
 
-                          setDateTime(e.target.value);
-                          formatDateTime(e.target.value);
-                          setCustomAlert("");
-                          e.target.blur(); // Autoclose after selecting time
-                        }}
-                        className='w-full bg-black/20 border border-white/10 rounded-lg p-2.5 text-sm md:text-base text-white 
-                                  [&::-webkit-calendar-picker-indicator]:invert hover:border-orange-500 
-                                  focus:border-orange-500 transition-colors'
-                      />
-                    </div>
-                  </div>
+                                                {!allowBackdateMeetings && (
+                                                    <p className="mt-1 text-xs text-amber-500">
+                                                        Back date meetings are
+                                                        disabled by admin
+                                                    </p>
+                                                )}
 
-                  {/* Replace the Meeting Type Selection div with this new version */}
-                  <div>
-                    <label className='block text-sm font-medium text-gray-300 mb-2'>
-                      Meeting Type
-                    </label>
-                    <div className='grid grid-cols-2 gap-2 md:gap-3'>
-                      <button
-                        type='button'
-                        onClick={() => {
-                          setIsMeetingOnline(false);
-                          setVenue("");
-                        }}
-                        className={`flex items-center justify-center space-x-2 p-2.5 md:p-3 rounded-lg transition-all duration-200 text-sm md:text-base ${
-                          !isMeetingOnline
-                            ? "bg-orange-500 text-white"
-                            : "bg-black/20 text-gray-400 hover:bg-black/30"
-                        }`}>
-                        <FaBuilding className='text-base md:text-lg' />
-                        <span className='hidden sm:inline'>Offline</span>
-                      </button>
-
-                      <button
-                        type='button'
-                        onClick={() => {
-                          setIsMeetingOnline(true);
-                          setVenue("");
-                        }}
-                        className={`flex items-center justify-center space-x-2 p-2.5 md:p-3 rounded-lg transition-all duration-200 text-sm md:text-base ${
-                          isMeetingOnline
-                            ? "bg-orange-500 text-white"
-                            : "bg-black/20 text-gray-400 hover:bg-black/30"
-                        }`}>
-                        <FaVideo className='text-base md:text-lg' />
-                        <span className='hidden sm:inline'>Online</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Update the Venue/Link Field with icons */}
-                  <div className='mt-4'>
-                    <label className='block text-sm font-medium text-gray-300 mb-2'>
-                      {isMeetingOnline ? "Meeting Link" : "Venue"}
-                    </label>
-                    <div className='relative'>
-                      <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-                        {isMeetingOnline ? (
-                          <FaVideo className='text-gray-400 text-base md:text-lg' />
-                        ) : (
-                          <FaBuilding className='text-gray-400 text-base md:text-lg' />
-                        )}
-                      </div>
-                      <input
-                        type='text'
-                        value={venue}
-                        onChange={(e) => setVenue(e.target.value)}
-                        placeholder={
-                          isMeetingOnline
-                            ? "Enter meeting link (e.g., Zoom, Teams)"
-                            : "Enter venue location"
-                        }
-                        className='w-full bg-black/20 border border-white/10 rounded-lg pl-10 p-2.5 text-sm md:text-base text-white focus:border-orange-500 transition-colors'
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type='submit'
-                    className='w-full btn-orange disabled:opacity-50 relative mt-4 p-2.5 md:p-3'
-                    disabled={loading || isDisabled || submitting}
-                    onClick={handleMeetingScheduled}>
-                    <div className='flex items-center justify-center space-x-2'>
-                      {submitting ? (
-                        <>
-                          <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
-                          <span className='text-sm md:text-base'>Scheduling...</span>
-                        </>
-                      ) : (
-                        <span className='text-sm md:text-base'>Schedule Meeting</span>
-                      )}
-                    </div>
-                  </button>
-                  {customAlert && (
-                    <p className='text-sm md:text-base text-red-600 font-semibold w-full text-center mt-2'>
-                      {customAlert}
-                    </p>
-                  )}
-                </div>
-                {/* Right Column - Mentees List */}
-                <div className='space-y-3 mt-4 md:mt-0'>
-                  {mentees.length > 0 ? (
-                    <div>
-                      <h3 className='text-base md:text-lg font-semibold text-white mb-2'>
-                        Mentees:
-                      </h3>
-                      <div className='max-h-[300px] md:max-h-[400px] overflow-y-auto custom-scrollbar'>
-                        <ul className='list-none space-y-2'>
-                          {mentees.map((mentee, index) => (
-                            <li
-                              key={
-                                mentee.MUJid ||
-                                mentee.email ||
-                                `mentee-${index}`
-                              }
-                              className='bg-black/20 flex border border-white/10 rounded-lg p-2.5'>
-                              <div className='flex items-center space-x-2 w-full'>
-                                <div className='w-full'>
-                                  <p className='text-sm md:text-base font-medium text-white'>
-                                    {mentee.name}
-                                  </p>
-                                  <p className='text-xs md:text-sm text-gray-400'>
-                                    {mentee.email}
-                                  </p>
-                                </div>
+                                                {/* {showDateTimePicker && (
+                          <div className='absolute right-0 z-50 mt-2 bg-gray-800 border border-white/10 rounded-lg p-4 w-full lg:w-[400px] shadow-xl'>
+                            <div className='flex justify-between items-center mb-3'>
+                              <h3 className='text-white font-medium'>Select Date & Time</h3>
+                              <button 
+                                onClick={() => setShowDateTimePicker(false)}
+                                className='text-gray-400 hover:text-white'
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            </div>
+                            
+                            <div className='mb-4'>
+                              <label className='block text-sm font-medium text-gray-300 mb-2'>Date</label>
+                              <input
+                                type='date'
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                min={!allowBackdateMeetings ? new Date().toISOString().slice(0, 10) : undefined}
+                                className='w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white 
+                                          [&::-webkit-calendar-picker-indicator]:invert hover:border-orange-500 
+                                          focus:border-orange-500 transition-colors'
+                              />
+                            </div>
+                            
+                            <div className='mb-4'>
+                              <label className='block text-sm font-medium text-gray-300 mb-2'>Time</label>
+                              <div className='flex space-x-2 items-center'>
+                                <select 
+                                  value={selectedHour}
+                                  onChange={(e) => setSelectedHour(e.target.value)}
+                                  className='bg-black/30 border border-white/10 rounded-lg p-2 text-white text-center appearance-none flex-1'
+                                >
+                                  {Array.from({ length: 12 }, (_, i) => (i === 0 ? 12 : i)).map((hour) => (
+                                    <option key={hour} value={String(hour).padStart(2, '0')}>
+                                      {String(hour).padStart(2, '0')}
+                                    </option>
+                                  ))}
+                                </select>
+                                
+                                <span className='text-white text-xl'>:</span>
+                                
+                                <select 
+                                  value={selectedMinute}
+                                  onChange={(e) => setSelectedMinute(e.target.value)}
+                                  className='bg-black/30 border border-white/10 rounded-lg p-2 text-white text-center appearance-none flex-1'
+                                >
+                                  {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
+                                    <option key={minute} value={String(minute).padStart(2, '0')}>
+                                      {String(minute).padStart(2, '0')}
+                                    </option>
+                                  ))}
+                                </select>
+                                
+                                <select 
+                                  value={selectedAmPm}
+                                  onChange={(e) => setSelectedAmPm(e.target.value)}
+                                  className='bg-black/30 border border-white/10 rounded-lg p-2 text-white text-center appearance-none flex-1'
+                                >
+                                  <option value="AM">AM</option>
+                                  <option value="PM">PM</option>
+                                </select>
                               </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className='flex items-center justify-center h-full'>
-                      <h3 className='text-sm md:text-base font-semibold text-rose-800 text-center'>
-                        No mentees found
-                      </h3>
-                    </div>
-                  )}
+                            </div>
+                            
+                            <div className='flex justify-end'>
+                              <button
+                                type="button"
+                                onClick={updateCombinedDateTime}
+                                disabled={!selectedDate}
+                                className='bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed'
+                              >
+                                Confirm
+                              </button>
+                            </div>
+                          </div>
+                          
+
+                        )} */}
+
+                                                <AnimatePresence>
+                                                    {showDateTimePicker && (
+                                                        <motion.div
+                                                            initial={{
+                                                                opacity: 0,
+                                                                y: -10,
+                                                                scale: 0.95,
+                                                            }}
+                                                            animate={{
+                                                                opacity: 1,
+                                                                y: 0,
+                                                                scale: 1,
+                                                            }}
+                                                            exit={{
+                                                                opacity: 0,
+                                                                y: -10,
+                                                                scale: 0.95,
+                                                            }}
+                                                            transition={{
+                                                                duration: 0.2,
+                                                                ease: "easeOut",
+                                                            }}
+                                                            // Main container with a solid color scheme for better contrast.
+                                                            className="absolute right-1 top-1 z-50 mt-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 w-[calc(100%-2rem)] max-w-sm shadow-2xl"
+                                                        >
+                                                            <div className="flex justify-between items-center mb-4">
+                                                                <h3 className="text-slate-800 dark:text-slate-100 font-semibold text-lg">
+                                                                    Select Date
+                                                                    & Time
+                                                                </h3>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        setShowDateTimePicker(
+                                                                            false
+                                                                        )
+                                                                    }
+                                                                    className="text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors"
+                                                                    aria-label="Close date and time picker"
+                                                                >
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        className="h-5 w-5"
+                                                                        viewBox="0 0 20 20"
+                                                                        fill="currentColor"
+                                                                    >
+                                                                        <path
+                                                                            fillRule="evenodd"
+                                                                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                                                            clipRule="evenodd"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="mb-4 space-y-1.5">
+                                                                <label
+                                                                    htmlFor="date-picker"
+                                                                    className="block text-sm font-medium text-slate-600 dark:text-slate-400"
+                                                                >
+                                                                    Date
+                                                                </label>
+                                                                <input
+                                                                    id="date-picker"
+                                                                    type="date"
+                                                                    value={
+                                                                        selectedDate
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        setSelectedDate(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    }
+                                                                    min={
+                                                                        !allowBackdateMeetings
+                                                                            ? new Date()
+                                                                                  .toISOString()
+                                                                                  .slice(
+                                                                                      0,
+                                                                                      10
+                                                                                  )
+                                                                            : undefined
+                                                                    }
+                                                                    className="w-full bg-slate-100 dark:bg-slate-900 border-transparent rounded-md p-2 text-slate-800 dark:text-slate-200 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow
+                         [color-scheme:dark] dark:[&::-webkit-calendar-picker-indicator]:invert"
+                                                                />
+                                                            </div>
+
+                                                            <div className="mb-4 space-y-1.5">
+                                                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">
+                                                                    Time
+                                                                </label>
+                                                                <div className="flex space-x-2 items-center">
+                                                                    <select
+                                                                        value={
+                                                                            selectedHour
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            setSelectedHour(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        aria-label="Hour"
+                                                                        className="bg-slate-100 dark:bg-slate-900 border-transparent rounded-md p-2 text-slate-800 dark:text-slate-200 text-center appearance-none flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                                                                    >
+                                                                        {Array.from(
+                                                                            {
+                                                                                length: 12,
+                                                                            },
+                                                                            (
+                                                                                _,
+                                                                                i
+                                                                            ) =>
+                                                                                i +
+                                                                                1
+                                                                        ).map(
+                                                                            (
+                                                                                hour
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        hour
+                                                                                    }
+                                                                                    value={String(
+                                                                                        hour
+                                                                                    ).padStart(
+                                                                                        2,
+                                                                                        "0"
+                                                                                    )}
+                                                                                >
+                                                                                    {String(
+                                                                                        hour
+                                                                                    ).padStart(
+                                                                                        2,
+                                                                                        "0"
+                                                                                    )}
+                                                                                </option>
+                                                                            )
+                                                                        )}
+                                                                    </select>
+
+                                                                    <span className="text-slate-400 dark:text-slate-500 font-bold text-lg">
+                                                                        :
+                                                                    </span>
+
+                                                                    <select
+                                                                        value={
+                                                                            selectedMinute
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            setSelectedMinute(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        aria-label="Minute"
+                                                                        className="bg-slate-100 dark:bg-slate-900 border-transparent rounded-md p-2 text-slate-800 dark:text-slate-200 text-center appearance-none flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                                                                    >
+                                                                        {Array.from(
+                                                                            {
+                                                                                length: 12,
+                                                                            },
+                                                                            (
+                                                                                _,
+                                                                                i
+                                                                            ) =>
+                                                                                i *
+                                                                                5
+                                                                        ).map(
+                                                                            (
+                                                                                minute
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        minute
+                                                                                    }
+                                                                                    value={String(
+                                                                                        minute
+                                                                                    ).padStart(
+                                                                                        2,
+                                                                                        "0"
+                                                                                    )}
+                                                                                >
+                                                                                    {String(
+                                                                                        minute
+                                                                                    ).padStart(
+                                                                                        2,
+                                                                                        "0"
+                                                                                    )}
+                                                                                </option>
+                                                                            )
+                                                                        )}
+                                                                    </select>
+
+                                                                    <select
+                                                                        value={
+                                                                            selectedAmPm
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            setSelectedAmPm(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        aria-label="Period"
+                                                                        className="bg-slate-100 dark:bg-slate-900 border-transparent rounded-md p-2 text-slate-800 dark:text-slate-200 text-center appearance-none flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                                                                    >
+                                                                        <option value="AM">
+                                                                            AM
+                                                                        </option>
+                                                                        <option value="PM">
+                                                                            PM
+                                                                        </option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex justify-end pt-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={
+                                                                        updateCombinedDateTime
+                                                                    }
+                                                                    disabled={
+                                                                        !selectedDate
+                                                                    }
+                                                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                                                                >
+                                                                    Confirm
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Meeting Type
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2 md:gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsMeetingOnline(false);
+                                                    setVenue("");
+                                                }}
+                                                className={`flex items-center justify-center space-x-2 p-2.5 md:p-3 rounded-lg transition-all duration-200 text-sm md:text-base ${
+                                                    !isMeetingOnline
+                                                        ? "bg-orange-500 text-white"
+                                                        : "bg-black/20 text-gray-400 hover:bg-black/30"
+                                                }`}
+                                            >
+                                                <FaBuilding className="text-base md:text-lg" />
+                                                <span className="hidden sm:inline">
+                                                    Offline
+                                                </span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsMeetingOnline(true);
+                                                    setVenue("");
+                                                }}
+                                                className={`flex items-center justify-center space-x-2 p-2.5 md:p-3 rounded-lg transition-all duration-200 text-sm md:text-base ${
+                                                    isMeetingOnline
+                                                        ? "bg-orange-500 text-white"
+                                                        : "bg-black/20 text-gray-400 hover:bg-black/30"
+                                                }`}
+                                            >
+                                                <FaVideo className="text-base md:text-lg" />
+                                                <span className="hidden sm:inline">
+                                                    Online
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            {isMeetingOnline
+                                                ? "Meeting Link"
+                                                : "Venue"}
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                {isMeetingOnline ? (
+                                                    <FaVideo className="text-gray-400 text-base md:text-lg" />
+                                                ) : (
+                                                    <FaBuilding className="text-gray-400 text-base md:text-lg" />
+                                                )}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={venue}
+                                                onChange={(e) =>
+                                                    setVenue(e.target.value)
+                                                }
+                                                placeholder={
+                                                    isMeetingOnline
+                                                        ? "Enter meeting link"
+                                                        : "Enter venue"
+                                                }
+                                                className="w-full bg-black/20 border border-white/10 rounded-lg pl-10 p-2.5 text-sm md:text-base text-white placeholder-gray-500 focus:border-orange-500 transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="w-full btn-orange disabled:opacity-50 relative mt-4 p-2.5 md:p-3"
+                                        disabled={
+                                            loading || isDisabled || submitting
+                                        }
+                                        onClick={handleMeetingScheduled}
+                                    >
+                                        <div className="flex items-center justify-center space-x-2">
+                                            {submitting ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                                    <span className="text-sm md:text-base">
+                                                        Scheduling...
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm md:text-base">
+                                                    Schedule Meeting
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+                                    {customAlert && (
+                                        <p className="text-sm md:text-base text-red-600 font-semibold w-full text-center mt-2">
+                                            {customAlert}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="space-y-3 mt-4 md:mt-0">
+                                    {mentees.length > 0 ? (
+                                        <div>
+                                            <h3 className="text-base md:text-lg font-semibold text-white mb-2">
+                                                Mentees:
+                                            </h3>
+                                            <div className="max-h-[300px] md:max-h-[400px] overflow-y-auto custom-scrollbar">
+                                                <ul className="list-none space-y-2">
+                                                    {mentees.map(
+                                                        (mentee, index) => (
+                                                            <li
+                                                                key={
+                                                                    mentee.MUJid ||
+                                                                    mentee.email ||
+                                                                    `mentee-${index}`
+                                                                }
+                                                                className="bg-black/20 flex border border-white/10 rounded-lg p-2.5"
+                                                            >
+                                                                <div className="flex items-center space-x-2 w-full">
+                                                                    <div className="w-full">
+                                                                        <p className="text-sm md:text-base font-medium text-white">
+                                                                            {
+                                                                                mentee.name
+                                                                            }
+                                                                        </p>
+                                                                        <p className="text-xs md:text-sm text-gray-400">
+                                                                            {
+                                                                                mentee.email
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </li>
+                                                        )
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full">
+                                            <h3 className="text-sm md:text-base font-semibold text-rose-800 text-center">
+                                                No mentees found
+                                            </h3>
+                                        </div>
+                                    )}
+                                </div>
+                            </form>
+                        </div>
+                    </motion.div>
                 </div>
-              </form>
-            </div>
-          </motion.div>
-        </div>
-        {emailProgress.show && (
-          <div className='fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50'>
-            <EmailProgress
-              current={emailProgress.current}
-              total={emailProgress.total}
-            />
-          </div>
-        )}
-      </motion.div>
-    </AnimatePresence>
-  );
+                {emailProgress.show && (
+                    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50">
+                        <EmailProgress
+                            current={emailProgress.current}
+                            total={emailProgress.total}
+                        />
+                    </div>
+                )}
+            </motion.div>
+        </AnimatePresence>
+    );
 };
 
 export default ScheduleMeetingComponent;
