@@ -44,14 +44,21 @@ const Login = () => {
   const [canResend, setCanResend] = useState(false);
   const [isRecaptchaLoaded, setIsRecaptchaLoaded] = useState(false);
   const otpInputRef = useRef(null);
-
   useEffect(() => {
     const initRecaptcha = async () => {
       try {
-        await loadReCaptchaScript();
-        setIsRecaptchaLoaded(true);
+        // Only try to load recaptcha if the site key is available
+        if (process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY) {
+          await loadReCaptchaScript();
+          setIsRecaptchaLoaded(true);
+          console.log('✅ reCAPTCHA loaded successfully');
+        } else {
+          console.warn('⚠️ reCAPTCHA site key not found, using fallback security');
+          setIsRecaptchaLoaded(false);
+        }
       } catch (error) {
-        console.error("Failed to load reCAPTCHA:", error);
+        console.warn("⚠️ Failed to load reCAPTCHA, using fallback security:", error);
+        setIsRecaptchaLoaded(false);
       }
     };
 
@@ -109,10 +116,11 @@ const Login = () => {
       setOTP(value);
     }
   };
-
   const executeCaptcha = async () => {
+    // Check if reCAPTCHA is loaded and available
     if (!isRecaptchaLoaded || !window.grecaptcha) {
-      throw new Error("reCAPTCHA not loaded");
+      console.warn('⚠️ reCAPTCHA not available, proceeding without token');
+      return null; // Return null instead of throwing error
     }
 
     try {
@@ -122,13 +130,13 @@ const Login = () => {
           action: "submit",
         }
       );
+      console.log('✅ reCAPTCHA token obtained successfully');
       return token;
     } catch (error) {
-      console.error("reCAPTCHA execution error:", error);
-      throw new Error("Security verification failed");
+      console.warn('⚠️ reCAPTCHA execution failed, proceeding without token:', error.message);
+      return null; // Return null instead of throwing error
     }
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const error = validateEmail(email);
@@ -139,9 +147,13 @@ const Login = () => {
 
     setIsLoading(true);
     try {
+      // Try to get captcha token, but don't fail if it's not available
       const captchaToken = await executeCaptcha();
-      if (!captchaToken) {
-        throw new Error("Security verification failed");
+      
+      if (captchaToken) {
+        console.log('🔒 Using reCAPTCHA protection');
+      } else {
+        console.log('🔄 Using fallback security measures');
       }
 
       const response = await fetch("/api/auth/send-otp", {
@@ -151,7 +163,7 @@ const Login = () => {
         },
         body: JSON.stringify({
           email,
-          captchaToken,
+          captchaToken, // This can be null and server will handle fallback
         }),
       });
 
@@ -169,23 +181,26 @@ const Login = () => {
       }
     } catch (error) {
       setEmailError(
-        error.message || "Security verification failed. Please try again."
+        error.message || "Unable to send OTP. Please try again."
       );
       setSendOTPSuccess(false);
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleResendOTP = async () => {
     setIsLoading(true);
     setCanResend(false);
     setCountdown(50);
 
     try {
+      // Try to get captcha token, but don't fail if it's not available
       const captchaToken = await executeCaptcha();
-      if (!captchaToken) {
-        throw new Error("Security verification failed");
+      
+      if (captchaToken) {
+        console.log('🔒 Using reCAPTCHA protection for resend');
+      } else {
+        console.log('🔄 Using fallback security measures for resend');
       }
 
       const response = await fetch("/api/auth/send-otp", {
@@ -195,7 +210,7 @@ const Login = () => {
         },
         body: JSON.stringify({
           email,
-          captchaToken,
+          captchaToken, // This can be null and server will handle fallback
         }),
       });
 
@@ -209,7 +224,9 @@ const Login = () => {
         setSendOTPSuccess(true);
       }
     } catch (error) {
-      setEmailError(error.message);
+      setEmailError(error.message || "Error resending OTP");
+      setCanResend(true);
+      setCountdown(0);
     } finally {
       setIsLoading(false);
     }
