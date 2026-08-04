@@ -414,7 +414,7 @@ const ConsolidatedReport = () => {
             <div className="hidden md:block bg-gray-800/50 p-4 md:p-6 rounded-xl shadow-lg backdrop-blur-sm mb-3 md:mb-8">
               <div className="flex flex-col gap-2">
                 <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
-                  Consolidated Report
+                  Consolidated Mentee Report
                 </h2>
                 <p className="text-sm md:text-base text-gray-400">View and manage all mentee reports</p>
               </div>

@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  PROJECT_NAME: mentor-mentee
+  IMAGE_NAME: mentor_mentee
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -32,7 +36,13 @@ jobs:
           file: ./infra/Dockerfile
           push: true
           tags: |
-            docker.sdcmuj.com/mentor-mentee:latest
-            docker.sdcmuj.com/mentor-mentee:${{ github.sha }}
-          cache-from: type=registry,ref=docker.sdcmuj.com/mentor-mentee:buildcache
-          cache-to: type=registry,ref=docker.sdcmuj.com/mentor-mentee:buildcache,mode=max
+            docker.sdcmuj.com/${{env.IMAGE_NAME}}:latest
+            docker.sdcmuj.com/${{env.IMAGE_NAME}}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sync image names and tags with Deployment Platform
+        run: |
+          curl --fail -X POST \
+            -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_PLATFORM_GITHUB_PAT }}" \
+            "${{ secrets.DEPLOYMENT_PLATFORM_URL }}/image-names/${{ env.PROJECT_NAME }}/${{env.IMAGE_NAME}}/${{ github.sha }}"

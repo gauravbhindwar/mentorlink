@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import LoadingComponent from "@/components/LoadingComponent";
 import { DataGrid } from "@mui/x-data-grid";
@@ -102,6 +102,15 @@ const dialogStyles = {
   },
 };
 
+const availableSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
+
+const normalizeSemester = (val) => {
+  if (!val) return "";
+  const n = Number(val);
+  if (isNaN(n) || n < 1 || n > 8) return "";
+  return String(n);
+};
+
 // Dynamically import Lottie with SSR disabled
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -109,6 +118,10 @@ const ManageMeeting = () => {
   const [academicYear, setAcademicYear] = useState("");
   const [academicSession, setAcademicSession] = useState("");
   const [semester, setSemester] = useState("");
+  const [currentSemester, setCurrentSemester] = useState("");
+  const [showSemesterOptions, setShowSemesterOptions] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const semesterRef = useRef(null);
   const [mentorMeetings, setMentorMeetings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
@@ -134,6 +147,46 @@ const ManageMeeting = () => {
   const [filteredMentors, setFilteredMentors] = useState([]);
 
   useEffect(() => {
+    setSemester(currentSemester);
+  }, [currentSemester]);
+
+  const handleSemesterInput = (e) => {
+    const raw = e.target.value.replace(/\D/g, ""); // digits only
+    const normalized = normalizeSemester(raw);
+    setCurrentSemester(normalized); // syncs semester via useEffect
+
+    if (academicYear) setShowSemesterOptions(true);
+    if (normalized && normalized.length <= 1) {
+      setShowSemesterOptions(false);
+    }
+  };
+
+  const handleSemesterKeyDown = (e) => {
+    if (!showSemesterOptions) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIndex((idx) => (idx + 1) % availableSemesters.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((idx) =>
+        idx <= 0 ? availableSemesters.length - 1 : idx - 1
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlightIndex >= 0) {
+        const sem = availableSemesters[highlightIndex];
+        setCurrentSemester(String(sem)); // semester syncs automatically
+      }
+      setShowSemesterOptions(false);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setShowSemesterOptions(false);
+      setHighlightIndex(-1);
+    }
+  };
+
+  useEffect(() => {
     const init = async () => {
       const { academicYear: currentAcadYear, academicSession: currentSession } =
         determineAcademicPeriod();
@@ -156,6 +209,61 @@ const ManageMeeting = () => {
 
     init();
   }, []);
+  const fetchMentorMeetings = useCallback(
+    async (
+      year = academicYear,
+      session = academicSession,
+      sem = semester,
+      pg = page,
+      size = pageSize
+    ) => {
+      setLoading(true);
+      setNoData(false); // Reset no data state
+      try {
+        const params = {
+          year,
+          session,
+          semester: sem,
+          page: pg,
+          limit: size,
+        };
+
+        const response = await axios.get("/api/admin/manageMeeting", {
+          params,
+        });
+
+        if (response.data && response.data.meetings.length > 0) {
+          setMentorMeetings(response.data.meetings);
+          setTotalRows(response.data.total);
+          sessionStorage.setItem(
+            "mentorMeetings",
+            JSON.stringify(response.data.meetings)
+          );
+        } else {
+          setNoData(true); // Set no data state
+          setMentorMeetings([]);
+        }
+      } catch (error) {
+        console.error("Error:", error.response?.data || error);
+        toast.error(
+          error.response?.data?.message || "Failed to fetch mentor meetings"
+        );
+        setMentorMeetings([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [academicYear, academicSession, semester, page, pageSize]
+  );
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      setPage(0); // Reset to first page
+      setShowTable(true); // Show table when fetching
+      fetchMentorMeetings(academicYear, academicSession, semester, 0, pageSize);
+    },
+    [academicYear, academicSession, semester, pageSize, fetchMentorMeetings]
+  );
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Enter" && semester) {
@@ -184,8 +292,12 @@ const ManageMeeting = () => {
     if (mentorMeetings.length > 0) {
       const filtered = mentorMeetings.filter(
         (mentor) =>
-          mentor.mentorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          mentor.mentorEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          mentor.mentorName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          mentor.mentorEmail
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
           mentor.MUJid?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           mentor.mentorPhone?.includes(searchQuery)
       );
@@ -196,47 +308,6 @@ const ManageMeeting = () => {
   const handleExpandCard = (mujId) => {
     setExpandedCard(expandedCard === mujId ? null : mujId);
   };
-  const fetchMentorMeetings = useCallback(async (
-    year = academicYear,
-    session = academicSession,
-    sem = semester,
-    pg = page,
-    size = pageSize
-  ) => {
-    setLoading(true);
-    setNoData(false); // Reset no data state
-    try {
-      const params = {
-        year,
-        session,
-        semester: sem,
-        page: pg,
-        limit: size,
-      };
-
-      const response = await axios.get("/api/admin/manageMeeting", { params });
-
-      if (response.data && response.data.meetings.length > 0) {
-        setMentorMeetings(response.data.meetings);
-        setTotalRows(response.data.total);
-        sessionStorage.setItem(
-          "mentorMeetings",
-          JSON.stringify(response.data.meetings)
-        );
-      } else {
-        setNoData(true); // Set no data state
-        setMentorMeetings([]);
-      }
-    } catch (error) {
-      console.error("Error:", error.response?.data || error);
-      toast.error(
-        error.response?.data?.message || "Failed to fetch mentor meetings"
-      );
-      setMentorMeetings([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [academicYear, academicSession, semester, page, pageSize]);
 
   const fetchMentorMeetingDetails = async (mentorId, status) => {
     setLoadingMeetingDetails(true);
@@ -328,18 +399,13 @@ const ManageMeeting = () => {
     setAcademicSession(e.target.value.toUpperCase());
   };
 
-  const handleSemesterChange = (e) => {
-    const value = e.target.value;
-    // Only allow numbers 1-8
-    if (value === "" || /^[1-8]$/.test(value)) {
-      setSemester(value);
-    }
-  };  const handleSubmit = useCallback((e) => {
-    e.preventDefault();
-    setPage(0); // Reset to first page
-    setShowTable(true); // Show table when fetching
-    fetchMentorMeetings(academicYear, academicSession, semester, 0, pageSize);
-  }, [academicYear, academicSession, semester, pageSize, fetchMentorMeetings]);
+  // const handleSemesterChange = (e) => {
+  //   const value = e.target.value;
+  //   // Only allow numbers 1-8
+  //   if (value === "" || /^[1-8]$/.test(value)) {
+  //     setSemester(value);
+  //   }
+  // };
 
   const generateEmailContent = (mentor) => {
     const subject = "Mentor Meeting Follow-up";
@@ -347,7 +413,9 @@ const ManageMeeting = () => {
     // Customize email message based on reports pending
     let pendingReports = "";
     if (mentor.scheduledMeetings > 0) {
-      pendingReports = `\nNote: You have ${mentor.scheduledMeetings} scheduled ${
+      pendingReports = `\nNote: You have ${
+        mentor.scheduledMeetings
+      } scheduled ${
         mentor.scheduledMeetings > 1 ? "meetings" : "meeting"
       } with pending reports. Please complete the reports at your earliest convenience.`;
     }
@@ -364,9 +432,7 @@ ${
       }`
     : `This is a reminder that you still need to schedule ${
         3 - mentor.meetingCount
-      } more mentor ${
-        3 - mentor.meetingCount > 1 ? "meetings" : "meeting"
-      }.`
+      } more mentor ${3 - mentor.meetingCount > 1 ? "meetings" : "meeting"}.`
 }
 
 Current Status:
@@ -616,9 +682,7 @@ Admin Team`;
                     </div>
                   </button>
                   <button
-                    onClick={() =>
-                      handleViewMeetings(mentor.MUJid, "reported")
-                    }
+                    onClick={() => handleViewMeetings(mentor.MUJid, "reported")}
                     className="flex items-center justify-between bg-green-500/10 hover:bg-green-500/20 
                     rounded-lg p-2 transition-all duration-200 w-full group"
                   >
@@ -708,7 +772,9 @@ Admin Team`;
         {isExpanded && (
           <div className="px-4 pb-4 border-t border-white/10 pt-3">
             <div className="space-y-2 text-sm text-gray-300">
-              <h4 className="text-orange-500 font-medium">Additional Details</h4>
+              <h4 className="text-orange-500 font-medium">
+                Additional Details
+              </h4>
               <p>Academic Year: {academicYear}</p>
               <p>Academic Session: {academicSession}</p>
               <p>Semester: {semester}</p>
@@ -836,18 +902,52 @@ Admin Team`;
                     </datalist>
                   </div>
 
-                  <div className="relative">
+                  <div ref={semesterRef} className="relative">
                     <input
-                      type="number"
-                      min="1"
-                      max="8"
-                      placeholder="Semester (1-8)"
-                      value={semester}
-                      onChange={handleSemesterChange}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder:text-gray-500
-                focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all text-sm
-                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={1}
+                      placeholder={
+                        !academicYear
+                          ? "Add academic year first"
+                          : "Select semester number"
+                      }
+                      value={currentSemester}
+                      onChange={handleSemesterInput}
+                      onKeyDown={handleSemesterKeyDown}
+                      onFocus={() => {
+                        if (academicYear) {
+                          setShowSemesterOptions(true);
+                          setHighlightIndex(-1);
+                        }
+                      }}
+                      disabled={!academicYear}
+                      className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm text-white placeholder:text-gray-500 disabled:opacity-50 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all"
                     />
+
+                    {showSemesterOptions && availableSemesters.length > 0 && (
+                      <div className="absolute z-20 w-full mt-1 bg-black/90 border border-white/10 rounded-lg shadow-lg">
+                        {availableSemesters.map((sem, i) => (
+                          <div
+                            key={sem}
+                            className={`px-4 py-2 hover:bg-white/10 cursor-pointer text-white ${
+                              currentSemester === String(sem)
+                                ? "bg-orange-500/20 border-l-2 border-orange-500"
+                                : ""
+                            } ${i === highlightIndex ? "bg-white/10" : ""}`}
+                            onMouseEnter={() => setHighlightIndex(i)}
+                            onMouseLeave={() => setHighlightIndex(-1)}
+                            onClick={() => {
+                              setCurrentSemester(String(sem));
+                              setShowSemesterOptions(false);
+                            }}
+                          >
+                            Semester {sem}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -1049,7 +1149,11 @@ Admin Team`;
                       <div className="h-full w-full rounded-lg overflow-hidden border border-white/10">
                         <ThemeProvider theme={darkTheme}>
                           <DataGrid
-                            rows={searchQuery ? formatRowsForDataGrid(filteredMentors) : formatRowsForDataGrid(mentorMeetings)}
+                            rows={
+                              searchQuery
+                                ? formatRowsForDataGrid(filteredMentors)
+                                : formatRowsForDataGrid(mentorMeetings)
+                            }
                             getRowId={(row) => row.MUJid} // Add this line to ensure unique ids
                             columns={columns.map((col) => ({
                               ...col,
@@ -1224,7 +1328,9 @@ Admin Team`;
                             >
                               Meeting {index + 1}
                             </Typography>
-                            <Box>{getMeetingStatusBadge(meeting.isReportFilled)}</Box>
+                            <Box>
+                              {getMeetingStatusBadge(meeting.isReportFilled)}
+                            </Box>
                           </Box>
 
                           <Box
@@ -1284,7 +1390,8 @@ Admin Team`;
                                 Venue
                               </Typography>
                               <Typography>
-                                {meeting.meeting_notes?.venue || "Not specified"}
+                                {meeting.meeting_notes?.venue ||
+                                  "Not specified"}
                               </Typography>
                             </Box>
                           </Box>
@@ -1407,7 +1514,9 @@ Admin Team`;
             >
               Close
             </Button>
-            {selectedMeetingDetails?.meetings?.some((m) => m.isReportFilled) && (
+            {selectedMeetingDetails?.meetings?.some(
+              (m) => m.isReportFilled
+            ) && (
               <Button
                 onClick={() => {
                   setMeetingDetailsDialog(false);
@@ -1519,9 +1628,7 @@ Admin Team`;
                   <Typography
                     sx={{ display: "flex", alignItems: "center", gap: 1 }}
                   >
-                    <PersonIcon
-                      sx={{ fontSize: "0.9rem", color: "#f97316" }}
-                    />
+                    <PersonIcon sx={{ fontSize: "0.9rem", color: "#f97316" }} />
                     {selectedMentor?.mentorEmail}
                   </Typography>
                 </Box>
@@ -1655,10 +1762,7 @@ Admin Team`;
         <Typography variant="h6" sx={{ color: "white" }}>
           Sending Email...
         </Typography>
-        <Typography
-          variant="body2"
-          sx={{ color: "rgba(255, 255, 255, 0.7)" }}
-        >
+        <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
           This may take a few moments
         </Typography>
       </Backdrop>

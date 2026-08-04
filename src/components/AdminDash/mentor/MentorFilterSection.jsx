@@ -462,8 +462,10 @@ const MentorFilterSection = ({
           <TextField
             label="Academic Year"
             value={academicYear}
-            InputProps={{
-              readOnly: true,
+            slotProps={{
+              input: {
+                readOnly: true,
+              }
             }}
             size="small"
             placeholder="YYYY-YYYY"
@@ -509,8 +511,10 @@ const MentorFilterSection = ({
               //   </Box>
               // }
               // Make it read-only
-              InputProps={{
-                readOnly: true,
+              slotProps={{
+                input: {
+                  readOnly: true,
+                }
               }}
               sx={{...textFieldStyles, pointerEvents: 'none', opacity: 0.7, select: 'none'}}
             />
@@ -525,12 +529,14 @@ const MentorFilterSection = ({
               placeholder="Search by name, email, phone..."
               value={emailSearch}
               onChange={handleSearchInput} // Updated to use debounced handler
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'rgba(249, 115, 22, 0.7)' }} />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'rgba(249, 115, 22, 0.7)' }} />
+                    </InputAdornment>
+                  ),
+                }
               }}
               sx={{
                 ...textFieldStyles,

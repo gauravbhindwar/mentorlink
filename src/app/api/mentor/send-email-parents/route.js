@@ -1,70 +1,28 @@
-import nodemailer from "nodemailer";
-import smtpTransport from "nodemailer-smtp-transport";
 import { NextResponse } from "next/server";
-
-const transporter = nodemailer.createTransport(
-  smtpTransport({
-    service: "Gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  })
-);
+import { sendEmail } from "../../../../lib/mailService";
 
 export async function POST(req) {
   try {
-    const { parentEmails, subject, body, menteeId, mentorData } = await req.json();
+    const { parentEmails, subject, body, mentorData } = await req.json();
 
-    // Enhanced validation for parent emails
+    // Validation
     if (!parentEmails || !Array.isArray(parentEmails) || parentEmails.length === 0) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: "No valid parent email addresses provided" 
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "Invalid email addresses" }, { status: 400 });
     }
 
-    // Validate email format
-    const validEmails = parentEmails.filter(email => 
-      typeof email === 'string' && 
-      email.includes('@') && 
-      email.includes('.')
-    );
-
-    if (validEmails.length === 0) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: "No valid parent email addresses found" 
-        },
-        { status: 400 }
-      );
+    // Validate each email
+    for (const email of parentEmails) {
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return NextResponse.json({ success: false, message: "Invalid email address in array" }, { status: 400 });
+      }
     }
 
-    // Basic validation for required fields
-    if (!subject || !body || !menteeId || !mentorData) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: "Missing required information" 
-        },
-        { status: 400 }
-      );
+    if (!subject || !body || !mentorData) {
+      return NextResponse.json({ success: false, message: "Missing data" }, { status: 400 });
     }
 
-    // Send email with professional HTML template
-    const emailResult = await transporter.sendMail({
-      from: `"MentorLink - ${mentorData.name}" <${process.env.EMAIL_USER}>`,
-      bcc: validEmails, // Send to all parent emails as BCC
-      subject: subject,
-      text: body, // Plain text version
-      html: `
+    // Prepare email content
+    const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -81,41 +39,39 @@ export async function POST(req) {
         <body style="background-color: #f5f5f5; margin: 0; padding: 20px;">
           <div class="container">
             <div class="header">
-              <h1 style="margin: 0;">Academic Update</h1>
+              <h1 style="margin: 0; font-size: 24px;">MentorLink - ${mentorData.name || 'Mentor'}</h1>
             </div>
             <div class="content">
-              ${body.split('\n').map(line => `<p>${line}</p>`).join('')}
+              <p>Dear Parent/Guardian,</p>
+              <div style="margin: 20px 0; white-space: pre-wrap;">${body}</div>
             </div>
             <div class="footer">
               <p>This is an automated message from MentorLink System.</p>
-              <p>
-                <strong>${mentorData.name}</strong><br>
-                ${mentorData.designation || 'Faculty Mentor'}<br>
-                Department of Computer Science and Engineering<br>
-                Manipal University Jaipur
-              </p>
+              <p>Department of Computer Science and Engineering<br>Manipal University Jaipur</p>
             </div>
           </div>
         </body>
         </html>
-      `,
-      priority: "high",
+      `;
+
+    // Send email via custom mail service
+    await sendEmail({
+      to: parentEmails,
+      subject,
+      content: htmlContent,
+      priority: "NOTIFICATION"
     });
 
+    // Return success
     return NextResponse.json({
       success: true,
-      message: "Email sent to parents successfully",
-      messageId: emailResult.messageId
+      message: "Email sent successfully"
     });
 
   } catch (error) {
-    console.error("Error sending email to parents:", error);
+    console.error("Error in email API:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: `Failed to send email: ${error.message}`,
-        error: error.toString()
-      },
+      { success: false, message: "Server error", error: error.toString() },
       { status: 500 }
     );
   }

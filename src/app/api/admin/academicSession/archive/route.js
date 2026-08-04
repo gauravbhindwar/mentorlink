@@ -7,22 +7,41 @@ import { Meeting } from "@/lib/db/meetingSchema";
 import mongoose from "mongoose";
 
 export async function PUT(request) {
-  let session;
+  let session = null;
+  let useTransaction = false;
   try {
     await connect();
-    session = await mongoose.startSession();
-    await session.startTransaction();
+    try {
+      session = await mongoose.startSession();
+      await session.startTransaction();
+      useTransaction = true;
+    } catch (transactionError) {
+      console.warn(
+        "Transactions unavailable, continuing without transaction:",
+        transactionError.message
+      );
+      if (session) {
+        await session.endSession();
+        session = null;
+      }
+    }
 
     const { start_year, end_year } = await request.json();
 
     // Get all data before archiving
     const academicYear = `${start_year}-${end_year}`;
     
-    // Find the session first to get current session name
-    const academicSession = await AcademicSession.findOne({
+    // Find the session first to get current session name (run inside transaction session)
+    const academicSessionQuery = AcademicSession.findOne({
       start_year: parseInt(start_year),
       end_year: parseInt(end_year)
     });
+
+    if (useTransaction) {
+      academicSessionQuery.session(session);
+    }
+
+    const academicSession = await academicSessionQuery;
 
     if (!academicSession) {
       throw new Error('Academic session not found');
@@ -31,19 +50,32 @@ export async function PUT(request) {
     const currentSessionName = academicSession.sessions[0].name;
 
     // Get all related data with complete mentor information
-    const [mentors, mentees, meetings] = await Promise.all([
-      Mentor.find({ 
+    // Run related queries inside the same transaction session to keep a consistent view
+    const mentorQuery = Mentor.find({ 
         academicYear,
         academicSession: currentSessionName 
-      }).select('MUJid name email phone_number gender profile_picture role academicYear academicSession').lean(),
-      Mentee.find({ 
+      }).select('MUJid name email phone_number gender profile_picture role academicYear academicSession');
+      
+    const menteeQuery = Mentee.find({ 
         academicYear,
         academicSession: currentSessionName
-      }).lean(),
-      Meeting.find({
+      });
+
+    const meetingQuery = Meeting.find({
         'academicDetails.academicYear': academicYear,
         'academicDetails.academicSession': currentSessionName
-      }).lean()
+      });
+
+    if (useTransaction) {
+      mentorQuery.session(session);
+      menteeQuery.session(session);
+      meetingQuery.session(session);
+    }
+
+    const [mentors, mentees, meetings] = await Promise.all([
+      mentorQuery.lean(),
+      menteeQuery.lean(),
+      meetingQuery.lean()
     ]);
 
     // Group mentees by mentor
@@ -156,8 +188,10 @@ export async function PUT(request) {
     academicSession.archivedAt = new Date();
 
     // Save all changes
-    await academicSession.save({ session });
-    await session.commitTransaction();
+    await academicSession.save(useTransaction ? { session } : {});
+    if (useTransaction) {
+      await session.commitTransaction();
+    }
 
     return NextResponse.json({
       message: "Academic session archived successfully",
@@ -173,7 +207,7 @@ export async function PUT(request) {
 
   } catch (error) {
     console.error("Archive process error:", error);
-    if (session) {
+    if (useTransaction && session && session.inTransaction()) {
       await session.abortTransaction();
     }
     return NextResponse.json({

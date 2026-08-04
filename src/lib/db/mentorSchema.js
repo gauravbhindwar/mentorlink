@@ -35,6 +35,8 @@ const mentorsSchema = new mongoose.Schema({
   otp: { type: String, default: null },
   otpExpires: { type: Date, default: null },
   isOtpUsed: { type: Boolean, default: false },
+  password: { type: String, default: null },
+  isPasswordSet: { type: Boolean, default: false },
   isActive: { 
     type: Boolean, 
     default: true,

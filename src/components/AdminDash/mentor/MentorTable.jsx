@@ -1,14 +1,14 @@
 'use client';
 import { DataGrid } from '@mui/x-data-grid';
 import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Typography, IconButton, TextField } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import InfoIcon from '@mui/icons-material/Info';
 import TransferIcon from '@mui/icons-material/SwapHoriz';
 import SelectIcon from '@mui/icons-material/FilterList'; // Add this import
 import MentorDetailsDialog from './MentorDetailsDialog';
 import SelectiveMenteeTransferDialog from './SelectiveMenteeTransferDialog'; // Add this import
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Add this import
@@ -18,6 +18,8 @@ import NoMenteesDialog from './NoMenteesDialog';
 
 const BATCH_SIZE = 50;
 const BACKGROUND_BATCH_SIZE = 100;
+const INITIAL_VISIBLE_ROWS = 10;
+const ROW_LOAD_STEP = 10;
 
 const CustomLoadingOverlay = () => (
   <Box sx={{
@@ -70,11 +72,13 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
   const [baseData, setBaseData] = useState([]);
   const cachedData = useRef(new Map());
   const batchKey = useRef('');
+  const gridContainerRef = useRef(null);
   const [menteeStats, setMenteeStats] = useState(null);
   const [targetMenteeStats, setTargetMenteeStats] = useState(null);
   const [showTransferLoading, setShowTransferLoading] = useState(false);
   const [showNoMenteesDialog, setShowNoMenteesDialog] = useState(false);
   const [selectiveMenteeDialog, setSelectiveMenteeDialog] = useState(false); // Add this state
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ROWS);
 
   const fetchMenteeStats = async (mentorId) => {
     try {
@@ -265,6 +269,68 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
       isActive: item.isActive || false,
     }));
   }, [mentors, emailFilter]);
+
+  const displayedMentors = useMemo(() => {
+    if (!processedMentors.length) return [];
+    return processedMentors.slice(0, Math.min(visibleCount, processedMentors.length));
+  }, [processedMentors, visibleCount]);
+
+  useEffect(() => {
+    if (!processedMentors.length) {
+      setVisibleCount(0);
+      return;
+    }
+
+    setVisibleCount((prev) => {
+      if (prev === 0) {
+        return Math.min(INITIAL_VISIBLE_ROWS, processedMentors.length);
+      }
+
+      if (prev > processedMentors.length) {
+        return processedMentors.length;
+      }
+
+      return prev;
+    });
+  }, [processedMentors.length]);
+
+  const hasMoreRows = visibleCount < processedMentors.length;
+
+  const loadMoreRows = useCallback(() => {
+    if (!hasMoreRows) {
+      return;
+    }
+
+    setVisibleCount((prev) => {
+      if (prev >= processedMentors.length) {
+        return prev;
+      }
+
+      return Math.min(prev + ROW_LOAD_STEP, processedMentors.length);
+    });
+  }, [hasMoreRows, processedMentors.length]);
+
+  useEffect(() => {
+    const container = gridContainerRef.current;
+    if (!container) return;
+
+    const scroller = container.querySelector('.MuiDataGrid-virtualScroller');
+    if (!scroller) return;
+
+    const handleScroll = () => {
+      if (!hasMoreRows) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = scroller;
+      if (scrollHeight - (scrollTop + clientHeight) <= 40) {
+        loadMoreRows();
+      }
+    };
+
+    scroller.addEventListener('scroll', handleScroll);
+    return () => {
+      scroller.removeEventListener('scroll', handleScroll);
+    };
+  }, [hasMoreRows, loadMoreRows]);
 
   useEffect(() => {
     const fetchDataInBatches = async () => {
@@ -597,11 +663,17 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
     <Box sx={{
       p: 1.5,
       display: 'flex',
-      justifyContent: 'flex-end',
+      justifyContent: 'space-between',
       alignItems: 'center',
       borderTop: '1px solid rgba(249, 115, 22, 0.3)',
       background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
     }}>
+      <Typography variant="body2" sx={{ 
+        color: 'rgba(249, 115, 22, 0.9)',
+        fontWeight: 500
+      }}>
+        Showing {displayedMentors.length} of {processedMentors.length} mentors
+      </Typography>
       <Typography variant="body2" sx={{ 
         color: 'rgba(249, 115, 22, 0.9)',
         fontWeight: 500
@@ -1165,200 +1237,194 @@ const MentorTable = ({ mentors, onEditClick, onDeleteClick, emailFilter, onDataU
         </Box>
       )}
       
-      <DataGrid
-        rows={processedMentors || []}
-        columns={columns}
-        getRowId={(row) => row?._id || row?.id || String(Math.random())}
-        initialState={{
-          pagination: {
-            paginationModel: { pageSize: 10, page: 0 },
-          },
-        }}
-        pageSizeOptions={[10, 25, 50,{ value: processedMentors?.length, label: 'All' }]}
-        sx={{
-          height: { xs: '500px', lg: '100%' },
-          width: '100%',
-          '& .MuiDataGrid-main': {
-            overflow: 'auto',
-            minHeight: { xs: '300px', lg: '100vh-250px' },
-            maxHeight: { xs: '500px', lg: 'calc(100vh - 250px)' },
-            height: '100%',
-            flex: 1,
-          },
-          '& .MuiDataGrid-virtualScroller': {
-            overflow: 'auto !important',
-            '&::-webkit-scrollbar': {
-              width: '8px',
-              height: '8px',
+      <Box ref={gridContainerRef} sx={{ width: '100%', flex: 1 }}>
+        <DataGrid
+          rows={displayedMentors}
+          columns={columns}
+          getRowId={(row) => row?._id || row?.id || String(Math.random())}
+          sx={{
+            height: { xs: '500px', lg: '100%' },
+            width: '100%',
+            '& .MuiDataGrid-main': {
+              overflow: 'auto',
+              minHeight: { xs: '300px', lg: '100vh-250px' },
+              maxHeight: { xs: '500px', lg: 'calc(100vh - 250px)' },
+              height: '100%',
+              flex: 1,
             },
-            '&::-webkit-scrollbar-track': {
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'rgba(249, 115, 22, 0.5)',
-              borderRadius: '4px',
-              '&:hover': {
-                background: 'rgba(249, 115, 22, 0.7)',
+            '& .MuiDataGrid-virtualScroller': {
+              overflow: 'auto !important',
+              '&::-webkit-scrollbar': {
+                width: '8px',
+                height: '8px',
               },
+              '&::-webkit-scrollbar-track': {
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(249, 115, 22, 0.5)',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: 'rgba(249, 115, 22, 0.7)',
+                },
+              },
+              height: '100% !important',
+              minHeight: { xs: '300px', lg: '200px' },
+              maxHeight: { xs: '500px', lg: 'unset !important' },
             },
-            height: '100% !important',
-            minHeight: { xs: '300px', lg: '200px' },
-            maxHeight: { xs: '500px', lg: 'unset !important' },
-          },
-          '& .MuiDataGrid-virtualScrollerContent': {
-            minWidth: 'fit-content',
-            height: '100%',
-          },
-          '& .MuiDataGrid-virtualScrollerRenderZone': {
+            '& .MuiDataGrid-virtualScrollerContent': {
+              minWidth: 'fit-content',
+              height: '100%',
+            },
+            '& .MuiDataGrid-virtualScrollerRenderZone': {
+              width: '100%',
+              height: '100%',
+            },
             width: '100%',
             height: '100%',
-          },
-          width: '100%',
-          height: '100%',
-          minHeight: '400px',
-          border: 'none',
-          backgroundColor: 'transparent',
-          backdropFilter: 'blur(10px)',
-          borderRadius: 2,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-          '& .MuiDataGrid-cell': {
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            padding: '16px',
-            fontSize: '0.95rem',
-            color: 'rgba(255, 255, 255, 0.9)',
-            textAlign: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '50px !important',
-            maxHeight: 'unset !important',
-            whiteSpace: 'normal',
-            lineHeight: '1.5',
-            transition: 'all 0.2s ease',
+            minHeight: '400px',
+            border: 'none',
             backgroundColor: 'transparent',
-          },
-          '& .MuiDataGrid-columnHeaders': {
-            position: 'sticky',
-            top: 0,
-            zIndex: 2,
-            backgroundColor: 'rgba(249, 115, 22, 0.15)',
-            borderBottom: '2px solid rgba(249, 115, 22, 0.3)',
-            transition: 'none !important',
-            minHeight: '56px !important',
-            '& .MuiDataGrid-columnHeader': {
-              outline: 'none !important',
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              
-            }
-          },
-          '& .MuiDataGrid-columnHeader': {
-            transition: 'background-color 0.2s ease',
-            '& .MuiDataGrid-columnSeparator': {
-              transition: 'opacity 0.3s ease',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 2,
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              padding: '16px',
+              fontSize: '0.95rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '50px !important',
+              maxHeight: 'unset !important',
+              whiteSpace: 'normal',
+              lineHeight: '1.5',
+              transition: 'all 0.2s ease',
+              backgroundColor: 'transparent',
             },
-          },
-          '& .MuiDataGrid-sortIcon': {
-            color: '#ea580c',
-            opacity: 0.5,
-          },
-          '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
-            opacity: 1,
-          },
-          '& .MuiDataGrid-columnHeaderTitle': {
-            fontWeight: 600,
-          },
-          '& .MuiDataGrid-footerContainer': {
-            minHeight: '56px !important',
-            maxHeight: '56px !important',
-            borderTop: '2px solid rgba(249, 115, 22, 0.3)',
-            zIndex: 2,
-            borderRadius: '0 0 12px 12px',
-            backdropFilter: 'blur(10px)',
-            marginTop: 'auto',
-            display: 'flex',
-            position: 'sticky',
-            bottom: 0,
-            borderTop: '2px solid rgba(249, 115, 22, 0.3)',
-            backdropFilter: 'blur(10px)',
-            
-          },
-          '& .MuiTablePagination-root': {
-            color: 'rgba(249, 115, 22, 0.9)',
-          },
-          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-            color: 'rgba(249, 115, 22, 0.9)',
-          },
-          '& .MuiTablePagination-select': {
-            color: 'rgba(255, 255, 255, 0.9)',
-          },
-          '& .MuiTablePagination-selectIcon': {
-            color: '#ea580c',
-          },
-          '& .MuiMenu-paper': {
-            bgcolor: 'rgba(0, 0, 0, 0.95)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(249, 115, 22, 0.2)',
-          },
-          '& .MuiMenuItem-root': {
-            color: 'rgba(255, 255, 255, 0.9)',
-            '&.Mui-selected': {
-              backgroundColor: 'rgba(249, 115, 22, 0.3)',
-              color: '#ea580c',
-              fontWeight: 600,
-              '&:hover': {
-                backgroundColor: 'rgba(249, 115, 22, 0.4)',
+            '& .MuiDataGrid-columnHeaders': {
+              position: 'sticky',
+              top: 0,
+              zIndex: 2,
+              backgroundColor: 'rgba(249, 115, 22, 0.15)',
+              borderBottom: '2px solid rgba(249, 115, 22, 0.3)',
+              transition: 'none !important',
+              minHeight: '56px !important',
+              '& .MuiDataGrid-columnHeader': {
+                outline: 'none !important',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                
+              }
+            },
+            '& .MuiDataGrid-columnHeader': {
+              transition: 'background-color 0.2s ease',
+              '& .MuiDataGrid-columnSeparator': {
+                transition: 'opacity 0.3s ease',
               },
             },
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.1)',
+            '& .MuiDataGrid-sortIcon': {
+              color: '#ea580c',
+              opacity: 0.5,
             },
-          },
-          flex: 2,
-          height: '100%',
-          maxHeight: '100%',
-          '& .MuiDataGrid-row': {
-            transition: 'all 0.2s ease',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: 'rgba(249, 115, 22, 0.08)',
-              transform: 'translateY(-1px)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            '& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon': {
+              opacity: 1,
             },
-          },
-          transition: 'all 0.3s ease',
-        }}
-        disableSelectionOnClick={true}
-        disableColumnMenu={true}
-        disableRowSelectionOnClick={true}
-        disableColumnFilter={false}
-        loading={!mentors.length}
-        components={{
-          LoadingOverlay: CustomLoadingOverlay,
-          NoRowsOverlay: CustomNoRowsOverlay,
-          Header: CustomHeader,
-          Footer: CustomFooter,
-        }}
-        componentsProps={{
-          columnHeaders: {
-            sx: {
-              transition: 'none !important',
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 600,
             },
-          },
-          virtualScroller: {
-            sx: {
-              scrollBehavior: 'smooth',
+            '& .MuiDataGrid-footerContainer': {
+              minHeight: '56px !important',
+              maxHeight: '56px !important',
+              borderTop: '2px solid rgba(249, 115, 22, 0.3)',
+              zIndex: 2,
+              borderRadius: '0 0 12px 12px',
+              backdropFilter: 'blur(10px)',
+              marginTop: 'auto',
+              display: 'flex',
+              position: 'sticky',
+              bottom: 0,
+              borderTop: '2px solid rgba(249, 115, 22, 0.3)',
+              backdropFilter: 'blur(10px)',
+              
             },
-          },
-        }}
-        columnBuffer={5}
-        rowBuffer={10}
-        rowHeight={50}
-        headerHeight={50}
-        pageSize={10}
-        rowsPerPageOptions={[10, 25, 50]}
-        pagination
-      />
+            '& .MuiTablePagination-root': {
+              color: 'rgba(249, 115, 22, 0.9)',
+            },
+            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+              color: 'rgba(249, 115, 22, 0.9)',
+            },
+            '& .MuiTablePagination-select': {
+              color: 'rgba(255, 255, 255, 0.9)',
+            },
+            '& .MuiTablePagination-selectIcon': {
+              color: '#ea580c',
+            },
+            '& .MuiMenu-paper': {
+              bgcolor: 'rgba(0, 0, 0, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(249, 115, 22, 0.2)',
+            },
+            '& .MuiMenuItem-root': {
+              color: 'rgba(255, 255, 255, 0.9)',
+              '&.Mui-selected': {
+                backgroundColor: 'rgba(249, 115, 22, 0.3)',
+                color: '#ea580c',
+                fontWeight: 600,
+                '&:hover': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.4)',
+                },
+              },
+              '&:hover': {
+                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+              },
+            },
+            flex: 2,
+            height: '100%',
+            maxHeight: '100%',
+            '& .MuiDataGrid-row': {
+              transition: 'all 0.2s ease',
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              },
+            },
+            transition: 'all 0.3s ease',
+          }}
+          disableSelectionOnClick={true}
+          disableColumnMenu={true}
+          disableRowSelectionOnClick={true}
+          disableColumnFilter={false}
+          loading={!mentors.length}
+          components={{
+            LoadingOverlay: CustomLoadingOverlay,
+            NoRowsOverlay: CustomNoRowsOverlay,
+            Header: CustomHeader,
+            Footer: CustomFooter,
+          }}
+          componentsProps={{
+            columnHeaders: {
+              sx: {
+                transition: 'none !important',
+              },
+            },
+            virtualScroller: {
+              sx: {
+                scrollBehavior: 'smooth',
+              },
+            },
+          }}
+          columnBuffer={5}
+          rowBuffer={10}
+          rowHeight={50}
+          headerHeight={50}
+          hideFooterPagination
+        />
+      </Box>
       
       <MentorDetailsDialog
         open={detailsDialog.open}

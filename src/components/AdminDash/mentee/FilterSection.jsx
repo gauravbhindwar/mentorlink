@@ -692,21 +692,23 @@ const FilterSection = ({
               handleFilterChange('email', value);
             }}
             placeholder="Search name, email, ID, etc."
-            InputProps={{
-              startAdornment: (
-                <SearchIcon sx={{ 
-                  color: '#f97316',
-                  marginRight: '12px',
-                  fontSize: '1.25rem'
-                }} />
-              ),
-              sx: {
-                height: '56px',
-                padding: '0 16px',
-                fontSize: '1rem',
-                '&::placeholder': {
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  opacity: 1,
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <SearchIcon sx={{ 
+                    color: '#f97316',
+                    marginRight: '12px',
+                    fontSize: '1.25rem'
+                  }} />
+                ),
+                sx: {
+                  height: '56px',
+                  padding: '0 16px',
+                  fontSize: '1rem',
+                  '&::placeholder': {
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    opacity: 1,
+                  }
                 }
               }
             }}

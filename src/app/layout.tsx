@@ -5,7 +5,6 @@ import Navbar from "@/components/subComponents/Navbar";
 import "./globals.css";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 // import { initializeEncryptedStorage } from '../utils/encryption';
-import CloseOnLogout from "@/components/CloseOnLogout";
 import { useEffect } from "react";
 import { useRouter } from 'next/navigation';
 
@@ -45,7 +44,6 @@ export default function RootLayout({
       <body className={inter.className}>
         {/* <PostHogProvider> */}
           <Navbar />
-          <CloseOnLogout />
           {children}
           <div id="portal-root" />
           <SpeedInsights />

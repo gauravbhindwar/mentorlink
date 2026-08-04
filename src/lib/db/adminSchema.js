@@ -11,6 +11,8 @@ const adminSchema = new mongoose.Schema({
     otp: { type: String },
     otpExpires: { type: Date },
     isOtpUsed: { type: Boolean, default: false },
+    password: { type: String, default: null },
+    isPasswordSet: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true }
 });
 

@@ -24,6 +24,13 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
   const [showFullForm, setShowFullForm] = useState(false);
   const isSmallScreen = useMediaQuery('(max-width: 1024px)');
   const emailInputRef = useRef(null);
+  const nameInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const inputRefs = {
+    email: emailInputRef,
+    name: nameInputRef,
+    phone_number: phoneInputRef,
+  };
 
   const drawerVariants = {
     initial: { y: '100%' },
@@ -86,8 +93,10 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
     return "";
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const handleInputChange = (event) => {
+    const { name, value, selectionStart, selectionEnd } = event.target;
+    const targetRef = inputRefs[name];
+
     setMentorDetails(prev => ({
       ...prev,
       [name]: value,
@@ -97,6 +106,22 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
       ...prev,
       [name]: '',
     }));
+
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      const inputElement = targetRef?.current;
+      if (!inputElement) return;
+
+      inputElement.focus();
+
+      if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
+        try {
+          inputElement.setSelectionRange(selectionStart, selectionEnd);
+        } catch (error) {
+          void error;
+        }
+      }
+    });
   };
 
   const handleEmailSearch = async () => {
@@ -204,8 +229,7 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                     helperText={errors.email}
                     required
                     inputRef={emailInputRef}
-                    autoFocus={open}
-                    key="email-input-field"
+                    autoFocus={open && !showFullForm}
                     sx={{
                       ...dialogStyles.textField,
                       '& .MuiOutlinedInput-root': {
@@ -292,6 +316,7 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                     error={!!errors.name}
                     helperText={errors.name}
                     required
+                    inputRef={nameInputRef}
                     sx={{
                       ...dialogStyles.textField,
                       '& .MuiOutlinedInput-root': {
@@ -325,6 +350,7 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
                     error={!!errors.phone_number}
                     helperText={errors.phone_number}
                     required
+                    inputRef={phoneInputRef}
                     sx={{
                       ...dialogStyles.textField,
                       '& .MuiOutlinedInput-root': {

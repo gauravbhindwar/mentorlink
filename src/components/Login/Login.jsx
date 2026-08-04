@@ -1,86 +1,94 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
-import { MdAdminPanelSettings, MdGroups } from "react-icons/md";
-import { IoMail } from "react-icons/io5";
-import { RiLockPasswordLine } from "react-icons/ri";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaEnvelope, FaKey, FaEye, FaEyeSlash, FaLock, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { MdPassword, MdEmail } from "react-icons/md";
+import { validatePassword, getPasswordStrength } from "@/utils/passwordValidation";
 
-// Move loadReCaptchaScript outside component and modify it to return a promise
+const EMAIL_DOMAINS = [
+  'jaipur.manipal.edu',
+  'muj.manipal.edu'
+];
+
 const loadReCaptchaScript = () => {
   return new Promise((resolve) => {
     if (window.grecaptcha) {
       resolve();
       return;
     }
-
-    const script = document.createElement("script");
-    script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY}`;
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`;
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      window.grecaptcha.ready(() => {
-        resolve();
-      });
-    };
-    document.head.appendChild(script);
+    script.onload = resolve;
+    document.body.appendChild(script);
   });
 };
 
 const Login = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOTP] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  
+  const [authMode, setAuthMode] = useState("password");
+  const [step, setStep] = useState("email");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  
   const [emailError, setEmailError] = useState("");
-  const [sendOTPSuccess, setSendOTPSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isVerifyHovered, setIsVerifyHovered] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [roles, setRoles] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [passwordValidation, setPasswordValidation] = useState({ isValid: false, errors: [] });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [sendOTPSuccess, setSendOTPSuccess] = useState(false);
   const [verifySuccess, setVerifySuccess] = useState(false);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
+  
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
   const [isRecaptchaLoaded, setIsRecaptchaLoaded] = useState(false);
+  const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  
   const otpInputRef = useRef(null);
+  const emailInputRef = useRef(null);
+
   useEffect(() => {
-    const initRecaptcha = async () => {
-      try {
-        // Only try to load recaptcha if the site key is available
-        if (process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY) {
-          await loadReCaptchaScript();
-          setIsRecaptchaLoaded(true);
-          console.log('✅ reCAPTCHA loaded successfully');
-        } else {
-          console.warn('⚠️ reCAPTCHA site key not found, using fallback security');
-          setIsRecaptchaLoaded(false);
-        }
-      } catch (error) {
-        console.warn("⚠️ Failed to load reCAPTCHA, using fallback security:", error);
-        setIsRecaptchaLoaded(false);
+    loadReCaptchaScript().then(() => {
+      setIsRecaptchaLoaded(true);
+    }).catch(err => {
+      console.error("Failed to load reCAPTCHA:", err);
+    });
+  }, []);
+
+  // Hide email suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emailInputRef.current && !emailInputRef.current.contains(event.target)) {
+        setShowEmailSuggestions(false);
       }
     };
 
-    initRecaptcha();
-
-    // Cleanup
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      const scripts = document.querySelectorAll(`script[src*="recaptcha"]`);
-      scripts.forEach((script) => script.remove());
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
   useEffect(() => {
-    let timer;
     if (countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
     } else if (countdown === 0 && sendOTPSuccess) {
       setCanResend(true);
     }
-    return () => clearInterval(timer);
   }, [countdown, sendOTPSuccess]);
 
   useEffect(() => {
@@ -89,154 +97,221 @@ const Login = () => {
     }
   }, [sendOTPSuccess]);
 
+  useEffect(() => {
+    if (newPassword) {
+      const validation = validatePassword(newPassword);
+      setPasswordValidation(validation);
+    } else {
+      setPasswordValidation({ isValid: false, errors: [] });
+    }
+  }, [newPassword]);
+
   const validateEmail = (email) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      return "Email is required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return false;
     }
-    if (!regex.test(email)) {
-      return "Please enter a valid email address";
-    }
-    return "";
+    setEmailError("");
+    return true;
   };
 
   const handleEmailChange = (e) => {
-    const newEmail = e.target.value;
-    setEmail(newEmail);
-    if (newEmail) {
-      setEmailError(validateEmail(newEmail));
+    const value = e.target.value;
+    setEmail(value);
+    
+    // Show email domain suggestions when @ is typed
+    if (value.includes('@')) {
+      setShowEmailSuggestions(true);
+      setSelectedSuggestionIndex(-1);
     } else {
-      setEmailError("");
+      setShowEmailSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+    }
+    
+    if (emailError) {
+      validateEmail(value);
     }
   };
 
-  const handleOTPChange = (e) => {
-    const value = e.target.value.replace(/\D/g, "");
-    if (value.length <= 6) {
-      setOTP(value);
+  const handleEmailKeyDown = (e) => {
+    if (!showEmailSuggestions) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev < EMAIL_DOMAINS.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev > 0 ? prev - 1 : EMAIL_DOMAINS.length - 1
+      );
+    } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+      e.preventDefault();
+      const username = email.split('@')[0];
+      const selectedDomain = EMAIL_DOMAINS[selectedSuggestionIndex];
+      setEmail(`${username}@${selectedDomain}`);
+      setShowEmailSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+    } else if (e.key === 'Escape') {
+      setShowEmailSuggestions(false);
+      setSelectedSuggestionIndex(-1);
     }
   };
+
   const executeCaptcha = async () => {
-    // Check if reCAPTCHA is loaded and available
-    if (!isRecaptchaLoaded || !window.grecaptcha) {
-      console.warn('⚠️ reCAPTCHA not available, proceeding without token');
-      return null; // Return null instead of throwing error
-    }
-
     try {
       const token = await window.grecaptcha.execute(
-        process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY,
-        {
-          action: "submit",
-        }
+        process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+        { action: 'submit' }
       );
-      console.log('✅ reCAPTCHA token obtained successfully');
       return token;
     } catch (error) {
-      console.warn('⚠️ reCAPTCHA execution failed, proceeding without token:', error.message);
-      return null; // Return null instead of throwing error
+      console.error("reCAPTCHA error:", error);
+      return null;
     }
   };
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const error = validateEmail(email);
-    if (error) {
-      setEmailError(error);
-      return;
+
+  const checkUserPasswordStatus = async (email) => {
+    try {
+      const response = await fetch("/api/auth/check-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      return data.hasPassword;
+    } catch (error) {
+      console.error("Error checking password status:", error);
+      return false;
     }
+  };
+
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateEmail(email)) return;
 
     setIsLoading(true);
     try {
-      // Try to get captcha token, but don't fail if it's not available
-      const captchaToken = await executeCaptcha();
+      const hasPassword = await checkUserPasswordStatus(email);
       
-      if (captchaToken) {
-        console.log('🔒 Using reCAPTCHA protection');
+      if (authMode === "password" && !hasPassword) {
+        // Send OTP for password setup
+        const captchaToken = await executeCaptcha();
+        
+        const response = await fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, captchaToken }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          setSendOTPSuccess(true);
+          setCountdown(60);
+          setCanResend(false);
+          setStep("passwordOtpVerify");
+        } else {
+          setEmailError(data.message || "Failed to send OTP");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (authMode === "otp") {
+        const captchaToken = await executeCaptcha();
+        // Proceed even if captchaToken is null
+
+        const response = await fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, captchaToken }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          setSendOTPSuccess(true);
+          setCountdown(60);
+          setCanResend(false);
+          setStep("auth");
+        } else {
+          setEmailError(data.message || "Failed to send OTP");
+        }
       } else {
-        console.log('🔄 Using fallback security measures');
+        setStep("auth");
       }
-
-      const response = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          captchaToken, // This can be null and server will handle fallback
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setEmailError(data.message || "Error sending OTP");
-        setSendOTPSuccess(false);
-      }
-      if (data.success) {
-        setEmailError("");
-        setSendOTPSuccess(true);
-        setCountdown(50);
-        setCanResend(false);
-      }
-    } catch (error) {
-      setEmailError(
-        error.message || "Unable to send OTP. Please try again."
-      );
-      setSendOTPSuccess(false);
+    } catch {
+      setEmailError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
   const handleResendOTP = async () => {
-    setIsLoading(true);
-    setCanResend(false);
-    setCountdown(50);
+    if (!canResend) return;
 
+    setIsLoading(true);
     try {
-      // Try to get captcha token, but don't fail if it's not available
       const captchaToken = await executeCaptcha();
-      
-      if (captchaToken) {
-        console.log('🔒 Using reCAPTCHA protection for resend');
-      } else {
-        console.log('🔄 Using fallback security measures for resend');
-      }
+      // Proceed even if captchaToken is null
 
       const response = await fetch("/api/auth/send-otp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          captchaToken, // This can be null and server will handle fallback
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, captchaToken }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        setEmailError(data.message || "Error resending OTP");
-      }
       if (data.success) {
-        setEmailError("");
-        setSendOTPSuccess(true);
+        setCountdown(60);
+        setCanResend(false);
+        setOtpError("");
+      } else {
+        setOtpError(data.message || "Failed to resend OTP");
       }
-    } catch (error) {
-      setEmailError(error.message || "Error resending OTP");
-      setCanResend(true);
-      setCountdown(0);
+    } catch {
+      setOtpError("An error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifySubmit = async (e) => {
+  const handleForgotPassword = async () => {
+    setIsLoading(true);
+    try {
+      const captchaToken = await executeCaptcha();
+      
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, captchaToken }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setIsForgotPassword(true);
+        setSendOTPSuccess(true);
+        setCountdown(60);
+        setCanResend(false);
+        setStep("passwordOtpVerify");
+        setPassword("");
+        setPasswordError("");
+      } else {
+        setPasswordError(data.message || "Failed to send OTP");
+      }
+    } catch {
+      setPasswordError("An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordOtpVerify = async (e) => {
     e.preventDefault();
+    
     if (!otp || otp.length !== 6) {
       setOtpError("Please enter a valid 6-digit OTP");
-      setVerifySuccess(false);
       return;
     }
 
@@ -244,386 +319,385 @@ const Login = () => {
     try {
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        setOtpError(data.message || "Error verifying OTP");
-        setVerifySuccess(false);
-      }
       if (data.success) {
+        setStep("createPassword");
         setOtpError("");
-        setVerifySuccess(true);
-        if (data.role && data.role.length > 1) {
-          sessionStorage.setItem("UserRole", data.role);
-        }
-        sessionStorage.setItem("role", data.role);
-        sessionStorage.setItem("email", email);
-        sessionStorage.setItem("mujid", data.MUJid);
-
-        const response = await axios.get("/api/mentor", {
-          params: { MUJId: data.MUJid, email: email },
-        });
-        const mentorInfo = response.data;
-        if (mentorInfo) {
-          sessionStorage.setItem("mentorData", JSON.stringify(mentorInfo));
-        }
-        if (
-          mentorInfo &&
-          mentorInfo.MUJid &&
-          mentorInfo.academicYear &&
-          mentorInfo.academicSession
-        ) {
-          const primarySemester = mentorInfo.academicSession.includes(
-            "JANUARY-JUNE"
-          )
-            ? 4
-            : 3;
-          const response = await fetch(
-            `/api/mentor/manageMeeting?mentorId=${mentorInfo.MUJid}&academicYear=${mentorInfo.academicYear}&session=${mentorInfo.academicSession}&semester=${primarySemester}`
-          );
-          const meetingData = await response.json();
-          sessionStorage.setItem(
-            "meetingData",
-            JSON.stringify(meetingData.meetings || [])
-          );
-        }
-        if (data && data.role && data.role.length > 1) {
-          setRoles(data.role);
-        } else {
-          switch (data.role[0]) {
-            case "admin":
-              router.push("/pages/admin/admindashboard");
-              break;
-            case "mentor":
-              router.push("/pages/mentordashboard");
-              break;
-            default:
-              setOtpError("Invalid role assigned");
-          }
-        }
       } else {
         setOtpError(data.message || "Invalid OTP");
       }
-    } catch (error) {
-      setOtpError(error.message);
-      setVerifySuccess(false);
+    } catch {
+      setOtpError("An error occurred during verification");
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className='w-full flex flex-col items-center justify-center min-w-screen gap-8 sm:gap-14'>
-      {!verifySuccess ? (
-        <>
-          <form onSubmit={handleSubmit} className='w-full max-w-md sm:max-w-2xl px-2 sm:px-4'>
-            <div className='flex flex-col gap-6'>
-              <div className='flex flex-col sm:flex-row gap-4 items-start sm:items-center'>
-                <div className='flex-1 w-full max-w-full sm:max-w-[400px] relative group'>
-                  <IoMail className='absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
-                  <label
-                    htmlFor='email'
-                    className={`absolute left-10 sm:left-12 transition-all duration-300 pointer-events-none
-                    ${isFocused || email
-                      ? "-translate-y-7 text-xs sm:text-sm text-orange-500 left-3 sm:left-4"
-                      : "translate-y-3 text-gray-400"
-                    }`}>
-                    Enter your email
-                  </label>
-                  <input
-                    id='email'
-                    type='email'
-                    value={email}
-                    disabled={sendOTPSuccess}
-                    onChange={handleEmailChange}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
-                    className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg 
-                    bg-white/5 hover:bg-white/10 focus:bg-white/10
-                    border ${emailError ? "border-red-500" : "border-gray-300"}
-                    ${sendOTPSuccess ? "border-green-500 opacity-60" : ""}
-                    text-white focus:outline-none focus:ring-2 
-                    ${emailError ? "focus:ring-red-500" : "focus:ring-orange-500"}
-                    transition-all duration-300 text-sm sm:text-base`}
-                    required
-                  />
-                  {emailError && (
-                    <span className='absolute left-0 -bottom-6 text-red-500 text-xs sm:text-sm'>
-                      {emailError}
-                    </span>
-                  )}
-                  {sendOTPSuccess && (
-                    <span className='absolute left-0 -bottom-6 text-green-500 text-xs sm:text-sm'>
-                      OTP sent successfully
-                    </span>
-                  )}
-                </div>
-                {!sendOTPSuccess && (
-                  <button
-                    type='submit'
-                    disabled={isLoading}
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
-                    className='w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 !text-white rounded-lg transition-all duration-300 
-                    disabled:opacity-50 hover:scale-[1.02] active:scale-95 transform mt-2 sm:mt-0
-                    after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
-                    after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
-                    before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
-                    hover:after:opacity-100 after:duration-300 relative'>
-                    {isLoading ? (
-                      <span className='flex items-center justify-center relative z-10'>
-                        <svg
-                          className='animate-spin h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3'
-                          viewBox='0 0 24 24'>
-                          <circle
-                            className='opacity-25'
-                            cx='12'
-                            cy='12'
-                            r='10'
-                            stroke='currentColor'
-                            strokeWidth='4'
-                            fill='none'
-                          />
-                          <path
-                            className='opacity-75'
-                            fill='currentColor'
-                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
-                          />
-                        </svg>
-                        Processing...
-                      </span>
-                    ) : (
-                      <span
-                        className={`relative z-10 flex items-center justify-center gap-2 ${
-                          isHovered ? "text-white" : "text-gray-300"
-                        }`}>
-                        <span>Continue</span>
-                        <svg
-                          className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 ${
-                            isHovered ? "translate-x-1 opacity-100" : "hidden"
-                          }`}
-                          fill='none'
-                          viewBox='0 0 24 24'
-                          stroke='currentColor'>
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M9 5l7 7-7 7'
-                          />
-                        </svg>
-                      </span>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-          {sendOTPSuccess && (
-            <form
-              onSubmit={handleVerifySubmit}
-              className='w-full max-w-md sm:max-w-2xl px-2 sm:px-4'>
-              <div className='flex flex-col gap-4'>
-                <div className='flex flex-col sm:flex-row gap-4 items-start sm:items-center'>
-                  <div className='flex-1 w-full max-w-full sm:max-w-[400px] relative group'>
-                    <RiLockPasswordLine className='absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors z-10' size={20} />
-                    <label
-                      htmlFor='otp'
-                      className={`absolute left-10 sm:left-12 transition-all duration-300 pointer-events-none
-                      ${isFocused || otp
-                        ? "-translate-y-7 text-xs sm:text-sm text-orange-500 left-3 sm:left-4"
-                        : "translate-y-3 text-gray-400"
-                      }`}>
-                      Enter OTP
-                    </label>
-                    <input
-                      id='otp'
-                      type='text'
-                      value={otp}
-                      ref={otpInputRef}
-                      onChange={handleOTPChange}
-                      onFocus={() => setIsFocused(true)}
-                      onBlur={() => setIsFocused(false)}
-                      className={`w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg 
-                      bg-white/5 hover:bg-white/10 focus:bg-white/10
-                      border ${otpError ? "border-red-500" : "border-gray-300"}
-                      text-white focus:outline-none focus:ring-2 
-                      ${otpError ? "focus:ring-red-500" : "focus:ring-orange-500"}
-                      transition-all duration-300 text-sm sm:text-base`}
-                      required
-                    />
-                    {otpError && (
-                      <span className='absolute left-0 -bottom-6 text-red-500 text-xs sm:text-sm'>
-                        {otpError}
-                      </span>
+    try {
+      let response;
+      
+      if (authMode === "otp") {
+        if (!otp || otp.length !== 6) {
+          setOtpError("Please enter a valid 6-digit OTP");
+          setIsLoading(false);
+          return;
+        }
+
+        response = await fetch("/api/auth/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp }),
+        });
+      } else {
+        if (!password) {
+          setPasswordError("Please enter your password");
+          setIsLoading(false);
+          return;
+        }
+
+        response = await fetch("/api/auth/login-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (data.needsPasswordSetup && authMode === "otp") {
+          setNeedsPasswordSetup(true);
+          setStep("createPassword");
+          setIsLoading(false);
+          return;
+        }
+
+        sessionStorage.setItem("accessToken", data.token || "authenticated");
+        sessionStorage.setItem("userRole", Array.isArray(data.role) ? data.role[0] : data.role);
+        sessionStorage.setItem("userRoles", JSON.stringify(data.role));
+        sessionStorage.setItem("userEmail", email);
+        sessionStorage.setItem("userMUJId", data.MUJid || data.mujid);
+        sessionStorage.setItem("userName", data.name || "Guest");
+
+        setVerifySuccess(true);
+
+        setTimeout(() => {
+          if (data.role.includes("mentor")) {
+            router.push("/pages/mentordashboard");
+          } else if (data.role.includes("admin")) {
+            router.push("/pages/admin/admindashboard");
+          } else {
+            router.push("/");
+          }
+        }, 1000);
+      } else {
+        if (authMode === "otp") {
+          setOtpError(data.message || "Invalid OTP");
+        } else {
+          setPasswordError(data.message || "Invalid password");
+        }
+      }
+    } catch {
+      if (authMode === "otp") {
+        setOtpError("An error occurred during verification");
+      } else {
+        setPasswordError("An error occurred during login");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreatePassword = async (e) => {
+    e.preventDefault();
+
+    if (!passwordValidation.isValid) {
+      setPasswordError("Please fix all password requirements");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const endpoint = isForgotPassword ? "/api/auth/reset-password" : "/api/auth/create-password";
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: newPassword, otp }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        sessionStorage.setItem("accessToken", data.token || "authenticated");
+        sessionStorage.setItem("userRole", Array.isArray(data.role) ? data.role[0] : data.role);
+        sessionStorage.setItem("userRoles", JSON.stringify(data.role));
+        sessionStorage.setItem("userEmail", email);
+        sessionStorage.setItem("userMUJId", data.MUJid || data.mujid);
+        sessionStorage.setItem("userName", data.name || "Guest");
+
+        setVerifySuccess(true);
+
+        setTimeout(() => {
+          if (data.role.includes("mentor")) {
+            router.push("/pages/mentordashboard");
+          } else if (data.role.includes("admin")) {
+            router.push("/pages/admin/admindashboard");
+          } else {
+            router.push("/");
+          }
+        }, 1000);
+      } else {
+        setPasswordError(data.message || "Failed to create password");
+      }
+    } catch {
+      setPasswordError("An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getPasswordStrengthColor = () => {
+    const strength = getPasswordStrength(newPassword);
+    if (strength === 'strong') return 'text-green-500';
+    if (strength === 'medium') return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 flex items-center justify-center w-full p-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md relative">
+        <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700/50 p-8">
+          <div className="text-center mb-8">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, delay: 0.2 }} className="inline-block p-4 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full mb-4">
+              <FaLock className="text-3xl text-white" />
+            </motion.div>
+            <h2 className="text-3xl font-bold text-white mb-2">Sign in to your account</h2>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {step === "email" && (
+              <motion.div key="email-step" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <div className="flex gap-2 mb-6 p-1 bg-gray-800/50 rounded-lg">
+                  <button type="button" onClick={() => setAuthMode("otp")} className={`flex-1 py-2 px-4 rounded-md transition-all duration-300 flex items-center justify-center gap-2 ${authMode === "otp" ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}>
+                    <MdEmail /><span>OTP</span>
+                  </button>
+                  <button type="button" onClick={() => setAuthMode("password")} className={`flex-1 py-2 px-4 rounded-md transition-all duration-300 flex items-center justify-center gap-2 ${authMode === "password" ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}>
+                    <MdPassword /><span>Password</span>
+                  </button>
+                </div>
+
+                <form onSubmit={handleEmailSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                    <div className="relative" ref={emailInputRef}>
+                      <FaEnvelope className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input 
+                        type="email" 
+                        value={email} 
+                        onChange={handleEmailChange}
+                        onKeyDown={handleEmailKeyDown}
+                        className="w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" 
+                        placeholder="Enter your email" 
+                        required 
+                      />
+                      {showEmailSuggestions && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 max-h-32 overflow-y-auto">
+                          {EMAIL_DOMAINS.map((domain, index) => {
+                            const username = email.split('@')[0];
+                            const suggestion = `${username}@${domain}`;
+                            return (
+                              <div
+                                key={index}
+                                className={`px-4 py-2 text-white hover:bg-gray-700 cursor-pointer text-sm ${
+                                  index === selectedSuggestionIndex ? 'bg-orange-600' : ''
+                                }`}
+                                onClick={() => {
+                                  setEmail(suggestion);
+                                  setShowEmailSuggestions(false);
+                                  setSelectedSuggestionIndex(-1);
+                                }}
+                              >
+                                {suggestion}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    {emailError && <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm mt-2 flex items-center gap-1"><FaTimesCircle /> {emailError}</motion.p>}
+                  </div>
+
+                  <motion.button type="submit" disabled={isLoading || !isRecaptchaLoaded} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isLoading ? (<div className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" /><span>Processing...</span></div>) : (<span>{authMode === "otp" ? "Send OTP" : "Continue"}</span>)}
+                  </motion.button>
+                </form>
+              </motion.div>
+            )}
+
+            {step === "auth" && (
+              <motion.div key="auth-step" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <button onClick={() => { setStep("email"); setSendOTPSuccess(false); setOTP(""); setPassword(""); }} className="text-gray-400 hover:text-white mb-4 flex items-center gap-2 transition-colors">← Back to email</button>
+
+                <form onSubmit={handleAuthSubmit} className="space-y-6">
+                  {authMode === "otp" ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Enter OTP</label>
+                      <div className="relative">
+                        <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input ref={otpInputRef} type="text" value={otp} onChange={(e) => { const value = e.target.value.replace(/\D/g, "").slice(0, 6); setOTP(value); setOtpError(""); }} maxLength={6} className="w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-center text-2xl tracking-widest placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" placeholder="000000" required />
+                      </div>
+                      {otpError && <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm mt-2 flex items-center gap-1"><FaTimesCircle /> {otpError}</motion.p>}
+                      <div className="mt-4 text-center">
+                        {countdown > 0 ? (<p className="text-gray-400 text-sm">Resend OTP in {countdown}s</p>) : (<button type="button" onClick={handleResendOTP} disabled={!canResend || isLoading} className="text-orange-500 hover:text-orange-400 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                      <div className="relative">
+                        <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }} className="w-full pl-12 pr-12 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" placeholder="Enter your password" required />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">{showPassword ? <FaEyeSlash /> : <FaEye />}</button>
+                      </div>
+                      {passwordError && <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm mt-2 flex items-center gap-1"><FaTimesCircle /> {passwordError}</motion.p>}
+                      <div className="mt-2 text-right">
+                        <button type="button" onClick={handleForgotPassword} disabled={isLoading} className="text-orange-500 hover:text-orange-400 text-sm font-medium transition-colors disabled:opacity-50">Forgot password?</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <motion.button type="submit" disabled={isLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isLoading ? (<div className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" /><span>Verifying...</span></div>) : (<span>Verify & Login</span>)}
+                  </motion.button>
+                </form>
+              </motion.div>
+            )}
+
+            {step === "passwordOtpVerify" && (
+              <motion.div key="password-otp-step" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <button onClick={() => { setStep("email"); setSendOTPSuccess(false); setOTP(""); setIsForgotPassword(false); }} className="text-gray-400 hover:text-white mb-4 flex items-center gap-2 transition-colors">← Back to email</button>
+
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-white mb-2">{isForgotPassword ? "Reset Your Password" : "Set Up Your Password"}</h3>
+                  <p className="text-gray-400 text-sm">Enter the OTP sent to your email</p>
+                </div>
+
+                <form onSubmit={handlePasswordOtpVerify} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Enter OTP</label>
+                    <div className="relative">
+                      <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input ref={otpInputRef} type="text" value={otp} onChange={(e) => { const value = e.target.value.replace(/\D/g, "").slice(0, 6); setOTP(value); setOtpError(""); }} maxLength={6} className="w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white text-center text-2xl tracking-widest placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" placeholder="000000" required />
+                    </div>
+                    {otpError && <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm mt-2 flex items-center gap-1"><FaTimesCircle /> {otpError}</motion.p>}
+                    <div className="mt-4 text-center">
+                      {countdown > 0 ? (<p className="text-gray-400 text-sm">Resend OTP in {countdown}s</p>) : (<button type="button" onClick={handleResendOTP} disabled={!canResend || isLoading} className="text-orange-500 hover:text-orange-400 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>)}
+                    </div>
+                  </div>
+
+                  <motion.button type="submit" disabled={isLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isLoading ? (<div className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" /><span>Verifying...</span></div>) : (<span>Verify OTP</span>)}
+                  </motion.button>
+                </form>
+              </motion.div>
+            )}
+
+            {step === "createPassword" && (
+              <motion.div key="password-step" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-white mb-2">{isForgotPassword ? "Create New Password" : needsPasswordSetup ? "Set Up Your Password" : "Create Your Password"}</h3>
+                  <p className="text-gray-400 text-sm">{isForgotPassword ? "Choose a new password different from your old one" : "Create a strong password to secure your account"}</p>
+                </div>
+
+                <form onSubmit={handleCreatePassword} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">New Password</label>
+                    <div className="relative">
+                      <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input type={showNewPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full pl-12 pr-12 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" placeholder="Create a strong password" required />
+                      <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">{showNewPassword ? <FaEyeSlash /> : <FaEye />}</button>
+                    </div>
+
+                    {newPassword && (
+                      <div className="mt-2">
+                        <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                          <motion.div initial={{ width: 0 }} animate={{ width: getPasswordStrength(newPassword) === 'strong' ? '100%' : getPasswordStrength(newPassword) === 'medium' ? '66%' : '33%' }} className={`h-full transition-all duration-300 ${getPasswordStrength(newPassword) === 'strong' ? 'bg-green-500' : getPasswordStrength(newPassword) === 'medium' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                        </div>
+                        <p className={`text-xs mt-1 capitalize ${getPasswordStrengthColor()}`}>Strength: {getPasswordStrength(newPassword)}</p>
+                      </div>
+                    )}
+
+                    {newPassword && (
+                      <div className="mt-3 space-y-2">
+                        {passwordValidation.errors.map((error, index) => (<motion.p key={index} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-red-400 text-xs flex items-center gap-2"><FaTimesCircle className="flex-shrink-0" /><span>{error}</span></motion.p>))}
+                        {passwordValidation.isValid && (<motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-green-400 text-xs flex items-center gap-2"><FaCheckCircle className="flex-shrink-0" /><span>Password meets all requirements</span></motion.p>)}
+                      </div>
                     )}
                   </div>
-                  <button
-                    type='submit'
-                    disabled={isLoading}
-                    onMouseEnter={() => setIsVerifyHovered(true)}
-                    onMouseLeave={() => setIsVerifyHovered(false)}
-                    className='w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 !text-white rounded-lg transition-all duration-300 
-                    disabled:opacity-50 hover:scale-[1.02] active:scale-95 transform mt-2 sm:mt-0
-                    after:absolute before:inset-0 after:rounded-lg after:p-[1px] after:opacity-0
-                    after:bg-gradient-to-r after:from-orange-500 after:to-purple-500
-                    before:absolute after:inset-[1px] before:rounded-lg before:bg-transparent before:border before:border-white after:transition-opacity
-                    hover:after:opacity-100 after:duration-300 relative'>
-                    {isLoading ? (
-                      <span className='flex items-center justify-center relative z-10'>
-                        <svg
-                          className='animate-spin h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3'
-                          viewBox='0 0 24 24'>
-                          <circle
-                            className='opacity-25'
-                            cx='12'
-                            cy='12'
-                            r='10'
-                            stroke='currentColor'
-                            strokeWidth='4'
-                            fill='none'
-                          />
-                          <path
-                            className='opacity-75'
-                            fill='currentColor'
-                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
-                          />
-                        </svg>
-                        Processing...
-                      </span>
-                    ) : (
-                      <span
-                        className={`relative z-10 flex items-center justify-center gap-2 ${
-                          isVerifyHovered ? "text-white" : "text-gray-300"
-                        }`}>
-                        <span>Verify</span>
-                        <svg
-                          className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 ${
-                            isVerifyHovered
-                              ? "translate-x-1 opacity-100"
-                              : "hidden"
-                          }`}
-                          fill='none'
-                          viewBox='0 0 24 24'
-                          stroke='currentColor'>
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M9 5l7 7-7 7'
-                          />
-                        </svg>
-                      </span>
-                    )}
-                  </button>
-                </div>
 
-                <button
-                  type='button'
-                  disabled={!canResend || isLoading || countdown > 0}
-                  onClick={handleResendOTP}
-                  className={`self-start ml-1 text-xs sm:text-sm flex items-center gap-2 transition-all duration-300
-                    ${
-                      countdown > 0
-                        ? "text-gray-400 cursor-not-allowed"
-                        : "text-orange-500 hover:text-orange-400"
-                    }
-                  `}>
-                  {countdown > 0 ? (
-                    <>
-                      <svg className='animate-spin h-3 w-3 sm:h-4 sm:w-4' viewBox='0 0 24 24'>
-                        <circle
-                          className='opacity-25'
-                          cx='12'
-                          cy='12'
-                          r='10'
-                          stroke='currentColor'
-                          strokeWidth='4'
-                          fill='none'
-                        />
-                        <path
-                          className='opacity-75'
-                          fill='currentColor'
-                          d='M4 12a8 8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
-                        />
-                      </svg>
-                      <span>Resend OTP in {countdown}s</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className='w-3 h-3 sm:w-4 sm:h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 8.003 0 01-15.357-2m15.357 2H15'
-                        />
-                      </svg>
-                      <span>Resend OTP</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-        </>
-      ) : roles.length > 1 ? (
-        <div className='flex flex-col items-center gap-6 relative px-4'>
-          <h2 className='text-white text-xl sm:text-2xl text-center'>Select your dashboard</h2>
-          <div className='flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-md'>
-            <div
-              onClick={() => {
-                sessionStorage.setItem("role", "admin");
-                router.push("/pages/admin/admindashboard");
-              }}
-              className='cursor-pointer p-4 sm:p-6 rounded-lg 
-              bg-white/5 hover:bg-white/10 active:bg-orange-500/20
-              border border-gray-300 hover:border-orange-500 
-              active:scale-95 transition-all relative group w-full'>
-              <div className='flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0'>
-                <MdAdminPanelSettings className='text-3xl sm:text-4xl text-orange-500 sm:mb-4 transition-transform group-hover:scale-110' />
-                <div>
-                  <h3 className='text-white text-lg sm:text-xl mb-0 sm:mb-2'>Admin Dashboard</h3>
-                  <p className='text-gray-400 text-sm'>Manage mentors/mentees</p>
-                </div>
-              </div>
-            </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                    <div className="relative">
+                      <FaKey className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full pl-12 pr-12 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" placeholder="Re-enter your password" required />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">{showConfirmPassword ? <FaEyeSlash /> : <FaEye />}</button>
+                    </div>
+                    {confirmPassword && newPassword !== confirmPassword && (<motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm mt-2 flex items-center gap-1"><FaTimesCircle /> Passwords do not match</motion.p>)}
+                    {confirmPassword && newPassword === confirmPassword && (<motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-green-400 text-sm mt-2 flex items-center gap-1"><FaCheckCircle /> Passwords match</motion.p>)}
+                  </div>
 
-            <div
-              onClick={() => {
-                sessionStorage.setItem("role", "mentor");
-                router.push("/pages/mentordashboard");
-              }}
-              className='cursor-pointer p-4 sm:p-6 rounded-lg 
-              bg-white/5 hover:bg-white/10 active:bg-orange-500/20
-              border border-gray-300 hover:border-orange-500 
-              active:scale-95 transition-all relative group w-full'>
-              <div className='flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:gap-0'>
-                <MdGroups className='text-3xl sm:text-4xl text-orange-500 sm:mb-4 transition-transform group-hover:scale-110' />
-                <div>
-                  <h3 className='text-white text-lg sm:text-xl mb-0 sm:mb-2'>Mentor Dashboard</h3>
-                  <p className='text-gray-400 text-sm'>Manage meetings</p>
+                  {passwordError && (<motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm flex items-center gap-1"><FaTimesCircle /> {passwordError}</motion.p>)}
+
+                  <motion.button type="submit" disabled={isLoading || !passwordValidation.isValid || newPassword !== confirmPassword} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isLoading ? (<div className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" /><span>Creating Password...</span></div>) : (<span>Create Password & Continue</span>)}
+                  </motion.button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {verifySuccess && (
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute inset-0 flex items-center justify-center bg-gray-900/95 backdrop-blur-sm rounded-2xl">
+                <div className="text-center">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, delay: 0.2 }} className="inline-block p-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full mb-4">
+                    <FaCheckCircle className="text-5xl text-white" />
+                  </motion.div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Success!</h3>
+                  <p className="text-gray-300">Redirecting to dashboard...</p>
                 </div>
-              </div>
-            </div>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      ) : (
-        <div className='flex justify-center'>
-          <div className='animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-orange-500'></div>
-        </div>
-      )}
+      </motion.div>
+      </div>
+
+      {/* Footer */}
+      <footer className="text-center py-6 border-t border-gray-800">
+        <p className="text-gray-300 text-sm tracking-wide font-light">
+          © {new Date().getFullYear()} MentorLink - Department of Computer
+          Science Engineering, Manipal University Jaipur.
+          <br />
+          All rights reserved.
+        </p>
+      </footer>
     </div>
   );
 };

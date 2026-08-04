@@ -22,6 +22,15 @@ export default function middleware(request: NextRequest) {
   // Get UserRole from cookies
   const userRoles = request.cookies.get('UserRole')?.value?.split(',') || []
 
+  // If user is accessing root route and has roles, redirect to appropriate dashboard
+  if (path === '/' && userRoles.length > 0) {
+    if (userRoles.includes('mentor')) {
+      return NextResponse.redirect(new URL('/pages/mentordashboard', request.url))
+    } else if (userRoles.includes('admin')) {
+      return NextResponse.redirect(new URL('/pages/admin/admindashboard', request.url))
+    }
+  }
+
   // If user has both admin and mentor roles, allow access to all routes
   if (userRoles.includes('admin') && userRoles.includes('mentor')) {
     return NextResponse.next()

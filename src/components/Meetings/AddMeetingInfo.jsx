@@ -33,7 +33,9 @@ const AddMeetingInfo = () => {
   const yearRef = useRef(null);
   const sessionRef = useRef(null);
   const semesterRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showAttendanceConfirmDialog, setShowAttendanceConfirmDialog] = useState(false);
+  const [attendanceSubmitted, setAttendanceSubmitted] = useState(false);
+  const [showCloseWarning, setShowCloseWarning] = useState(false);
 
   useEffect(() => {
     try {
@@ -235,7 +237,7 @@ const AddMeetingInfo = () => {
           selectedMeeting &&
           !document.getElementById("meeting-popup").contains(event.target)
         ) {
-          setSelectedMeeting(null);
+          handleCloseMeetingDialog();
         }
       } catch (error) {
         console.log("Error in handleClickOutside:", error);
@@ -284,12 +286,73 @@ const AddMeetingInfo = () => {
   };
   // console.log('Meeting notes submitted successfully', selectedMeeting);
   const handleMeetingSubmit = async () => {
+    // Check if all required fields are filled
+    const {
+      TopicOfDiscussion,
+      TypeOfInformation,
+      NotesToStudent,
+      outcome,
+      closureRemarks,
+    } = meetingNotes;
+
+    if (!TopicOfDiscussion || !TypeOfInformation || !NotesToStudent || !outcome || !closureRemarks) {
+      alert('Please fill all required fields before submitting.');
+      return;
+    }
+
+    // Show attendance confirmation dialog
+    setShowAttendanceConfirmDialog(true);
+  };
+
+  const handleConfirmAttendanceSubmit = async () => {
     try {
+      setIsLoading(true);
       await axios.post("/api/meeting/mentors/reportmeeting", {
         mentor_id: mentorId,
         meeting_id: selectedMeeting.meeting_id,
         meeting_notes: meetingNotes,
       });
+
+      setAttendanceSubmitted(true);
+      setShowAttendanceConfirmDialog(false);
+
+      // Close the meeting dialog after successful submission
+      setTimeout(() => {
+        setSelectedMeeting(null);
+        setMeetingNotes({
+          TopicOfDiscussion: "",
+          TypeOfInformation: "",
+          NotesToStudent: "",
+          issuesRaisedByMentee: "",
+          outcome: "",
+          closureRemarks: "",
+        });
+        setAttendanceSubmitted(false);
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error submitting meeting notes:', error);
+      alert('Failed to submit meeting notes. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCloseMeetingDialog = () => {
+    // Check if form has been filled but not submitted
+    const {
+      TopicOfDiscussion,
+      TypeOfInformation,
+      NotesToStudent,
+      outcome,
+      closureRemarks,
+    } = meetingNotes;
+
+    const hasFilledData = TopicOfDiscussion || TypeOfInformation || NotesToStudent || outcome || closureRemarks;
+
+    if (hasFilledData && !attendanceSubmitted) {
+      setShowCloseWarning(true);
+    } else {
       setSelectedMeeting(null);
       setMeetingNotes({
         TopicOfDiscussion: "",
@@ -299,10 +362,22 @@ const AddMeetingInfo = () => {
         outcome: "",
         closureRemarks: "",
       });
-      fetchMeetings();
-    } catch (error) {
-      console.log("Error submitting meeting notes:", error);
+      setAttendanceSubmitted(false);
     }
+  };
+
+  const handleForceClose = () => {
+    setShowCloseWarning(false);
+    setSelectedMeeting(null);
+    setMeetingNotes({
+      TopicOfDiscussion: "",
+      TypeOfInformation: "",
+      NotesToStudent: "",
+      issuesRaisedByMentee: "",
+      outcome: "",
+      closureRemarks: "",
+    });
+    setAttendanceSubmitted(false);
   };
 
   if (!isMounted) {
@@ -504,6 +579,7 @@ const AddMeetingInfo = () => {
                               }`}
                               onClick={() => {
                                 setSelectedMeeting(meeting);
+                                setAttendanceSubmitted(false);
                                 setMeetingNotes({
                                   TopicOfDiscussion:
                                     meeting?.meeting_notes?.TopicOfDiscussion ||
@@ -580,7 +656,7 @@ const AddMeetingInfo = () => {
               onClick={(e) => e.stopPropagation()}>
               <button
                 className='absolute top-2 right-2 text-gray-500 hover:text-gray-700'
-                onClick={() => setSelectedMeeting(null)}>
+                onClick={handleCloseMeetingDialog}>
                 <FiX size={24} />
               </button>
               <h2 className='text-xl font-semibold mb-4'>Add Meeting Notes</h2>
@@ -665,7 +741,61 @@ const AddMeetingInfo = () => {
                       ? "bg-gray-400"
                       : "bg-blue-600 hover:bg-blue-700"
                   }`}>
-                  {isSubmitDisabled ? "Please fill all fields" : "Submit"}
+                  {isSubmitDisabled ? "Please fill all fields" : "Submit Attendance"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Attendance Confirmation Dialog */}
+        {showAttendanceConfirmDialog && (
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
+            <div className='bg-white p-6 rounded-lg w-full max-w-md relative'>
+              <h2 className='text-xl font-semibold mb-4'>Confirm Attendance Submission</h2>
+              <p className='text-gray-600 mb-4'>
+                Are you sure you want to submit the attendance? This action cannot be undone.
+                Make sure all meeting notes are properly filled.
+              </p>
+              <div className='flex space-x-3'>
+                <button
+                  onClick={() => setShowAttendanceConfirmDialog(false)}
+                  className='flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50'>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAttendanceSubmit}
+                  disabled={isLoading}
+                  className='flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50'>
+                  {isLoading ? 'Submitting...' : 'Confirm Submit'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Close Warning Dialog */}
+        {showCloseWarning && (
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
+            <div className='bg-white p-6 rounded-lg w-full max-w-md relative'>
+              <h2 className='text-xl font-semibold mb-4 text-red-600'>Warning: Unsaved Changes</h2>
+              <p className='text-gray-600 mb-4'>
+                You have filled some meeting notes but haven&apos;t submitted them yet.
+                If you close this dialog, all your progress will be lost.
+              </p>
+              <p className='text-sm text-gray-500 mb-4'>
+                To save your work, please fill all required fields and submit the attendance.
+              </p>
+              <div className='flex space-x-3'>
+                <button
+                  onClick={() => setShowCloseWarning(false)}
+                  className='flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50'>
+                  Continue Editing
+                </button>
+                <button
+                  onClick={handleForceClose}
+                  className='flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700'>
+                  Close & Lose Progress
                 </button>
               </div>
             </div>

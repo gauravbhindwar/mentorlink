@@ -645,18 +645,48 @@ const renderMOMDetailDialog = () => (
                 <div className="bg-slate-800/30 rounded-xl border border-slate-700/50 mb-8">
                   <div className="p-6 border-b border-slate-700/50">
                     <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <span className="text-xl">📝</span> Meeting Notes
+                      <span className="text-xl">📝</span> Minutes of Meeting
                     </h4>
                   </div>
                   <div className="p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Attendance Status */}
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600/50 transition-all"
+                      >
+                        <h5 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
+                          <span className="text-lg">✅</span>
+                          Attendance Status
+                        </h5>
+                        <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
+                          {selectedMeeting?.present_mentees && selectedMeeting.present_mentees.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-sm font-medium text-green-400">
+                                Attendance is marked
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-500">
+                              Attendance not marked
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+
+                      {/* Other Meeting Notes */}
                       {selectedMeeting?.meeting_notes && Object.entries(selectedMeeting.meeting_notes)
                         .map(([key, value], index) => (
                           <motion.div
                             key={key}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
+                            transition={{ delay: (index + 1) * 0.1 }}
                             className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600/50 transition-all"
                           >
                             <h5 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">

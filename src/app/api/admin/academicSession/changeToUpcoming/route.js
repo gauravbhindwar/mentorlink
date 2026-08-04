@@ -7,13 +7,37 @@ import { Meeting } from "@/lib/db/meetingSchema";
 import mongoose from "mongoose";
 
 export async function PUT(request) {
-  let mongoSession;
+  let mongoSession = null;
+  let useTransaction = false;
   try {
     await connect();
-    mongoSession = await mongoose.startSession();
-    await mongoSession.startTransaction();
+    try {
+      mongoSession = await mongoose.startSession();
+      mongoSession.startTransaction();
+      useTransaction = true;
+    } catch (transactionError) {
+      console.warn(
+        "Transactions unavailable, continuing without transaction:",
+        transactionError.message
+      );
+      if (mongoSession) {
+        await mongoSession.endSession();
+        mongoSession = null;
+      }
+    }
+
+    const mongoOptions = useTransaction ? { session: mongoSession } : {};
 
     const { currentSession, upcomingSession } = await request.json();
+    if (
+      !currentSession?.start_year ||
+      !currentSession?.end_year ||
+      !upcomingSession?.start_year ||
+      !upcomingSession?.end_year ||
+      !upcomingSession?.sessionName
+    ) {
+      throw new Error("Invalid payload for session change");
+    }
 
     // Get current session data - remove .lean() to get a Mongoose document
     const currentAcademicSession = await AcademicSession.findOne({
@@ -26,8 +50,11 @@ export async function PUT(request) {
       throw new Error("Current session not found");
     }
 
-    // Find the active session - try both current and upcoming session names
-    const activeSession = currentAcademicSession.sessions?.[0]; // Get the first session since it's current
+    // Find active session with fallbacks for legacy records
+    const activeSession =
+      currentAcademicSession.sessions?.find(
+        (s) => s?.name === currentSession.sessionName
+      ) || currentAcademicSession.sessions?.[0];
 
     if (!activeSession) {
       throw new Error(`No active session found in academic year ${currentSession.start_year}-${currentSession.end_year}`);
@@ -71,6 +98,14 @@ export async function PUT(request) {
       }).lean()
     ]);
 
+    const flattenedMeetings = allMeetingDocs.flatMap((doc) =>
+      (doc.meetings || []).map((meeting) => ({
+        ...meeting,
+        mentorMUJid: doc.mentorMUJid,
+        academicDetails: doc.academicDetails,
+      }))
+    );
+
     // Process graduating and continuing mentees
     const graduatingMentees = allMentees.filter(m => m.semester === 8);
     const continuingMentees = allMentees.filter(m => m.semester < 8);
@@ -78,12 +113,13 @@ export async function PUT(request) {
     // Store graduated mentees data first
     if (graduatingMentees.length > 0) {
       // Get their meetings attendance data
-      const graduatingMeetings = allMeetingDocs.filter(m => 
-        m.mentee_ids?.some(id => graduatingMentees.map(gm => gm.MUJid).includes(id))
+      const graduatingMujids = new Set(graduatingMentees.map((gm) => gm.MUJid));
+      const graduatingMeetings = flattenedMeetings.filter((m) =>
+        m.mentee_ids?.some((id) => graduatingMujids.has(id))
       );
 
       // Process and store graduated mentees with their complete history
-      currentAcademicSession.sessions[0].graduatedMentees = graduatingMentees.map(mentee => {
+      activeSession.graduatedMentees = graduatingMentees.map(mentee => {
         const menteeMeetings = graduatingMeetings.filter(m => 
           m.mentee_ids.includes(mentee.MUJid)
         );
@@ -106,12 +142,18 @@ export async function PUT(request) {
         };
       });
       // Save the academic session with graduated data
-      await currentAcademicSession.save({ session: mongoSession });
+      await currentAcademicSession.save(mongoOptions);
 
       // Only after saving, remove graduated mentees
-      await Mentee.deleteMany({
+      const deleteGraduatedMenteesQuery = Mentee.deleteMany({
         MUJid: { $in: graduatingMentees.map(m => m.MUJid) }
-      }).session(mongoSession);
+      });
+
+      if (useTransaction) {
+        deleteGraduatedMenteesQuery.session(mongoSession);
+      }
+
+      await deleteGraduatedMenteesQuery;
     }
 
     // Update academic session statuses
@@ -128,7 +170,7 @@ export async function PUT(request) {
           archivedAt: new Date()
         }
       },
-      { session: mongoSession }
+      mongoOptions
     );
 
     // 2. Set new session as current
@@ -145,7 +187,7 @@ export async function PUT(request) {
           archivedAt: null
         } 
       },
-      { new: true, session: mongoSession }
+      { new: true, ...mongoOptions }
     );
 
     if (!newCurrentSession) {
@@ -155,13 +197,9 @@ export async function PUT(request) {
     // Process mentors with their mentees and meetings
     const processedMentors = allMentors.map(mentor => {
       const mentorMentees = allMentees.filter(m => m.mentorMujid === mentor.MUJid);
-      const mentorMeetings = allMeetingDocs.flatMap(doc => 
-        (doc.meetings || []).map(meeting => ({
-          ...meeting,
-          mentorMUJid: doc.mentorMUJid,
-          academicDetails: doc.academicDetails
-        }))
-      ).filter(m => m.mentorMUJid === mentor.MUJid);
+      const mentorMeetings = flattenedMeetings.filter(
+        (m) => m.mentorMUJid === mentor.MUJid
+      );
 
       return {
         ...mentor,
@@ -216,27 +254,16 @@ export async function PUT(request) {
       }));
     }
 
-    // Mark the academic session as modified
-    currentAcademicSession.markModified('sessions');
-    await currentAcademicSession.save({ session: mongoSession });
+    // Process current session data using activeSession reference
+    if (activeSession) {
+      if (!Array.isArray(activeSession.semesters)) {
+        activeSession.semesters = [];
+      }
 
-    // Process current session data using the already fetched data
-    const currentSessionData = currentAcademicSession.sessions.find(
-      s => s.name === currentSession.sessionName
-    );
-
-    if (currentSessionData) {
-      currentSessionData.mentors = processedMentors;
-
-      // Process meetings for each semester using allMeetings
-      currentSessionData.semesters.forEach(sem => {
-        const semesterMeetings = allMeetingDocs.flatMap(doc => 
-          (doc.meetings || []).map(meeting => ({
-            ...meeting,
-            mentorMUJid: doc.mentorMUJid,
-            academicDetails: doc.academicDetails
-          }))
-        ).filter(m => m.semester === sem.semester_number);
+      activeSession.semesters.forEach(sem => {
+        const semesterMeetings = flattenedMeetings.filter(
+          (m) => m.semester === sem.semester_number
+        );
         
         // Process meetings in pages with duplicate checking
         const MEETINGS_PER_PAGE = 25;
@@ -308,14 +335,21 @@ export async function PUT(request) {
         console.log(`Processed ${sem.meetingPages.reduce((sum, page) => sum + page.meetings.length, 0)} meetings for semester ${sem.semester_number}`);
       });
 
-      // Save the processed data first
-      await currentAcademicSession.save({ session: mongoSession });
+      // Mark sessions as modified and save
+      currentAcademicSession.markModified('sessions');
+      await currentAcademicSession.save(mongoOptions);
 
       // After saving, delete all processed meetings
-      await Meeting.deleteMany({
+      const deleteMeetingsQuery = Meeting.deleteMany({
         'academicDetails.academicYear': currentAcademicYear,
         'academicDetails.academicSession': currentSession.sessionName
-      }).session(mongoSession);
+      });
+
+      if (useTransaction) {
+        deleteMeetingsQuery.session(mongoSession);
+      }
+
+      await deleteMeetingsQuery;
 
       console.log('Deleted archived meetings');
     }
@@ -336,7 +370,7 @@ export async function PUT(request) {
             }
           }
         })),
-        { session: mongoSession }
+        mongoOptions
       );
     }
 
@@ -355,13 +389,14 @@ export async function PUT(request) {
             }
           }
         })),
-        { session: mongoSession }
+        mongoOptions
       );
     }
 
     // Commit the transaction
-    await mongoSession.commitTransaction();
-    mongoSession.endSession();
+    if (useTransaction) {
+      await mongoSession.commitTransaction();
+    }
 
     return NextResponse.json({
       message: "Session changed successfully",
@@ -369,18 +404,12 @@ export async function PUT(request) {
         mentorsProcessed: processedMentors.length,
         graduatedMentees: graduatingMentees.length,
         continuingMentees: continuingMentees.length,
-        archivedMeetings: allMeetingDocs.flatMap(doc => 
-          (doc.meetings || []).map(meeting => ({
-            ...meeting,
-            mentorMUJid: doc.mentorMUJid,
-            academicDetails: doc.academicDetails
-          }))
-        ).length // Add count of archived meetings
+        archivedMeetings: flattenedMeetings.length
       }
     });
 
   } catch (error) {
-    if (mongoSession && mongoSession.inTransaction()) {
+    if (useTransaction && mongoSession && mongoSession.inTransaction()) {
       await mongoSession.abortTransaction();
     }
     console.error("Error in change to upcoming process:", error);

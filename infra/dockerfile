@@ -34,6 +34,7 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create a non-root user for security
 RUN addgroup --system --gid 1001 nodejs
@@ -42,20 +43,9 @@ RUN adduser --system --uid 1001 nextjs
 # Copy necessary files from the builder stage
 COPY --from=builder /app/public ./public
 
-# Set the correct permission for prerendered pages and ensure directory exists
-RUN mkdir -p .next/static && chmod -R 755 .next/static
-
 # Copy the built Next.js application
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/next.config.js ./next.config.js
-
-# Copy node modules and package.json for standalone mode
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-
-# Set appropriate permissions for copied files
-RUN chmod -R 755 .next && chmod 755 next.config.js && chmod 755 package.json
-
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Switch to non-root user
 USER nextjs
 
@@ -65,4 +55,5 @@ EXPOSE 3001
 ENV PORT=3001
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
+

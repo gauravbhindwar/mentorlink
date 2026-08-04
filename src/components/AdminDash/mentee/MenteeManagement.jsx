@@ -40,20 +40,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 // Add dynamic import for Lottie
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
-// Add debounce function at the top of the file, before any component code
-const debounce = (func, wait) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
 import MenteeCard from '@/components/mentor/MenteeCard';
-import Pagination from '@mui/material/Pagination';
+// Removed Pagination for mobile infinite scroll
 
 // Move filterData function up before it's used
 const filterData = (data, filters) => {
@@ -153,6 +141,7 @@ const MenteeManagement = () => {
 
   // Handle filter changes with timeout
   const filterTimeout = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
   // Move debouncedSearch declaration before it's used in handleFilterChange
   const handleEmailSearch = useCallback((value) => {
@@ -193,11 +182,15 @@ const MenteeManagement = () => {
     }
   }, [filters.academicYear, filters.academicSession]); // Add dependencies
   
-  // Debounce the search for smoothness
-  const debouncedSearch = useCallback(
-    debounce((value) => handleEmailSearch(value), 300),
-    [handleEmailSearch] // Add handleEmailSearch as dependency
-  );
+  // Debounce the search for smoothness using a stable ref
+  const debouncedSearch = useCallback((value) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      handleEmailSearch(value);
+    }, 300);
+  }, [handleEmailSearch]);
 
   // Now we can use debouncedSearch in handleFilterChange
   const handleFilterChange = useCallback((name, value) => {
@@ -227,6 +220,9 @@ const MenteeManagement = () => {
     return () => {
       if (filterTimeout.current) {
         clearTimeout(filterTimeout.current);
+      }
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
     };
   }, []);
@@ -1007,23 +1003,36 @@ const handleUpdate = (updatedMentee) => {
   };
 
   const [expandedCard, setExpandedCard] = useState(null);
-  const [page, setPage] = useState(1);
-  const cardsPerPage = 5;
+  // Infinite scroll for mobile/tablet cards
+  const cardsPerPage = 5; // batch size for each append
+  const [visibleCards, setVisibleCards] = useState(cardsPerPage);
+  const cardsContainerRef = useRef(null);
 
   const handleExpandCard = (mujId) => {
     setExpandedCard(expandedCard === mujId ? null : mujId);
   };
 
-  const getCurrentCards = () => {
-    const startIndex = (page - 1) * cardsPerPage;
-    const endIndex = startIndex + cardsPerPage;
-    return mentees.slice(startIndex, endIndex);
-  };
+  // Reset visible cards when mentee list changes significantly
+  useEffect(() => {
+    setVisibleCards(cardsPerPage);
+  }, [cardsPerPage, mentees.length, filters.email, filters.semester]);
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
-    window.scrollTo(0, 0);
-  };
+  // Append more cards as user scrolls near the bottom in mobile/tablet view
+  useEffect(() => {
+    const el = cardsContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const threshold = 100; // px before bottom
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const atBottom = scrollHeight - (scrollTop + clientHeight) < threshold;
+      const hasMore = visibleCards < mentees.length;
+      if (atBottom && hasMore) {
+        setVisibleCards(prev => Math.min(prev + cardsPerPage, mentees.length));
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [visibleCards, mentees.length, cardsPerPage]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -1131,8 +1140,8 @@ const handleUpdate = (updatedMentee) => {
                       <div className="h-[calc(100vh-135px)]"> {/* Updated height */}
                         {isTablet || isSmallScreen ? (
                           // Card view for mobile and tablet
-                          <div className="h-full overflow-auto"> {/* Added pb-16 to prevent content hiding behind pagination */}
-                            {getCurrentCards().map((mentee) => (
+                          <div ref={cardsContainerRef} className="h-full overflow-auto"> {/* Infinite scroll container */}
+                            {mentees.slice(0, visibleCards).map((mentee) => (
                               <MenteeCard
                                 key={mentee.MUJid}
                                 mentee={mentee}
@@ -1142,47 +1151,11 @@ const handleUpdate = (updatedMentee) => {
                                 onExpandClick={handleExpandCard}
                               />
                             ))}
-                            {mentees.length > cardsPerPage && (
-                              <Box sx={{ 
-                                position: 'fixed',
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                display: 'flex', 
-                                justifyContent: 'center',
-                                backgroundColor: 'rgba(0,0,0,0.8)',
-                                backdropFilter: 'blur(10px)',
-                                py: 2,
-                                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                                zIndex: 10,
-                              }}>
-                                <Pagination
-                                  count={Math.ceil(mentees.length / cardsPerPage)}
-                                  page={page}
-                                  onChange={handlePageChange}
-                                  size={isSmallScreen ? "small" : "medium"} // Adjust size based on screen
-                                  siblingCount={isSmallScreen ? 0 : 1} // Show fewer page numbers on mobile
-                                  sx={{
-                                    '& .MuiPaginationItem-root': {
-                                      color: 'white',
-                                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                      minWidth: isSmallScreen ? '30px' : '40px', // Smaller touch targets on mobile
-                                      height: isSmallScreen ? '30px' : '40px',
-                                      fontSize: isSmallScreen ? '0.875rem' : '1rem',
-                                      '&.Mui-selected': {
-                                        backgroundColor: '#f97316',
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
-                                        '&:hover': {
-                                          backgroundColor: '#ea580c',
-                                        },
-                                      },
-                                      '&:hover': {
-                                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                                      },
-                                    },
-                                  }}
-                                />
+                            {visibleCards < mentees.length && (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                  Loading more...
+                                </Typography>
                               </Box>
                             )}
                           </div>

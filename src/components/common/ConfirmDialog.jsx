@@ -1,4 +1,4 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, CircularProgress } from '@mui/material';
 
 const ConfirmDialog = ({ 
   open, 
@@ -7,7 +7,8 @@ const ConfirmDialog = ({
   title, 
   message, 
   confirmButtonText = 'Confirm',
-  cancelButtonText = 'Cancel' 
+  cancelButtonText = 'Cancel',
+  loading = false
 }) => {
   return (
     <Dialog
@@ -50,12 +51,21 @@ const ConfirmDialog = ({
         <Button
           onClick={onConfirm}
           variant="contained"
+          disabled={loading}
           sx={{
             bgcolor: '#f97316',
-            '&:hover': { bgcolor: '#ea580c' }
+            '&:hover': { bgcolor: '#ea580c' },
+            '&:disabled': { bgcolor: '#f97316', opacity: 0.6 }
           }}
         >
-          {confirmButtonText}
+          {loading ? (
+            <>
+              <CircularProgress size={20} sx={{ color: 'white', mr: 1 }} />
+              Logging out...
+            </>
+          ) : (
+            confirmButtonText
+          )}
         </Button>
       </DialogActions>
     </Dialog>

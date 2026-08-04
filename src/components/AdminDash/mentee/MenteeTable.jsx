@@ -1,13 +1,11 @@
 'use client';
-import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Typography, TablePagination } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { useMemo, useState, useEffect } from 'react';
+import { DataGrid } from '@mui/x-data-grid';
+import { Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Typography } from '@mui/material';
+// import { styled } from '@mui/material/styles';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import InfoIcon from '@mui/icons-material/Info';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenteeDetailsDialog from './MenteeDetailsDialog';
 // import axios from 'axios';
 import TableSkeleton from './TableSkeleton';
@@ -43,90 +41,13 @@ import TableSkeleton from './TableSkeleton';
 //   </Box>
 // );
 
-const StyledPaginationItem = styled(IconButton)(() => ({
-  padding: '4px',
-  color: 'rgba(249, 115, 22, 0.7)',
-  '&:hover': {
-    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-    color: '#f97316',
-  },
-  '&.Mui-disabled': {
-    color: 'rgba(255, 255, 255, 0.3)',
-  },
-  transition: 'all 0.2s ease',
-}));
+// Removed manual pagination UI in favor of infinite scroll
 
-// Update CustomPagination to handle actual data
-const CustomPagination = ({ total }) => {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        '& .MuiTablePagination-root': {
-          color: 'rgba(255, 255, 255, 0.7)',
-        },
-        '& .MuiTablePagination-selectIcon': {
-          color: '#f97316',
-        },
-        '& .MuiTablePagination-select': {
-          color: 'rgba(255, 255, 255, 0.9)',
-        },
-      }}
-    >
-      <TablePagination
-        component="div"
-        count={total}
-        page={0}
-        onPageChange={() => {}}
-        rowsPerPage={10}
-        onRowsPerPageChange={() => {}}
-        labelRowsPerPage="Rows:"
-        sx={{
-          color: 'rgba(255, 255, 255, 0.7)',
-          '.MuiTablePagination-actions': {
-            display: 'none',
-          },
-        }}
-      />
-      <StyledPaginationItem
-        size="small"
-        onClick={() => document.querySelector('.MuiTablePagination-actions button:first-of-type')?.click()}
-      >
-        <ArrowBackIosNewIcon sx={{ fontSize: '1rem' }} />
-      </StyledPaginationItem>
-      <StyledPaginationItem
-        size="small"
-        onClick={() => document.querySelector('.MuiTablePagination-actions button:last-of-type')?.click()}
-      >
-        <ArrowForwardIosIcon sx={{ fontSize: '1rem' }} />
-      </StyledPaginationItem>
-    </Box>
-  );
-};
+// Removed custom header; relying on DataGrid defaults and external page header
 
-const CustomHeaderComponent = () => (
-  <Box sx={{
-    p: 2,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottom: '1px solid rgba(249, 115, 22, 0.3)',
-    background: 'rgba(0, 0, 0, 0.8)',
-  }}>
-    <Typography variant="h6" sx={{ 
-      color: '#ea580c', 
-      fontWeight: 600,
-      textShadow: '0 0 10px rgba(249, 115, 22, 0.3)'
-    }}>
-      Mentee Records
-    </Typography>
-  </Box>
-);
-
-// Update CustomFooterComponent to pass total count
-const CustomFooterComponent = ({ total }) => (
+// Footer: keep minimal UI (no rows-per-page or count); only show a small loading hint when appending
+// Adjust PAGE_SIZE below to change infinite scroll batch size
+const CustomFooterComponent = ({ /* totalRecords, loadedRecords, */ loadingMore }) => (
   <Box sx={{
     p: 1.5,
     display: 'flex',
@@ -135,12 +56,15 @@ const CustomFooterComponent = ({ total }) => (
     borderTop: '1px solid rgba(249, 115, 22, 0.3)',
     background: 'linear-gradient(to right, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))',
   }}>
-    <Box className="flex items-center gap-2">
-      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-        Total Records: {total}
-      </Typography>
-    </Box>
-    <CustomPagination total={total} />
+    <span />
+    {loadingMore && (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CircularProgress size={16} sx={{ color: '#f97316' }} />
+        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+          Loading more...
+        </Typography>
+      </Box>
+    )}
   </Box>
 );
 
@@ -198,9 +122,16 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
   const [mounted, setMounted] = useState(false);
   const [localData, setLocalData] = useState([]);
   // const [baseData, setBaseData] = useState([]);
-  // const previousMentees = useRef([]);
+  // Note: Avoid early return to keep hooks order stable; we'll render a skeleton conditionally in JSX
+  // Dialog state
   const [deleteDialog, setDeleteDialog] = useState({ open: false, mujid: null });
   const [detailsDialog, setDetailsDialog] = useState({ open: false, mentee: null });
+  const gridContainerRef = useRef(null);
+  // Infinite scroll configuration: adjust PAGE_SIZE to change how many rows load per batch
+  const PAGE_SIZE = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadLockRef = useRef(false);
 
   // Add handleConfirmDelete function
   const handleConfirmDelete = async () => {
@@ -269,10 +200,25 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
     }).sort((a, b) => b.searchScore - a.searchScore); // Sort by search relevance when filtering
   }, [mounted, localData, emailFilter]);
 
-  // Simplify loading condition - show skeleton only when initially loading
-  if (isLoading && !localData.length) {
-    return <TableSkeleton rowsNum={8} />;
-  }
+  // Reset visible rows when dataset or search changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [PAGE_SIZE, emailFilter, localData.length]);
+
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || loadLockRef.current) return;
+    setLoadingMore(true);
+    loadLockRef.current = true;
+    requestAnimationFrame(() => {
+      setVisibleCount(prev => Math.min(prev + PAGE_SIZE, (localData?.length || 0)));
+      setLoadingMore(false);
+      setTimeout(() => { loadLockRef.current = false; }, 150);
+    });
+  }, [loadingMore, PAGE_SIZE, localData?.length]);
+
+  const displayedRows = useMemo(() => processedMentees.slice(0, visibleCount), [processedMentees, visibleCount]);
+
+  // Initial loading will be rendered conditionally below to keep hooks order stable
 
   // Add this near other column definitions
   const emailSearchColumn = {
@@ -368,8 +314,25 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
     },
   ];
 
+  // Attach scroll listener to DataGrid virtual scroller (always add listener when mounted)
+  useEffect(() => {
+    const container = gridContainerRef.current?.querySelector?.('.MuiDataGrid-virtualScroller');
+    if (!container) return;
+    const onScroll = () => {
+      const threshold = 80; // px from bottom
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const atBottom = scrollHeight - (scrollTop + clientHeight) < threshold;
+      const hasMore = visibleCount < (processedMentees?.length || 0);
+      if (atBottom && hasMore) {
+        handleLoadMore();
+      }
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [handleLoadMore, visibleCount, processedMentees?.length]);
+
   return (
-    <Box sx={{ 
+    <Box ref={gridContainerRef} sx={{ 
       height: '100%',
       width: '100%',
       position: 'relative',
@@ -399,14 +362,18 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
           <CircularProgress sx={{ color: '#f97316' }} />
         </Box>
       )}
+      {isLoading && !localData.length && (
+        <TableSkeleton rowsNum={8} />
+      )}
       
+      {!isLoading && (
       <DataGrid
-        rows={processedMentees}
+        rows={displayedRows}
         columns={columns}
         loading={isLoading && localData.length > 0}
         getRowId={(row) => row.id} // Use the new id field directly
-        components={{
-          LoadingOverlay: () => (
+        slots={{
+          loadingOverlay: () => (
             <Box sx={{ 
               position: 'absolute',
               top: 0,
@@ -422,7 +389,7 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
               <CircularProgress sx={{ color: '#f97316' }} />
             </Box>
           ),
-          NoRowsOverlay: () => (
+          noRowsOverlay: () => (
             <Box sx={{ 
               display: 'flex',
               flexDirection: 'column',
@@ -436,13 +403,9 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
               </Typography>
             </Box>
           ),
-          Toolbar: GridToolbar,
-          Header: CustomHeaderComponent,
-          Footer: CustomFooterComponent,
-          // No need for separate Pagination component as it's included in CustomFooterComponent
-          // Other components...
+          footer: CustomFooterComponent,
         }}
-        componentsProps={{
+        slotProps={{
           columnHeaders: {
             sx: {
               transition: 'none !important',
@@ -453,18 +416,16 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
               scrollBehavior: 'smooth',
             },
           },
-          footer: {
-            totalRecords: processedMentees.length, // Pass total records count
-          },
+          footer: { loadingMore },
         }}
         initialState={{
-          pagination: {
-            paginationModel: { pageSize: 10, page: 0 },
-          },
           sorting: {
             sortModel: [{ field: 'serialNumber', sort: 'asc' }],
           },
         }}
+        pagination={false}
+        hideFooterPagination
+        hideFooterSelectedRowCount
         sx={{
           height: { xs: '500px', lg: '100%' }, // Responsive height
           width: '100%',
@@ -575,18 +536,6 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
             backdropFilter: 'blur(10px)',
             
           },
-          '& .MuiTablePagination-root': {
-            color: 'rgba(249, 115, 22, 0.9)',
-          },
-          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-            color: 'rgba(249, 115, 22, 0.9)',
-          },
-          '& .MuiTablePagination-select': {
-            color: 'rgba(255, 255, 255, 0.9)',
-          },
-          '& .MuiTablePagination-selectIcon': {
-            color: '#ea580c',
-          },
           '& .MuiMenu-paper': {
             bgcolor: 'rgba(0, 0, 0, 0.95)',
             backdropFilter: 'blur(10px)',
@@ -620,18 +569,15 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
           },
           transition: 'all 0.3s ease',
         }}
-        pageSizeOptions={[10, 25, 50, 75,{ label: 'All', value: -1 }]}
-        // rowsPerPageOptions={[10, 25, 50, 75, { label: 'All', value: -1 }]}
-        paginationMode="client"
+  // No pagination controls; using infinite scroll
         disableColumnFilter
         disableColumnMenu
         columnBuffer={5}
         rowBuffer={10}
         rowHeight={60}
-        headerHeight={56}
-        pagination
-        disableSelectionOnClick={true}
-        // sx={{
+  headerHeight={56}
+  disableSelectionOnClick={true}
+  // sx={{
         //   height: '100%',
         //   '& .MuiDataGrid-main': {
         //     overflow: 'auto',
@@ -817,7 +763,8 @@ const MenteeTable = ({ emailFilter, mentees, onEditClick, onDeleteClick, isLoadi
         //     minheight: '20px',
         //   },
         // }}
-      />
+  />
+  )}
       
       {/* Details Dialog */}
       <Dialog 

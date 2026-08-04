@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { connect } from "../../../../lib/dbConfig";
 import { Mentor } from "../../../../lib/dbModels"; 
@@ -9,24 +8,16 @@ export async function POST(req) {
     console.log("API Called: /api/auth/verify-otp");
     await connect();
 
-    const env = process.env.ENV || 'production';
-    let token;
-    let requestBody;    // Try to get request body for local authentication
+    let requestBody;    // Try to get request body for authentication
     try {
       requestBody = await req.json();
     } catch {
-      // If parsing fails, continue with token-based flow
+      // If parsing fails, continue
     }
 
-    // Extract token from Authorization header for external authentication
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.split(" ")[1];
-    }
-
-    // Handle local development with email + OTP
-    if (env === 'local' && requestBody && requestBody.email && requestBody.otp) {
-      console.log("🏠 Local authentication with email + OTP");
+    // Handle authentication with email + OTP (if provided)
+    if (requestBody && requestBody.email && requestBody.otp) {
+      console.log("🏠 Authentication with email + OTP");
       
       const { email, otp } = requestBody;
 
@@ -76,7 +67,10 @@ export async function POST(req) {
         );
       }
 
-      console.log("✅ Local authentication successful. User Role:", user.role);
+      console.log("✅ Authentication successful. User Role:", user.role);
+
+      // Check if user needs to set up password
+      const needsPasswordSetup = !user.password || !user.isPasswordSet;
 
       // Prepare Response Object
       const response = NextResponse.json({
@@ -84,7 +78,11 @@ export async function POST(req) {
         message: "OTP verified successfully",
         role: user.role,
         MUJid: user.MUJid,
+        mujid: user.MUJid,
         email: user.email,
+        name: user.name,
+        needsPasswordSetup: needsPasswordSetup,
+        token: "authenticated"
       });
 
       // Set cookie
@@ -99,63 +97,8 @@ export async function POST(req) {
       return response;
     }
 
-    // Handle production/external authentication with JWT token
-    if (!token) {
-      console.error("❌ Missing token in request");
-      return NextResponse.json({ success: false, message: "Missing token" }, { status: 401 });
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("✅ Token Verified:", decoded);
-    } catch (error) {
-      console.error("❌ Token Verification Failed:", error.name, error.message);
-      return NextResponse.json({ 
-          success: false, 
-          message: error.name === "TokenExpiredError" ? "Token expired" : "Invalid token" 
-      }, { status: 401 });
-    }
-  
-    // Find user by email for external authentication
-    const user = await Mentor.findOne({ email: decoded.email });
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: "User not found in database" },
-        { status: 404 }
-      );
-    }
-
-  
-    if (!user.role || user.role.length === 0) {
-      return NextResponse.json(
-        { success: false, message: "User role missing" },
-        { status: 403 }
-      );
-    }
-
-    console.log("✅ External authentication successful. User Role:", user.role);
-
-    // Prepare Response Object for external authentication
-    const response = NextResponse.json({
-      success: true,
-      message: "Token verified, role set",
-      role: user.role,
-      MUJid: decoded.MUJid,
-      email: decoded.email,
-    });
-
-    // Set cookie synchronously before returning
-    response.cookies.set("UserRole", user.role.join(","), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24, // 1 day
-      path: "/",
-    });
-
-    return response;
+    // If no valid authentication method provided, return error
+    return NextResponse.json({ success: false, message: "Invalid authentication method" }, { status: 400 });
   } catch (error) {
     console.error(" Error in verify-otp API:", error.message);
     return NextResponse.json(
