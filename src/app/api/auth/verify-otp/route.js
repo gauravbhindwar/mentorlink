@@ -1,122 +1,111 @@
-// route.js
-import { connect } from "../../../../lib/dbConfig";
-import { Mentor } from "../../../../lib/dbModels";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { cookies } from 'next/headers';
-
-const verifyOtpForUser = async (email, otp) => {
-  let User;
-
-  User = Mentor;
-
-  const user = await User.findOne({ email });
-  if (!user) {
-    return { success: false, message: `${email} not found` };
-  }
-
-  // Check if already verified
-  //   return { success: true, message: "Previously verified" };
-  // }
-
-  // Check if valid OTP exists
-  if (!user.otp || !user.otpExpires) {
-    return { success: false, message: "No valid OTP found" };
-  }
-
-  // Check expiration
-  if (user.otpExpires < Date.now()) {
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    await user.save();
-    return { success: false, message: "OTP expired" };
-  }
-
-  // Verify OTP
-  const isOtpValid = otp == "111111" || (await bcrypt.compare(otp, user.otp));
-  if (!isOtpValid) {
-    return { success: false, message: "Invalid OTP" };
-  }
-
-  // Mark as verified and return MUJid
-  user.isOtpUsed = true;
-  user.otp = undefined;
-  user.otpExpires = undefined;
-  await user.save();
-
-  return {
-    success: true,
-    message: "Verified successfully",
-    role: user.role,
-    MUJid: user.MUJid, // Changed from mujid to MUJid
-  };
-};
+import { connect } from "../../../../lib/dbConfig";
+import { Mentor } from "../../../../lib/dbModels"; 
 
 export async function POST(req) {
   try {
+    console.log("API Called: /api/auth/verify-otp");
     await connect();
-    const { email, otp } = await req.json();
 
-    if (!email || !otp) {
-      if (!otp) {
+    let requestBody;    // Try to get request body for authentication
+    try {
+      requestBody = await req.json();
+    } catch {
+      // If parsing fails, continue
+    }
+
+    // Handle authentication with email + OTP (if provided)
+    if (requestBody && requestBody.email && requestBody.otp) {
+      console.log("🏠 Authentication with email + OTP");
+      
+      const { email, otp } = requestBody;
+
+      // Find user by email
+      const user = await Mentor.findOne({ email });
+
+      if (!user) {
         return NextResponse.json(
-          {
-            success: false,
-            message: "Missing OTP",
-            verified: false,
-          },
-          { status: 200 }
+          { success: false, message: "User not found" },
+          { status: 404 }
         );
       }
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Missing email field",
-          verified: false,
-        },
-        { status: 200 }
-      );
-    }
+      // Check if OTP exists and is not expired
+      if (!user.otp || !user.otpExpires || user.isOtpUsed) {
+        return NextResponse.json(
+          { success: false, message: "Invalid or expired OTP" },
+          { status: 400 }
+        );
+      }
 
-    const result = await verifyOtpForUser(email, otp);
-    
-    // Get cookies instance first
-    const cookieStore = cookies();
-    
-    // Create response object with necessary headers
-    const response = NextResponse.json(
-      {
-        success: result.success,
-        message: result.message,
-        verified: result.success,
-        MUJid: result.MUJid,
-        role: result.role,
-      },
-      { status: 200 }
-    );
+      // Check if OTP is expired
+      if (new Date() > user.otpExpires) {
+        return NextResponse.json(
+          { success: false, message: "OTP has expired" },
+          { status: 400 }
+        );
+      }
 
-    // Set cookie if verification was successful
-    if (result.success && result.role) {
-      await cookieStore.set('UserRole', result.role.join(','), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24, 
-        path: '/'
+      // Verify OTP
+      const isOtpValid = await bcrypt.compare(otp, user.otp);
+      if (!isOtpValid) {
+        return NextResponse.json(
+          { success: false, message: "Invalid OTP" },
+          { status: 400 }
+        );
+      }
+
+      // Mark OTP as used
+      user.isOtpUsed = true;
+      await user.save();
+
+      if (!user.role || user.role.length === 0) {
+        return NextResponse.json(
+          { success: false, message: "User role missing" },
+          { status: 403 }
+        );
+      }
+
+      console.log("✅ Authentication successful. User Role:", user.role);
+
+      // Check if user needs to set up password
+      const needsPasswordSetup = !user.password || !user.isPasswordSet;
+
+      // Prepare Response Object
+      const response = NextResponse.json({
+        success: true,
+        message: "OTP verified successfully",
+        role: user.role,
+        MUJid: user.MUJid,
+        mujid: user.MUJid,
+        email: user.email,
+        name: user.name,
+        needsPasswordSetup: needsPasswordSetup,
+        token: "authenticated"
       });
+
+      // Set cookie
+      response.cookies.set("UserRole", user.role.join(","), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 60 * 60 * 24, // 1 day
+        path: "/",
+      });
+
+      return response;
     }
 
-    return response;
+    // If no valid authentication method provided, return error
+    return NextResponse.json({ success: false, message: "Invalid authentication method" }, { status: 400 });
   } catch (error) {
-    console.error("OTP verification error:", error.message);
+    console.error(" Error in verify-otp API:", error.message);
     return NextResponse.json(
-      {
-        success: false,
-        message: error.message || "Verification failed",
-        verified: false,
-      },
-      { status: 200 }
+      { success: false, message: "Server error", error: error.message },
+      { status: 500 }
     );
   }
 }
+
+

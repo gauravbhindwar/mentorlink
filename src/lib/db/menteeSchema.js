@@ -42,6 +42,33 @@ const menteesSchema = new mongoose.Schema({
     },
   },
   semester: { type: Number, required: true, min: 1, max: 8 },
+  cgpa: {
+    type: Number,
+    required: false,
+    validate: {
+      validator: function(value) {
+        if (value === null || value === undefined) return true;
+        // Allow floating point numbers between 0 and 10 with up to 2 decimal places
+        return typeof value === 'number' && 
+               value >= 0 && 
+               value <= 10 && 
+               Number.isFinite(value) && 
+               value.toFixed(2) === value.toString();
+      },
+      message: 'CGPA must be a number between 0 and 10 with up to 2 decimal places'
+    }
+  },
+  backlogs: {
+    type: Number,
+    required: false,
+    min: 0,
+    validate: {
+      validator: function(value) {
+        return value === null || value === undefined || value >= 0;
+      },
+      message: 'Backlogs must be a non-negative number'
+    }
+  },
   meetingsAttended: { type: [String] },
   mentorRemarks: { type: String, default: "" },
   academicYear: { type: String, required: true },

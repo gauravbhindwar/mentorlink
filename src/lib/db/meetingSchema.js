@@ -170,8 +170,7 @@ meetingSchema.statics.getMentorMeetingsData = async function(year, session, seme
     {
       $match: {
         'academicDetails.academicYear': year,
-        'academicDetails.academicSession': session,
-        ...(semester && { 'meetings.semester': parseInt(semester) })
+        'academicDetails.academicSession': session
       }
     },
     {
@@ -191,15 +190,50 @@ meetingSchema.statics.getMentorMeetingsData = async function(year, session, seme
         mentorName: '$mentorInfo.name',
         mentorEmail: '$mentorInfo.email',
         mentorPhone: '$mentorInfo.phone_number',
-        meetingCount: { $size: '$meetings' }
+        meetingCount: {
+          $size: {
+            $filter: {
+              input: '$meetings',
+              as: 'meeting',
+              cond: { $eq: ['$$meeting.semester', parseInt(semester)] }
+            }
+          }
+        },
+        scheduledMeetings: {
+          $size: {
+            $filter: {
+              input: '$meetings',
+              as: 'meeting',
+              cond: { 
+                $and: [
+                  { $eq: ['$$meeting.semester', parseInt(semester)] },
+                  { $eq: ['$$meeting.isReportFilled', false] }
+                ]
+              }
+            }
+          }
+        },
+        reportedMeetings: {
+          $size: {
+            $filter: {
+              input: '$meetings',
+              as: 'meeting',
+              cond: { 
+                $and: [
+                  { $eq: ['$$meeting.semester', parseInt(semester)] },
+                  { $eq: ['$$meeting.isReportFilled', true] }
+                ]
+              }
+            }
+          }
+        }
       }
     }
   ]).skip(skip).limit(limit);
 
   const total = await this.countDocuments({
     'academicDetails.academicYear': year,
-    'academicDetails.academicSession': session,
-    ...(semester && { 'meetings.semester': parseInt(semester) })
+    'academicDetails.academicSession': session
   });
 
   return { meetings, total };

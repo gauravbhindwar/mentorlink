@@ -1,28 +1,61 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
-  Typography,
   Button,
-  IconButton,
   TextField,
   Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Grid,
   CircularProgress,
+  useMediaQuery,
+  SwipeableDrawer,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from '@mui/icons-material/Search';
+import { motion, AnimatePresence } from 'framer-motion';
 import { dialogStyles } from '../mentorStyle';
 import { determineAcademicPeriod } from '../utils/academicUtils';
 
 const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handleAddMentor, handleSearchMentor, searchingMentor }) => {
-  // Initialize dialog only with academic details
+  const [errors, setErrors] = useState({
+    email: '',
+    name: '',
+    phone_number: '',
+  });
+  const [showFullForm, setShowFullForm] = useState(false);
+  const isSmallScreen = useMediaQuery('(max-width: 1024px)');
+  const emailInputRef = useRef(null);
+  const nameInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const inputRefs = {
+    email: emailInputRef,
+    name: nameInputRef,
+    phone_number: phoneInputRef,
+  };
+
+  const drawerVariants = {
+    initial: { y: '100%' },
+    animate: { 
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }
+    },
+    exit: { 
+      y: '100%',
+      transition: {
+        type: "spring",
+        damping: 30,
+        stiffness: 300
+      }
+    }
+  };
+
   useEffect(() => {
     if (open) {
       const { academicYear, academicSession } = determineAcademicPeriod();
-      // Reset form but keep academic details
+      setShowFullForm(false);
       setMentorDetails(prev => ({
         ...prev,
         name: "",
@@ -39,118 +72,96 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
     }
   }, [open, setMentorDetails]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'email') {
-      // When email is cleared, also clear MUJid
-      if (!value.trim()) {
-        setMentorDetails(prev => ({
-          ...prev,
-          email: '',
-          MUJid: ''
-        }));
-        return;
-      }
-    }
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return "Email is required";
+    if (!regex.test(email)) return "Invalid email format";
+    return "";
+  };
+
+  const validateName = (name) => {
+    if (!name) return "Name is required";
+    if (name.length < 2) return "Name must be at least 2 characters";
+    if (!/^[a-zA-Z\s]+$/.test(name)) return "Name can only contain letters and spaces";
+    return "";
+  };
+
+  const validatePhone = (phone) => {
+    const regex = /^[0-9]{10}$/;
+    if (!phone) return "Phone number is required";
+    if (!regex.test(phone)) return "Phone number must be 10 digits";
+    return "";
+  };
+
+  const handleInputChange = (event) => {
+    const { name, value, selectionStart, selectionEnd } = event.target;
+    const targetRef = inputRefs[name];
+
     setMentorDetails(prev => ({
       ...prev,
       [name]: value,
     }));
+
+    setErrors(prev => ({
+      ...prev,
+      [name]: '',
+    }));
+
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      const inputElement = targetRef?.current;
+      if (!inputElement) return;
+
+      inputElement.focus();
+
+      if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
+        try {
+          inputElement.setSelectionRange(selectionStart, selectionEnd);
+        } catch (error) {
+          void error;
+        }
+      }
+    });
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{ 
-        sx: {
-          ...dialogStyles.paper,
-          maxHeight: '90vh', // Ensure dialog doesn't exceed viewport height
-          bgcolor: 'rgba(17, 24, 39, 0.95)', // Darker background
-          backdropFilter: 'blur(10px)',
-        }
-      }}
-    >
-      <DialogTitle 
-        sx={{
-          ...dialogStyles.title,
-          borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
-          mb: 0, // Remove bottom margin
-          pb: 2, // Add padding bottom
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4ZM13 8V11H16V13H13V16H11V13H8V11H11V8H13Z" 
-              fill="#f97316"/>
-          </svg>
-          <Typography variant="h6" sx={{ 
-            color: '#f97316',
-            fontWeight: 600,
-            letterSpacing: '0.5px',
-            fontSize: '1.25rem'
-          }}>
-            Add New Mentor
-          </Typography>
-        </Box>
-        <IconButton
+  const handleEmailSearch = async () => {
+    await handleSearchMentor();
+    setShowFullForm(true);
+  };
+
+  const handleSubmit = () => {
+    const newErrors = {
+      email: validateEmail(mentorDetails.email),
+      name: validateName(mentorDetails.name),
+      phone_number: validatePhone(mentorDetails.phone_number),
+    };
+
+    setErrors(newErrors);
+
+    if (Object.values(newErrors).some(error => error !== "")) {
+      return;
+    }
+
+    handleAddMentor();
+  };
+
+  const DialogContentComponent = () => (
+    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex flex-col h-full">
+      <div className="flex-shrink-0 flex justify-between items-center p-6 border-b border-gray-800">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+          Add New Mentor
+        </h2>
+        <button
           onClick={onClose}
-          sx={{
-            position: 'absolute',
-            right: '16px',
-            top: '16px',
-            color: 'rgba(255, 255, 255, 0.5)',
-            '&:hover': { color: '#f97316' },
-          }}
+          className="text-gray-400 hover:text-orange-500 transition-colors p-2 hover:bg-gray-800 rounded-full"
         >
           <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent 
-        sx={{
-          ...dialogStyles.content,
-          padding: '24px',
-          overflowY: 'auto',
-          mt: 0, // Remove top margin
-          pt: 3, // Add padding top
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: 'rgba(249, 115, 22, 0.5)',
-            borderRadius: '4px',
-            '&:hover': {
-              background: 'rgba(249, 115, 22, 0.7)',
-            },
-          },
-        }}
-      >
-        <Box 
-          sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(2, 1fr)', 
-            gap: 3,
-            width: '100%',
-          }}
-        >
-          {/* Academic Fields - First Section */}
-          <Grid 
-            container 
-            spacing={3} 
-            sx={{
-              width: '100%',
-              gridColumn: '1 / -1', // Make grid span full width
-              m: 0, // Remove default margins
-            }}
-          >
-            {/* Academic Year */}
+        </button>
+      </div>
+      
+      <div className="p-8 overflow-y-auto flex-grow">
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3, width: '100%' }}>
+          <Grid container spacing={3} sx={{ width: '100%', gridColumn: '1 / -1', m: 0 }}>
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -178,7 +189,6 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
               />
             </Grid>
 
-            {/* Academic Session */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -206,160 +216,170 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
               />
             </Grid>
 
-            {/* Email with Search - Place this before MUJid field */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  value={mentorDetails.email}
-                  onChange={handleInputChange}
-                  required
-                  sx={{
-                    ...dialogStyles.textField,
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: 'rgba(249, 115, 22, 0.5)',
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexDirection: 'column' }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%' }}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    value={mentorDetails.email}
+                    onChange={handleInputChange}
+                    error={!!errors.email}
+                    helperText={errors.email}
+                    required
+                    inputRef={emailInputRef}
+                    autoFocus={open && !showFullForm}
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(249, 115, 22, 0.5)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#f97316',
+                        },
                       },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#f97316',
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#f97316',
                       },
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': {
-                      color: '#f97316',
-                    },
-                    '& .MuiInputBase-input': {
-                      color: 'white',
-                    },
-                  }}
-                />
-                <IconButton 
-                  onClick={handleSearchMentor}
-                  disabled={searchingMentor || !mentorDetails.email}
-                  sx={{
-                    bgcolor: 'rgba(249, 115, 22, 0.1)',
-                    '&:hover': { 
-                      bgcolor: 'rgba(249, 115, 22, 0.2)',
-                    },
-                    '&.Mui-disabled': {
-                      bgcolor: 'rgba(255, 255, 255, 0.05)',
-                    },
-                    width: '48px',
-                    height: '48px',
-                  }}
-                >
-                  {searchingMentor ? (
-                    <CircularProgress size={24} sx={{ color: '#f97316' }} />
-                  ) : (
-                    <SearchIcon sx={{ color: '#f97316' }} />
-                  )}
-                </IconButton>
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: '#ef4444',
+                      },
+                    }}
+                  />
+                  <Button
+                    onClick={handleEmailSearch}
+                    disabled={searchingMentor || !mentorDetails.email}
+                    variant="contained"
+                    startIcon={searchingMentor ? 
+                      <CircularProgress size={20} sx={{ color: 'white' }} /> : 
+                      <SearchIcon />
+                    }
+                    sx={{
+                      height: '56px',
+                      minWidth: '120px',
+                      bgcolor: '#f97316',
+                      '&:hover': {
+                        bgcolor: '#ea580c',
+                      },
+                      '&.Mui-disabled': {
+                        bgcolor: 'rgba(249, 115, 22, 0.3)',
+                      },
+                    }}
+                  >
+                    {searchingMentor ? 'Searching...' : 'Submit'}
+                  </Button>
+                </Box>
               </Box>
             </Grid>
 
-            {/* MUJid field - will show either existing or new ID */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="MUJid"
-                name="MUJid"
-                value={mentorDetails.MUJid || ""}
-                disabled
-                required
-                sx={{
-                  ...dialogStyles.textField,
-                  '& .MuiInputBase-root.Mui-disabled': {
-                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                    '& fieldset': {
-                      borderColor: 'rgba(249, 115, 22, 0.3) !important',
-                    },
-                  },
-                  '& .MuiInputBase-input.Mui-disabled': {
-                    WebkitTextFillColor: 'rgba(255, 255, 255, 0.8)',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                  },
-                  '& .MuiInputLabel-root.Mui-disabled': {
-                    color: 'rgba(255, 255, 255, 0.6)',
-                  },
-                }}
-              />
-            </Grid>
+            {showFullForm && (
+              <>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="MUJid"
+                    name="MUJid"
+                    value={mentorDetails.MUJid || ""}
+                    disabled
+                    required
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiInputBase-root.Mui-disabled': {
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        '& fieldset': {
+                          borderColor: 'rgba(249, 115, 22, 0.3) !important',
+                        },
+                      },
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: 'rgba(255, 255, 255, 0.8)',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                      },
+                      '& .MuiInputLabel-root.Mui-disabled': {
+                        color: 'rgba(255, 255, 255, 0.6)',
+                      },
+                    }}
+                  />
+                </Grid>
 
-            {/* Name */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Name"
-                name="name"
-                value={mentorDetails.name}
-                onChange={handleInputChange}
-                required
-                sx={{
-                  ...dialogStyles.textField,
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(249, 115, 22, 0.5)',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#f97316',
-                    },
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: '#f97316',
-                  },
-                  '& .MuiInputBase-input': {
-                    color: 'white',
-                  },
-                }}
-              />
-            </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Name"
+                    name="name"
+                    value={mentorDetails.name}
+                    onChange={handleInputChange}
+                    error={!!errors.name}
+                    helperText={errors.name}
+                    required
+                    inputRef={nameInputRef}
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(249, 115, 22, 0.5)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#f97316',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#f97316',
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: '#ef4444',
+                      },
+                    }}
+                  />
+                </Grid>
 
-            {/* Phone Number */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Phone Number"
-                name="phone_number"
-                value={mentorDetails.phone_number}
-                onChange={handleInputChange}
-                required
-                sx={{
-                  ...dialogStyles.textField,
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(249, 115, 22, 0.5)',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#f97316',
-                    },
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: '#f97316',
-                  },
-                  '& .MuiInputBase-input': {
-                    color: 'white',
-                  },
-                }}
-              />
-            </Grid>
-
-            {/* Role - Hidden but set to mentor by default */}
-            <input 
-              type="hidden" 
-              name="role" 
-              value={["mentor"]} 
-            />
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    name="phone_number"
+                    value={mentorDetails.phone_number}
+                    onChange={handleInputChange}
+                    error={!!errors.phone_number}
+                    helperText={errors.phone_number}
+                    required
+                    inputRef={phoneInputRef}
+                    sx={{
+                      ...dialogStyles.textField,
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(249, 115, 22, 0.5)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#f97316',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#f97316',
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: '#ef4444',
+                      },
+                    }}
+                  />
+                </Grid>
+              </>
+            )}
           </Grid>
         </Box>
-      </DialogContent>
+      </div>
 
-      <DialogActions sx={{
-        ...dialogStyles.actions,
-        padding: '16px 24px',
-        borderTop: '1px solid rgba(249, 115, 22, 0.2)',
-        gap: 2,
-      }}>
+      <div className="flex-shrink-0 flex justify-end gap-4 p-6 border-t border-gray-800 bg-gray-900/50">
         <Button
           onClick={onClose}
           variant="outlined"
@@ -375,8 +395,9 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
           Cancel
         </Button>
         <Button
-          onClick={handleAddMentor}
+          onClick={handleSubmit}
           variant="contained"
+          disabled={!showFullForm}
           sx={{
             bgcolor: "#f97316",
             "&:hover": {
@@ -389,7 +410,67 @@ const AddMentorDialog = ({ open, onClose, mentorDetails, setMentorDetails, handl
         >
           Add Mentor
         </Button>
-      </DialogActions>
+      </div>
+    </form>
+  );
+
+  if (!open) return null;
+
+  return isSmallScreen ? (
+    <AnimatePresence>
+      {open && (
+        <SwipeableDrawer
+          anchor="bottom"
+          open={open}
+          onClose={onClose}
+          onOpen={() => {}}
+          disableSwipeToOpen
+          PaperProps={{
+            sx: {
+              height: '100%',
+              maxHeight: '100%',
+              backgroundColor: 'transparent',
+              backgroundImage: 'none',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+            }
+          }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              backgroundImage: 'none',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }
+          }}
+        >
+          <motion.div
+            className="flex flex-col h-full bg-gray-900 bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-transparent"
+            variants={drawerVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <DialogContentComponent />
+          </motion.div>
+        </SwipeableDrawer>
+      )}
+    </AnimatePresence>
+  ) : (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ 
+        sx: {
+          ...dialogStyles.paper,
+          maxHeight: '90vh',
+          bgcolor: 'rgba(17, 24, 39, 0.95)',
+          backdropFilter: 'blur(10px)',
+        }
+      }}
+    >
+      <DialogContentComponent />
     </Dialog>
   );
 };

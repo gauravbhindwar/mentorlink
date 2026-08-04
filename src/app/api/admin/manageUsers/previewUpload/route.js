@@ -36,8 +36,9 @@ export async function POST(req) {
       'mentee name': 'name',
       'mentee email': 'email',
       'year of registration': 'yearOfRegistration',
-      'section': 'section',
       'semester': 'semester',
+      'cgpa': 'cgpa',        // Add this line
+      'backlogs': 'backlogs', // Add this line
       'mentee phone numer': 'phone_number',
       'mentee address': 'address',
       "mentee's father name": 'fatherName',
@@ -67,16 +68,18 @@ export async function POST(req) {
         const normalizedHeader = header.toLowerCase().trim();
         const mappedKey = columnMap[normalizedHeader];
         if (mappedKey) {
-          entry[mappedKey] = row[index]?.toString().trim() ?? '';
+          let value = row[index]?.toString().trim() ?? '';
+          
+          // Special handling for numeric fields
+          if (mappedKey === 'cgpa' && value) {
+            value = parseFloat(value);
+          } else if (mappedKey === 'backlogs' && value) {
+            value = parseInt(value);
+          }
+          
+          entry[mappedKey] = value;
         }
       });
-
-      // Debug log
-      // console.log('Processing row:', {
-      //   MUJid: entry.MUJid,
-      //   mentorEmail: entry.mentorEmail,
-      //   motherName: entry.motherName // Added to verify mother's name is captured
-      // });
       
       return entry;
     });

@@ -10,7 +10,7 @@ export default function SessionCard({ session, onArchive }) {
     setIsArchiving(true);
     try {
       const response = await fetch('/api/admin/academicSession/archive', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },

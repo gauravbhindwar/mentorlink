@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
@@ -87,7 +89,7 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
           background: 'linear-gradient(to bottom, rgba(17, 24, 39, 0.95), rgba(10, 15, 24, 0.95))',
           backdropFilter: 'blur(10px)',
           borderRadius: '24px',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
+          border: '1px solid rgba(249, 115, 22, 0.2)',
           maxHeight: '90vh',
           overflow: 'hidden'
         }
@@ -95,11 +97,11 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
     >
       {mentee && (
         <>
-          {/* Header Section */}
+          {/* Header Section - Updated */}
           <Box sx={{ 
             p: 3, 
-            borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
-            background: 'linear-gradient(to right, rgba(99, 102, 241, 0.1), rgba(0, 0, 0, 0))',
+            borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
+            background: 'linear-gradient(to right, rgba(249, 115, 22, 0.1), rgba(0, 0, 0, 0))',
             display: 'flex',
             flexDirection: 'column',
             gap: 2
@@ -110,8 +112,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                   sx={{ 
                     width: 60, 
                     height: 60, 
-                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                    border: '2px solid rgba(99, 102, 241, 0.5)'
+                    background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                    border: '2px solid rgba(249, 115, 22, 0.5)'
                   }}
                 >
                   {mentee.name?.charAt(0)}
@@ -132,8 +134,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
               <IconButton 
                 onClick={onClose} 
                 sx={{ 
-                  color: '#6366f1',
-                  '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' }
+                  color: '#f97316',
+                  '&:hover': { bgcolor: 'rgba(249, 115, 22, 0.1)' }
                 }}
               >
                 <CloseIcon />
@@ -141,17 +143,16 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {['semester', 'academicYear'].map((field) => ( // Remove 'section' from array
+              {['semester', 'academicYear'].map((field) => (
                 mentee[field] && (
                   <Chip 
                     key={field}
-                    label={field === 'semester' ? `Semester ${mentee[field]}` :
-                           mentee[field]}
+                    label={field === 'semester' ? `Semester ${mentee[field]}` : mentee[field]}
                     sx={{ 
-                      bgcolor: 'rgba(99, 102, 241, 0.1)',
-                      color: '#6366f1',
-                      border: '1px solid rgba(99, 102, 241, 0.3)',
-                      '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.2)' }
+                      bgcolor: 'rgba(249, 115, 22, 0.1)',
+                      color: '#f97316',
+                      border: '1px solid rgba(249, 115, 22, 0.3)',
+                      '&:hover': { bgcolor: 'rgba(249, 115, 22, 0.2)' }
                     }}
                   />
                 )
@@ -159,8 +160,8 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
             </Box>
           </Box>
 
-          {/* Tabs Navigation */}
-          <Box sx={{ borderBottom: 1, borderColor: 'rgba(99, 102, 241, 0.2)' }}>
+          {/* Tabs Navigation - Updated */}
+          <Box sx={{ borderBottom: 1, borderColor: 'rgba(249, 115, 22, 0.2)' }}>
             <Tabs 
               value={activeTab} 
               onChange={handleTabChange}
@@ -169,11 +170,11 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                 '& .MuiTab-root': {
                   color: 'rgba(255, 255, 255, 0.7)',
                   '&.Mui-selected': {
-                    color: '#6366f1',
+                    color: '#f97316',
                   }
                 },
                 '& .MuiTabs-indicator': {
-                  backgroundColor: '#6366f1',
+                  backgroundColor: '#f97316',
                 }
               }}
             >
@@ -188,61 +189,69 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
             bgcolor: 'transparent',
             background: 'linear-gradient(to bottom, rgba(26, 26, 26, 0.5), rgba(17, 17, 17, 0.5))'
           }}>
-            {/* Basic Info Tab */}
+            {/* Basic Info Tab - Updated */}
             <TabPanel value={activeTab} index={0}>
-              <Stack 
-                direction="row" 
-                flexWrap="wrap" 
-                gap={3}
-              >
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: 3,
+                p: 2,
+                background: 'rgba(249, 115, 22, 0.05)',
+                borderRadius: 3,
+                border: '1px solid rgba(249, 115, 22, 0.2)'
+              }}>
                 <InfoItem icon="📧" label="Email" value={mentee.email} />
                 <InfoItem icon="📱" label="Phone" value={mentee.phone} />
-                <InfoItem icon="📍" label="Address" value={mentee.address} fullWidth />
-              </Stack>
+                <InfoItem icon="📍" label="Address" value={mentee.address} />
+              </Box>
             </TabPanel>
 
-            {/* Academic Info Tab */}
+            {/* Academic Info Tab - Updated */}
             <TabPanel value={activeTab} index={1}>
-              <Stack 
-                direction="row" 
-                flexWrap="wrap" 
-                gap={3}
-              >
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: 3,
+                p: 2,
+                background: 'rgba(249, 115, 22, 0.05)',
+                borderRadius: 3,
+                border: '1px solid rgba(249, 115, 22, 0.2)'
+              }}>
                 <InfoItem icon="📚" label="Academic Year" value={mentee.academicYear} />
                 <InfoItem icon="🗓️" label="Academic Session" value={mentee.academicSession} />
                 <InfoItem icon="📅" label="Year of Registration" value={mentee.yearOfRegistration} />
                 <InfoItem icon="👨‍🏫" label="Mentor MUJID" value={mentee.mentorMujid} />
                 <InfoItem icon="📧" label="Mentor Email" value={mentee.mentorEmailid || mentee.mentorEmailId} />
-              </Stack>
+              </Box>
             </TabPanel>
 
-            {/* Family Info Tab */}
+            {/* Family Info Tab - Updated */}
             <TabPanel value={activeTab} index={2}>
               {mentee.parents && (
                 <Box sx={{ width: '100%' }}>
-                  <Box
-                    sx={{
-                      p: 3,
-                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
-                      borderRadius: 3,
-                      border: '1px solid rgba(99, 102, 241, 0.2)',
-                      mb: 3
-                    }}
-                  >
-                    <Typography variant="h6" sx={{ color: '#6366f1', mb: 2 }}>
+                  <Box sx={{
+                    p: 3,
+                    background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.05) 0%, rgba(234, 88, 12, 0.05) 100%)',
+                    borderRadius: 3,
+                    border: '1px solid rgba(249, 115, 22, 0.2)',
+                    mb: 3
+                  }}>
+                    <Typography variant="h6" sx={{ 
+                      color: '#f97316', 
+                      mb: 2,
+                      fontWeight: 600
+                    }}>
                       Family Information
                     </Typography>
-                    <Stack 
-                      direction={{ xs: 'column', md: 'row' }}
-                      spacing={2}
-                    >
+                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                      {/* Update gradient colors for each card */}
                       {mentee.parents.father && (
                         <Box flex={1}>
                           <FamilyContactCard
                             title="Father"
                             icon="👨"
                             contact={mentee.parents.father}
-                            gradient="135deg, rgba(99, 102, 241, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%"
+                            gradient="135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%"
                           />
                         </Box>
                       )}
@@ -252,7 +261,7 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                             title="Mother"
                             icon="👩"
                             contact={mentee.parents.mother}
-                            gradient="135deg, rgba(124, 58, 237, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%"
+                            gradient="135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%"
                           />
                         </Box>
                       )}
@@ -262,7 +271,7 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
                             title="Guardian"
                             icon="👥"
                             contact={mentee.parents.guardian}
-                            gradient="135deg, rgba(79, 70, 229, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%"
+                            gradient="135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%"
                           />
                         </Box>
                       )}
@@ -278,54 +287,60 @@ const MenteeDetailsDialog = ({ open, onClose, mentee }) => {
   );
 };
 
-const InfoItem = ({ icon, label, value, fullWidth = false }) => (
-  <Box
-    sx={{
-      flex: fullWidth ? '1 1 100%' : '1 1 calc(50% - 12px)',
-      p: 2,
-      background: 'rgba(99, 102, 241, 0.05)',
-      borderRadius: 2,
-      border: '1px solid rgba(99, 102, 241, 0.2)',
-      height: '100%',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        transform: 'translateY(-2px)',
-        borderColor: '#6366f1',
-        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
-      }
-    }}
-  >
+// Updated InfoItem component
+const InfoItem = ({ icon, label, value }) => (
+  <Box sx={{
+    p: 2,
+    background: 'rgba(249, 115, 22, 0.05)',
+    borderRadius: 2,
+    border: '1px solid rgba(249, 115, 22, 0.2)',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      borderColor: '#f97316',
+      boxShadow: '0 4px 12px rgba(249, 115, 22, 0.1)'
+    }
+  }}>
     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
       <Typography>{icon}</Typography>
-      <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
+      <Typography sx={{ color: '#f97316', fontWeight: 500 }}>
         {label}
       </Typography>
     </Box>
-    <Typography sx={{ color: 'white' }}>
+    <Typography 
+      sx={{ 
+        color: 'white',
+        wordBreak: 'break-word', // Add word breaking
+        overflowWrap: 'break-word', // Ensure long words wrap
+        width: '100%' // Ensure full width
+      }}
+    >
       {value || 'N/A'}
     </Typography>
   </Box>
 );
 
-const FamilyContactCard = ({ title, icon, contact }) => (
-  <Box
-    sx={{
-      p: 2.5,
-      background: 'rgba(99, 102, 241, 0.05)',
-      borderRadius: 2,
-      border: '1px solid rgba(99, 102, 241, 0.2)',
-      height: '100%',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        transform: 'translateY(-2px)',
-        borderColor: '#6366f1',
-        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
-      }
-    }}
-  >
+// Updated FamilyContactCard component
+const FamilyContactCard = ({ title, icon, contact, gradient }) => (
+  <Box sx={{
+    p: 2.5,
+    background: gradient,
+    borderRadius: 2,
+    border: '1px solid rgba(249, 115, 22, 0.2)',
+    height: '100%',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      borderColor: '#f97316',
+      boxShadow: '0 4px 12px rgba(249, 115, 22, 0.1)'
+    }
+  }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
       <Typography sx={{ fontSize: '24px' }}>{icon}</Typography>
-      <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+      <Typography variant="h6" sx={{ 
+        color: '#f97316', 
+        fontWeight: 600 
+      }}>
         {title}
       </Typography>
     </Box>
@@ -344,12 +359,25 @@ const FamilyContactCard = ({ title, icon, contact }) => (
 );
 
 const ContactDetail = ({ icon, value }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-    <Typography sx={{ fontSize: '16px' }}>{icon}</Typography>
+  <Box sx={{ 
+    display: 'flex', 
+    alignItems: 'flex-start', // Change from center to flex-start
+    gap: 1,
+    width: '100%' // Ensure full width
+  }}>
+    <Typography sx={{ 
+      fontSize: '16px',
+      minWidth: '20px' // Add minimum width for icon
+    }}>
+      {icon}
+    </Typography>
     <Typography sx={{ 
       color: 'rgba(255, 255, 255, 0.9)',
       fontSize: '0.9rem',
-      fontWeight: 500
+      fontWeight: 500,
+      wordBreak: 'break-word', // Add word breaking
+      overflowWrap: 'break-word', // Ensure long words wrap
+      flex: 1 // Take remaining space
     }}>
       {value || 'N/A'}
     </Typography>

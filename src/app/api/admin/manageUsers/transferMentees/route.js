@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(req) {
   try {
     await connect();
-    const { fromMentorId, toMentorEmail, academicYear, academicSession } = await req.json();
+    const { fromMentorId, toMentorEmail, academicYear, academicSession, menteeIds } = await req.json();
 
     // Validate input
     if (!fromMentorId || !toMentorEmail || !academicYear || !academicSession) {
@@ -30,13 +30,21 @@ export async function POST(req) {
       }, { status: 404 });
     }
 
-    // Simply update mentorMujid and mentorEmailid for all relevant mentees
+    // Create query based on whether specific mentees are selected
+    let query = { 
+      mentorMujid: fromMentorId,
+      academicYear,
+      academicSession
+    };
+    
+    // If specific mentee IDs are provided, filter by those IDs
+    if (menteeIds && Array.isArray(menteeIds) && menteeIds.length > 0) {
+      query._id = { $in: menteeIds };
+    }
+
+    // Update mentees
     const updateResult = await Mentee.updateMany(
-      { 
-        mentorMujid: fromMentorId,
-        academicYear,
-        academicSession
-      },
+      query,
       { 
         $set: { 
           mentorMujid: toMentor.MUJid,

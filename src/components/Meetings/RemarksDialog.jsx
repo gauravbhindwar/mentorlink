@@ -12,10 +12,13 @@ const RemarksDialog = ({
   const [isModified, setIsModified] = useState(false);
   const textareaRef = useRef(null);
 
+  // Reset value when dialog opens with new initialValue
   useEffect(() => {
-    setValue(initialValue);
-    setIsModified(initialValue !== originalValue && initialValue !== '');
-  }, [initialValue, originalValue]);
+    if (isOpen) {
+      setValue(initialValue);
+      setIsModified(initialValue !== originalValue && initialValue !== '');
+    }
+  }, [isOpen, initialValue, originalValue]);
 
   useEffect(() => {
     if (isOpen && textareaRef.current) {
@@ -28,7 +31,7 @@ const RemarksDialog = ({
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        handleClose();
       }
     };
 
@@ -47,6 +50,14 @@ const RemarksDialog = ({
 
   const handleSubmit = () => {
     onSave(value);
+    setValue(''); // Reset value after saving
+    setIsModified(false);
+    onClose();
+  };
+
+  const handleClose = () => {
+    setValue(''); // Reset value when closing
+    setIsModified(false);
     onClose();
   };
 
@@ -67,7 +78,7 @@ const RemarksDialog = ({
           <div className="flex justify-between items-center">
             <h3 id="dialog-title" className="text-lg font-semibold text-orange-500">Edit Remarks</h3>
             <button 
-              onClick={onClose}
+              onClick={handleClose}  // Use handleClose instead of onClose
               className="text-gray-400 hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-lg"
               aria-label="Close dialog"
             >
@@ -92,7 +103,7 @@ const RemarksDialog = ({
           
           <div className="flex justify-end space-x-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}  // Use handleClose instead of onClose
               className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
             >
               Cancel

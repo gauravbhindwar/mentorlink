@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useDropzone } from "react-dropzone";
 import PropTypes from 'prop-types';
-import { toast } from 'react-toastify';
+import InputAdornment from '@mui/material/InputAdornment';
 
 const filterSectionStyles = {
   wrapper: {
@@ -111,9 +111,11 @@ const buttonStyles = {
 };
 
 const MentorFilterSection = ({ 
-  onSearch = () => {}, 
+  // onSearch = () => {}, 
   onAddNew = () => {}, 
-  onFilterChange = () => {}
+  onFilterChange = () => {},
+  onReset = () => {},
+  // mentors = [] // Add mentors prop
 }) => {
   const [academicYear, setAcademicYear] = useState('');
   const [academicSession, setAcademicSession] = useState('');
@@ -150,31 +152,31 @@ const MentorFilterSection = ({
     // setAcademicSessions(generateAcademicSessions(currentYear));
   }, []);
 
-  const handleSearch = () => {
-    if (!academicYear || !academicSession) {
-      toast.error('Academic Year and Academic Session are required');
-      return;
-    }
+  // const handleSearch = () => {
+  //   if (!academicYear || !academicSession) {
+  //     toast.error('Academic Year and Academic Session are required');
+  //     return;
+  //   }
   
-    const currentFilters = {
-      academicYear,
-      academicSession,
-      mentorEmailid: emailSearch, // Include email in search
-      batchSize: 50,
-      offset: 0
-    };
+  //   const currentFilters = {
+  //     academicYear,
+  //     academicSession,
+  //     mentorEmailid: emailSearch, // Include email in search
+  //     batchSize: 50,
+  //     offset: 0
+  //   };
   
-    // Update filters state
-    // setFilters(currentFilters);
+  //   // Update filters state
+  //   // setFilters(currentFilters);
     
-    // Pass filters to parent components
-    if (onFilterChange) {
-      onFilterChange(currentFilters);
-    }
+  //   // Pass filters to parent components
+  //   if (onFilterChange) {
+  //     onFilterChange(currentFilters);
+  //   }
     
-    // Call search with filters
-    onSearch(currentFilters);
-  };
+  //   // Call search with filters
+  //   onSearch(currentFilters);
+  // };
   
   useEffect(() => {
     // Set initial values
@@ -206,10 +208,8 @@ const MentorFilterSection = ({
   
   const handleReset = () => {
     setEmailSearch('');
-    // setFilters(prev => ({
-    //   ...prev,
-    //   mentorEmailid: '',
-    // }));
+    // Call parent's onReset handler
+    onReset();
   };
 
 
@@ -406,29 +406,52 @@ const MentorFilterSection = ({
     maxSize: 5242880, // 5MB
   });
 
-  const handleEmailSearch = (value) => {
+  // const handleEmailSearch = (value) => {
+  //   setEmailSearch(value);
+    
+  //   const currentFilters = {
+  //     academicYear,
+  //     academicSession,
+  //     mentorEmailid: value,
+  //     batchSize: 50,
+  //     offset: 0
+  //   };
+    
+  //   // Only update filters without triggering API call
+  //   onFilterChange?.(currentFilters);
+  // };
+
+  // Add debounce to search input
+  const debouncedSearch = useRef(null);
+  
+  const handleSearchInput = (e) => {
+    const value = e.target.value;
     setEmailSearch(value);
     
-    const currentFilters = {
-      academicYear,
-      academicSession,
-      mentorEmailid: value,
-      batchSize: 50,
-      offset: 0
-    };
+    // Clear previous timeout
+    if (debouncedSearch.current) {
+      clearTimeout(debouncedSearch.current);
+    }
     
-    // setFilters(currentFilters);
-    
-    // Use a single update for both filter change and search
-    onFilterChange?.(currentFilters);
-    
-    // Debounce API call
-    const timeoutId = setTimeout(() => {
-      onSearch(currentFilters);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
+    // Set new timeout
+    debouncedSearch.current = setTimeout(() => {
+      const currentFilters = {
+        academicYear,
+        academicSession,
+        mentorEmailid: value
+      };
+      onFilterChange?.(currentFilters);
+    }, 300); // 300ms delay
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedSearch.current) {
+        clearTimeout(debouncedSearch.current);
+      }
+    };
+  }, []);
 
   return (
     <Box sx={filterSectionStyles.wrapper}>
@@ -439,8 +462,10 @@ const MentorFilterSection = ({
           <TextField
             label="Academic Year"
             value={academicYear}
-            InputProps={{
-              readOnly: true,
+            slotProps={{
+              input: {
+                readOnly: true,
+              }
             }}
             size="small"
             placeholder="YYYY-YYYY"
@@ -486,43 +511,53 @@ const MentorFilterSection = ({
               //   </Box>
               // }
               // Make it read-only
-              InputProps={{
-                readOnly: true,
+              slotProps={{
+                input: {
+                  readOnly: true,
+                }
               }}
               sx={{...textFieldStyles, pointerEvents: 'none', opacity: 0.7, select: 'none'}}
             />
           </Box>
-          <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, mb: 0.5 }}>
-            Filter results by Email (optional)
+          <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, mb: 1 }}>
+            Search mentors
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <TextField
-              label="Email"
+              fullWidth
+              placeholder="Search by name, email, phone..."
               value={emailSearch}
-              onChange={(e) => handleEmailSearch(e.target.value)}
-              placeholder="Type to filter by email"
-              type="email"
+              onChange={handleSearchInput} // Updated to use debounced handler
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'rgba(249, 115, 22, 0.7)' }} />
+                    </InputAdornment>
+                  ),
+                }
+              }}
               sx={{
                 ...textFieldStyles,
-                flex: 1,
-                mr: 1,
                 '& .MuiOutlinedInput-root': {
                   ...textFieldStyles['& .MuiOutlinedInput-root'],
-                  background: 'rgba(255, 255, 255, 0.05)',
                   height: '50px',
                   borderRadius: '12px',
+                  backgroundColor: 'rgba(17, 24, 39, 0.8)',
+                  backdropFilter: 'blur(12px)',
                   '&:hover .MuiOutlinedInput-notchedOutline': {
                     borderColor: '#f97316',
                   },
                 },
               }}
             />
-           
           </Box>
-              </Box>
+        </Box>
+        </Box>
 
               <Box sx={filterSectionStyles.buttonGroup}>
-          <Button
+          {/* <Button
             variant="contained"
             onClick={handleSearch}
             startIcon={<SearchIcon />}
@@ -538,7 +573,7 @@ const MentorFilterSection = ({
           }}
         >
           Load Mentors
-        </Button>
+        </Button> */}
         <Button
           variant="contained"
           onClick={onAddNew}
@@ -712,7 +747,9 @@ const MentorFilterSection = ({
 MentorFilterSection.propTypes = {
   onSearch: PropTypes.func.isRequired,
   onAddNew: PropTypes.func,
-  onFilterChange: PropTypes.func // Add prop type validation
+  onFilterChange: PropTypes.func,
+  onReset: PropTypes.func, // Add this prop type
+  mentors: PropTypes.array // Add this prop type
 };
 
 export default MentorFilterSection;

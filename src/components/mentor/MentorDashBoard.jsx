@@ -10,6 +10,9 @@ import { generateMOMPdf } from "@/components/Meetings/PDFGenerator";
 import { PDFDownloadComponent } from "@/components/Meetings/PDFGenerator";
 import AttendanceDialog from "@/components/Meetings/AttendanceDialog";
 import { Button } from "@mui/material";
+import Lottie from "lottie-react";
+import nodata from "@/assets/animations/nodatafound.json";
+import toast from "react-hot-toast";
 
 const MentorDashBoard = () => {
   const router = useRouter();
@@ -36,6 +39,9 @@ const MentorDashBoard = () => {
   const [showAttendance, setShowAttendance] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
   const [emailInProgress, setEmailInProgress] = useState({});
+  const [showAttendanceConfirmDialog, setShowAttendanceConfirmDialog] = useState(false);
+  const [attendanceSubmitted, setAttendanceSubmitted] = useState(false);
+  const [showCloseWarning, setShowCloseWarning] = useState(false);
 
   // const extractSessionData = (data) => ({
   //   name: data.name,
@@ -104,8 +110,8 @@ const MentorDashBoard = () => {
         mentorInfo = JSON.parse(sessionData);
         setMentorData(mentorInfo);
       } else {
-        const storedMUJId = sessionStorage.getItem("mujid");
-        const storedEmail = sessionStorage.getItem("email");
+        const storedMUJId = sessionStorage.getItem("userMUJId");
+        const storedEmail = sessionStorage.getItem("userEmail");
         const response = await axios.get("/api/mentor", {
           params: { MUJId: storedMUJId, email: storedEmail },
         });
@@ -216,6 +222,25 @@ const MentorDashBoard = () => {
   };
 
   const handleMeetingSubmit = async () => {
+    // Check if all required fields are filled
+    const {
+      TopicOfDiscussion,
+      TypeOfInformation,
+      NotesToStudent,
+      outcome,
+      closureRemarks,
+    } = meetingNotes;
+
+    if (!TopicOfDiscussion || !TypeOfInformation || !NotesToStudent || !outcome || !closureRemarks) {
+      alert('Please fill all required fields before submitting.');
+      return;
+    }
+
+    // Show attendance confirmation dialog
+    setShowAttendanceConfirmDialog(true);
+  };
+
+  const handleConfirmAttendanceSubmit = async () => {
     setIsSubmitting(true);
     try {
       const response = await axios.post("/api/meeting/mentors/reportmeeting", {
@@ -227,7 +252,6 @@ const MentorDashBoard = () => {
 
       if (response.data.meeting) {
         // Update attendance records
-        // console.log("Meeting report submitted successfully:", response.data);
         await axios.post("/api/mentee/meetings-attended", {
           mentor_id: mentorData.MUJid,
           meeting_id: selectedMeeting.meeting.meeting_id,
@@ -262,27 +286,77 @@ const MentorDashBoard = () => {
           return updatedMeetings;
         });
 
-        // Clear the form and close the modal
-        setSelectedMeeting(null);
-        setMeetingNotes({
-          TopicOfDiscussion: "",
-          TypeOfInformation: "",
-          NotesToStudent: "",
-          issuesRaisedByMentee: "",
-          outcome: "",
-          closureRemarks: "",
-          feedbackFromMentee: "",
-          presentMentees: [],
-        });
+        setAttendanceSubmitted(true);
+        setShowAttendanceConfirmDialog(false);
 
-        // Show success message
+        // Close the meeting dialog after successful submission
+        setTimeout(() => {
+          setSelectedMeeting(null);
+          setMeetingNotes({
+            TopicOfDiscussion: "",
+            TypeOfInformation: "",
+            NotesToStudent: "",
+            issuesRaisedByMentee: "",
+            outcome: "",
+            closureRemarks: "",
+            feedbackFromMentee: "",
+            presentMentees: [],
+          });
+          setAttendanceSubmitted(false);
+        }, 1500);
       }
     } catch (error) {
       console.error("Error submitting meeting notes:", error);
-      // alert("Failed to submit meeting report. Please try again.");
+      alert("Failed to submit meeting report. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloseMeetingDialog = () => {
+    // Check if form has been filled but not submitted
+    const {
+      TopicOfDiscussion,
+      TypeOfInformation,
+      NotesToStudent,
+      outcome,
+      closureRemarks,
+    } = meetingNotes;
+
+    const hasFilledData = TopicOfDiscussion || TypeOfInformation || NotesToStudent || outcome || closureRemarks;
+
+    if (hasFilledData && !attendanceSubmitted) {
+      setShowCloseWarning(true);
+    } else {
+      setSelectedMeeting(null);
+      setMeetingNotes({
+        TopicOfDiscussion: "",
+        TypeOfInformation: "",
+        NotesToStudent: "",
+        issuesRaisedByMentee: "",
+        outcome: "",
+        closureRemarks: "",
+        feedbackFromMentee: "",
+        presentMentees: [],
+      });
+      setAttendanceSubmitted(false);
+    }
+  };
+
+  const handleForceClose = () => {
+    setShowCloseWarning(false);
+    setSelectedMeeting(null);
+    setMeetingNotes({
+      TopicOfDiscussion: "",
+      TypeOfInformation: "",
+      NotesToStudent: "",
+      issuesRaisedByMentee: "",
+      outcome: "",
+      closureRemarks: "",
+      feedbackFromMentee: "",
+      presentMentees: [],
+    });
+    setAttendanceSubmitted(false);
   };
 
   // Add a function to refresh meetings data
@@ -490,56 +564,59 @@ Contact: ${mentorData?.email || ""}`;
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-[#0a0a0a] p-4 md:p-6'>
+      <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6">
         {/* Header Skeleton */}
-        <div className='pt-20 pb-10'>
-          <div className='flex flex-col items-center space-y-4'>
-            <div className='w-64 h-10 bg-gray-800 rounded-lg animate-pulse'></div>
-            <div className='w-96 h-6 bg-gray-800 rounded-lg animate-pulse'></div>
+        <div className="pt-20 pb-10">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-64 h-10 bg-gray-800 rounded-lg animate-pulse"></div>
+            <div className="w-96 h-6 bg-gray-800 rounded-lg animate-pulse"></div>
           </div>
         </div>
 
         {/* Content Skeleton */}
-        <div className='flex flex-col lg:flex-row gap-4'>
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Cards Grid Skeleton */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-[50%] w-full'>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-[50%] w-full">
             {[1, 2, 3].map((index) => (
               <div
                 key={index}
-                className='bg-gray-800/50 rounded-lg p-6 animate-pulse'>
-                <div className='h-8 w-8 bg-gray-700 rounded-full mb-4'></div>
-                <div className='h-6 w-32 bg-gray-700 rounded mb-3'></div>
-                <div className='h-4 w-full bg-gray-700 rounded'></div>
+                className="bg-gray-800/50 rounded-lg p-6 animate-pulse"
+              >
+                <div className="h-8 w-8 bg-gray-700 rounded-full mb-4"></div>
+                <div className="h-6 w-32 bg-gray-700 rounded mb-3"></div>
+                <div className="h-4 w-full bg-gray-700 rounded"></div>
               </div>
             ))}
           </div>
 
           {/* Meetings Section Skeleton */}
-          <div className='lg:max-w-[50%] w-full'>
-            <div className='bg-gray-800/50 rounded-lg p-6'>
+          <div className="lg:max-w-[50%] w-full">
+            <div className="bg-gray-800/50 rounded-lg p-6">
               {/* Tabs Skeleton */}
-              <div className='flex space-x-4 mb-6 overflow-x-auto'>
+              <div className="flex space-x-4 mb-6 overflow-x-auto">
                 {[1, 2, 3, 4].map((index) => (
                   <div
                     key={index}
-                    className='h-8 w-24 bg-gray-700 rounded animate-pulse flex-shrink-0'></div>
+                    className="h-8 w-24 bg-gray-700 rounded animate-pulse flex-shrink-0"
+                  ></div>
                 ))}
               </div>
 
               {/* Meeting Cards Skeleton */}
-              <div className='space-y-4'>
+              <div className="space-y-4">
                 {[1, 2, 3].map((index) => (
                   <div
                     key={index}
-                    className='bg-gray-700/50 p-4 rounded-lg animate-pulse'>
-                    <div className='flex justify-between'>
-                      <div className='space-y-2 w-2/3'>
-                        <div className='h-4 bg-gray-600 rounded w-3/4'></div>
-                        <div className='h-4 bg-gray-600 rounded w-1/2'></div>
-                        <div className='h-4 bg-gray-600 rounded w-1/3'></div>
+                    className="bg-gray-700/50 p-4 rounded-lg animate-pulse"
+                  >
+                    <div className="flex justify-between">
+                      <div className="space-y-2 w-2/3">
+                        <div className="h-4 bg-gray-600 rounded w-3/4"></div>
+                        <div className="h-4 bg-gray-600 rounded w-1/2"></div>
+                        <div className="h-4 bg-gray-600 rounded w-1/3"></div>
                       </div>
-                      <div className='w-1/4'>
-                        <div className='h-8 bg-gray-600 rounded'></div>
+                      <div className="w-1/4">
+                        <div className="h-8 bg-gray-600 rounded"></div>
                       </div>
                     </div>
                   </div>
@@ -587,12 +664,21 @@ Contact: ${mentorData?.email || ""}`;
     //     onClick: () => router.push('/pages/meetings/reportmeetings') // Updated path
     // },
     {
-      title: "Consolidated Meeting Report",
+      title: "Consolidated Mentee Report",
       icon: "📊",
-      description: "Generate Consolidated meeting reports",
+      description: "Generate Consolidated Mentee reports",
       gradient: "from-purple-500 via-violet-500 to-indigo-500",
       shadowColor: "rgba(147, 51, 234, 0.4)",
       onClick: () => router.push("/pages/mentordashboard/consolidatedReport"), // Updated path
+    },
+
+    {
+      title: "Frequently Asked Questions",
+      icon: "❓",
+      description: "Find answers to common mentor queries",
+      gradient: "from-blue-500 via-cyan-500 to-teal-500",
+      shadowColor: "rgba(59, 130, 246, 0.4)",
+      onClick: () => router.push("/pages/mentordashboard/faq"), // Updated path
     },
 
     //DISABLED CURRENTLY
@@ -607,50 +693,56 @@ Contact: ${mentorData?.email || ""}`;
   ];
 
   return (
-    <div className='min-h-screen bg-[#0a0a0a] overflow-hidden relative'>
+    <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
       {/* Enhanced Background Effects */}
-      <div className='absolute inset-0 z-0'>
-        <div className='absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient' />
-        <div className='absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl' />
-        <div className='absolute inset-0 backdrop-blur-3xl' />
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
+        <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl" />
+        <div className="absolute inset-0 backdrop-blur-3xl" />
       </div>
 
       {/* {console.log("mentor3:",mentorData)} */}
       {mentorData?.isFirstTimeLogin ? (
-        <div className='relative z-10 container mx-auto px-4 pt-20'>
+        <div className="relative z-10 container mx-auto px-4 pt-20">
           <FirstTimeLoginForm
             mentorData={mentorData}
             onSubmitSuccess={() =>
-              setMentorData({ ...mentorData, isFirstTimeLogin: false })
+              setMentorData({
+                ...mentorData,
+                isFirstTimeLogin: false,
+              })
             }
           />
         </div>
       ) : (
-        <div className='relative z-10 px-4 md:px-6 pt-20 pb-10'>
+        <div className="relative z-10 px-4 md:px-6 pt-20 pb-10">
           {/* Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className='text-center py-8'>
+            className="text-center py-8"
+          >
             <motion.h1
-              className='text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4'
+              className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}>
+              transition={{ delay: 0.2 }}
+            >
               Mentor Dashboard
             </motion.h1>
             <motion.p
-              className='text-gray-300 text-lg md:text-xl max-w-2xl mx-auto'
+              className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}>
+              transition={{ delay: 0.4 }}
+            >
               Manage your mentees and mentorship activities
             </motion.p>
           </motion.div>
 
-          <div className='flex flex-col lg:flex-row gap-4'>
-            {/* Cards Grid */}
-            <motion.div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-[50%] w-full'>
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Cards Grid - Modified for better mobile layout */}
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:max-w-[50%] w-full">
               {cards.map((card, index) => (
                 <motion.div
                   key={card.title}
@@ -665,23 +757,31 @@ Contact: ${mentorData?.email || ""}`;
                     boxShadow: `0 0 30px ${card.shadowColor}`,
                   }}
                   className={`
-                                relative overflow-hidden
-                                bg-gradient-to-br ${card.gradient}
-                                rounded-lg p-4
-                                cursor-pointer
-                                transition-all duration-500
-                                border border-white/10
-                                backdrop-blur-sm
-                                hover:border-white/20
-                            `}
-                  onClick={card.onClick}>
-                  <div className='absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity' />
-                  <span className='text-3xl mb-3 block'>{card.icon}</span>
-                  <h3 className='text-lg font-bold text-white mb-2'>
-                    {card.title}
-                  </h3>
-                  <p className='text-white/80 text-sm'>{card.description}</p>
-                  <div className='absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:w-24 group-hover:h-24 transition-all' />
+                  relative overflow-hidden
+                  bg-gradient-to-br ${card.gradient}
+                  rounded-lg p-3 sm:p-4
+                  cursor-pointer
+                  transition-all duration-500
+                  border border-white/10
+                  backdrop-blur-sm
+                  hover:border-white/20
+                  min-h-[100px] sm:min-h-[120px]
+                  flex flex-col justify-between
+                `}
+                  onClick={card.onClick}
+                >
+                  <div>
+                    <span className="text-2xl sm:text-3xl mb-2 sm:mb-3 block">
+                      {card.icon}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-bold text-white mb-1 sm:mb-2">
+                      {card.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-white/80">
+                      {card.description}
+                    </p>
+                  </div>
+                  <div className="absolute -bottom-4 -right-4 w-16 sm:w-20 h-16 sm:h-20 bg-white/10 rounded-full blur-2xl group-hover:w-20 group-hover:h-20 transition-all" />
                 </motion.div>
               ))}
             </motion.div>
@@ -693,21 +793,24 @@ Contact: ${mentorData?.email || ""}`;
               animate={{ opacity: 1, x: 0 }}
               style={{
                 backgroundImage:
-                  !meetingsLoading && meetings.length === 0
+                  !meetingsLoading &&
+                  meetings.length === 0 &&
+                  window.innerWidth >= 1024
                     ? 'url("/MUJ-homeCover.jpg")'
                     : "none",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
                 borderRadius: "1rem",
-              }}>
-              <div className='bg-white/10 rounded-lg p-6 backdrop-blur-sm overflow-y-auto max-h-[448px] custom-scrollbar'>
+              }}
+            >
+              <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm overflow-y-auto max-h-[calc(600px)] custom-scrollbar">
                 {meetingsLoading ? (
                   // Skeleton Loader
                   <div className="space-y-4">
                     {/* Skeleton for title */}
                     <div className="h-8 w-48 bg-gray-700/50 rounded-lg animate-pulse mb-6"></div>
-                    
+
                     {/* Skeleton for tabs */}
                     <div className="flex space-x-4 mb-6 overflow-x-auto">
                       {[1, 2, 3, 4].map((index) => (
@@ -717,7 +820,7 @@ Contact: ${mentorData?.email || ""}`;
                         ></div>
                       ))}
                     </div>
-                    
+
                     {/* Skeleton for meeting cards */}
                     {[1, 2, 3].map((index) => (
                       <div
@@ -741,49 +844,56 @@ Contact: ${mentorData?.email || ""}`;
                   </div>
                 ) : meetings.length > 0 ? (
                   <>
-                    <h2 className='text-2xl font-bold text-white mb-4'>
+                    <h2 className="text-2xl font-bold text-white mb-4">
                       Manage Meetings
                     </h2>
-                    <div className='mb-4 border-b border-gray-700'>
-                      <div className='flex overflow-x-auto space-x-4 custom-scrollbar'>
+                    <div className="mb-4 border-b border-gray-700">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:flex sm:overflow-x-auto sm:space-x-4 custom-scrollbar">
                         {getAllSemesters(mentorData.academicSession).map(
                           (semester) => (
                             <button
                               key={semester}
-                              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors duration-200 ${
+                              className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-t-lg transition-colors duration-200 text-center ${
                                 activeTab === semester
                                   ? "bg-white/10 text-white border-b-2 border-orange-500"
                                   : "text-gray-400 hover:text-white hover:bg-white/5"
                               }`}
-                              onClick={() => setActiveTab(semester)}>
+                              onClick={() => setActiveTab(semester)}
+                            >
                               Semester {semester}
                             </button>
                           )
                         )}
                       </div>
                     </div>
-                    <div className='space-y-4'>
+                    <div className="space-y-4">
                       {activeTab &&
                         (groupBySemester(meetings)[activeTab]?.length > 0 ? (
                           groupBySemester(meetings)[activeTab]?.map(
                             (meeting, index) => (
                               <motion.div
                                 key={index}
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{
+                                  opacity: 0,
+                                  y: 20,
+                                }}
                                 animate={{
                                   opacity: 1,
                                   y: 0,
-                                  transition: { delay: index * 0.1 },
+                                  transition: {
+                                    delay: index * 0.1,
+                                  },
                                 }}
-                                className='bg-white/5 p-4 rounded-lg'>
+                                className="bg-white/5 p-4 rounded-lg"
+                              >
                                 {/* {console.log(
                                   "meeting:",
                                   meeting.meeting.meeting_notes.isMeetingOnline
                                 )} */}
-                                <div className='text-white flex justify-between'>
+                                <div className="text-white flex justify-between">
                                   <div>
-                                    <div className='space-y-2'>
-                                      <p>
+                                    <div className="space-y-2">
+                                      <p className="max-md:text-sm">
                                         Meeting Topic:{" "}
                                         {
                                           meeting.meeting.meeting_notes
@@ -792,8 +902,10 @@ Contact: ${mentorData?.email || ""}`;
                                       </p>
                                     </div>
 
-                                    <p>Semester: {meeting.semester}</p>
-                                    <p>
+                                    <p className="max-md:text-sm">
+                                      Semester: {meeting.semester}
+                                    </p>
+                                    <p className="max-md:text-sm">
                                       Date:{" "}
                                       {new Date(
                                         meeting.meeting.meeting_date
@@ -804,11 +916,13 @@ Contact: ${mentorData?.email || ""}`;
                                         ordinal: true,
                                       })}
                                     </p>
-                                    <p>Time: {meeting.meeting.meeting_time}</p>
+                                    <p className="max-md:text-sm">
+                                      Time: {meeting.meeting.meeting_time}
+                                    </p>
                                     {meeting.meeting.meeting_notes
                                       .isMeetingOnline ? (
-                                      <p className='flex items-center space-x-2'>
-                                        <span className='text-gray-300'>
+                                      <p className="flex items-center space-x-2 max-md:text-sm">
+                                        <span className="text-gray-300">
                                           Link:{" "}
                                         </span>
                                         {meeting?.meeting?.meeting_notes
@@ -818,11 +932,12 @@ Contact: ${mentorData?.email || ""}`;
                                         ) ? (
                                           <a
                                             href={`${meeting.meeting.meeting_notes.venue}`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
-                                            <span className='truncate max-w-[200px]'>
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group max-md:text-sm"
+                                          >
+                                            <span className="truncate max-w-[200px]">
                                               {
                                                 meeting.meeting.meeting_notes
                                                   .venue
@@ -837,7 +952,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
+                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2-2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
                                               />
                                             </svg> */}
                                             <FaExternalLinkAlt />
@@ -845,11 +960,12 @@ Contact: ${mentorData?.email || ""}`;
                                         ) : (
                                           <a
                                             href={`https://${meeting.meeting.meeting_notes.venue}`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                            className='inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
-                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group'>
-                                            <span className='truncate max-w-[200px]'>
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 
+                                          text-blue-400 hover:text-blue-300 rounded-md transition-all duration-200 group max-md:text-sm"
+                                          >
+                                            <span className="truncate max-w-[200px]">
                                               {
                                                 meeting.meeting.meeting_notes
                                                   .venue
@@ -864,7 +980,7 @@ Contact: ${mentorData?.email || ""}`;
                                                 strokeLinecap='round'
                                                 strokeLinejoin='round'
                                                 strokeWidth={2}
-                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
+                                                d='M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0-2-2h10a2 2 0 0 0-2-2v-10a2 2 0 0 0-2-2h-4v-5a2 2 0 0 0-2-2h-2'
                                               />
                                             </svg> */}
                                             <FaExternalLinkAlt />
@@ -872,14 +988,14 @@ Contact: ${mentorData?.email || ""}`;
                                         )}
                                       </p>
                                     ) : (
-                                      <p>
+                                      <p className="max-md:text-sm">
                                         Venue:{" "}
                                         {meeting.meeting.meeting_notes.venue}
                                       </p>
                                     )}
                                   </div>
-                                  <div className='border-r-2 h-full'></div>
-                                  <div className='my-auto'>
+                                  <div className="border-r-2 h-full"></div>
+                                  <div className="my-auto">
                                     {new Date(meeting.meeting.meeting_date) <=
                                     new Date() ? (
                                       <>
@@ -890,6 +1006,7 @@ Contact: ${mentorData?.email || ""}`;
                                             <button
                                               onClick={() => {
                                                 setSelectedMeeting(meeting);
+                                                setAttendanceSubmitted(false);
                                                 setMeetingNotes({
                                                   TopicOfDiscussion:
                                                     meeting?.meeting
@@ -911,15 +1028,17 @@ Contact: ${mentorData?.email || ""}`;
                                                       ?.meeting_notes?.venue,
                                                 });
                                               }}
-                                              className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'>
+                                              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors max-md:text-sm"
+                                            >
                                               Submit Report
                                             </button>
                                           )}
                                         {meeting.meeting.isReportFilled && (
-                                          <div className=''>
+                                          <div className="">
                                             <button
                                               onClick={() => {
                                                 setSelectedMeeting(meeting);
+                                                setAttendanceSubmitted(false);
                                                 setMeetingNotes({
                                                   TopicOfDiscussion:
                                                     meeting?.meeting
@@ -963,7 +1082,8 @@ Contact: ${mentorData?.email || ""}`;
                                                       ?.meeting_notes?.venue,
                                                 });
                                               }}
-                                              className='mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%]'>
+                                              className="mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors block w-[100%] max-md:text-sm"
+                                            >
                                               Edit Report
                                             </button>
 
@@ -983,10 +1103,12 @@ Contact: ${mentorData?.email || ""}`;
                                                   },
                                                   mentorData.name
                                                 )}
-                                                fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}>
+                                                fileName={`MOM_${meeting.meeting.meeting_notes.TopicOfDiscussion}.pdf`}
+                                              >
                                                 <div
-                                                  className='mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center'
-                                                  role='button'>
+                                                  className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer text-center max-md:text-xs"
+                                                  role="button"
+                                                >
                                                   Download MOM Report
                                                 </div>
                                               </PDFDownloadComponent>
@@ -995,24 +1117,25 @@ Contact: ${mentorData?.email || ""}`;
                                         )}
                                       </>
                                     ) : (
-                                      <div className='flex flex-col gap-2'>
-                                        <div className='text-red-500 text-center'>
+                                      <div className="flex flex-col gap-2">
+                                        <div className="text-red-500 font-bold text-center max-md:text-sm">
                                           Meeting not held yet
                                         </div>
                                         <button
                                           onClick={() =>
                                             sendEmailToMentees(meeting)
                                           }
-                                          className='bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors'
+                                          className="bg-blue-500 text-center hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors max-md:text-xs"
                                           disabled={
                                             emailInProgress[
                                               meeting.meeting.meeting_id
                                             ]
-                                          }>
+                                          }
+                                        >
                                           {emailInProgress[
                                             meeting.meeting.meeting_id
                                           ] ? (
-                                            <div className='m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white'></div>
+                                            <div className="m-auto animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
                                           ) : (
                                             `Resend Email ${
                                               meeting.meeting.emailsSentCount
@@ -1029,132 +1152,300 @@ Contact: ${mentorData?.email || ""}`;
                             )
                           )
                         ) : (
-                          <div className='text-center py-8 text-gray-400'>
-                            No meetings scheduled for Semester {activeTab}
+                          <div className="text-center mt-4 text-gray-400">
+                            <span className="text-lg font-semibold">
+                              No meetings scheduled for Semester {activeTab}
+                            </span>
+                            <div className="display flex flex-row items-center justify-center mt-4">
+                              <img
+                                src="/muj-image.jpg"
+                                alt="No meetings"
+                                className=" h-56 w-100 object-cover rounded-lg"
+                              />
+
+                              <Lottie
+                                animationData={nodata}
+                                loop={true}
+                                style={{
+                                  width: 300,
+                                  height: 200,
+                                }}
+                              />
+                            </div>
                           </div>
                         ))}
                     </div>
                   </>
                 ) : (
-                  <div className='flex flex-col items-center justify-center space-y-4'></div>
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    {window.innerWidth < 1024 ? (
+                      <>
+                        <Lottie
+                          animationData={nodata}
+                          loop={true}
+                          style={{
+                            width: 300,
+                            height: 200,
+                          }}
+                        />
+                        <p className="text-gray-400 text-center">
+                          No meetings scheduled yet
+                        </p>
+                      </>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </motion.div>
           </div>
         </div>
       )}
+      {/* Close Warning Dialog */}
+      {showCloseWarning && (
+        <motion.div
+          className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-orange-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Unsaved Changes
+              </h3>
+              <p className="text-gray-300 mb-6">
+                You have unsaved changes. Are you sure you want to close this
+                dialog? Your changes will be lost.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCloseWarning(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleForceClose}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Close Anyway
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      {/* Attendance Confirmation Dialog */}
+      {showAttendanceConfirmDialog && (
+        <motion.div
+          className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Confirm Attendance Submission
+              </h3>
+              <p className="text-gray-300 mb-6">
+                Are you sure you want to submit this attendance report? This
+                action cannot be undone.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAttendanceConfirmDialog(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAttendanceSubmit}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
       {selectedMeeting && (
-        <div
-          className='fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4'
-          onClick={() => setSelectedMeeting(null)}>
-          <div
-            className='bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl'
-            onClick={(e) => e.stopPropagation()}>
-            <div className='sticky top-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-t-xl border-b border-gray-700 flex justify-between items-center'>
-              <h2 className='text-2xl font-bold text-white'>Meeting Notes</h2>
+        <motion.div
+          className="fixed inset-0 z-[10000] flex items-end md:items-center justify-center bg-black/70 p-0 md:p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={handleCloseMeetingDialog}
+        >
+          <motion.div
+            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-t-xl md:rounded-xl w-full max-w-6xl relative border border-gray-700 shadow-2xl"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{
+              type: "spring",
+              damping: 25,
+              stiffness: 500,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-3 md:p-4 rounded-t-xl border-b border-gray-700 flex justify-between items-center">
+              <h2 className="text-lg md:text-2xl font-bold text-white">
+                Meeting Notes
+              </h2>
               <button
-                className='text-gray-400 hover:text-white transition-colors'
-                onClick={() => setSelectedMeeting(null)}>
-                <FiX size={24} />
+                className="text-gray-400 hover:text-white transition-colors"
+                onClick={handleCloseMeetingDialog}
+              >
+                <FiX size={20} className="md:w-6 md:h-6" />
               </button>
             </div>
-            <div className='p-6 max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar'>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div className="p-4 md:p-6 max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {/* Left Column */}
-                <div className='space-y-4'>
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                <div className="space-y-3 md:space-y-4">
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-medium text-gray-300">
                       Topic of Discussion
                     </label>
                     <input
-                      type='text'
-                      name='TopicOfDiscussion'
+                      type="text"
+                      name="TopicOfDiscussion"
                       value={meetingNotes.TopicOfDiscussion}
                       disabled={true}
-                      className='w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-white/70'
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white/70"
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-medium text-gray-300">
                       Type of Information
                     </label>
                     <textarea
-                      rows='3'
-                      name='TypeOfInformation'
+                      rows="3"
+                      name="TypeOfInformation"
                       value={meetingNotes.TypeOfInformation}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white'
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white"
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-medium text-gray-300">
                       Notes to Student
                     </label>
                     <textarea
-                      rows='3'
-                      name='NotesToStudent'
+                      rows="3"
+                      name="NotesToStudent"
                       value={meetingNotes.NotesToStudent}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white'
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white"
                     />
                   </div>
 
                   <Button
                     onClick={() => setShowAttendance(true)}
-                    variant='contained'
+                    variant="contained"
                     fullWidth
                     sx={{
                       mt: 2,
-                      bgcolor: "#f97316",
-                      "&:hover": { bgcolor: "#ea580c" },
-                    }}>
-                    Mark Attendance
+                      bgcolor: attendanceSubmitted ? "#10b981" : "#f97316",
+                      "&:hover": {
+                        bgcolor: attendanceSubmitted ? "#059669" : "#ea580c"
+                      },
+                      fontSize: {
+                        xs: "0.875rem",
+                        md: "1rem",
+                      },
+                      py: { xs: 1, md: 1.5 },
+                    }}
+                  >
+                    {attendanceSubmitted ? "Attendance Marked" : "Mark Attendance"}
                   </Button>
                 </div>
 
                 {/* Right Column */}
-                <div className='space-y-4'>
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                <div className="space-y-3 md:space-y-4">
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-medium text-gray-300">
                       Issues Raised/Resolved
                     </label>
                     <textarea
-                      rows='3'
-                      name='issuesRaisedByMentee'
+                      rows="3"
+                      name="issuesRaisedByMentee"
                       value={meetingNotes.issuesRaisedByMentee}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                      placeholder='Enter issues...'
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter issues..."
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-medium text-gray-300">
                       Outcome
                     </label>
                     <textarea
-                      rows='3'
-                      name='outcome'
+                      rows="3"
+                      name="outcome"
                       value={meetingNotes.outcome}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                      placeholder='Enter outcome...'
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter outcome..."
                     />
                   </div>
 
-                  <div className='space-y-2'>
-                    <label className='block text-sm font-medium text-gray-300'>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-medium text-gray-300">
                       Closure Remarks
                     </label>
                     <input
-                      type='text'
-                      name='closureRemarks'
+                      type="text"
+                      name="closureRemarks"
                       value={meetingNotes.closureRemarks}
                       onChange={handleMeetingNotesChange}
-                      className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                      placeholder='Enter remarks...'
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter remarks..."
                     />
                   </div>
                 </div>
@@ -1177,37 +1468,41 @@ Contact: ${mentorData?.email || ""}`;
                   }}
                   onSelectAll={handleSelectAllPresent}
                   onSubmit={handleAttendanceSubmit}
+                  isMobile={
+                    typeof window !== "undefined" && window.innerWidth < 768
+                  }
                 />
               </div>
-              <div className='space-y-2 mt-6'>
-                <label className='block text-sm font-medium text-gray-300'>
+              <div className="space-y-1 md:space-y-2 mt-4 md:mt-6">
+                <label className="block text-xs md:text-sm font-medium text-gray-300">
                   Feedback from Mentee (Optional)
                 </label>
                 <textarea
-                  rows='3'
-                  name='feedbackFromMentee'
+                  rows="3"
+                  name="feedbackFromMentee"
                   value={meetingNotes.feedbackFromMentee}
                   onChange={handleMeetingNotesChange}
-                  className='w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
-                  placeholder='Enter mentee feedback (optional)...'
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 md:p-3 text-sm md:text-base text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter mentee feedback (optional)..."
                 />
               </div>{" "}
             </div>{" "}
-            <div className='sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-4 rounded-b-xl border-t border-gray-700'>
+            <div className="sticky bottom-0 z-10 bg-gradient-to-br from-gray-900 to-gray-800 p-3 md:p-4 rounded-b-xl border-t border-gray-700">
               <button
                 onClick={handleMeetingSubmit}
                 disabled={isSubmitDisabled || isSubmitting}
                 className={`
-                  w-full py-3 px-4 rounded-lg text-white font-medium
+                  w-full py-2 md:py-3 px-4 rounded-lg text-white font-medium text-sm md:text-base
                   transition-all duration-200 flex items-center justify-center
                   ${
                     isSubmitDisabled
                       ? "bg-gray-700 cursor-not-allowed"
                       : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                   }
-                `}>
+                `}
+              >
                 {isSubmitting ? (
-                  <div className='animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent'></div>
+                  <div className="animate-spin rounded-full h-4 w-4 md:h-5 md:w-5 border-2 border-white border-t-transparent"></div>
                 ) : isSubmitDisabled ? (
                   "Please fill all required fields"
                 ) : (
@@ -1215,8 +1510,8 @@ Contact: ${mentorData?.email || ""}`;
                 )}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
       <AnimatePresence>
         {" "}
@@ -1225,8 +1520,9 @@ Contact: ${mentorData?.email || ""}`;
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className='fixed bottom-10 left-1/2 bg-black px-6 py-3 rounded-lg shadow-lg z-50 border border-green-500'>
-            <span className='text-green-500 font-medium'>
+            className="fixed bottom-10 left-1/2 bg-black px-6 py-3 rounded-lg shadow-lg z-50 border border-green-500"
+          >
+            <span className="text-green-500 font-medium">
               Emails sent successfully!
             </span>
           </motion.div>

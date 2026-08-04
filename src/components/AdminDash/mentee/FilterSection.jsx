@@ -14,7 +14,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Typography,
+  useMediaQuery, // Add this import
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles'; // Add this import
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -88,6 +91,9 @@ const FilterSection = ({
   isLoading,
   filterData
 }) => {
+  const theme = useTheme(); // Add this line
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Add this line
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg')); // Add this line
   const sessionRef = useRef(null);
   const yearRef = useRef(null);
   const [yearSuggestions, setYearSuggestions] = useState([]);
@@ -125,7 +131,7 @@ const FilterSection = ({
       endYear = academicYear + 1;
     } 
     // Handle if academicYear is a string with format "YYYY-YYYY"
-    else if (typeof academicYear === 'string' && academicYear.includes('-')) {
+    else if (typeof academicYear=== 'string' && academicYear.includes('-')) {
       [startYear, endYear] = academicYear.split('-').map(Number);
     } 
   
@@ -230,33 +236,72 @@ const FilterSection = ({
     const baseParams = {
       academicYear: filters.academicYear.trim(),
       academicSession: filters.academicSession.trim().toUpperCase(),
+      page: 1,
+      limit: 50, // Initial page size
     };
   
     try {
+      // Set loading state immediately
+      onSearch([], { ...filters, isLoading: true });
+
       let data;
-      const localData = localStorage.getItem('mentee data');
+      const cachedData = localStorage.getItem('mentee data');
+      const cachedYear = localStorage.getItem('currentAcademicYear');
+      const cachedSession = localStorage.getItem('currentAcademicSession');
       
-      if (!localData || (!filters.semester && !filters.menteeMujid && !filters.mentorEmailid)) {
+      const shouldFetchFromAPI = !cachedData || 
+        (filters.academicYear !== cachedYear || 
+         filters.academicSession !== cachedSession);
+
+      if (shouldFetchFromAPI) {
         const response = await axios.get('/api/admin/manageUsers/manageMentee', {
           params: baseParams
         });
+        
         data = response.data;
-        localStorage.setItem('mentee data', JSON.stringify(data));
+        
+        // Keep loading state while we process data
+        if (data && data.length > 0) {
+          // Set data but keep loading state true
+          onSearch(data, { ...filters, isLoading: true });
+          
+          // Store in localStorage asynchronously
+          localStorage.setItem('mentee data', JSON.stringify(data));
+          localStorage.setItem('currentAcademicYear', filters.academicYear);
+          localStorage.setItem('currentAcademicSession', filters.academicSession);
+          
+          // Turn off loading with a slight delay to prevent flashing
+          setTimeout(() => {
+            onSearch(data, { ...filters, isLoading: false });
+          }, 100);
+        } else {
+          // If no data, turn off loading immediately
+          onSearch(data || [], { ...filters, isLoading: false });
+        }
       } else {
-        data = JSON.parse(localData);
-        const filteredData = filterData(data, filters);
-        localStorage.setItem('menteeFilteredData', JSON.stringify(filteredData));
-        data = filteredData;
+        data = JSON.parse(cachedData);
+        
+        if (filters.semester || filters.menteeMujid || filters.mentorEmailid) {
+          data = filterData(data, filters);
+        }
+        
+        // For cached data, use the same pattern
+        if (data && data.length > 0) {
+          onSearch(data, { ...filters, isLoading: true });
+          setTimeout(() => {
+            onSearch(data, { ...filters, isLoading: false });
+          }, 100);
+        } else {
+          onSearch(data || [], { ...filters, isLoading: false });
+        }
       }
-  
-      onSearch(data, filters); // Pass both data and filters to parent
     } catch (error) {
       console.error('Search error:', error);
       showAlert('Error searching mentees', 'error');
+      onSearch([], { ...filters, error: true, isLoading: false });
     }
   };
-  
-  // to do avi
+
   const handleFilterChange = (name, value) => {
     onFilterChange(name, value);
   };
@@ -574,7 +619,11 @@ const FilterSection = ({
       name: 'semester',
       label: 'Semester',
       customRender: (
-        <FormControl size="small" sx={textFieldStyles}>
+        <FormControl size="small" sx={{ 
+          ...textFieldStyles,
+          width: '100%', // Make it take full width of its container
+          minWidth: '200px', // Match the minWidth of comboBoxStyles
+        }}>
           <InputLabel>Semester</InputLabel>
           <Select
             value={filters.semester || ''}
@@ -584,13 +633,13 @@ const FilterSection = ({
               handleFilterChange('semester', value);
             }}
             disabled={!filters.academicSession}
-        
             MenuProps={{
               PaperProps: {
                 sx: {
                   bgcolor: 'rgba(17, 24, 39, 0.95)',
                   borderRadius: '8px',
                   border: '1px solid rgba(249, 115, 22, 0.2)',
+                  backdropFilter: 'blur(10px)',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                   maxHeight: '200px',
                   overflow: 'hidden',
@@ -629,35 +678,73 @@ const FilterSection = ({
       )
     },
     {
-      name: 'menteeMujid',
-      label: 'Mentee MUJID',
+      name: 'email',
+      label: 'Search',
+      placeholder: 'Search across all fields',
       customRender: (
-        <TextField
-          size="small"
-          label="Mentee MUJID"
-          value={filters.menteeMujid || ''}
-          onChange={(e) => handleFilterChange('menteeMujid', e.target.value)}
-          inputProps={{
-            style: { textTransform: 'uppercase' }
-          }}
-          sx={textFieldStyles}
-        />
-      )
-    },
-    {
-      name: 'mentorEmailid',
-      label: 'Mentor Email',
-      customRender: (
-        <TextField
-          size="small"
-          label="Mentor Email"
-          value={filters.mentorEmailid || ''}
-          onChange={(e) => handleFilterChange('mentorEmailid', e.target.value)}
-          inputProps={{
-            style: { textTransform: 'lowercase' }
-          }}
-          sx={textFieldStyles}
-        />
+        <Box sx={{ position: 'relative', width: '100%' }}>
+          <TextField
+            size="small"
+            label="Search"
+            value={filters.email || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              handleFilterChange('email', value);
+            }}
+            placeholder="Search name, email, ID, etc."
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <SearchIcon sx={{ 
+                    color: '#f97316',
+                    marginRight: '12px',
+                    fontSize: '1.25rem'
+                  }} />
+                ),
+                sx: {
+                  height: '56px',
+                  padding: '0 16px',
+                  fontSize: '1rem',
+                  '&::placeholder': {
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    opacity: 1,
+                  }
+                }
+              }
+            }}
+            sx={{
+              width: '100%',
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(17, 24, 39, 0.95)', // Updated to match other fields
+                borderRadius: '12px',
+                transition: 'all 0.3s ease',
+                border: '2px solid rgba(249, 115, 22, 0.2)',
+                '&:hover': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.1)', // Revamped hover color
+                  border: '2px solid rgba(249, 115, 22, 0.3)',
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'rgba(249, 115, 22, 0.05)', // Revamped focus color
+                  border: '2px solid rgba(249, 115, 22, 0.5)',
+                  boxShadow: '0 0 0 4px rgba(249, 115, 22, 0.2)',
+                }
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&.Mui-focused': {
+                  color: '#f97316',
+                }
+              },
+              '& .MuiInputBase-input': {
+                color: 'white',
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  opacity: 1,
+                }
+              }
+            }}
+          />
+        </Box>
       )
     }
   ];
@@ -692,8 +779,7 @@ const FilterSection = ({
       color: 'secondary',
       disabled: isLoading.bulkAdd,
       icon: <UploadFileIcon sx={{ fontSize: '1.2rem' }} />,
-      fullWidth: false
-    },
+      fullWidth: false },
     // { 
     //   label: 'Delete',
     //   onClick: () => setDeleteDialog(true),
@@ -708,25 +794,37 @@ const FilterSection = ({
     const initializeAndFetch = async () => {
       if (!isClient) return; // Don't run on server
 
-      if (filters.academicYear && filters.academicSession) {
-        await handleSearch();
-      } else {
-        const currentYear = getCurrentAcademicYear();
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const startYear = currentYear.split('-')[0];
-        
-        const currentSession = currentMonth >= 7 ? 
-          `JULY-DECEMBER ${startYear}` : 
-          `JANUARY-JUNE ${parseInt(startYear) + 1}`;
+      const currentYear = getCurrentAcademicYear();
+      const startYear = currentYear.split('-')[0];
+      const currentMonth = new Date().getMonth() + 1;
+      
+      const currentSession = currentMonth >= 7 ? 
+        `JULY-DECEMBER ${startYear}` : 
+        `JANUARY-JUNE ${parseInt(startYear) + 1}`;
 
-        handleFilterChange('academicYear', currentYear);
-        handleFilterChange('academicSession', currentSession);
-      }
+      // Set filters silently without triggering search yet
+      const updatedFilters = {
+        academicYear: currentYear,
+        academicSession: currentSession
+      };
+      
+      // Set these filters in UI
+      handleFilterChange('academicYear', currentYear);
+      handleFilterChange('academicSession', currentSession);
+      
+      // Show loading state immediately
+      onSearch([], { ...updatedFilters, isLoading: true });
+      
+      // Then trigger actual search
+      setTimeout(() => {
+        handleSearch();
+      }, 0);
     };
 
-    initializeAndFetch();
-  }, [isClient, filters.academicYear, filters.academicSession]);
+    if (!filters.academicYear || !filters.academicSession) {
+      initializeAndFetch();
+    }
+  }, [isClient]);
 
   if (!isClient) {
     return (
@@ -742,148 +840,160 @@ const FilterSection = ({
   }
 
   return (
-    <Box sx={{ 
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3,
-      p: { xs: 2, sm: 3 },
-      height: '100%',
-      maxHeight: { xs: '70vh', sm: 'calc(100vh - 180px)' },
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      // Use custom scrollbar class from globals.css
-      className: 'custom-scrollbar'
-    }}>
-      {/* Filter Controls - Improved mobile layout */}
+    <div>
+      {/* Show header only on mobile and tablet */}
+      {(isSmallScreen || isTablet) && (
+        <div className="flex items-center justify-center px-4">
+          <Typography 
+            className="text-lg font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-4"
+            variant="h5"
+            component="h5"
+          >
+            <b>Mentee Management</b>
+          </Typography>
+        </div>
+      )}
+      
       <Box sx={{ 
-        display: 'grid',
-        gridTemplateColumns: { 
-          xs: '1fr',
-          sm: 'repeat(auto-fill, minmax(200px, 1fr))'
-        },
-        gap: 2,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+        p: { xs: 2, sm: 3 },
+        height: '100vh',
+        maxHeight: { xs: '70vh', sm: 'calc(100vh - 180px)' },
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        className: 'custom-scrollbar'
       }}>
-        {filterControls.map((control) => (
-          <Box key={control.name} sx={{ width: '100%' }}>
-            {control.customRender || (
-              <FormControl 
-                size="small" 
-                sx={{ 
-                  '& .MuiOutlinedInput-root': {
-                    color: 'white',
-                    backgroundColor: '#1a1a1a', // Solid dark background
-                    // Remove backdropFilter
-                    borderRadius: '12px',
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#f97316',
+        {/* Filter Controls - Improved mobile layout */}
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: { 
+            xs: '1fr',
+            sm: 'repeat(auto-fill, minmax(200px, 1fr))'
+          },
+          gap: 3,
+        }}>
+          {filterControls.map((control) => (
+            <Box key={control.name} sx={{ width: '100%' }}>
+              {control.customRender || (
+                <FormControl 
+                  size="small" 
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      backgroundColor: '#1a1a1a', 
+                      borderRadius: '12px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#f97316',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#f97316',
+                      },
                     },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#f97316',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
                     },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    '&.Mui-focused': {
+                    '& .MuiInputLabel-root': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      '&.Mui-focused': {
+                        color: '#f97316',
+                      },
+                    },
+                    '& .MuiSelect-icon': {
                       color: '#f97316',
                     },
-                  },
-                  '& .MuiSelect-icon': {
-                    color: '#f97316',
-                  },
-                  '& .MuiMenuItem-root': {
-                    color: 'white',
-                  }
-                }}
-              >
-                <InputLabel>{control.label}</InputLabel>
-                <Select
-                  value={filters[control.name] || ''}
-                  label={control.label}
-                  onChange={(e) => handleFilterChange(control.name, e.target.value)}
-                  disabled={control.disabled}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        bgcolor: '#1a1a1a', // Solid dark background
-                        // Remove backdropFilter
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        '& .MuiMenuItem-root': {
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: '#2a2a2a', // Darker solid color for hover
-                          },
-                          '&.Mui-selected': {
-                            bgcolor: '#333333', // Even darker for selected
+                    '& .MuiMenuItem-root': {
+                      color: 'white',
+                    }
+                  }}
+                >
+                  <InputLabel>{control.label}</InputLabel>
+                  <Select
+                    value={filters[control.name] || ''}
+                    label={control.label}
+                    onChange={(e) => handleFilterChange(control.name, e.target.value)}
+                    disabled={control.disabled}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          bgcolor: '#1a1a1a', 
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          '& .MuiMenuItem-root': {
+                            color: 'white',
                             '&:hover': {
-                              bgcolor: '#404040',
+                              bgcolor: '#2a2a2a', // Darker solid color for hover
+                            },
+                            '&.Mui-selected': {
+                              bgcolor: '#333333', // Even darker for selected
+                              '&:hover': {
+                                bgcolor: '#404040',
+                              }
                             }
                           }
                         }
                       }
-                    }
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {(control.getDynamicOptions 
-                    ? control.getDynamicOptions(filters.academicSession)
-                    : control.options
-                  ).map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {typeof option === 'string' 
-                        ? option.charAt(0).toUpperCase() + option.slice(1) 
-                        : `${control.label} ${option}`
-                      }
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
                     </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          </Box>
-        ))}
-      </Box>
+                    {(control.getDynamicOptions 
+                      ? control.getDynamicOptions(filters.academicSession)
+                      : control.options
+                    ).map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {typeof option === 'string' 
+                          ? option.charAt(0).toUpperCase() + option.slice(1) 
+                          : `${control.label} ${option}`
+                        }
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            </Box>
+          ))}
+        </Box>
 
-      {/* Action Buttons - Improved mobile layout */}
-      <Box sx={{ 
-        display: 'grid',
-        gridTemplateColumns: { 
-          xs: 'repeat(2, 1fr)',
-          sm: 'repeat(auto-fit, minmax(120px, 1fr))'
-        },
-        gap: 1,
-        mt: 'auto',
-        pt: 2,
-      }}>
-        {buttons.map(button => (
-          <Button 
-            key={button.label}
-            variant={button.color === 'secondary' ? 'outlined' : 'contained'}
-            onClick={button.onClick}
-            disabled={button.disabled}
-            startIcon={
-              isLoading && button.label === 'Search' ? (
-                <CircularProgress size={20} sx={{ color: 'white' }} />
-              ) : button.icon
-            }
-            sx={{ 
-              ...buttonStyles.actionButton,
-              ...(button.color === 'primary' ? buttonStyles.primary : 
-                  button.color === 'secondary' ? buttonStyles.secondary : 
-                  buttonStyles.danger),
-              gridColumn: button.fullWidth ? { sm: 'span 2', md: 'auto' } : 'auto',
-            }}
-          >
-            <span className={button.fullWidth ? 'block' : 'hidden sm:block'}>
-              {isLoading && button.label === 'Search' ? 'Searching...' : button.label}
-            </span>
-          </Button>
-        ))}
+        {/* Action Buttons - Improved mobile layout */}
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: { 
+            xs: 'repeat(2, 1fr)',
+            sm: 'repeat(auto-fit, minmax(120px, 1fr))'
+          },
+          gap: 1,
+          mt: 'auto',
+          pt: 2,
+        }}>
+          {buttons.map(button => (
+            <Button 
+              key={button.label}
+              variant={button.color === 'secondary' ? 'outlined' : 'contained'}
+              onClick={button.onClick}
+              disabled={button.disabled}
+              startIcon={
+                isLoading && button.label === 'Search' ? (
+                  <CircularProgress size={20} sx={{ color: 'white' }} />
+                ) : button.icon
+              }
+              sx={{ 
+                ...buttonStyles.actionButton,
+                ...(button.color === 'primary' ? buttonStyles.primary : 
+                    button.color === 'secondary' ? buttonStyles.secondary : 
+                    buttonStyles.danger),
+                gridColumn: button.fullWidth ? { sm: 'span 2', md: 'auto' } : 'auto',
+              }}
+            >
+              <span className={button.fullWidth ? 'block' : 'hidden sm:block'}>
+                {isLoading && button.label === 'Search' ? 'Searching...' : button.label}
+              </span>
+            </Button>
+          ))}
+        </Box>
       </Box>
-    </Box>
+    </div>
   );
 
   <Dialog 
@@ -979,6 +1089,7 @@ const textFieldStyles = {
   '& .MuiInputBase-input': {
     color: 'white',
   }
+  
 };
 
 const comboBoxStyles = {
@@ -1022,7 +1133,7 @@ const dialogStyles = {
   paper: {
     backgroundColor: '#1a1a1a',
     color: 'white',
-    borderRadius: '12px',    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',    border: '1px solid rgba(255,2nd Chhattisgarh.  255, 255, 255, 0.1)',
   },
   title: {
     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',

@@ -12,10 +12,10 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 
-// Add font registration before styles
+// Simplified font registration using only web-safe fonts
 Font.register({
-  family: "Cambria",
-  src: "/fonts/cambria.ttf", // You need to provide the actual path to Cambria font file
+  family: "Helvetica",
+  src: "https://fonts.cdnfonts.com/s/29154/Helvetica.woff",
 });
 
 const styles = StyleSheet.create({
@@ -25,14 +25,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   logo: {
-    width: 150, // Increased from 100
-    height: 37, // Decreased from 50
+    width: 150,
+    height: 37,
     marginBottom: 15,
     alignSelf: "center",
   },
   header: {
     textAlign: "center",
     marginBottom: 20,
+    fontFamily: "Helvetica",
   },
   section: {
     marginBottom: 20,
@@ -60,13 +61,13 @@ const styles = StyleSheet.create({
     borderRight: "1pt solid black",
   },
   tableColSr: {
-    width: "15%", // smaller width for Sr No
+    width: "15%",
   },
   tableColReg: {
-    width: "35%", // more width for Reg No
+    width: "35%",
   },
   tableColName: {
-    width: "50%", // most width for Name
+    width: "50%",
   },
   tableCell: {
     textAlign: "left",
@@ -82,20 +83,20 @@ const styles = StyleSheet.create({
   },
   detailItem: {
     flexDirection: "row",
-    alignItems: "center", // Add this for vertical alignment
+    alignItems: "center",
   },
   detailLabel: {
-    marginRight: 5, // Add spacing between label and value
+    marginRight: 5,
   },
   noteSection: {
     marginBottom: 15,
   },
   noteLabel: {
-    fontSize: 13, // Increased from 12
+    fontSize: 13,
     fontWeight: "bold",
     marginBottom: 5,
     fontFamily: "Helvetica",
-    textTransform: "uppercase", // Make the labels uppercase
+    textTransform: "uppercase",
   },
   noteContent: {
     fontSize: 11,
@@ -108,14 +109,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 20,
-    fontFamily: "Cambria",
+    fontFamily: "Helvetica",
   },
   signatureSection: {
-    marginTop: 30, // Reduced from 50
+    marginTop: 30,
     paddingTop: 20,
     width: "60%",
-    alignSelf: "flex-start", // Align to left
-    marginLeft: 20, // Added for left margin
+    alignSelf: "flex-start",
+    marginLeft: 20,
   },
   signatureText: {
     fontSize: 11,
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
   },
   signatureDate: {
     fontSize: 11,
-    marginTop: 15, // Added space between signature and date
+    marginTop: 15,
   },
   tableBottomBorder: {
     borderBottom: "1pt solid black",
@@ -151,17 +152,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "grey",
   },
+  heading: {
+    textAlign: "center",
+    marginBottom: 8,
+    fontWeight: "bold",
+  },
+  consolidatedTable: {
+    width: "100%",
+    marginBottom: 20,
+    borderCollapse: "collapse",
+  },
+  consolidatedRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#000",
+    borderBottomStyle: "solid",
+    minHeight: 25,
+  },
+  consolidatedCell: {
+    padding: 5,
+    borderRightWidth: 1,
+    borderRightColor: "#000",
+    borderRightStyle: "solid",
+  },
+  consolidatedHeader: {
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+  },
 });
 
 const Header = () => (
   <>
-    <Image
-      style={styles.logo}
-      src='/muj-logo.jpg' // Changed from jpg to svg
-      alt='MUJ Logo'
-    />
+    <Image style={styles.logo} src="/muj-logo.jpg" alt="MUJ Logo" />
     <View style={styles.header}>
-      <Text style={{ fontSize: 16, fontWeight: "bold", fontFamily: "Cambria" }}>
+      <Text style={{ fontSize: 16, fontWeight: "bold", fontFamily: "Helvetica" }}>
         Department of Computer Science and Engineering
       </Text>
       <Text>School of Computer Science and Engineering</Text>
@@ -202,7 +226,7 @@ export const MOMDocument = ({
         srNo: index + 1,
         regNo: mentee?.MUJid,
         name: mentee.name,
-        section: mentee.section, // Ensure section is fetched
+        section: mentee.section,
       })) || [];
   } else {
     students =
@@ -210,7 +234,7 @@ export const MOMDocument = ({
         srNo: index + 1,
         regNo: mentee.mujId,
         name: mentee.name,
-        section: mentee.section, // Ensure section is fetched
+        section: mentee.section,
       })) || [];
   }
 
@@ -219,7 +243,7 @@ export const MOMDocument = ({
 
   return (
     <Document>
-      <Page size='A4' style={styles.page}>
+      <Page size="A4" style={styles.page}>
         <Header />
 
         <View style={styles.section}>
@@ -231,7 +255,8 @@ export const MOMDocument = ({
               style={[
                 styles.detailItem,
                 { justifyContent: "flex-end", marginRight: 0 },
-              ]}>
+              ]}
+            >
               <Text style={styles.detailLabel}>Mentorship Meeting:</Text>
               <Text>{meeting.meeting_id}</Text>
             </View>
@@ -252,11 +277,13 @@ export const MOMDocument = ({
           <View style={styles.tableHalf}>
             <View style={styles.tableRow}>
               <Text
-                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}
+              >
                 Sr No
               </Text>
               <Text
-                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}
+              >
                 Reg. No
               </Text>
               <Text
@@ -264,7 +291,8 @@ export const MOMDocument = ({
                   styles.tableCol,
                   styles.tableColName,
                   styles.tableCell,
-                ]}>
+                ]}
+              >
                 Student Name
               </Text>
             </View>
@@ -279,13 +307,15 @@ export const MOMDocument = ({
                         : "1pt solid black",
                   },
                 ]}
-                key={student.srNo}>
+                key={student.srNo}
+              >
                 <Text
                   style={[
                     styles.tableCol,
                     styles.tableColSr,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.srNo}
                 </Text>
                 <Text
@@ -293,7 +323,8 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColReg,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.regNo}
                 </Text>
                 <Text
@@ -301,7 +332,8 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColName,
                     { ...styles.tableCell, borderRight: "1pt solid black" },
-                  ]}>
+                  ]}
+                >
                   {student.name}
                 </Text>
               </View>
@@ -310,11 +342,13 @@ export const MOMDocument = ({
           <View style={styles.tableHalf}>
             <View style={styles.tableRow}>
               <Text
-                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColSr, styles.tableCell]}
+              >
                 Sr No
               </Text>
               <Text
-                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}>
+                style={[styles.tableCol, styles.tableColReg, styles.tableCell]}
+              >
                 Reg. No
               </Text>
               <Text
@@ -322,7 +356,8 @@ export const MOMDocument = ({
                   styles.tableCol,
                   styles.tableColName,
                   { ...styles.tableCell, borderRight: "none" },
-                ]}>
+                ]}
+              >
                 Student Name
               </Text>
             </View>
@@ -337,13 +372,15 @@ export const MOMDocument = ({
                         : "1pt solid black",
                   },
                 ]}
-                key={student.srNo}>
+                key={student.srNo}
+              >
                 <Text
                   style={[
                     styles.tableCol,
                     styles.tableColSr,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.srNo}
                 </Text>
                 <Text
@@ -351,7 +388,8 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColReg,
                     styles.tableCell,
-                  ]}>
+                  ]}
+                >
                   {student.regNo}
                 </Text>
                 <Text
@@ -359,20 +397,19 @@ export const MOMDocument = ({
                     styles.tableCol,
                     styles.tableColName,
                     { ...styles.tableCell, borderRight: "none" },
-                  ]}>
+                  ]}
+                >
                   {student.name}
                 </Text>
               </View>
             ))}
-            <View style={styles.tableBottomBorder} />{" "}
-            {/* Add bottom border after the last student */}
+            <View style={styles.tableBottomBorder} />
           </View>
         </View>
         <Footer pageNumber={1} totalPages={2} />
       </Page>
 
-      {/* Page 2 - Meeting Notes */}
-      <Page size='A4' style={styles.page}>
+      <Page size="A4" style={styles.page}>
         <Header />
 
         <View style={styles.feedback}>
@@ -431,208 +468,119 @@ export const MOMDocument = ({
 // consolidated document template
 export const ConsolidatedDocument = ({
   meetings,
-  // academicYear,
-  // semester,
   mentorName,
   mentees,
-  selectedSemester, // Add this parameter
+  selectedSemester,
 }) => {
-  // Ensure we have valid arrays to work with
-  const safeMentees = mentees || [];
-  const filteredMentees = safeMentees.filter(
-    (mentee) => mentee && mentee.semester === selectedSemester
-  );
-
-  // Ensure we have valid chunks even with empty array
-  const chunkedMentees = filteredMentees.length
-    ? filteredMentees.reduce((resultArray, item, index) => {
-        const chunkIndex = Math.floor(index / 12);
-        if (!resultArray[chunkIndex]) {
-          resultArray[chunkIndex] = [];
-        }
-        resultArray[chunkIndex].push(item);
-        return resultArray;
-      }, [])
-    : [[]];
-
-  // Wrap the return in error boundary
   try {
+    const filteredMentees = (mentees || [])
+      .filter((mentee) => mentee && mentee.semester === selectedSemester)
+      .map((mentee, index) => ({
+        srNo: index + 1,
+        regNo: mentee.MUJid || "",
+        name: mentee.name || "",
+        meetingsCount: mentee.meetingsCount || 0,
+        remarks: mentee.mentorRemarks || "N/A",
+      }));
+
+    const chunkedMentees = [];
+    for (let i = 0; i < filteredMentees.length; i += 12) {
+      chunkedMentees.push(filteredMentees.slice(i, i + 12));
+    }
+
+    if (chunkedMentees.length === 0) {
+      return (
+        <Document>
+          <Page size="A4">
+            <View style={styles.page}>
+              <Text>No data available for the selected semester</Text>
+            </View>
+          </Page>
+        </Document>
+      );
+    }
+
     return (
       <Document>
         {chunkedMentees.map((menteeGroup, pageIndex) => (
           <Page
             key={pageIndex}
-            size='A4'
-            orientation='landscape'
-            style={styles.page}>
+            size="A4"
+            orientation="landscape"
+            style={styles.page}
+          >
             <Header />
-            <View style={styles.section}>
-              {pageIndex === 0 && ( // Only render on first page
-                <>
-                  <Text style={styles.detailItem}>
-                    Name of Mentor: {mentorName || "N/A"}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.detailItem,
-                      { marginBottom: 20, marginTop: 10 },
-                    ]}>
-                    Number of Meetings Taken: {meetings?.length || 0}
-                  </Text>
-                </>
-              )}
 
-              {/* Table header */}
-              <View style={styles.tableRow}>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.05",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 1,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
+            {pageIndex === 0 && (
+              <View style={styles.section}>
+                <Text style={styles.detailItem}>
+                  Name of Mentor: {mentorName || "N/A"}
+                </Text>
+                <Text style={[styles.detailItem, { marginBottom: 20 }]}>
+                  Number of Meetings Taken: {meetings.length}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.consolidatedTable}>
+              <View
+                style={[styles.consolidatedRow, styles.consolidatedHeader]}
+              >
+                <View style={[styles.consolidatedCell, { width: "8%" }]}>
                   <Text>Sr No.</Text>
                 </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.15",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
+                <View style={[styles.consolidatedCell, { width: "17%" }]}>
                   <Text>Registration No.</Text>
                 </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.30",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
+                <View style={[styles.consolidatedCell, { width: "30%" }]}>
                   <Text>Student Name</Text>
                 </View>
-                <View
-                  style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.13",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>No. of Meeting Attended</Text>
+                <View style={[styles.consolidatedCell, { width: "15%" }]}>
+                  <Text>Meetings Attended</Text>
                 </View>
                 <View
                   style={[
-                    styles.tableCol,
-                    {
-                      flex: "0.50",
-                      borderTopWidth: 1,
-                      borderBottomWidth: 1,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 1,
-                    },
-                  ]}>
-                  <Text>Mentor Remark/Special Cases</Text>
+                    styles.consolidatedCell,
+                    { width: "30%", borderRightWidth: 0 },
+                  ]}
+                >
+                  <Text>Remarks</Text>
                 </View>
               </View>
 
-              {/* Table body - now using menteeGroup instead of mentees */}
-              {menteeGroup.map((mentee, index) => (
-                <View style={styles.tableRow} key={index}>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.05",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 1,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{pageIndex * 12 + index + 1}</Text>
+              {menteeGroup.map((mentee) => (
+                <View key={mentee.srNo} style={styles.consolidatedRow}>
+                  <View style={[styles.consolidatedCell, { width: "8%" }]}>
+                    <Text>{mentee.srNo}</Text>
                   </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.15",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.MUJid}</Text>
+                  <View style={[styles.consolidatedCell, { width: "17%" }]}>
+                    <Text>{mentee.regNo}</Text>
                   </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.30",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
+                  <View style={[styles.consolidatedCell, { width: "30%" }]}>
                     <Text>{mentee.name}</Text>
                   </View>
-                  <View
-                    style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.13",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.meetingsCount || 0}</Text>
+                  <View style={[styles.consolidatedCell, { width: "15%" }]}>
+                    <Text>{mentee.meetingsCount}</Text>
                   </View>
                   <View
                     style={[
-                      styles.tableCol,
-                      {
-                        flex: "0.50",
-                        borderTopWidth: 0,
-                        borderLeftWidth: 0,
-                        borderRightWidth: 1,
-                      },
-                    ]}>
-                    <Text>{mentee.mentorRemarks || "N/A"}</Text>
+                      styles.consolidatedCell,
+                      { width: "30%", borderRightWidth: 0 },
+                    ]}
+                  >
+                    <Text>{mentee.remarks}</Text>
                   </View>
                 </View>
               ))}
-
-              {pageIndex === chunkedMentees.length - 1 && (
-                <View
-                  style={[
-                    styles.signatureSection,
-                    { marginTop: 30, marginLeft: 0 },
-                  ]}>
-                  <Text style={[styles.signatureDate, { marginLeft: 0 }]}>
-                    ___________________________
-                  </Text>
-                  <Text style={styles.signatureText}>Signature with Date</Text>
-                  {/* <Text style={styles.signatureDate}>
-                    Date: {new Date().toLocaleDateString()}
-                  </Text> */}
-                </View>
-              )}
             </View>
+
+            {pageIndex === chunkedMentees.length - 1 && (
+              <View style={[styles.signatureSection, { marginTop: 30 }]}>
+                <Text>___________________________</Text>
+                <Text style={styles.signatureText}>Signature with Date</Text>
+              </View>
+            )}
+
             <Footer
               pageNumber={pageIndex + 1}
               totalPages={chunkedMentees.length}
@@ -642,12 +590,12 @@ export const ConsolidatedDocument = ({
       </Document>
     );
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    console.error("Error generating consolidated document:", error);
     return (
       <Document>
-        <Page size='A4'>
-          <View>
-            <Text>Error generating report</Text>
+        <Page size="A4">
+          <View style={styles.page}>
+            <Text>Error generating report: {error.message}</Text>
           </View>
         </Page>
       </Document>
@@ -661,21 +609,18 @@ export const generateMOMPdf = (meeting, mentorName) => {
     console.error("No meeting data available");
     return null;
   }
-  // console.log("MUJid of mentees Present:", meeting.pre</View>sent_mentees);
 
-  // Filter menteeDetails to only include present mentees
   if (meeting.menteeDetails && meeting?.menteeDetails.length > 0) {
     const presentMenteeDetails = meeting.menteeDetails.filter((mentee) =>
       meeting.present_mentees?.includes(mentee.MUJid)
     );
-    // console.log("mentees Present:", presentMenteeDetails);
 
     return (
       <MOMDocument
         meeting={meeting}
         semester={meeting.semester}
         section={meeting.section}
-        mentorName={mentorName} // Ensure mentorName is passed here
+        mentorName={mentorName}
         presentMenteeDetails={presentMenteeDetails}
       />
     );
@@ -686,7 +631,7 @@ export const generateMOMPdf = (meeting, mentorName) => {
       meeting={meeting}
       semester={meeting.semester}
       section={meeting.section}
-      mentorName={mentorName} // Ensure mentorName is passed here
+      mentorName={mentorName}
     />
   );
 };
@@ -694,23 +639,19 @@ export const generateMOMPdf = (meeting, mentorName) => {
 // consolidated report pdf generator
 export const generateConsolidatedPdf = (
   meetings,
-  // academicYear,
   semester,
-  // section,
   mentorName,
-  mentees // add mentees prop
+  mentees,
+  selectedSemester
 ) => {
-  return React.createElement(
-    Document,
-    null,
-    React.createElement(ConsolidatedDocument, {
-      meetings,
-      // academicYear,
-      semester,
-      // section,
-      mentorName,
-      mentees, // pass mentees prop
-    })
+  return (
+    <ConsolidatedDocument
+      meetings={meetings}
+      semester={semester}
+      mentorName={mentorName}
+      mentees={mentees}
+      selectedSemester={selectedSemester}
+    />
   );
 };
 
@@ -750,8 +691,8 @@ export const PDFDownloadComponent = ({
   };
   if (typeof window === "undefined" || !isClient) {
     return page && page === "MentorDashboard" ? (
-      <div className='flex items-center justify-center'>
-        <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
+      <div className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
       </div>
     ) : (
       <button disabled>Loading...</button>
@@ -766,9 +707,10 @@ export const PDFDownloadComponent = ({
         page && page === "MentorDashboard"
           ? ""
           : "inline-block px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg transition-all"
-      }`}>
+      }`}
+    >
       {isLoading ? (
-        <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500'></div>
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
       ) : (
         children || "Download PDF"
       )}

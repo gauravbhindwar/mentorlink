@@ -3,5 +3,6 @@ import { Mentee } from "./db/menteeSchema";
 import { AcademicSession } from "./db/academicSessionSchema";
 import { Admin } from "./db/adminSchema";
 import { Meeting } from "./db/meetingSchema";
+import { Settings } from "./db/settingsSchema";
 
-export { Mentor, Mentee, AcademicSession, Admin, Meeting };
+export { Mentor, Mentee, AcademicSession, Admin, Meeting, Settings };

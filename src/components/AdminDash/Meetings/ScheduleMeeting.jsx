@@ -177,15 +177,17 @@ const ManageMeeting = () => {
       headerName: "Actions",
       width: 200,
       renderCell: (params) => (
-        <div className='flex gap-2'>
+        <div className="flex gap-2">
           <button
             onClick={() => sendEmail(params.row.mentorEmail)}
-            className='px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded-md text-sm text-white'>
+            className="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded-md text-sm text-white"
+          >
             Send Email
           </button>
           <button
             onClick={() => generateReport(params.row.MUJid)}
-            className='px-3 py-1 bg-green-500 hover:bg-green-600 rounded-md text-sm text-white'>
+            className="px-3 py-1 bg-green-500 hover:bg-green-600 rounded-md text-sm text-white"
+          >
             Generate Report
           </button>
         </div>
@@ -194,35 +196,35 @@ const ManageMeeting = () => {
   ];
 
   return (
-    <div className='min-h-screen h-auto bg-[#0a0a0a] overflow-hidden relative'>
-      <div className='absolute inset-0 z-0'>
-        <div className='absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient' />
-        <div className='absolute inset-0 backdrop-blur-3xl' />
+    <div className="min-h-screen h-auto bg-[#0a0a0a] overflow-hidden relative">
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 animate-gradient" />
+        <div className="absolute inset-0 backdrop-blur-3xl" />
       </div>
 
-      <div className='relative z-10 container mx-auto px-4 pt-24 max-w-7xl'>
-        <div className='text-center mb-8'>
-          <h1 className='text-4xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-6'>
+      <div className="relative z-10 container mx-auto px-4 pt-24 max-w-7xl">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-pink-500 mb-6">
             Manage Meetings
           </h1>
         </div>
 
-        <div className='bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10'>
-          <form onSubmit={handleSubmit} className='flex flex-wrap gap-4'>
-            <div className='space-y-3 flex-1 min-w-[200px]'>
+        <div className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+          <form onSubmit={handleSubmit} className="flex flex-wrap gap-4">
+            <div className="space-y-3 flex-1 min-w-[200px]">
               <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Academic Year
                 </label>
                 <input
-                  type='text'
-                  list='academicYears'
-                  placeholder='YYYY-YYYY'
+                  type="text"
+                  list="academicYears"
+                  placeholder="YYYY-YYYY"
                   value={academicYear}
                   onChange={handleAcademicYearChange}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                 />
-                <datalist id='academicYears'>
+                <datalist id="academicYears">
                   {academicYears.map((year, index) => (
                     <option key={index} value={year} />
                   ))}
@@ -230,61 +232,62 @@ const ManageMeeting = () => {
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Academic Session
                 </label>
                 <input
-                  type='text'
-                  list='academicSessions'
-                  placeholder='MONTH-MONTH YYYY'
+                  type="text"
+                  list="academicSessions"
+                  placeholder="MONTH-MONTH YYYY"
                   value={academicSession}
                   onChange={handleAcademicSessionChange}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                 />
-                <datalist id='academicSessions'>
+                <datalist id="academicSessions">
                   {academicSessions.map((session, index) => (
                     <option key={index} value={session} />
                   ))}
                 </datalist>
-                <small className='text-green-500'>
+                <small className="text-green-500">
                   Type &apos;jul&apos; or &apos;jan&apos; for quick selection
                 </small>
               </div>
             </div>
 
-            <div className='space-y-3 flex-1 min-w-[200px]'>
+            <div className="space-y-3 flex-1 min-w-[200px]">
               <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Semester
                 </label>
                 <input
-                  type='text'
-                  placeholder='Enter Semester'
+                  type="text"
+                  placeholder="Enter Semester"
                   value={semester}
                   onChange={handleSemesterChange}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                 />
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-gray-300 mb-1'>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Section
                 </label>
                 <input
-                  type='text'
-                  placeholder='Enter Section'
+                  type="text"
+                  placeholder="Enter Section"
                   value={section}
                   onChange={handleSectionChange}
-                  className='w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm'
+                  className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-sm"
                 />
               </div>
             </div>
 
-            <div className='space-y-3 flex-1 min-w-[200px]'>
+            <div className="space-y-3 flex-1 min-w-[200px]">
               <button
-                type='submit'
-                className='w-full btn-orange disabled:opacity-50'
-                disabled={loading}>
+                type="submit"
+                className="w-full btn-orange disabled:opacity-50"
+                disabled={loading}
+              >
                 {loading ? "Fetching..." : "Fetch Mentor Meetings"}
               </button>
             </div>
@@ -295,7 +298,7 @@ const ManageMeeting = () => {
           ) : (
             Array.isArray(mentorMeetings) &&
             mentorMeetings.length > 0 && (
-              <div className='mt-6 h-[400px] w-full'>
+              <div className="mt-6 h-[400px] w-full">
                 <ThemeProvider theme={darkTheme}>
                   <DataGrid
                     rows={mentorMeetings}

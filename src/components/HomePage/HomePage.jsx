@@ -1,184 +1,151 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import Login from "../Login/Login";
-import AboutUs from "../AboutUs/AboutUs";
-import Image from "next/image";
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Login from '@/components/Login/Login';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaSignOutAlt, FaTimes, FaUser } from 'react-icons/fa';
 
 const HomePage = () => {
-  const [showAboutUs, setShowAboutUs] = useState(false);
-  const [stars, setStars] = useState([]);
+  const router = useRouter();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    const generateStars = () => {
-      const newStars = [];
-      const numberOfStars = 50;
+    // Check if user is already signed in
+    const role = sessionStorage.getItem('userRole');
+    const name = sessionStorage.getItem('userName') || sessionStorage.getItem('mentorData')?.name;
 
-      for (let i = 0; i < numberOfStars; i++) {
-        newStars.push({
-          id: i,
-          left: `${Math.random() * 100}%`,
-          size: Math.random() * 3 + 1,
-          delay: Math.random() * 5,
-          duration: Math.random() * 3 + 2,
-          opacity: Math.random() * 0.7 + 0.3,
-        });
-      }
-
-      setStars(newStars);
-    };
-
-    generateStars();
-
-    const handleResize = () => {
-      generateStars();
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    if (role) {
+      setUserRole(role);
+      setUserName(name || 'User');
+      setShowLogoutModal(true);
+    }
   }, []);
 
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const handleLogout = async () => {
+    try {
+      // Call the logout API endpoint
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
 
-  const handleMouseMove = (e) => {
-    setMousePosition({
-      x: (e.clientX / window.innerWidth) * 20,
-      y: (e.clientY / window.innerHeight) * 20,
-    });
+      // Clear client-side storage
+      sessionStorage.clear();
+      localStorage.clear();
+
+      // Close modal and stay on login page
+      setShowLogoutModal(false);
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Fallback to client-side logout
+      sessionStorage.clear();
+      localStorage.clear();
+      setShowLogoutModal(false);
+    }
   };
 
-  // Add ESC key handler
-  useEffect(() => {
-    const handleEscKey = (e) => {
-      if (e.key === "Escape") {
-        setShowAboutUs(false);
-      }
-    };
-
-    if (showAboutUs) {
-      window.addEventListener("keydown", handleEscKey);
+  const handleStayLoggedIn = () => {
+    // Redirect to appropriate dashboard based on role
+    // Prioritize mentor dashboard for users with admin rights
+    const userRoles = JSON.parse(sessionStorage.getItem('userRoles') || '[]');
+    
+    if (userRoles.includes('mentor')) {
+      router.push('/pages/mentordashboard');
+    } else if (userRoles.includes('admin')) {
+      router.push('/pages/admin/admindashboard');
+    } else {
+      router.push('/');
     }
-
-    return () => {
-      window.removeEventListener("keydown", handleEscKey);
-    };
-  }, [showAboutUs]);
+  };
 
   return (
-    <div
-      className='fixed inset-0 bg-gradient-to-b from-slate-900 to-black overflow-hidden'
-      onMouseMove={handleMouseMove}>
-      <button
-        onClick={() => setShowAboutUs(true)}
-        className='fixed top-4 right-4 z-50 px-6 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm tracking-wide shadow-lg'>
-        About Us
-      </button>
-
-      {/* About Us Sliding Panel */}
-      {showAboutUs && (
-        <>
-          <div
-            onClick={() => setShowAboutUs(false)}
-            className='fixed inset-0 bg-black/50 z-40 transition-opacity duration-300'
-          />
-          <div
-            className={`fixed top-0 h-full bg-transparent z-50 overflow-y-auto custom-scrollbar w-[70%] transition-all duration-500 ease-in-out ${
-              showAboutUs ? "right-0" : "-right-[70%]"
-            }`}>
-            <button
-              onClick={() => setShowAboutUs(false)}
-              className='absolute top-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white hover:text-gray-300 transition-all text-3xl font-light border border-gray-600/50'>
-              ×
-            </button>
-            <AboutUs />
-          </div>
-        </>
-      )}
-
-      {stars.map((star) => (
-        <div
-          key={star.id}
-          className='absolute rounded-full bg-white animate-falling-star'
-          style={{
-            left: star.left,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            opacity: star.opacity,
-            animation: `falling ${star.duration}s linear infinite`,
-            animationDelay: `${star.delay}s`,
-            transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)`,
-            transition: "transform 0.1s ease-out",
-          }}
+    <div className="min-h-screen bg-[#0a0a0a] overflow-hidden relative">
+      {/* Background Image */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src='/MUJ-homeCover.jpg'
+          alt='MUJ Campus'
+          fill
+          className='object-cover opacity-20 mix-blend-overlay'
         />
-      ))}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 animate-gradient" />
+        <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-orange-500/20 to-transparent blur-3xl" />
+        <div className="absolute inset-0 backdrop-blur-3xl" />
+      </div>
 
-      <div className='relative z-10 h-full flex flex-col items-center justify-center'>
-        <div className='text-center mb-12'>
-          <Image
-            src='/muj-logo.svg'
-            alt='MUJ Logo'
-            className='mx-auto w-80 mb-8'
-            width={200}
-            height={200}
-          />
-          <h1 className='text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-purple-500 mb-4'>
-            Mentorlink
-          </h1>
-          <p className='text-gray-400 text-sm md:text-base tracking-wider uppercase'>
-            By Software Development Center
-          </p>
-        </div>
-
+      {/* Content */}
+      <div className="relative z-10 flex justify-center items-center min-h-screen">
         <Login />
       </div>
 
-      <style jsx>{`
-        @keyframes falling {
-          0% {
-            transform: translateY(-10vh) rotate(45deg);
-          }
-          100% {
-            transform: translateY(110vh) rotate(45deg);
-          }
-        }
+      {/* Logout Modal */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowLogoutModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-orange-500/20 p-8 max-w-md mx-4 relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+              >
+                <FaTimes size={20} />
+              </button>
 
-        .animate-falling-star {
-          box-shadow: 0 0 4px rgba(255, 255, 255, 0.8),
-            0 0 8px rgba(255, 255, 255, 0.6);
-        }
+              {/* Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="p-4 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full">
+                  <FaUser className="text-2xl text-white" />
+                </div>
+              </div>
 
-        @media (prefers-reduced-motion: reduce) {
-          .animate-falling-star {
-            animation: none !important;
-            transform: none !important;
-          }
-        }
-      `}</style>
+              {/* Content */}
+              <div className="text-center mb-8">
+                <h3 className="text-xl font-bold text-white mb-2">Already Signed In</h3>
+                <p className="text-gray-300 text-sm mb-4">
+                  You are currently signed in as <span className="text-orange-400 font-medium">{userName}</span> with {userRole} access.
+                </p>
+                <p className="text-gray-400 text-sm">
+                  Would you like to log out and sign in with a different account?
+                </p>
+              </div>
 
-      <div
-        className='absolute w-0.5 h-0.5 bg-white animate-shooting-star'
-        style={{
-          left: "10%",
-          top: "20%",
-          animation: "shooting 4s linear infinite",
-          animationDelay: "2s",
-        }}>
-        <div className='w-8 h-0.5 bg-gradient-to-r from-white via-white to-transparent transform -rotate-45' />
-      </div>
-
-      <style jsx>{`
-        @keyframes shooting {
-          0% {
-            transform: translate(0, 0) rotate(45deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translate(100vw, 100vh) rotate(45deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleStayLoggedIn}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-orange-500/25 transition-all duration-200"
+                >
+                  Stay Logged In
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 py-3 px-4 bg-gray-700/50 text-gray-300 rounded-lg font-medium hover:bg-gray-600/50 hover:text-white transition-all duration-200 border border-gray-600"
+                >
+                  <FaSignOutAlt className="inline mr-2" />
+                  Log Out
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default HomePage;
+

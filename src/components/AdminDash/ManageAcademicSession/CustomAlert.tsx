@@ -43,12 +43,14 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
             <p className="text-gray-400 whitespace-pre-line">{message}</p>
             <div className="flex gap-3 justify-center mt-6">
               <button
+                type="button"
                 onClick={onClose}
                 className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-all duration-200"
               >
                 {cancelText}
               </button>
               <button
+                type="button"
                 onClick={() => {
                   onConfirm();
                   onClose();

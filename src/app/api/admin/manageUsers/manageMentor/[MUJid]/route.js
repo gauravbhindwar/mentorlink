@@ -1,16 +1,15 @@
 import { connect } from "@/lib/dbConfig";
 import { Mentor } from "@/lib/db/mentorSchema";
-import { Admin } from "@/lib/db/adminSchema";
 import { NextResponse } from "next/server";
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request) {
   try {
     await connect();
     
-    // Get MUJid from params directly
-    const { MUJid } = params;
+    // Get mujid from URL path
+    const mujid = request.url.split('/').pop();
     
-    if (!MUJid) {
+    if (!mujid) {
       return NextResponse.json({
         error: "MUJid parameter is required"
       }, { status: 400 });
@@ -18,11 +17,19 @@ export async function PATCH(request, { params }) {
 
     const updateData = await request.json();
 
-    // Check for duplicate email first
-    if (updateData.email) {
+    // Get current mentor data
+    const currentMentor = await Mentor.findOne({ MUJid: mujid });
+    if (!currentMentor) {
+      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+    }
+
+  
+
+    // Check for duplicate email only if email is being changed
+    if (updateData.email && updateData.email !== currentMentor.email) {
       const existingMentorWithEmail = await Mentor.findOne({ 
         email: updateData.email,
-        MUJid: { $ne: MUJid } // Exclude current mentor
+        MUJid: { $ne: mujid } // Exclude current mentor
       });
 
       if (existingMentorWithEmail) {
@@ -33,45 +40,24 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    // Clean the update data
+    // Clean the update data and remove immutable fields
     const cleanedData = Object.fromEntries(
-      Object.entries(updateData).filter(([v]) => v != null && v !== '')
+      Object.entries(updateData)
+        .filter(([, value]) => value != null && value !== '')
+        .filter(([key]) => !['_id', 'MUJid'].includes(key)) // Exclude immutable fields
     );
 
-    // Get current mentor data to check role changes
-    const currentMentor = await Mentor.findOne({ MUJid });
-    if (!currentMentor) {
-      return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
+    // Ensure isActive is always a boolean
+    if ('isActive' in cleanedData) {
+      cleanedData.isActive = Boolean(cleanedData.isActive);
     }
-
-    // Update mentor
+    
+    // Update mentor - no Admin collection interaction
     const updatedMentor = await Mentor.findOneAndUpdate(
-      { MUJid },
+      { MUJid: mujid },
       { $set: cleanedData },
       { new: true }
     );
-
-    // Handle admin roles if role is being updated
-    if (updateData.role) {
-      const wasAdmin = currentMentor.role.some(r => ['admin', 'superadmin'].includes(r));
-      const isNowAdmin = updateData.role.some(r => ['admin', 'superadmin'].includes(r));
-      const adminRoles = updateData.role.filter(r => ['admin', 'superadmin'].includes(r));
-
-      if (isNowAdmin) {
-        // Update or create admin record
-        await Admin.findOneAndUpdate(
-          { MUJid },
-          { 
-            ...cleanedData,
-            role: adminRoles 
-          },
-          { upsert: true, new: true }
-        );
-      } else if (wasAdmin && !isNowAdmin) {
-        // Remove from Admin collection if admin roles were removed
-        await Admin.deleteOne({ MUJid });
-      }
-    }
 
     return NextResponse.json({
       success: true,
@@ -93,12 +79,13 @@ export async function PATCH(request, { params }) {
   }
 }
 
-// Update GET handler to use params correctly
-export async function GET(request, { params }) {
+// If there was a GET handler for this endpoint, include it here
+export async function GET(request) {
   try {
-    const { MUJid } = params;
+    // Get mujid from URL path
+    const mujid = request.url.split('/').pop();
     
-    if (!MUJid) {
+    if (!mujid) {
       return NextResponse.json(
         { error: "MUJid parameter is required" },
         { status: 400 }
@@ -107,7 +94,7 @@ export async function GET(request, { params }) {
 
     await connect();
 
-    const mentor = await Mentor.findOne({ MUJid });
+    const mentor = await Mentor.findOne({ MUJid: mujid });
     if (!mentor) {
       return NextResponse.json(
         { error: "Mentor not found" },
